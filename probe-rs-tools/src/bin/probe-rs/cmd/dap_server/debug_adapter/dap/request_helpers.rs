@@ -28,7 +28,8 @@ pub(crate) fn disassemble_target_memory(
         | InstructionSet::RV32C
         | InstructionSet::RV32
         | InstructionSet::A32
-        | InstructionSet::A64 => (),
+        | InstructionSet::A64
+        | InstructionSet::TriCore => (),
         _ => return Err(DebuggerError::Unimplemented), // e.g. Xtensa.
     };
 
@@ -428,6 +429,12 @@ fn get_capstone_le(
             ))
             .build(),
         InstructionSet::Xtensa => return Err(DebuggerError::Unimplemented),
+        // AURIX TC2xx cores implement TriCore 1.6.1 (TC1.6P and TC1.6E).
+        InstructionSet::TriCore => Capstone::new()
+            .tricore()
+            .mode(capstone::arch::tricore::ArchMode::TriCore161)
+            .endian(Endian::Little)
+            .build(),
     }
     .map_err(|err| anyhow!("Error creating capstone: {err:?}"))?;
     let _ = cs.set_skipdata(true);

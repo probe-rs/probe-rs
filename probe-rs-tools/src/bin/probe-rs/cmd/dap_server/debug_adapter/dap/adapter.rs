@@ -1779,7 +1779,8 @@ impl DebugAdapter {
                 probe_rs::Error::Other(format!("No core metadata for core {core_index}"))
             })
             .map_err(DebuggerError::ProbeRs)?;
-        if [Architecture::Riscv, Architecture::Xtensa].contains(&arch) {
+        // A TriCore reset is a device reset: the boot software reprograms the trigger units.
+        if [Architecture::Riscv, Architecture::Xtensa, Architecture::TriCore].contains(&arch) {
             let addrs: Vec<u64> = core_data.breakpoints.iter().map(|bp| bp.address).collect();
             if !addrs.is_empty() {
                 backend

@@ -110,6 +110,7 @@ pub(crate) mod convert {
             probe_rs_target::CoreType::Riscv => CoreType::Riscv,
             probe_rs_target::CoreType::Riscv64 => CoreType::Riscv64,
             probe_rs_target::CoreType::Xtensa => CoreType::Xtensa,
+            probe_rs_target::CoreType::TriCore => CoreType::TriCore,
         }
     }
 

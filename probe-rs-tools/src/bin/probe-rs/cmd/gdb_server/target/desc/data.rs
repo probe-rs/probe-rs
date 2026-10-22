@@ -73,6 +73,7 @@ impl TargetDescription {
             CoreType::Riscv => "riscv:rv32",
             CoreType::Riscv64 => "riscv:rv64",
             CoreType::Xtensa => "xtensa",
+            CoreType::TriCore => "TriCore",
         };
 
         Self {
@@ -261,9 +262,27 @@ pub fn build_target_description(
         },
         CoreType::Riscv | CoreType::Riscv64 => build_riscv_registers(&mut desc, regs),
         CoreType::Xtensa => build_xtensa_registers(&mut desc, regs),
+        CoreType::TriCore => build_tricore_registers(&mut desc, regs),
     };
 
     desc
+}
+
+fn build_tricore_registers(desc: &mut TargetDescription, regs: &CoreRegisters) {
+    // GDB numbers D0-D15 and A0-A15 first, then the system registers. The register list keeps
+    // DWARF order (D0-D15 = 0-15, A0-A15 = 16-31), which matches.
+    desc.add_gdb_feature("org.gnu.gdb.tricore.core");
+    let mut ordered = regs
+        .core_registers()
+        .filter(|r| r.dwarf_id().is_some_and(|id| id < 32))
+        .collect::<Vec<_>>();
+    ordered.sort_by_key(|r| r.dwarf_id());
+    desc.add_registers(ordered.into_iter());
+    desc.add_registers(
+        regs.core_registers()
+            .filter(|r| r.dwarf_id().is_none_or(|id| id >= 32)),
+    );
+    desc.update_register_type("pc", "code_ptr");
 }
 
 fn build_riscv_registers(desc: &mut TargetDescription, regs: &CoreRegisters) {

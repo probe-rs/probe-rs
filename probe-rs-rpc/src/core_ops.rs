@@ -173,6 +173,7 @@ pub enum WireInstructionSet {
     RV64,
     RV64C,
     Xtensa,
+    TriCore,
 }
 
 #[derive(Serialize, Deserialize, Schema, Clone, Copy)]
@@ -231,6 +232,7 @@ pub enum WireCoreType {
     Riscv,
     Riscv64,
     Xtensa,
+    TriCore,
 }
 
 /// UI event produced by server-side semihosting handling, to be replayed on

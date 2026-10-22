@@ -230,6 +230,10 @@ fn create_core(processor: &Processor) -> Result<ProbeCore> {
                     window_properties: Some(XtensaWindowProperties { num_aregs: 64 }),
                 },
             }),
+            // CMSIS packs do not describe TriCore devices.
+            Architecture::TriCore => {
+                bail!("TriCore cores can not be generated from a CMSIS pack")
+            }
         },
     })
 }

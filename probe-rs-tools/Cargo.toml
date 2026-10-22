@@ -49,6 +49,7 @@ capstone = { version = "0.14", default-features = false, features = [
     "arch_arm",
     "arch_arm64",
     "arch_riscv",
+    "arch_tricore",
 ] }
 cargo_metadata = "0.23"
 clap = { version = "4", features = ["derive", "env"] }

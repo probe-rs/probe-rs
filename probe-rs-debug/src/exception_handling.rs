@@ -21,6 +21,7 @@ pub(crate) mod armv6m_armv7m_shared;
 pub(crate) mod armv7m;
 pub(crate) mod armv8m;
 pub(crate) mod riscv;
+pub(crate) mod tricore;
 pub(crate) mod xtensa;
 
 /// Creates a new exception interface for the [`CoreType`] at hand.
@@ -32,6 +33,7 @@ pub fn exception_handler_for_core(core_type: CoreType) -> Box<dyn ExceptionInter
         CoreType::Armv8m => Box::new(armv8m::ArmV8MExceptionHandler),
         CoreType::Xtensa => Box::<xtensa::XtensaExceptionHandler>::default(),
         CoreType::Riscv | CoreType::Riscv64 => Box::new(riscv::RiscvExceptionHandler),
+        CoreType::TriCore => Box::<tricore::TriCoreExceptionHandler>::default(),
         CoreType::Armv7a | CoreType::Armv7r | CoreType::Armv8a => {
             Box::new(UnimplementedExceptionHandler)
         }

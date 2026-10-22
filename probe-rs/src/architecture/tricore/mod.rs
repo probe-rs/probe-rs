@@ -551,12 +551,14 @@ impl<'probe> TriCore<'probe> {
     fn reset_and_halt_core(&mut self, timeout: Duration) -> Result<(), TriCoreError> {
         self.bus().reset(ResetKind::ResetAndHalt)?;
 
-        // The device reboots: CSFR accesses fail for a short while.
+        // The device reboots: CSFR accesses fail for a short while. Callers pass short timeouts
+        // meant for a halt, so allow the reboot at least two seconds.
+        let reboot_timeout = timeout.max(Duration::from_secs(2));
         let start = Instant::now();
         loop {
             match self.dbgsr() {
                 Ok(_) => break,
-                Err(error) if start.elapsed() > timeout => return Err(error),
+                Err(error) if start.elapsed() > reboot_timeout => return Err(error),
                 Err(_) => std::thread::sleep(Duration::from_millis(10)),
             }
         }

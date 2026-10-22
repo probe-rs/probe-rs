@@ -1672,6 +1672,11 @@ pub fn unwind_program_counter_register(
                     Some(RegisterValue::U32(return_address - 4)),
                     "PC=(unwound x1 - 4) (dwarf Undefined)",
                 ),
+                // A TriCore CALL is 2 or 4 bytes long: 2 bytes back is inside it either way.
+                Some(InstructionSet::TriCore) => (
+                    Some(RegisterValue::U32(return_address - 2)),
+                    "PC=(unwound a11 - 2) (dwarf Undefined)",
+                ),
                 Some(InstructionSet::Xtensa) => {
                     let upper_bits = (current_pc as u32) & 0xC000_0000;
                     (
