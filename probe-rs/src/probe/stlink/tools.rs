@@ -25,18 +25,19 @@ pub(super) fn list_stlink_devices() -> Vec<ProbeListItem> {
     devices
         .filter(is_stlink_device)
         .map(|device| {
-            let info = DebugProbeInfo::new(
-                format!(
+            let info = DebugProbeInfo {
+                identifier: format!(
                     "STLink {}",
                     USB_PID_EP_MAP[&device.product_id()].version_name
                 ),
-                device.vendor_id(),
-                device.product_id(),
-                read_serial_number(&device),
-                &StLinkFactory,
-                None,
-                false,
-            );
+                vendor_id: device.vendor_id(),
+                product_id: device.product_id(),
+                serial_number: read_serial_number(&device),
+                probe_factory: &StLinkFactory,
+                is_hid_interface: false,
+                interface: None,
+                usb_location: Some((device.bus_id().to_string(), device.device_address())),
+            };
             ProbeListItem {
                 info,
                 accessibility: usb_probe_accessibility(&device),

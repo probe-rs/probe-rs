@@ -91,6 +91,12 @@ fn selector_matches(selector: &DebugProbeSelector, info: &DeviceInfo) -> bool {
     info.vendor_id() == selector.vendor_id
         && info.product_id() == selector.product_id
         && selector
+            .usb_location
+            .as_ref()
+            .is_none_or(|(bus_id, device_address)| {
+                (bus_id.as_str(), *device_address) == (info.bus_id(), info.device_address())
+            })
+        && selector
             .serial_number
             .as_ref()
             .map(|s| {
