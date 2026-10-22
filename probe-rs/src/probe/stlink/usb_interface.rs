@@ -1,11 +1,11 @@
-use nusb::{DeviceInfo, MaybeFuture};
+use nusb::MaybeFuture;
 use std::{sync::LazyLock, time::Duration};
 
 use crate::probe::{stlink::StlinkError, usb_util::InterfaceExt};
 
 use std::collections::HashMap;
 
-use super::tools::{is_stlink_device, read_serial_number};
+use super::tools::is_stlink_device;
 use crate::probe::{DebugProbeSelector, ProbeCreationError};
 
 /// The USB Command packet size.
@@ -85,30 +85,6 @@ pub trait StLinkUsb: std::fmt::Debug {
     fn read_swo(&mut self, read_data: &mut [u8], timeout: Duration) -> Result<usize, StlinkError>;
 }
 
-// Copy of `Selector::matches` except it uses the stlink-specific read_serial_number
-// to handle the broken stlink-v2 serial numbers that need hex-encoding.
-fn selector_matches(selector: &DebugProbeSelector, info: &DeviceInfo) -> bool {
-    info.vendor_id() == selector.vendor_id
-        && info.product_id() == selector.product_id
-        && selector
-            .usb_location
-            .as_ref()
-            .is_none_or(|(bus_id, device_address)| {
-                (bus_id.as_str(), *device_address) == (info.bus_id(), info.device_address())
-            })
-        && selector
-            .serial_number
-            .as_ref()
-            .map(|s| {
-                if let Some(serial) = read_serial_number(info) {
-                    serial.as_str() == s
-                } else {
-                    s.is_empty()
-                }
-            })
-            .unwrap_or(true)
-}
-
 impl StLinkUsbDevice {
     /// ST-Link devices won't take a command if there is a reply in the
     /// send buffer. Read and drain any replies to unblock it.
@@ -137,7 +113,7 @@ impl StLinkUsbDevice {
             .wait()
             .map_err(|e| ProbeCreationError::Usb(e.into()))?
             .filter(is_stlink_device)
-            .find(|device| selector_matches(selector, device))
+            .find(|device| selector.matches(device))
             .ok_or(ProbeCreationError::NotFound)?;
 
         let info = &USB_PID_EP_MAP[&device.product_id()];
