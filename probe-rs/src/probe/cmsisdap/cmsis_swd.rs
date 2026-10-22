@@ -171,12 +171,23 @@ impl PendingBatch {
     ///
     /// An empty packet always takes one transfer however small the packet is, or splitting a batch
     /// would never make progress.
-    fn push_all(
-        &mut self,
-        direction: Direction,
-        packet_size: u16,
-        items: impl IntoIterator<Item = (HandleId, RegisterAddress, u32, usize)>,
-    ) -> bool {
+    fn push_all<I>(&mut self, direction: Direction, packet_size: u16, items: I) -> bool
+    where
+        I: IntoIterator<Item = (HandleId, RegisterAddress, u32, usize)>,
+        I::IntoIter: ExactSizeIterator,
+    {
+        // A run that cannot fit is turned down before it is built up and rewound.
+        let items = items.into_iter();
+        let count = items.len();
+        let forced = self.is_empty() && count == 1;
+        if !forced
+            && !self
+                .request
+                .has_room_for_many(Self::rw(direction), count, packet_size)
+        {
+            return false;
+        }
+
         let mark = self.request.mark();
         let transfers = self.transfers.len();
 
