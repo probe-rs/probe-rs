@@ -18,16 +18,27 @@
 //! `tools/iar/low_power_mode_patch/*.dmac` `_InhibitSleepForceActive()`).
 
 use std::sync::Arc;
+use std::thread;
+use std::time::Duration;
 
+use crate::Permissions;
+use crate::architecture::arm::ap::{AccessPortError, ApRegister, IDR};
 use crate::architecture::arm::dp::DpAddress;
 use crate::architecture::arm::memory::ArmMemoryInterface;
-use crate::architecture::arm::sequences::{ArmDebugSequence, cortex_m_wait_for_reset};
-use crate::architecture::arm::{ArmError, DapAccess, FullyQualifiedApAddress};
+use crate::architecture::arm::sequences::{
+    ArmDebugSequence, DebugEraseSequence, cortex_m_wait_for_reset,
+};
+use crate::architecture::arm::{ArmDebugInterface, ArmError, DapAccess, FullyQualifiedApAddress};
+use crate::probe::Pins;
+use crate::session::MissingPermissions;
 use probe_rs_target::CoreType;
 
 /// Access Port Select values used by this sequence.
 #[derive(Debug, Clone, Copy)]
 enum ApSel {
+    /// SEC-AP: security access port.
+    SecAp = 2,
+
     /// PWR-AP: controls the power and reset state of the CPU for debug purposes.
     PwrAp = 4,
 }
@@ -36,6 +47,15 @@ impl From<ApSel> for FullyQualifiedApAddress {
     fn from(apsel: ApSel) -> Self {
         FullyQualifiedApAddress::v1_with_default_dp(apsel as u8)
     }
+}
+
+/// DSSM commands processed that can be sent to the SEC-AP.
+#[repr(u16)]
+#[derive(Debug, Clone, Copy)]
+enum DssmCommand {
+    FactoryReset = 0x020A,
+
+    MassErase = 0x020C,
 }
 
 /// Debug power and reset control register, PWR-AP register bank 0.
@@ -69,6 +89,27 @@ const DPREC0_DEBUG_ENABLE: u32 =
 
 /// `SPREC.SYS RST`.
 const SPREC_SYS_RST: u32 = 1 << 0;
+
+/// TX DATA register, SEC-AP register bank 0, offset 0x00.
+const TXDATA: u64 = 0x00;
+
+/// TX CONTROL register, SEC-AP register bank 0, offset 0x04.
+const TXCTL: u64 = 0x04;
+
+/// RX DATA register, SEC-AP register bank 0, offset 0x08.
+const RXDATA: u64 = 0x08;
+
+/// RX CONTROL register, SEC-AP register bank 0, offset 0x0C.
+const RXCTL: u64 = 0x0C;
+
+/// `RXVLD` bit in RXCTL.
+const RXCTL_RXVLD: u32 = 1 << 0;
+
+/// Mask of `RX CONTROL` in RXCTL.
+const RXCTL_RX_CONTROL_MASK: u32 = 0x0000_00FE;
+
+/// This value comes from CCS (mspm0_cs_dap_init.gel)
+const DSSM_COMMAND_OK: u32 = 0x0100;
 
 /// Marker struct indicating initialization sequencing for MSPM0 family parts.
 #[derive(Debug)]
@@ -216,6 +257,142 @@ impl ArmDebugSequence for MSPM0 {
         // Need to wait for the CPU to reset.
         cortex_m_wait_for_reset(interface)
     }
+
+    fn debug_device_unlock(
+        &self,
+        interface: &mut dyn ArmDebugInterface,
+        default_ap: &FullyQualifiedApAddress,
+        permissions: &Permissions,
+    ) -> Result<(), ArmError> {
+        // Check if AHB-AP is available.
+        //
+        // debug_port_start makes sure that sleep is not preventing the AHB-AP from appearing.
+        let ahb_ap_available = matches!(
+            interface.read_raw_ap_register(default_ap, IDR::ADDRESS),
+            Ok(_)
+                | Err(ArmError::AccessPort {
+                    source: AccessPortError::RegisterRead { .. },
+                    ..
+                })
+        );
+
+        // If the AHB-AP is not available it is possible that the NONMAIN region is configured to
+        // prevent access to the AHB-AP. The AHB-AP would need to be unlocked with a password or
+        // factory reset to clear the NONMAIN region.
+        if !ahb_ap_available {
+            tracing::warn!(
+                "The device is locked (AHB-AP is not visible). A factory reset is required to unlock it (--allow-mass-erase)."
+            );
+
+            permissions
+                .erase_all()
+                .map_err(|MissingPermissions(desc)| ArmError::MissingPermissions(desc))?;
+
+            tracing::warn!("{}: Performing SEC-AP factory reset", self.name);
+            run_dssm_command(interface, DssmCommand::FactoryReset)?;
+        }
+
+        Ok(())
+    }
+
+    fn debug_erase_sequence(&self) -> Option<Arc<dyn DebugEraseSequence>> {
+        Some(Arc::new(SecApEraseSequence {
+            name: self.name.clone(),
+        }))
+    }
+}
+
+#[derive(Debug)]
+pub(crate) struct SecApEraseSequence {
+    name: String,
+}
+
+impl SecApEraseSequence {}
+
+impl DebugEraseSequence for SecApEraseSequence {
+    fn erase_all(&self, interface: &mut dyn ArmDebugInterface) -> Result<(), ArmError> {
+        tracing::warn!("{}: Performing SEC-AP mass erase", self.name);
+        run_dssm_command(interface, DssmCommand::MassErase)
+    }
+}
+
+fn run_dssm_command(
+    interface: &mut dyn ArmDebugInterface,
+    command: DssmCommand,
+) -> Result<(), ArmError> {
+    // Reference: Figure 4-1 from SLAAEO5
+
+    // "Send command: TXCTL = command, TXDATA = 0"
+    dssm_write_command(interface, command)?;
+    dssm_write_tx_data(interface, 0)?;
+
+    // "Force reset to run BootCode"
+    //
+    // SPREC can only perform a SYSRST at most. But we need a BOOTRST. Asserting the reset pin on the device
+    // is the only way this can be done without accessing the AHB-AP (which may be inaccessible).
+    let mut pins = Pins(0);
+    pins.set_nreset(true);
+
+    // NRST must be asserted <1s to cause a BOOTRST.
+    interface.swj_pins(0, pins.0 as u32, 0)?;
+    thread::sleep(Duration::from_millis(10));
+
+    interface.swj_pins(pins.0 as u32, pins.0 as u32, 0)?;
+    thread::sleep(Duration::from_millis(10));
+
+    // "RXCTL & RXDATAAVAIL"
+    //
+    // try 10 times every 10ms
+    for _ in 0..10 {
+        // "Response OK?"
+        if dssm_read_data(interface)?.is_some() {
+            return Ok(());
+        }
+
+        thread::sleep(Duration::from_millis(10));
+    }
+
+    Err(ArmError::Other(format!(
+        "Chip did not respond to SEC-AP command: {command:?}; the NONMAIN region may be configured to prevent mass erase or factory reset commands",
+    )))
+}
+
+fn dssm_write_tx_data(interface: &mut dyn DapAccess, value: u32) -> Result<(), ArmError> {
+    let sec_ap: FullyQualifiedApAddress = ApSel::SecAp.into();
+    interface.write_raw_ap_register(&sec_ap, TXDATA, value)
+}
+
+fn dssm_write_command(interface: &mut dyn DapAccess, command: DssmCommand) -> Result<(), ArmError> {
+    let sec_ap: FullyQualifiedApAddress = ApSel::SecAp.into();
+
+    // Confusingly Table 4-2 says TXVLD is bit 0 while the control word is bits 31 through 1.
+    //
+    // But shifting the command results in a factory reset not happening.
+    // `mspm0_cs_dap_init.gel` in CCS performs no shift and just writes the command to TX_CONTROL.
+    interface.write_raw_ap_register(&sec_ap, TXCTL, command as u32)
+}
+
+/// Read from the RX_DATA register if data is available.
+///
+/// Returns [`None`] if no data is available.
+fn dssm_read_data(interface: &mut dyn DapAccess) -> Result<Option<u32>, ArmError> {
+    let sec_ap: FullyQualifiedApAddress = ApSel::SecAp.into();
+    let rx_control = interface.read_raw_ap_register(&sec_ap, RXCTL)?;
+
+    if rx_control & RXCTL_RXVLD == 0 {
+        return Ok(None);
+    }
+
+    // An "OK" response will set RX_CONTROL to DSSM_COMMAND_OK.
+    if !((rx_control & RXCTL_RX_CONTROL_MASK) >> 1) == DSSM_COMMAND_OK {
+        return Err(ArmError::Other(String::from(
+            "SEC-AP failed to execute factory reset command",
+        )));
+    }
+
+    let data = interface.read_raw_ap_register(&sec_ap, RXDATA)?;
+
+    Ok(Some(data))
 }
 
 #[cfg(test)]
