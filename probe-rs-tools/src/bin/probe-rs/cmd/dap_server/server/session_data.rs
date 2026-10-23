@@ -508,9 +508,44 @@ impl SessionData {
     ) -> Result<(), DebuggerError> {
         let core_index = self.core_data[cd_idx].core_index;
         let program_counter = self.backend.program_counter(core_index).await;
-        let (reason, description) = status
-            .short_long_status(&self.backend, program_counter, false)
-            .await;
+
+        // The temporary breakpoint on the entry function is removed when it is hit.
+        let entry = self.core_data[cd_idx]
+            .entry_breakpoint
+            .clone()
+            .filter(|entry| entry.armed && Some(entry.address) == program_counter);
+        if let Some(entry) = &entry {
+            if let Some(armed) = self.core_data[cd_idx].entry_breakpoint.as_mut() {
+                armed.armed = false;
+            }
+            let user_breakpoint = self.core_data[cd_idx]
+                .breakpoints
+                .iter()
+                .any(|bp| bp.address == entry.address);
+            if !user_breakpoint
+                && let Err(error) = self
+                    .backend
+                    .clear_hw_breakpoints(core_index, vec![entry.address])
+                    .await
+            {
+                tracing::warn!("Failed to remove the entry function breakpoint: {error}");
+            }
+        }
+
+        let (reason, description) = match &entry {
+            Some(entry) => (
+                "entry",
+                format!(
+                    "Stopped at the entry function `{}` ({:#010x})",
+                    entry.function, entry.address
+                ),
+            ),
+            None => {
+                status
+                    .short_long_status(&self.backend, program_counter, false)
+                    .await
+            }
+        };
         let event_body = Some(StoppedEventBody {
             reason: reason.to_string(),
             description: Some(description),
@@ -994,6 +1029,7 @@ fn build_core_data(
         rtt_remote_handle: None,
         repl_commands,
         test_data,
+        entry_breakpoint: None,
     })
 }
 

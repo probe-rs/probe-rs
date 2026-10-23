@@ -45,6 +45,36 @@ pub struct CoreData {
     pub rtt_remote_handle: Option<Key<RttClient>>,
     pub repl_commands: Vec<ReplCommand>,
     pub test_data: Box<dyn Any>,
+    /// The `entryFunction` of a `launch`, run to after each reset.
+    pub entry_breakpoint: Option<EntryBreakpoint>,
+}
+
+/// A temporary breakpoint on the entry function, set after a reset and removed when hit.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct EntryBreakpoint {
+    pub function: String,
+    pub address: u64,
+    /// Set while the hardware breakpoint is on the target.
+    pub armed: bool,
+}
+
+/// The address of the function `name` in the symbol table of `elf`.
+///
+/// On ARM the Thumb bit of the symbol value is cleared, to give the address of the first
+/// instruction.
+pub(crate) fn function_address(elf: &[u8], name: &str) -> Result<u64, String> {
+    use object::{Object, ObjectSymbol, SymbolKind};
+
+    let file = object::File::parse(elf).map_err(|e| format!("cannot read the ELF file: {e}"))?;
+    let symbol = file
+        .symbols()
+        .find(|s| s.kind() == SymbolKind::Text && s.name() == Ok(name))
+        .ok_or_else(|| format!("no function `{name}` in the symbol table"))?;
+    let address = symbol.address();
+    Ok(match file.architecture() {
+        object::Architecture::Arm => address & !1,
+        _ => address,
+    })
 }
 
 impl CoreData {
@@ -91,6 +121,7 @@ fn stack_frame_display_cache_is_invalidated_before_replacement() {
         rtt_remote_handle: None,
         repl_commands: vec![],
         test_data: Box::new(()),
+        entry_breakpoint: None,
     };
 
     core_data.invalidate_stack_frame_cache();
@@ -99,4 +130,23 @@ fn stack_frame_display_cache_is_invalidated_before_replacement() {
     core_data.replace_stack_frame_cache(vec![frame(2)]);
     assert_eq!(core_data.stack_frames.len(), 1);
     assert_eq!(core_data.stack_frames[0].id, ObjectRef::from(2));
+}
+
+#[test]
+fn entry_function_is_found_in_the_symbol_table() {
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../probe-rs-debug/tests/debug-unwind-tests/RP2040_full_unwind.elf");
+    let elf = std::fs::read(path).unwrap();
+
+    // A Thumb function: the symbol value is odd, the address of the instruction is not.
+    let main = function_address(&elf, "main").unwrap();
+    assert_ne!(main, 0);
+    assert_eq!(main & 1, 0);
+
+    let missing = function_address(&elf, "no_such_function").unwrap_err();
+    assert_eq!(
+        missing,
+        "no function `no_such_function` in the symbol table"
+    );
+    assert!(function_address(b"not an elf file", "main").is_err());
 }

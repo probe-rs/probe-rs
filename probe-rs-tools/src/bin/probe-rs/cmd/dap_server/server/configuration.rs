@@ -374,6 +374,14 @@ pub struct CoreConfig {
     #[serde(flatten)]
     pub(crate) rtt_config: rtt::RttConfig,
 
+    /// Function to run to after a reset (`launch` and `restart`), e.g. `core0_main`.
+    ///
+    /// A temporary hardware breakpoint is set on the function's symbol in `program_binary`
+    /// after the reset; the core stops there with reason `entry` and the breakpoint is removed.
+    /// With `haltAfterReset` the core first stops at the reset address, and the function is
+    /// reached on the next continue.
+    pub(crate) entry_function: Option<String>,
+
     /// Enable reset vector catch if its supported on the target.
     #[serde(default = "default_true")]
     pub(crate) catch_reset: bool,

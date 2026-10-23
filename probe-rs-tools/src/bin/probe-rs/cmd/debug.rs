@@ -325,6 +325,7 @@ impl Cmd {
                             channels: vec![],
                             default_config: Default::default(),
                         },
+                        entry_function: None,
                         catch_hardfault: !self.no_catch_hardfault,
                         catch_reset: !self.no_catch_reset,
                         catch_svc: !self.no_catch_svc,

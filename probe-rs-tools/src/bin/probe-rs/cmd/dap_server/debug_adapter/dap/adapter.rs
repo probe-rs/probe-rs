@@ -1838,13 +1838,13 @@ impl DebugAdapter {
             })
             .map_err(DebuggerError::ProbeRs)?;
         // A TriCore reset is a device reset: the boot software reprograms the trigger units.
-        if [
+        let reset_clears_breakpoints = [
             Architecture::Riscv,
             Architecture::Xtensa,
             Architecture::TriCore,
         ]
-        .contains(&arch)
-        {
+        .contains(&arch);
+        if reset_clears_breakpoints {
             let addrs: Vec<u64> = core_data.breakpoints.iter().map(|bp| bp.address).collect();
             if !addrs.is_empty() {
                 backend
@@ -1856,6 +1856,28 @@ impl DebugAdapter {
                         ))
                     })?;
             }
+        }
+
+        // Run to the entry function: a temporary breakpoint, removed when it is hit
+        // (`SessionData::notify_halted`). A user breakpoint on the same address serves for both.
+        if let Some(entry) = core_data.entry_breakpoint.as_mut() {
+            let user_breakpoint = core_data
+                .breakpoints
+                .iter()
+                .any(|bp| bp.address == entry.address);
+            if !user_breakpoint && (reset_clears_breakpoints || !entry.armed) {
+                backend
+                    .set_hw_breakpoint(core_index, entry.address)
+                    .await
+                    .map_err(|e| {
+                        DebuggerError::Other(anyhow!(
+                            "Failed to set the breakpoint on the entry function `{}` at {:#010x}: {e}",
+                            entry.function,
+                            entry.address
+                        ))
+                    })?;
+            }
+            entry.armed = true;
         }
 
         core_data.last_known_status = CoreStatus::Unknown;

@@ -69,7 +69,8 @@ pub(crate) struct RuntimeTarget {
     memory_map: Vec<MemoryRegion>,
     flash_sectors: Vec<WireFlashSector>,
 
-    listener: TcpListener,
+    /// One listener per address, so `localhost` answers on both `[::1]` and `127.0.0.1`.
+    listeners: Vec<TcpListener>,
     gdb: Option<GdbStubStateMachine<'static, RuntimeTarget, TcpStream>>,
     resume_action: (usize, ResumeAction),
 
@@ -89,8 +90,7 @@ impl RuntimeTarget {
         core_indices: Vec<usize>,
         addrs: &[SocketAddr],
     ) -> Result<Self, anyhow::Error> {
-        let listener = TcpListener::bind(addrs)?;
-        listener.set_nonblocking(true)?;
+        let listeners = bind_all(addrs)?;
 
         let cores = core_indices
             .into_iter()
@@ -118,7 +118,7 @@ impl RuntimeTarget {
             target_name: context.target_name.clone(),
             memory_map: context.memory_map.clone(),
             flash_sectors: context.flash_sectors.clone(),
-            listener,
+            listeners,
             gdb: None,
             resume_action: (0, ResumeAction::Unchanged),
             target_desc: TargetDescription::default(),
@@ -138,15 +138,8 @@ impl RuntimeTarget {
 
     pub fn process(&mut self) -> Result<Duration, anyhow::Error> {
         if self.gdb.is_none() {
-            let stream = match self.listener.accept() {
-                Ok((stream, addr)) => {
-                    tracing::info!("New connection from {addr:#?}");
-                    stream
-                }
-                Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
-                    return Ok(Duration::from_millis(10));
-                }
-                Err(e) => return Err(e.into()),
+            let Some(stream) = accept_any(&self.listeners)? else {
+                return Ok(Duration::from_millis(10));
             };
 
             self.halt_all_cores()?;
@@ -326,6 +319,44 @@ impl Target for RuntimeTarget {
     fn guard_rail_implicit_sw_breakpoints(&self) -> bool {
         true
     }
+}
+
+/// Binds a non-blocking listener on every address that can be bound.
+///
+/// `TcpListener::bind` with several addresses keeps only the first that works, so `localhost`
+/// (`[::1]` and `127.0.0.1`) would refuse a client that tries IPv4. Fails only if none binds.
+fn bind_all(addrs: &[SocketAddr]) -> Result<Vec<TcpListener>, anyhow::Error> {
+    let mut listeners = Vec::new();
+    let mut last_error = None;
+    for addr in addrs {
+        match TcpListener::bind(addr).and_then(|l| l.set_nonblocking(true).map(|()| l)) {
+            Ok(listener) => listeners.push(listener),
+            Err(e) => {
+                tracing::debug!("Cannot listen on {addr}: {e}");
+                last_error = Some(anyhow::Error::from(e).context(format!("listen on {addr}")));
+            }
+        }
+    }
+    match (listeners.is_empty(), last_error) {
+        (true, Some(e)) => Err(e),
+        (true, None) => Err(anyhow::anyhow!("no address to listen on")),
+        (false, _) => Ok(listeners),
+    }
+}
+
+/// Accepts a pending connection on any of `listeners`, or returns `None` if there is none.
+fn accept_any(listeners: &[TcpListener]) -> Result<Option<TcpStream>, anyhow::Error> {
+    for listener in listeners {
+        match listener.accept() {
+            Ok((stream, addr)) => {
+                tracing::info!("New connection from {addr:#?}");
+                return Ok(Some(stream));
+            }
+            Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {}
+            Err(e) => return Err(e.into()),
+        }
+    }
+    Ok(None)
 }
 
 /// Returns whether `err` is caused by a lost or closed client connection.

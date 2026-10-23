@@ -1,5 +1,6 @@
 use super::{
     configuration::{self, ConsoleLog},
+    core_data::{EntryBreakpoint, function_address},
     logger::DebugLogger,
     session_data::SessionData,
     startup::{TargetSessionType, get_file_timestamp},
@@ -683,6 +684,37 @@ impl Debugger {
                 "Cannot continue unless one target core configuration is defined."
             )));
         };
+
+        // The entry function is looked up before anything is written to the target.
+        let entry_breakpoint = match &target_core_config.entry_function {
+            Some(function) if requested_target_session_type == TargetSessionType::LaunchRequest => {
+                let Some(path) = target_core_config.program_binary.as_deref() else {
+                    return Err(DebuggerError::Other(anyhow!(
+                        "`entryFunction` needs the `programBinary` that holds it"
+                    )));
+                };
+                let elf = std::fs::read(path)
+                    .with_context(|| format!("Cannot read {}", path.display()))?;
+                let address = function_address(&elf, function).map_err(|error| {
+                    DebuggerError::Other(anyhow!("Cannot run to the entry function: {error}"))
+                })?;
+                Some(EntryBreakpoint {
+                    function: function.clone(),
+                    address,
+                    armed: false,
+                })
+            }
+            Some(_) => {
+                debug_adapter.log_to_console(
+                    "`entryFunction` applies to `launch` only, it is ignored for `attach`.",
+                );
+                None
+            }
+            None => None,
+        };
+        if let Ok(core_data) = session_data.core_data_mut(target_core_config.core_index) {
+            core_data.entry_breakpoint = entry_breakpoint;
+        }
 
         // A launch starts the program binary, whether this server writes it to
         // the target or the client wrote it before it connected. Both cases
