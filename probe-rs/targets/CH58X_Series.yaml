@@ -37,7 +37,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - ch5xx-code-flash-448k
+  - ch5xx-code-flash
 - name: CH582
   cores:
   - name: main
@@ -60,7 +60,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - ch5xx-code-flash-448k
+  - ch5xx-code-flash
 - name: CH583
   cores:
   - name: main
@@ -83,7 +83,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - ch5xx-code-flash-448k
+  - ch5xx-code-flash
 - name: CH584
   cores:
   - name: main
@@ -106,7 +106,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - ch5xx-code-flash-448k
+  - ch5xx-code-flash
 - name: CH585
   cores:
   - name: main
@@ -134,9 +134,9 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - ch5xx-code-flash-448k
+  - ch5xx-code-flash
 flash_algorithms:
-- name: ch5xx-code-flash-448k
+- name: ch5xx-code-flash
   description: CH58X CodeFlash
   default: true
   instructions: txUAQAPGFQSTBhAHtwUDAGPLxgCTBgAHYw/WAJMGEAdjHtYAMaiTBhAJYwvWAJMFIAdjFbYAt8UDABmgtwUHADM1tQATRRUAgoC3JQBAAUUjgwWAgoC3JQBAk4VlgIPGtYM39v8PEwcQB3GNNwYDAGNL1wATBwAHY4/mABMHEAdjjeYABaITBxAJY4jmABMGIAdjmcYQN8YDAGN5xRBzcAQwEwZwBZMGgAojjcWCI43VggPG5YMTZgYOI4/FghFGI40FgiOAxQAVRiOABQAjgMUAAQABAH1WI4/F/gOGBQDjTgb+I4AFABVGI4AFACOAxQABAAEAGUYjj8X+A4YFAONOBv4jgAUAFUYjgAUAI4DFAAEAAQATBgACI4/F/g1Gg4YFAOPOBv6TVgUBfRYjj9X+IgV19jcGCACVRgOFBQDjTgX+I4AFACOABQAjgNUAAQABACOP1f4DhQUA404F/gPA5f8DhQUA404F/gPF5f8DhwUA404H/gWJI4AFABnBfRZN/hMGcAWTBoAKI43FgiON1YIDxuWDQYojj8WCI40FgoKANwYHAONrxe4FRYKAQREGxiLEJsJKwDcVAEADRRUEkwUQB7cEAwBjy6UAkwUAB2MPtQCTBRAHYx61ADGokwUQCWMLtQCTBSAHYxW1ALfEAwAZoLcEBwABRAVpIoWXAAAA54Bg5RHlSpTjaZT+AUURoAVFskAiRJJEAklBAYKAhclBESLGNycAQBMHZ4CDRreDEwgQB7cIAwBjTdgAkwcAB2OB9gKTBxAHY5D2AgWggUZlopMHEAlji/YAkwcgB2OV9gC3yAMAGaC3CAcAhUZjcxUZs4eoQGPvtxaz56UAjYtjmgcWc3AEMJMGcAWTB4AKIw3XgiMN94KDRueDk+YGDiMP14KRRiMNB4IjANcAlUYjAAcAIwDXAAEAAQD9ViMP1/6DBgcA484G/oFCIwAHABVDGUiJSNVOIwAHACMAZwABAAEAIw8H/4MGBwDjzgb+IwAHACMABwAjAGcAAQABALODogAjDxf/jUaDBwcA484H/pPXAwH9FiMP9/6iA/X2s4NVQJMGABBj5NMAkwMAEGOFVQSBRzMOVgCzBv4AA882AIPPFgADxCYAg8YGAGIPQgSiD7Pm3wAzZOQBwY4jLdf+kUYDBAcA404E/v0WIwDXAe36kQfj4nf8twcIAIMGBwDjzgb+IwAHACMABwAjAGcAAQABACMPZ/6DBgcA484G/gNA5/+DBgcA484G/gNO5/+DBgcA484G/pN2HgAjAAcAgcb9F8X/MaCekuPmsvCBRhGghUYTBXAFkwWACiMNp4IjDbeCA0Xng0GJIw+ngiMNB4IyREEBNoWCgA==
