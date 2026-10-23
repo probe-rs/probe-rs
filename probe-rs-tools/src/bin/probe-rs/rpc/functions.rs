@@ -708,4 +708,32 @@ mod tests {
         drop(ctx);
         assert_eq!(frames.await.unwrap(), EVENTS);
     }
+
+    /// The client can go away while a task publishes events. The server must
+    /// not panic.
+    #[tokio::test]
+    async fn run_blocking_survives_a_closed_connection() {
+        let (wire_tx, wire_rx) = channel::<Vec<u8>>(1);
+        drop(wire_rx);
+
+        let mut ctx = RpcSpawnContext {
+            state: ConnectionState::new(),
+            sender: PostcardSender::new(WireTx::new(wire_tx), VarKeyKind::Key4),
+            probe_broker: Arc::new(ProbeBroker::new()),
+            lister: Arc::new(LimitedLister::new(ProbeAccess::All)),
+        };
+        let result = tokio::spawn(async move {
+            ctx.run_blocking::<RttTopic, _, _, _>((), |_, (), sender| {
+                let event = RttEvent::Output {
+                    channel: 0,
+                    bytes: vec![0],
+                };
+                _ = sender.blocking_send(event);
+            })
+            .await
+        })
+        .await;
+
+        assert!(result.is_ok(), "run_blocking panicked");
+    }
 }
