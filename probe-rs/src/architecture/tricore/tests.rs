@@ -963,6 +963,96 @@ fn a_software_breakpoint_in_the_halt_group_is_a_breakpoint() {
     );
 }
 
+const ICR: u32 = CSFR_BASE + registers::CSFR_ICR as u32;
+
+/// The (index, value) of every ICR write.
+fn icr_writes(bus: &FakeBus) -> Vec<(usize, u32)> {
+    bus.write_words()
+        .into_iter()
+        .enumerate()
+        .filter(|&(_, (address, _))| address == ICR)
+        .map(|(i, (_, value))| (i, value))
+        .collect()
+}
+
+#[test]
+fn a_step_runs_with_interrupts_disabled() {
+    let mut bus = FakeBus::new();
+    bus.halted = true;
+    bus.set_word(ICR, 0x0000_8000);
+    let mut state = TriCoreCoreState::new();
+    core(&mut bus, &mut state).step().unwrap();
+
+    // ICR.IE off before the run bracket of the step, on again after it.
+    let writes = bus.write_words();
+    let step = writes
+        .iter()
+        .position(|&(address, value)| address == FakeBus::csfr(ocds::DBGSR) && value == 4)
+        .unwrap();
+    let icr = icr_writes(&bus);
+    assert_eq!(icr.len(), 2);
+    assert!(icr[0].0 < step && icr[0].1 == 0);
+    assert!(icr[1].0 > step && icr[1].1 == 0x8000);
+    assert_eq!(bus.word(ICR), 0x8000);
+}
+
+#[test]
+fn a_step_over_an_instruction_that_changes_ie_leaves_icr_alone() {
+    let mut bus = FakeBus::new();
+    bus.halted = true;
+    bus.set_word(ICR, 0x0000_8000);
+    // DISABLE at the PC.
+    bus.set_bytes(0x8000_0100, &[0x0D, 0x00, 0x40, 0x03]);
+    let mut state = TriCoreCoreState::new();
+    core(&mut bus, &mut state).step().unwrap();
+    assert!(icr_writes(&bus).is_empty());
+}
+
+#[test]
+fn steps_can_leave_interrupts_enabled() {
+    let mut bus = FakeBus::new();
+    bus.halted = true;
+    bus.set_word(ICR, 0x0000_8000);
+    let mut state = TriCoreCoreState::new();
+    state.set_mask_step_interrupts(false);
+    core(&mut bus, &mut state).step().unwrap();
+    assert!(icr_writes(&bus).is_empty());
+    // With interrupts disabled there is nothing to mask either.
+    bus.writes.clear();
+    bus.set_word(ICR, 0);
+    let mut state = TriCoreCoreState::new();
+    core(&mut bus, &mut state).step().unwrap();
+    assert!(icr_writes(&bus).is_empty());
+}
+
+#[test]
+fn instructions_that_change_ie_are_recognized() {
+    let yes: [&[u8]; 9] = [
+        &[0x0D, 0x00, 0x00, 0x03], // enable
+        &[0x0D, 0x00, 0x40, 0x03], // disable
+        &[0x0D, 0x03, 0xC0, 0x03], // disable %d3
+        &[0x0D, 0x05, 0x80, 0x03], // restore %d5
+        &[0xE0, 0x05],             // bisr 5
+        &[0x00, 0x80],             // rfe
+        &[0x0D, 0x00, 0x40, 0x01], // rfm
+        &[0xCD, 0xC4, 0xE2, 0x0F], // mtcr $icr, %d4
+        &[0x0D, 0x00, 0x80, 0x01], // rfe (32 bit)
+    ];
+    for code in yes {
+        assert!(ocds::changes_interrupt_enable(code), "{code:02x?}");
+    }
+    let no: [&[u8]; 5] = [
+        &[0x4D, 0xC0, 0xE2, 0x4F], // mfcr %d4, $icr
+        &[0xAD, 0x30, 0x80, 0x00], // syscall 3
+        &[0x00, 0x90],             // ret
+        &[0x40, 0xAE],             // mov.aa
+        &[0x59, 0xE4, 0xFC, 0xFF], // st.w
+    ];
+    for code in no {
+        assert!(!ocds::changes_interrupt_enable(code), "{code:02x?}");
+    }
+}
+
 #[test]
 fn only_the_own_pspr_takes_software_breakpoints() {
     assert_eq!(own_pspr_address(0, 0x7010_0010), Some(0x7010_0010));

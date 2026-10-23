@@ -7,7 +7,10 @@ use crate::{
             dp::DpAddress,
         },
         riscv::{Riscv64, RiscvCoreState, communication_interface::RiscvCommunicationInterface},
-        tricore::{TriCore, TriCoreCoreState, bus::TriCoreBusAccess},
+        tricore::{
+            TriCore, TriCoreCoreState,
+            bus::{TriCoreBusAccess, TriCoreError},
+        },
         xtensa::{
             XtensaCoreState,
             communication_interface::{XtensaCommunicationInterface, XtensaDebugInterfaceState},
@@ -289,6 +292,17 @@ impl CombinedCoreState {
         join: bool,
     ) -> Result<(), Error> {
         Ok(self.tricore(target, bus).set_halt_group(join)?)
+    }
+
+    /// Sets whether single steps of this TriCore core run with interrupts disabled.
+    pub(crate) fn tricore_set_mask_step_interrupts(&mut self, mask: bool) -> Result<(), Error> {
+        match &mut self.specific_state {
+            SpecificCoreState::TriCore(state) => {
+                state.set_mask_step_interrupts(mask);
+                Ok(())
+            }
+            _ => Err(TriCoreError::NoTriCoreTarget.into()),
+        }
     }
 
     /// Whether this is a TriCore core that this session put in the halt group.

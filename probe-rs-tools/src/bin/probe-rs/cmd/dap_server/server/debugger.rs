@@ -1,5 +1,5 @@
 use super::{
-    configuration::{self, ConsoleLog},
+    configuration::{self, ConsoleLog, StepInterrupts},
     core_data::{EntryBreakpoint, function_address},
     logger::DebugLogger,
     session_data::SessionData,
@@ -773,6 +773,18 @@ impl Debugger {
                 ),
             };
             debug_adapter.log_to_console(message);
+        }
+
+        // TriCore cores mask interrupts during steps by default; only a change is sent.
+        if target_core_config.step_interrupts == StepInterrupts::Allow
+            && let Err(error) = session_data
+                .backend
+                .set_tricore_options(core_index, Some(false))
+                .await
+        {
+            debug_adapter.log_to_console(format!(
+                "`stepInterrupts` is ignored for core {core_index} (TriCore only): {error}"
+            ));
         }
 
         // Synchronize the optional SVD configuration before exposing scopes.

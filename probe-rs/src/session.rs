@@ -615,6 +615,19 @@ impl Session {
         core.tricore_set_halt_group(&self.target, bus, join)
     }
 
+    /// Sets whether single steps of TriCore core `core_index` run with interrupts disabled
+    /// (`ICR.IE` cleared for the step). Steps over an instruction that changes `ICR.IE` keep it.
+    pub fn set_tricore_mask_step_interrupts(
+        &mut self,
+        core_index: usize,
+        mask: bool,
+    ) -> Result<(), Error> {
+        self.cores
+            .get_mut(core_index)
+            .ok_or(Error::CoreNotFound(core_index))?
+            .tricore_set_mask_step_interrupts(mask)
+    }
+
     /// Takes the TriCore cores that this session put in the halt group out of it.
     fn leave_tricore_halt_group(&mut self) -> Result<(), Error> {
         for core in 0..self.cores.len() {

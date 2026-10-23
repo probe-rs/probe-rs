@@ -70,6 +70,15 @@ pub struct CoreHaltGroupRequest {
     pub join: bool,
 }
 
+/// Sets debug options of a TriCore core. `None` leaves an option as it is.
+#[derive(Serialize, Deserialize, Schema, Clone)]
+pub struct CoreTriCoreOptionsRequest {
+    pub sessid: Key<Session>,
+    pub core: u32,
+    /// Whether single steps run with interrupts disabled (`ICR.IE` cleared during the step).
+    pub mask_step_interrupts: Option<bool>,
+}
+
 #[derive(Serialize, Deserialize, Schema, Clone)]
 pub struct CoreVectorCatchRequest {
     pub sessid: Key<Session>,

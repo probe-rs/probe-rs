@@ -405,6 +405,24 @@ pub struct CoreConfig {
     /// Enable HLT vector catch (ARMv7-A/R only).
     #[serde(default = "default_true")]
     pub(crate) catch_hlt: bool,
+
+    /// TriCore: interrupts during instruction steps (each single step of the core, also the
+    /// ones a source line step is made of). See [`StepInterrupts`].
+    #[serde(default)]
+    pub(crate) step_interrupts: StepInterrupts,
+}
+
+/// Interrupts during the instruction steps of a TriCore core.
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum StepInterrupts {
+    /// Interrupts are disabled for each step (`ICR.IE` is cleared and set again), so that a
+    /// pending interrupt does not end the step on the first instruction of its handler. A step
+    /// over an instruction that changes `ICR.IE` itself keeps its result.
+    #[default]
+    MaskInstruction,
+    /// Interrupts stay enabled: a step can end in an interrupt handler.
+    Allow,
 }
 
 fn default_console_log() -> Option<ConsoleLog> {

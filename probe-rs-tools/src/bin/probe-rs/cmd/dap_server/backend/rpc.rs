@@ -362,6 +362,19 @@ impl RpcBackend {
         client.set_halt_group(join).await.map_err(rpc_err)
     }
 
+    /// Sets debug options of a TriCore core (`None` leaves an option as it is).
+    pub(crate) async fn set_tricore_options(
+        &mut self,
+        core_index: usize,
+        mask_step_interrupts: Option<bool>,
+    ) -> Result<(), Error> {
+        let client = self.core(core_index);
+        client
+            .set_tricore_options(mask_step_interrupts)
+            .await
+            .map_err(rpc_err)
+    }
+
     pub(crate) async fn halt(
         &mut self,
         core_index: usize,

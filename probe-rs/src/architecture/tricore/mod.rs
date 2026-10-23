@@ -143,6 +143,40 @@ pub mod ocds {
         if first & 1 == 1 { 4 } else { 2 }
     }
 
+    /// `ICR.IE`: interrupts enabled.
+    pub const ICR_IE: u32 = 1 << 15;
+
+    /// Whether the instruction that starts with `code` (4 bytes, or 2 for a 16-bit instruction)
+    /// changes `ICR.IE`: ENABLE, DISABLE, DISABLE D\[a\], RESTORE D\[a\], BISR, RFE, RFM, and
+    /// MTCR to ICR. A step over one of them must not set `ICR.IE` back.
+    pub fn changes_interrupt_enable(code: &[u8]) -> bool {
+        let Some(&first) = code.first() else {
+            return false;
+        };
+        if instruction_len(first) == 2 {
+            let half = u16::from_le_bytes([first, code.get(1).copied().unwrap_or(0)]);
+            // RFE (16 bit), BISR const8 (16 bit).
+            return half == 0x8000 || first == 0xE0;
+        }
+        let Some(word) = code
+            .get(..4)
+            .map(|w| u32::from_le_bytes([w[0], w[1], w[2], w[3]]))
+        else {
+            return false;
+        };
+        match first {
+            // SYS format: ENABLE, DISABLE, DISABLE D[a], RESTORE D[a], RFM, RFE.
+            0x0D => matches!((word >> 22) & 0x3F, 0x0C | 0x0D | 0x0F | 0x0E | 0x05 | 0x06),
+            // RC format: BISR const9 (SYSCALL shares the opcode with op2 4).
+            0xAD => (word >> 21) & 0x7F == 0,
+            // RLC format: MTCR const16, D[a] with const16 = ICR.
+            0xCD => {
+                (word >> 12) & 0xFFFF == crate::architecture::tricore::registers::CSFR_ICR as u32
+            }
+            _ => false,
+        }
+    }
+
     /// The number of software breakpoints (`DEBUG` instructions) of a core.
     pub const SOFTWARE_BREAKPOINTS: usize = 32;
     /// The breakpoint slots of a core: the trigger units and the software breakpoints.
@@ -310,6 +344,9 @@ pub struct TriCoreCoreState {
     /// Only these run again with this core: a core that never ran since the reset (CPU1 and CPU2
     /// before the application starts them) looks the same as one that the group halted.
     running_peers: Vec<u8>,
+    /// Whether a single step runs with interrupts disabled: a pending interrupt would otherwise
+    /// end the step on the first instruction of its handler.
+    mask_step_interrupts: bool,
 }
 
 impl TriCoreCoreState {
@@ -327,7 +364,13 @@ impl TriCoreCoreState {
             owns_triggers: false,
             halt_group: None,
             running_peers: Vec::new(),
+            mask_step_interrupts: true,
         }
+    }
+
+    /// Sets whether single steps run with interrupts disabled (the default).
+    pub(crate) fn set_mask_step_interrupts(&mut self, mask: bool) {
+        self.mask_step_interrupts = mask;
     }
 
     /// Whether this session has written the trigger units of the core.
@@ -855,12 +898,44 @@ impl<'probe> TriCore<'probe> {
             self.bus()
                 .write_block(AddressMap::Target, sw.address, &sw.original)?;
         }
+        let masked = self.mask_interrupts_for_step(pc)?;
         let stepped = self.step_once();
+        if masked {
+            // The instruction left ICR.IE alone (see `mask_interrupts_for_step`).
+            let icr = self.read_csfr(registers::CSFR_ICR)?;
+            self.write_csfr(registers::CSFR_ICR, icr | ocds::ICR_IE)?;
+        }
         if let Some(sw) = &lifted {
             self.bus()
                 .write_block(AddressMap::Target, sw.address, sw.debug())?;
         }
         stepped
+    }
+
+    /// Clears `ICR.IE` for a single step, when interrupts are enabled, the session masks them
+    /// during steps and the instruction at `pc` does not change `ICR.IE` itself. Returns whether
+    /// it did: the caller sets `ICR.IE` again after the step.
+    fn mask_interrupts_for_step(&mut self, pc: u32) -> Result<bool, TriCoreError> {
+        if !self.state.mask_step_interrupts {
+            return Ok(false);
+        }
+        let icr = self.read_csfr(registers::CSFR_ICR)?;
+        if icr & ocds::ICR_IE == 0 {
+            return Ok(false);
+        }
+        let address = translate_local_address(self.core(), pc);
+        let mut code = [0; 4];
+        self.bus()
+            .read_block(AddressMap::Target, address, &mut code[..2])?;
+        if ocds::instruction_len(code[0]) == 4 {
+            self.bus()
+                .read_block(AddressMap::Target, address, &mut code)?;
+        }
+        if ocds::changes_interrupt_enable(&code) {
+            return Ok(false);
+        }
+        self.write_csfr(registers::CSFR_ICR, icr & !ocds::ICR_IE)?;
+        Ok(true)
     }
 
     /// The single step sequence of [`Self::step_core`].

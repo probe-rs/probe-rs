@@ -37,10 +37,11 @@ use probe_rs_rpc::breakpoints::{
 use probe_rs_rpc::chip::{ChipData, ChipFamily, ChipInfoRequest, LoadChipFamilyRequest};
 use probe_rs_rpc::core_ops::{
     CoreAccessRequest, CoreBreakpointsRequest, CoreDumpRequest, CoreHaltGroupRequest,
-    CoreHaltRequest, CoreReadRegistersRequest, CoreVectorCatchRequest, CoreWriteRegRequest,
-    HandleSemihostingRequest, HandleSemihostingResult, StepRequest, StepResponse, WireCoreDump,
-    WireCoreInformation, WireCoreMetadata, WireCoreStatus, WireRegisterId, WireRegisterReadResult,
-    WireRegisterValue, WireSteppingMode, WireVectorCatchCondition,
+    CoreHaltRequest, CoreReadRegistersRequest, CoreTriCoreOptionsRequest, CoreVectorCatchRequest,
+    CoreWriteRegRequest, HandleSemihostingRequest, HandleSemihostingResult, StepRequest,
+    StepResponse, WireCoreDump, WireCoreInformation, WireCoreMetadata, WireCoreStatus,
+    WireRegisterId, WireRegisterReadResult, WireRegisterValue, WireSteppingMode,
+    WireVectorCatchCondition,
 };
 use probe_rs_rpc::cores::{CoresRequest, CoresStatusMap, HaltCoresRequest};
 use probe_rs_rpc::debug_vars::{
@@ -87,20 +88,20 @@ use probe_rs_rpc::{
     ClearCoreDebugStateEndpoint, ClearRttControlBlockEndpoint, CoreClearHwBpsEndpoint,
     CoreDumpEndpoint, CoreEnableVcEndpoint, CoreHaltEndpoint, CoreHaltGroupEndpoint,
     CoreMetadataEndpoint, CoreReadRegistersEndpoint, CoreRunEndpoint, CoreSetHwBpsEndpoint,
-    CoreStatusEndpoint, CoreStepEndpoint, CoreWriteRegEndpoint, CoresStatusEndpoint,
-    CreateRttClientEndpoint, CreateTempFileEndpoint, DisassembleEndpoint, EraseAllEndpoint,
-    EraseRangeEndpoint, EvaluateEndpoint, FlashEndpoint, GetRttChannelsEndpoint, HaltCoresEndpoint,
-    HandleSemihostingEndpoint, ListChipFamiliesEndpoint, ListProbesEndpoint, ListTestsEndpoint,
-    LiveWatchEndpoint, LoadChipFamilyEndpoint, LoadDebugInfoEndpoint, LoadRegionEndpoint,
-    LoadSvdEndpoint, MonitorEndpoint, NewFlashLoaderEndpoint, PollRttUpEndpoint,
-    ProgressEventTopic, ReadBytesEndpoint, ReadMemory8Endpoint, ReadMemory16Endpoint,
-    ReadMemory32Endpoint, ReadMemory64Endpoint, ResetCoreAndHaltEndpoint, ResetCoreEndpoint,
-    ResetTargetEndpoint, ResolveSourceBreakpointsEndpoint, ResolveSourceLocationsEndpoint,
-    ResumeCoresEndpoint, RpcError, RpcResult, RttDownEndpoint, RttTopic, RunTestEndpoint,
-    ScopesEndpoint, SelectProbeEndpoint, SemihostingTopic, SetVariableEndpoint,
-    TakeRichStackTraceEndpoint, TakeStackTraceEndpoint, TargetInfoDataTopic, TargetInfoEndpoint,
-    TargetMetadataEndpoint, TempFileDataEndpoint, TestKickoffEndpoint, TokioSpawner,
-    VariablesEndpoint, VerifyEndpoint, WriteMemory8Endpoint, WriteMemory16Endpoint,
+    CoreStatusEndpoint, CoreStepEndpoint, CoreTriCoreOptionsEndpoint, CoreWriteRegEndpoint,
+    CoresStatusEndpoint, CreateRttClientEndpoint, CreateTempFileEndpoint, DisassembleEndpoint,
+    EraseAllEndpoint, EraseRangeEndpoint, EvaluateEndpoint, FlashEndpoint, GetRttChannelsEndpoint,
+    HaltCoresEndpoint, HandleSemihostingEndpoint, ListChipFamiliesEndpoint, ListProbesEndpoint,
+    ListTestsEndpoint, LiveWatchEndpoint, LoadChipFamilyEndpoint, LoadDebugInfoEndpoint,
+    LoadRegionEndpoint, LoadSvdEndpoint, MonitorEndpoint, NewFlashLoaderEndpoint,
+    PollRttUpEndpoint, ProgressEventTopic, ReadBytesEndpoint, ReadMemory8Endpoint,
+    ReadMemory16Endpoint, ReadMemory32Endpoint, ReadMemory64Endpoint, ResetCoreAndHaltEndpoint,
+    ResetCoreEndpoint, ResetTargetEndpoint, ResolveSourceBreakpointsEndpoint,
+    ResolveSourceLocationsEndpoint, ResumeCoresEndpoint, RpcError, RpcResult, RttDownEndpoint,
+    RttTopic, RunTestEndpoint, ScopesEndpoint, SelectProbeEndpoint, SemihostingTopic,
+    SetVariableEndpoint, TakeRichStackTraceEndpoint, TakeStackTraceEndpoint, TargetInfoDataTopic,
+    TargetInfoEndpoint, TargetMetadataEndpoint, TempFileDataEndpoint, TestKickoffEndpoint,
+    TokioSpawner, VariablesEndpoint, VerifyEndpoint, WriteMemory8Endpoint, WriteMemory16Endpoint,
     WriteMemory32Endpoint, WriteMemory64Endpoint,
 };
 use probe_rs_rpc::{FlashLoader, Key, RttClient, Session};
@@ -1715,6 +1716,21 @@ impl CoreInterface {
                 sessid: self.sessid,
                 core: self.core,
                 join,
+            })
+            .await
+    }
+
+    /// Sets debug options of this TriCore core: whether single steps run with interrupts
+    /// disabled. `None` leaves an option as it is.
+    pub async fn set_tricore_options(
+        &self,
+        mask_step_interrupts: Option<bool>,
+    ) -> Result<(), ClientError> {
+        self.client
+            .send_resp::<CoreTriCoreOptionsEndpoint, _>(&CoreTriCoreOptionsRequest {
+                sessid: self.sessid,
+                core: self.core,
+                mask_step_interrupts,
             })
             .await
     }

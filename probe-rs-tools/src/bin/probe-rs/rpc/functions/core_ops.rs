@@ -6,12 +6,13 @@ use std::time::Duration;
 use postcard_rpc::header::VarHeader;
 use probe_rs_rpc::core_ops::{
     CoreAccessRequest, CoreBreakpointsRequest, CoreDumpRequest, CoreHaltGroupRequest,
-    CoreHaltRequest, CoreReadRegistersRequest, CoreVectorCatchRequest, CoreWriteRegRequest,
-    HandleSemihostingRequest, HandleSemihostingResponse, HandleSemihostingResult, StepRequest,
-    StepResponse, StepResult, WireBreakpointCause, WireCoreDump, WireCoreInformation,
-    WireCoreMetadata, WireCoreStatus, WireCoreType, WireExitErrorDetails, WireHaltReason,
-    WireInstructionSet, WireRegisterId, WireRegisterReadResult, WireRegisterValue,
-    WireSemihostingCommand, WireSemihostingUiEvent, WireSteppingMode, WireVectorCatchCondition,
+    CoreHaltRequest, CoreReadRegistersRequest, CoreTriCoreOptionsRequest, CoreVectorCatchRequest,
+    CoreWriteRegRequest, HandleSemihostingRequest, HandleSemihostingResponse,
+    HandleSemihostingResult, StepRequest, StepResponse, StepResult, WireBreakpointCause,
+    WireCoreDump, WireCoreInformation, WireCoreMetadata, WireCoreStatus, WireCoreType,
+    WireExitErrorDetails, WireHaltReason, WireInstructionSet, WireRegisterId,
+    WireRegisterReadResult, WireRegisterValue, WireSemihostingCommand, WireSemihostingUiEvent,
+    WireSteppingMode, WireVectorCatchCondition,
 };
 use probe_rs_rpc::rtt_config::DataFormat;
 
@@ -196,6 +197,19 @@ pub async fn core_halt_group(
 ) -> NoResponse {
     let mut session = ctx.session(request.sessid).await;
     probe_rs_try!(session.set_tricore_halt_group(request.core as usize, request.join));
+    Ok(())
+}
+
+/// Sets debug options of a TriCore core.
+pub async fn core_tricore_options(
+    ctx: &mut RpcContext,
+    _header: VarHeader,
+    request: CoreTriCoreOptionsRequest,
+) -> NoResponse {
+    let mut session = ctx.session(request.sessid).await;
+    if let Some(mask) = request.mask_step_interrupts {
+        probe_rs_try!(session.set_tricore_mask_step_interrupts(request.core as usize, mask));
+    }
     Ok(())
 }
 
