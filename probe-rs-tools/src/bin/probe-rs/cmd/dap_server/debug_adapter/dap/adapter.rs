@@ -584,7 +584,8 @@ impl DebugAdapter {
             );
         };
 
-        // TODO: Check for, and prevent SVD Peripheral/Register/Field values from being updated, until such time as we can do it safely.
+        // SVD peripheral registers and fields are written by the server (`set_variable`): a
+        // register whole, a field by read-modify-write of its register.
 
         let register_path = session_data.core_data[cd_idx]
             .stack_frames

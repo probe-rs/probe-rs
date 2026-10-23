@@ -95,7 +95,7 @@ impl SvdVariableCache {
     }
 
     /// Retrieve a variable by name (logs a warning if more than one matches).
-    fn get_variable_by_name_and_parent(
+    pub(crate) fn get_variable_by_name_and_parent(
         &self,
         variable_name: &str,
         parent_key: ObjectRef,
@@ -167,6 +167,130 @@ impl Variable {
     pub fn get_value(&self, memory: &mut dyn MemoryInterface) -> String {
         self.variable_kind.get_value(memory)
     }
+
+    /// Write `text` to the register or field on the target, and return the value read back.
+    ///
+    /// A register is written whole. A field is written by reading its register, replacing the
+    /// field's bits and writing the register back, so a field of a register that cannot be
+    /// read without side effects is refused. Values are hexadecimal (`0x...`), binary
+    /// (`0b...`) or decimal, and must fit the register or field.
+    pub fn set_value(
+        &self,
+        memory: &mut dyn MemoryInterface,
+        text: &str,
+    ) -> Result<String, String> {
+        match &self.variable_kind {
+            SvdVariable::SvdRegister { address, size, .. } => {
+                let width = (*size).clamp(1, 32);
+                let value = parse_value(text, width)?;
+                let result = match width {
+                    0..=8 => memory.write_word_8(*address, value as u8),
+                    9..=16 => {
+                        aligned(*address, 2)?;
+                        memory.write_word_16(*address, value as u16)
+                    }
+                    _ => {
+                        aligned(*address, 4)?;
+                        memory.write_word_32(*address, value)
+                    }
+                };
+                result.map_err(|e| format!("writing {address:#010X} failed: {e}"))?;
+            }
+            SvdVariable::SvdField {
+                address,
+                restricted_read,
+                bit_range_lower_bound,
+                bit_range_upper_bound,
+                ..
+            } => {
+                if *restricted_read {
+                    return Err(format!(
+                        "{} is part of a register that cannot be read without side effects; \
+                         write the whole register instead",
+                        self.name
+                    ));
+                }
+                let (lower, upper) = (*bit_range_lower_bound, *bit_range_upper_bound);
+                let field = parse_value(text, upper - lower)?;
+                let read_error = |e| format!("reading {address:#010X} failed: {e}");
+                let write_error = |e| format!("writing {address:#010X} failed: {e}");
+                // A word access where the register is word aligned (peripheral registers
+                // usually expect it), else the access `get_value` uses.
+                let width = if address.is_multiple_of(4) { 32 } else { upper };
+                match width {
+                    0..8 => {
+                        let old = memory.read_word_8(*address).map_err(read_error)?;
+                        let new = merge_field(u32::from(old), lower, upper, field)?;
+                        memory
+                            .write_word_8(*address, new as u8)
+                            .map_err(write_error)?;
+                    }
+                    8..16 => {
+                        let register = *address & !0b1;
+                        let old = memory.read_word_16(register).map_err(read_error)?;
+                        let new = merge_field(u32::from(old), lower, upper, field)?;
+                        memory
+                            .write_word_16(register, new as u16)
+                            .map_err(write_error)?;
+                    }
+                    _ => {
+                        let register = *address & !0b11;
+                        let old = memory.read_word_32(register).map_err(read_error)?;
+                        let new = merge_field(old, lower, upper, field)?;
+                        memory.write_word_32(register, new).map_err(write_error)?;
+                    }
+                }
+            }
+            _ => return Err(format!("{} is not a register or a field", self.name)),
+        }
+        Ok(self.get_value(memory))
+    }
+}
+
+fn aligned(address: u64, size: u64) -> Result<(), String> {
+    if address.is_multiple_of(size) {
+        Ok(())
+    } else {
+        Err(format!("{address:#010X} is not aligned to {size} bytes"))
+    }
+}
+
+/// Parses a register or field value of `width` bits: `0x...`, `0b...` or decimal, with optional
+/// `_` separators.
+fn parse_value(text: &str, width: u32) -> Result<u32, String> {
+    let text = text.trim().replace('_', "");
+    let lower = text.to_ascii_lowercase();
+    let parsed = if let Some(hex) = lower.strip_prefix("0x") {
+        u64::from_str_radix(hex, 16)
+    } else if let Some(bin) = lower.strip_prefix("0b") {
+        u64::from_str_radix(bin, 2)
+    } else {
+        lower.parse::<u64>()
+    }
+    .map_err(|_| format!("'{text}' is not a number (use 0x.., 0b.. or decimal)"))?;
+    let max = if width >= 32 {
+        u64::from(u32::MAX)
+    } else {
+        (1u64 << width) - 1
+    };
+    if parsed > max {
+        return Err(format!("{text} does not fit in {width} bit(s)"));
+    }
+    Ok(parsed as u32)
+}
+
+/// Replaces bits `lower..upper` (upper exclusive) of `register` with `field`.
+fn merge_field(register: u32, lower: u32, upper: u32, field: u32) -> Result<u32, String> {
+    if lower >= upper || upper > 32 {
+        return Err(format!("invalid bit range {lower}..{upper}"));
+    }
+    let width = upper - lower;
+    let mask = if width == 32 {
+        u32::MAX
+    } else {
+        ((1u32 << width) - 1) << lower
+    };
+    Ok((register & !mask) | ((field << lower) & mask))
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -447,6 +571,29 @@ fn build_svd_cache(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn values_are_parsed_and_checked_against_the_width() {
+        assert_eq!(parse_value("0x1F", 8), Ok(0x1F));
+        assert_eq!(parse_value("0b1010", 4), Ok(0b1010));
+        assert_eq!(parse_value("1_000", 16), Ok(1000));
+        assert_eq!(parse_value("0xFFFFFFFF", 32), Ok(u32::MAX));
+        assert!(parse_value("0x100", 8).is_err());
+        assert!(parse_value("4", 2).is_err());
+        assert!(parse_value("ten", 8).is_err());
+    }
+
+    #[test]
+    fn a_field_replaces_only_its_bits() {
+        // Bits 4..8 of 0xFFFF_0F0F become 0b1010.
+        assert_eq!(merge_field(0xFFFF_0F0F, 4, 8, 0b1010), Ok(0xFFFF_0FAF));
+        // A one-bit field.
+        assert_eq!(merge_field(0, 31, 32, 1), Ok(0x8000_0000));
+        assert_eq!(merge_field(u32::MAX, 0, 1, 0), Ok(0xFFFF_FFFE));
+        // The whole register.
+        assert_eq!(merge_field(0x1234_5678, 0, 32, 0xCAFE), Ok(0xCAFE));
+        assert!(merge_field(0, 8, 8, 0).is_err());
+    }
 
     /// The Infineon TC27x SVD parses from its gzip file, and every peripheral of the device
     /// becomes a variable.

@@ -365,6 +365,27 @@ pub async fn set_variable(
     };
 
     let parent_key = ObjectRef::from(request.parent_key);
+
+    // A peripheral register or field of the SVD file.
+    if let Some(svd_cache) = core_state.svd_variables.as_ref()
+        && svd_cache.get_variable_by_key(parent_key).is_some()
+    {
+        let Some(variable) = svd_cache.get_variable_by_name_and_parent(&request.name, parent_key)
+        else {
+            Err(format!("No peripheral variable {} found", request.name))?
+        };
+        let value = variable.set_value(&mut core, &request.value)?;
+        let children = svd_cache.get_children(variable.variable_key()).len() as i64;
+        return Ok(WireSetVariableResponse {
+            value,
+            type_: variable.type_name(),
+            variables_reference: i64::from(variable.variable_key()),
+            named_variables: Some(children),
+            indexed_variables: Some(0),
+            memory_reference: variable.memory_reference(),
+        });
+    }
+
     let variable_name = VariableName::Named(request.name.clone());
 
     let mut cache_variable: Option<Variable> = None;
