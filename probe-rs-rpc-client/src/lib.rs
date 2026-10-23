@@ -7,7 +7,8 @@ use postcard_rpc::{
     Topic, TopicDirection,
     header::{VarSeq, VarSeqKind},
     host_client::{
-        HostClient, HostClientConfig, HostErr, IoClosed, SchemaError, SchemaReport, Subscription,
+        HostClient, HostClientConfig, HostErr, IoClosed, MultiSubRxError, SchemaError,
+        SchemaReport, Subscription,
     },
     standard_icd::{GetAllSchemaDataTopic, GetAllSchemasEndpoint, OwnedSchemaData, WireError},
 };
@@ -473,8 +474,12 @@ impl RpcClient {
         expected: &SchemaReport,
     ) -> Result<SchemaReport, SchemaError<WireError>> {
         // Our own copy of hostClient::get_schema_report so that we can tune capacity.
-        let expected_messages =
-            expected.endpoints.len() + expected.topics_in.len() + expected.topics_out.len();
+        // The subscription drops the oldest message when it is full, so it must hold
+        // every message of a matching server.
+        let expected_messages = expected.types.len()
+            + expected.endpoints.len()
+            + expected.topics_in.len()
+            + expected.topics_out.len();
         let Ok(mut sub) = self
             .client
             .subscribe_multi::<GetAllSchemaDataTopic>(expected_messages)
@@ -483,25 +488,34 @@ impl RpcClient {
             return Err(SchemaError::Comms(HostErr::Closed));
         };
 
-        let collect_task = tokio::task::spawn({
-            async move {
-                let mut got = vec![];
-                while let Ok(Ok(val)) =
-                    tokio::time::timeout(Duration::from_millis(500), sub.recv()).await
-                {
-                    got.push(val);
-                }
-                got
-            }
-        });
-        let trigger_task = self.client.send_resp::<GetAllSchemasEndpoint>(&()).await;
-        let data = collect_task.await;
-        let (resp, data) = match (trigger_task, data) {
-            (Ok(a), Ok(b)) => (a, b),
-            (Ok(_), Err(_)) => return Err(SchemaError::TaskError),
-            (Err(e), Ok(_)) => return Err(SchemaError::Comms(e)),
-            (Err(e1), Err(_e2)) => return Err(SchemaError::Comms(e1)),
+        let receive = |message| match message {
+            Ok(data) => Ok(data),
+            Err(MultiSubRxError::IoClosed) => Err(SchemaError::Comms(HostErr::Closed)),
+            Err(MultiSubRxError::Lagged(_)) => Err(SchemaError::LostData),
         };
+
+        // Receive the data while the request runs, so that the subscription does not fill up.
+        let mut data = vec![];
+        let mut request = std::pin::pin!(self.client.send_resp::<GetAllSchemasEndpoint>(&()));
+        let resp = loop {
+            tokio::select! {
+                resp = &mut request => break resp.map_err(SchemaError::Comms)?,
+                message = sub.recv() => data.push(receive(message)?),
+            }
+        };
+
+        // The server sends the response after the data, so the rest of the data
+        // is already in the subscription. The timeout covers a message that the
+        // subscription cannot decode.
+        let sent =
+            resp.types_sent + resp.endpoints_sent + resp.topics_in_sent + resp.topics_out_sent;
+        while data.len() < sent as usize {
+            match tokio::time::timeout(Duration::from_millis(500), sub.recv()).await {
+                Ok(message) => data.push(receive(message)?),
+                Err(_) => return Err(SchemaError::LostData),
+            }
+        }
+
         let mut rpt = SchemaReport::default();
         let mut e_and_t = vec![];
 
