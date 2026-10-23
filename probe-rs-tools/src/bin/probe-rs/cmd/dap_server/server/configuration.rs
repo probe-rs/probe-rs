@@ -416,6 +416,24 @@ pub struct CoreConfig {
     /// and then count only from an execution of `start` to one of `stop`. Each is a function
     /// of `programBinary` or an address (`0x...`).
     pub(crate) perf_window: Option<PerfWindowConfig>,
+
+    /// TriCore: what the core does after a reset of the device that this session did not make
+    /// (software reset, watchdog or SMU, a reset pin, another session). The reset and its cause
+    /// are written to the debug console either way, and the breakpoints are kept.
+    #[serde(default)]
+    pub(crate) reset_behavior: ResetBehavior,
+}
+
+/// What a TriCore core does after a reset of the device that the session did not make.
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum ResetBehavior {
+    /// The core runs on (software breakpoints that the program's code overwrote are planted
+    /// again).
+    #[default]
+    Restore,
+    /// The core is halted as soon as the session sees the reset (stop reason `exception`).
+    Halt,
 }
 
 /// The start and stop of a performance counter window: function names or addresses.

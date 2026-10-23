@@ -310,6 +310,26 @@ impl CombinedCoreState {
         matches!(&self.specific_state, SpecificCoreState::TriCore(state) if state.has_perf_window())
     }
 
+    /// Takes the messages for the user that this TriCore core collected (none for other cores).
+    pub(crate) fn tricore_take_notices(&mut self) -> Vec<String> {
+        match &mut self.specific_state {
+            SpecificCoreState::TriCore(state) => state.take_notices(),
+            _ => Vec::new(),
+        }
+    }
+
+    /// Sets whether this TriCore core halts when the device was reset by something other than
+    /// this session.
+    pub(crate) fn tricore_set_halt_after_reset(&mut self, halt: bool) -> Result<(), Error> {
+        match &mut self.specific_state {
+            SpecificCoreState::TriCore(state) => {
+                state.set_halt_after_reset(halt);
+                Ok(())
+            }
+            _ => Err(TriCoreError::NoTriCoreTarget.into()),
+        }
+    }
+
     /// Sets whether single steps of this TriCore core run with interrupts disabled.
     pub(crate) fn tricore_set_mask_step_interrupts(&mut self, mask: bool) -> Result<(), Error> {
         match &mut self.specific_state {

@@ -23,6 +23,8 @@ struct FakeBus {
     refuse: usize,
     /// `DBGSR.EVTSRC` of the last halt.
     evtsrc: u32,
+    /// The number of requests that a reset refuses after it, as the device reboots.
+    reboot_refusals: usize,
 }
 
 impl FakeBus {
@@ -206,6 +208,7 @@ impl TriCoreBusAccess for FakeBus {
 
     fn reset(&mut self, _kind: ResetKind) -> Result<(), TriCoreError> {
         self.resets += 1;
+        self.refuse = self.reboot_refusals;
         self.halted = true;
         // The boot software leaves its halt-after-reset trigger behind.
         self.set_word(Self::csfr(ocds::TRIG), 0x1022);
@@ -1081,6 +1084,81 @@ fn a_member_halted_at_a_watchpoint_stays_halted() {
             "DBGSR {peer_dbgsr:#x}"
         );
     }
+}
+
+/// Sets the 64-bit system timer (STM0, second view).
+fn set_stm(bus: &mut FakeBus, value: u64) {
+    bus.set_word(ocds::STM0_TIM0SV, value as u32);
+    bus.set_word(ocds::STM0_CAPSV, (value >> 32) as u32);
+}
+
+#[test]
+fn a_reset_of_the_device_is_noticed_and_the_core_runs_on() {
+    let mut bus = pspr_bus();
+    bus.halted = false;
+    bus.set_word(ocds::SCU_RSTSTAT, 0x1381_0010);
+    let mut state = TriCoreCoreState::new();
+    {
+        let mut core = core(&mut bus, &mut state);
+        core.enable_breakpoints(true).unwrap();
+        core.set_hw_breakpoint(0, PSPR_MOV_AA as u64).unwrap();
+    }
+    set_stm(&mut bus, 0x5_0000_0000);
+    assert_eq!(
+        core(&mut bus, &mut state).status().unwrap(),
+        CoreStatus::Running
+    );
+    assert!(state.take_notices().is_empty());
+
+    // A software reset: the timer starts again, the program copies its code into the PSPR
+    // again (over the DEBUG instruction).
+    set_stm(&mut bus, 1000);
+    bus.set_bytes(PSPR_MOV_AA, &[0x40, 0xAF]);
+    assert_eq!(
+        core(&mut bus, &mut state).status().unwrap(),
+        CoreStatus::Running
+    );
+    let notices = state.take_notices();
+    assert_eq!(notices.len(), 1);
+    assert!(notices[0].contains("reset by software"), "{}", notices[0]);
+    // Planted again over the new code, which reads back through the memory interface.
+    assert_eq!(bus.bytes(PSPR_MOV_AA, 2), ocds::DEBUG16);
+    let mut code = [0; 2];
+    core(&mut bus, &mut state)
+        .read(PSPR_MOV_AA as u64, &mut code)
+        .unwrap();
+    assert_eq!(code, [0x40, 0xAF]);
+}
+
+#[test]
+fn reset_behavior_halt_halts_the_core_after_a_reset() {
+    let mut bus = FakeBus::new();
+    let mut state = TriCoreCoreState::new();
+    state.set_halt_after_reset(true);
+    set_stm(&mut bus, 0x5_0000_0000);
+    core(&mut bus, &mut state).status().unwrap();
+    set_stm(&mut bus, 1000);
+    assert_eq!(
+        core(&mut bus, &mut state).status().unwrap(),
+        CoreStatus::Halted(HaltReason::Exception)
+    );
+    assert!(state.take_notices()[0].contains("halted"));
+}
+
+#[test]
+fn the_own_reset_is_not_a_reset_of_the_device_and_rides_out_the_reboot() {
+    let mut bus = FakeBus::new();
+    // The device refuses accesses for a while after the reset, even after the first one.
+    bus.reboot_refusals = 4;
+    let mut state = TriCoreCoreState::new();
+    set_stm(&mut bus, 0x5_0000_0000);
+    core(&mut bus, &mut state).status().unwrap();
+    set_stm(&mut bus, 1000);
+    core(&mut bus, &mut state)
+        .reset_and_halt(Duration::from_millis(100))
+        .unwrap();
+    core(&mut bus, &mut state).status().unwrap();
+    assert!(state.take_notices().is_empty());
 }
 
 const CCTRL: u32 = CSFR_BASE + registers::CSFR_CCTRL as u32;

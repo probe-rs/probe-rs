@@ -201,6 +201,18 @@ pub async fn core_halt_group(
     Ok(())
 }
 
+/// The messages for the user that a core collected since the last request.
+pub async fn core_notices(
+    ctx: &mut RpcContext,
+    _header: VarHeader,
+    request: CoreAccessRequest,
+) -> probe_rs_rpc::core_ops::CoreNoticesResponse {
+    let mut session = ctx.session(request.sessid).await;
+    Ok(probe_rs_try!(
+        session.take_core_notices(request.core as usize)
+    ))
+}
+
 /// Sets or clears a data watchpoint.
 pub async fn core_watchpoint(
     ctx: &mut RpcContext,
@@ -235,6 +247,9 @@ pub async fn core_tricore_options(
     }
     if let Some(window) = request.perf_window {
         probe_rs_try!(session.set_tricore_perf_window(request.core as usize, window));
+    }
+    if let Some(halt) = request.halt_after_reset {
+        probe_rs_try!(session.set_tricore_halt_after_reset(request.core as usize, halt));
     }
     Ok(())
 }

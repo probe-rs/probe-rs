@@ -635,6 +635,31 @@ impl Session {
             .tricore_set_mask_step_interrupts(mask)
     }
 
+    /// Takes the messages for the user that core `core_index` collected since the last call, for
+    /// a debugger's console: a TriCore core notes a reset of the device it saw. Other cores have
+    /// none.
+    pub fn take_core_notices(&mut self, core_index: usize) -> Result<Vec<String>, Error> {
+        Ok(self
+            .cores
+            .get_mut(core_index)
+            .ok_or(Error::CoreNotFound(core_index))?
+            .tricore_take_notices())
+    }
+
+    /// Sets whether TriCore core `core_index` halts when the device was reset by something other
+    /// than this session (software, watchdog or SMU, a pin, another session). Either way such a
+    /// reset is reported (a warning) and the breakpoints are kept; by default the core runs on.
+    pub fn set_tricore_halt_after_reset(
+        &mut self,
+        core_index: usize,
+        halt: bool,
+    ) -> Result<(), Error> {
+        self.cores
+            .get_mut(core_index)
+            .ok_or(Error::CoreNotFound(core_index))?
+            .tricore_set_halt_after_reset(halt)
+    }
+
     /// Sets the performance counter window (A-to-B) of TriCore core `core_index`: its counters
     /// are cleared and count only from `start` to `stop`. `None` clears the window. The session
     /// clears it when it ends.

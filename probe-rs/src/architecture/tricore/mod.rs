@@ -180,6 +180,32 @@ pub mod ocds {
     /// `CCTRL.M1`-`M3`: the events that `M1CNT`-`M3CNT` count.
     pub const CCTRL_EVENTS: u32 = 0x7FC;
 
+    /// STM0 `TIM0SV`, the second view of the low 32 bits of the system timer: reading it
+    /// captures the high bits in `CAPSV` and leaves the application's `TIM0` / `CAP` pair alone.
+    /// The system timer counts up from 0 after every application reset.
+    pub const STM0_TIM0SV: u32 = 0xF000_0050;
+    /// STM0 `CAPSV`: the system timer bits 63:32 captured by the last `TIM0SV` read.
+    pub const STM0_CAPSV: u32 = 0xF000_0054;
+    /// `SCU_RSTSTAT`: the triggers of the last reset.
+    pub const SCU_RSTSTAT: u32 = 0xF003_6050;
+
+    /// The reset triggers that `SCU_RSTSTAT` names in its low byte.
+    pub fn reset_triggers(rststat: u32) -> Vec<&'static str> {
+        [
+            (0, "ESR0"),
+            (1, "ESR1"),
+            (3, "SMU (e.g. a watchdog)"),
+            (4, "software"),
+            (5, "STM0"),
+            (6, "STM1"),
+            (7, "STM2"),
+        ]
+        .into_iter()
+        .filter(|&(bit, _)| rststat & (1 << bit) != 0)
+        .map(|(_, name)| name)
+        .collect()
+    }
+
     /// `ICR.IE`: interrupts enabled.
     pub const ICR_IE: u32 = 1 << 15;
 
@@ -434,6 +460,15 @@ pub struct TriCoreCoreState {
     watchpoints: Vec<Watchpoint>,
     /// The performance counter window, in two trigger units.
     perf_window: Option<PerfWindow>,
+    /// The system timer at the last status check. It counting down tells a reset that this
+    /// session did not make (an application reset: software, watchdog, ...).
+    last_stm: Option<u64>,
+    /// Whether the core halts when such a reset is seen. Otherwise it runs on.
+    halt_after_reset: bool,
+    /// Set while the core halts because of such a reset, for the halt reason.
+    reset_halt: bool,
+    /// Messages for the user (a reset was seen), taken by [`Self::take_notices`].
+    notices: Vec<String>,
 }
 
 impl TriCoreCoreState {
@@ -454,7 +489,23 @@ impl TriCoreCoreState {
             mask_step_interrupts: true,
             watchpoints: Vec::new(),
             perf_window: None,
+            last_stm: None,
+            halt_after_reset: false,
+            reset_halt: false,
+            notices: Vec::new(),
         }
+    }
+
+    /// Takes the messages for the user that the core collected since the last call (for
+    /// example a reset of the device). A debugger shows them in its console.
+    pub(crate) fn take_notices(&mut self) -> Vec<String> {
+        std::mem::take(&mut self.notices)
+    }
+
+    /// Sets whether the core halts when the device was reset by something other than this
+    /// session (the default is to let it run on).
+    pub(crate) fn set_halt_after_reset(&mut self, halt: bool) {
+        self.halt_after_reset = halt;
     }
 
     /// Whether a breakpoint, a watchpoint or the performance counter window uses trigger unit
@@ -912,7 +963,10 @@ impl<'probe> TriCore<'probe> {
                 (0..ocds::TRIGGER_UNITS).any(|unit| w.uses(unit) && trigger_acc & (1 << unit) != 0)
             });
 
-        let reason = if breakpoint_hit {
+        let reason = if std::mem::take(&mut self.state.reset_halt) {
+            // Halted after a reset of the device (`resetBehavior: halt`).
+            HaltReason::Exception
+        } else if breakpoint_hit {
             HaltReason::Breakpoint(BreakpointCause::Hardware)
         } else if watchpoint_hit {
             HaltReason::Watchpoint
@@ -941,8 +995,90 @@ impl<'probe> TriCore<'probe> {
         Ok(())
     }
 
+    /// `DBGSR` and the system timer (when it can be read), in one request.
+    fn read_status(&mut self) -> Result<(u32, Option<u64>), TriCoreError> {
+        let mut transfers = [
+            BusTransfer::read(AddressMap::Target, self.csfr(ocds::DBGSR), 4),
+            BusTransfer::read(AddressMap::Target, ocds::STM0_TIM0SV, 4),
+            BusTransfer::read(AddressMap::Target, ocds::STM0_CAPSV, 4),
+        ];
+        self.bus().execute(&mut transfers)?;
+        let dbgsr = transfers[0].read_u32()?;
+        let stm = match (transfers[1].read_u32(), transfers[2].read_u32()) {
+            (Ok(low), Ok(high)) => Some((high as u64) << 32 | low as u64),
+            _ => None,
+        };
+        Ok((dbgsr, stm))
+    }
+
+    /// Called when the system timer counted down since the last status check: the device was
+    /// reset, not by this session (software, watchdog or SMU, a pin, another session). The
+    /// debug settings of the cores survive such a reset; the program may have loaded its code
+    /// into the PSPR again, over the software breakpoints.
+    fn on_device_reset(&mut self) -> Result<(), TriCoreError> {
+        let rststat = self.bus().read_u32(AddressMap::Target, ocds::SCU_RSTSTAT)?;
+        let triggers = ocds::reset_triggers(rststat);
+        let cause = if triggers.is_empty() {
+            format!("RSTSTAT {rststat:#010x}")
+        } else {
+            format!("{} (RSTSTAT {rststat:#010x})", triggers.join(", "))
+        };
+        let notice = format!(
+            "TriCore core {}: the device was reset by {cause}. {}",
+            self.core(),
+            if self.state.halt_after_reset {
+                "The core is halted (`resetBehavior: halt`)."
+            } else {
+                "Breakpoints are kept and the core runs on."
+            }
+        );
+        tracing::warn!("{notice}");
+        self.state.notices.push(notice);
+        self.state.running_peers.clear();
+        self.state.was_halted = false;
+        self.state.last_action = LastAction::Run;
+        if self.state.owns_triggers {
+            self.rearm_triggers()?;
+        }
+        self.replant_software()?;
+        if self.state.halt_after_reset {
+            self.state.reset_halt = true;
+            self.write_csfr(ocds::DBGSR, ocds::DBGSR_HALT)?;
+        }
+        Ok(())
+    }
+
+    /// Plants the software breakpoints again where the code under them changed (the program
+    /// copied its code into the PSPR again): the new code is the instruction under them.
+    fn replant_software(&mut self) -> Result<(), TriCoreError> {
+        if self.memory.software.is_empty() {
+            return Ok(());
+        }
+        self.write_csfr(ocds::SWEVT, ocds::SWEVT_HALT)?;
+        for i in 0..self.memory.software.len() {
+            let sw = self.memory.software[i].clone();
+            let mut code = vec![0; sw.original.len()];
+            self.bus()
+                .read_block(AddressMap::Target, sw.address, &mut code)?;
+            if code != sw.debug() {
+                self.memory.software[i].original = code;
+                self.bus()
+                    .write_block(AddressMap::Target, sw.address, sw.debug())?;
+            }
+        }
+        Ok(())
+    }
+
     fn update_halted(&mut self) -> Result<bool, TriCoreError> {
-        let dbgsr = self.dbgsr()?;
+        let (mut dbgsr, stm) = self.read_status()?;
+        if let Some(stm) = stm {
+            let reset = self.state.last_stm.is_some_and(|last| stm < last);
+            self.state.last_stm = Some(stm);
+            if reset {
+                self.on_device_reset()?;
+                dbgsr = self.dbgsr()?;
+            }
+        }
         let halted = ocds::is_halted(dbgsr);
         if halted && !self.state.was_halted {
             self.on_halted(dbgsr)?;
@@ -1432,17 +1568,32 @@ impl<'probe> TriCore<'probe> {
     fn reset_and_halt_core(&mut self, timeout: Duration) -> Result<(), TriCoreError> {
         self.bus().reset(ResetKind::ResetAndHalt)?;
 
-        // The device reboots: CSFR accesses fail for a short while. Callers pass short timeouts
-        // meant for a halt, so allow the reboot at least two seconds.
+        // The device reboots: CSFR accesses fail for a short while, and an access that worked
+        // once can fail again (the device may reboot a second time). The whole sequence after
+        // the reset is repeated until it gets through. Callers pass short timeouts meant for a
+        // halt, so allow the reboot at least two seconds.
         let reboot_timeout = timeout.max(REBOOT_TIME);
         let start = Instant::now();
         loop {
-            match self.dbgsr() {
-                Ok(_) => break,
+            // This session's own reset is not reported as a reset of the device.
+            self.state.last_stm = None;
+            match self.finish_reset(timeout) {
                 Err(error) if start.elapsed() > reboot_timeout => return Err(error),
-                Err(_) => std::thread::sleep(Duration::from_millis(10)),
+                Err(error) => {
+                    tracing::debug!("TriCore core {}: rebooting ({error})", self.core());
+                    std::thread::sleep(Duration::from_millis(20));
+                }
+                Ok(()) => {
+                    self.state.last_stm = None;
+                    return Ok(());
+                }
             }
         }
+    }
+
+    /// The sequence after a reset of [`Self::reset_and_halt_core`].
+    fn finish_reset(&mut self, timeout: Duration) -> Result<(), TriCoreError> {
+        self.dbgsr()?;
         self.reinit_triggers()?;
         // The reset cleared SWEVT as well: the planted `DEBUG` instructions would not halt.
         if !self.memory.software.is_empty() {
@@ -1745,7 +1896,20 @@ impl CoreInterface for TriCore<'_> {
 
     fn reset(&mut self) -> Result<(), Error> {
         self.reset_and_halt_core(Duration::from_millis(1000))?;
-        Ok(self.run_core()?)
+        // The device can still be rebooting: a run that fails on an access is repeated (a run of
+        // a running core does nothing).
+        let start = Instant::now();
+        loop {
+            match self.run_core() {
+                Err(TriCoreError::TransferFailed { .. }) if start.elapsed() < REBOOT_TIME => {
+                    std::thread::sleep(Duration::from_millis(20));
+                }
+                result => {
+                    self.state.last_stm = None;
+                    return Ok(result?);
+                }
+            }
+        }
     }
 
     fn reset_and_halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {

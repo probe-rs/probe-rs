@@ -88,22 +88,23 @@ use probe_rs_rpc::{
     AttachEndpoint, BootEndpoint, BuildEndpoint, ChipInfoEndpoint, CleanUpRttEndpoint,
     ClearCoreDebugStateEndpoint, ClearRttControlBlockEndpoint, CoreClearHwBpsEndpoint,
     CoreDumpEndpoint, CoreEnableVcEndpoint, CoreHaltEndpoint, CoreHaltGroupEndpoint,
-    CoreMetadataEndpoint, CoreReadRegistersEndpoint, CoreRunEndpoint, CoreSetHwBpsEndpoint,
-    CoreStatusEndpoint, CoreStepEndpoint, CoreTriCoreOptionsEndpoint, CoreWatchpointEndpoint,
-    CoreWriteRegEndpoint, CoresStatusEndpoint, CreateRttClientEndpoint, CreateTempFileEndpoint,
-    DisassembleEndpoint, EraseAllEndpoint, EraseRangeEndpoint, EvaluateEndpoint, FlashEndpoint,
-    GetRttChannelsEndpoint, HaltCoresEndpoint, HandleSemihostingEndpoint, ListChipFamiliesEndpoint,
-    ListProbesEndpoint, ListTestsEndpoint, LiveWatchEndpoint, LoadChipFamilyEndpoint,
-    LoadDebugInfoEndpoint, LoadRegionEndpoint, LoadSvdEndpoint, MonitorEndpoint,
-    NewFlashLoaderEndpoint, PollRttUpEndpoint, ProgressEventTopic, ReadBytesEndpoint,
-    ReadMemory8Endpoint, ReadMemory16Endpoint, ReadMemory32Endpoint, ReadMemory64Endpoint,
-    ResetCoreAndHaltEndpoint, ResetCoreEndpoint, ResetTargetEndpoint,
-    ResolveSourceBreakpointsEndpoint, ResolveSourceLocationsEndpoint, ResumeCoresEndpoint,
-    RpcError, RpcResult, RttDownEndpoint, RttTopic, RunTestEndpoint, ScopesEndpoint,
-    SelectProbeEndpoint, SemihostingTopic, SetVariableEndpoint, TakeRichStackTraceEndpoint,
-    TakeStackTraceEndpoint, TargetInfoDataTopic, TargetInfoEndpoint, TargetMetadataEndpoint,
-    TempFileDataEndpoint, TestKickoffEndpoint, TokioSpawner, VariablesEndpoint, VerifyEndpoint,
-    WriteMemory8Endpoint, WriteMemory16Endpoint, WriteMemory32Endpoint, WriteMemory64Endpoint,
+    CoreMetadataEndpoint, CoreNoticesEndpoint, CoreReadRegistersEndpoint, CoreRunEndpoint,
+    CoreSetHwBpsEndpoint, CoreStatusEndpoint, CoreStepEndpoint, CoreTriCoreOptionsEndpoint,
+    CoreWatchpointEndpoint, CoreWriteRegEndpoint, CoresStatusEndpoint, CreateRttClientEndpoint,
+    CreateTempFileEndpoint, DisassembleEndpoint, EraseAllEndpoint, EraseRangeEndpoint,
+    EvaluateEndpoint, FlashEndpoint, GetRttChannelsEndpoint, HaltCoresEndpoint,
+    HandleSemihostingEndpoint, ListChipFamiliesEndpoint, ListProbesEndpoint, ListTestsEndpoint,
+    LiveWatchEndpoint, LoadChipFamilyEndpoint, LoadDebugInfoEndpoint, LoadRegionEndpoint,
+    LoadSvdEndpoint, MonitorEndpoint, NewFlashLoaderEndpoint, PollRttUpEndpoint,
+    ProgressEventTopic, ReadBytesEndpoint, ReadMemory8Endpoint, ReadMemory16Endpoint,
+    ReadMemory32Endpoint, ReadMemory64Endpoint, ResetCoreAndHaltEndpoint, ResetCoreEndpoint,
+    ResetTargetEndpoint, ResolveSourceBreakpointsEndpoint, ResolveSourceLocationsEndpoint,
+    ResumeCoresEndpoint, RpcError, RpcResult, RttDownEndpoint, RttTopic, RunTestEndpoint,
+    ScopesEndpoint, SelectProbeEndpoint, SemihostingTopic, SetVariableEndpoint,
+    TakeRichStackTraceEndpoint, TakeStackTraceEndpoint, TargetInfoDataTopic, TargetInfoEndpoint,
+    TargetMetadataEndpoint, TempFileDataEndpoint, TestKickoffEndpoint, TokioSpawner,
+    VariablesEndpoint, VerifyEndpoint, WriteMemory8Endpoint, WriteMemory16Endpoint,
+    WriteMemory32Endpoint, WriteMemory64Endpoint,
 };
 use probe_rs_rpc::{FlashLoader, Key, RttClient, Session};
 
@@ -1722,12 +1723,14 @@ impl CoreInterface {
     }
 
     /// Sets debug options of this TriCore core: whether single steps run with interrupts
-    /// disabled, and the performance counter window (`Some(None)` clears it). `None` leaves an
-    /// option as it is.
+    /// disabled, the performance counter window (`Some(None)` clears it), and whether the core
+    /// halts after a reset of the device that the session did not make. `None` leaves an option
+    /// as it is.
     pub async fn set_tricore_options(
         &self,
         mask_step_interrupts: Option<bool>,
         perf_window: Option<Option<(u64, u64)>>,
+        halt_after_reset: Option<bool>,
     ) -> Result<(), ClientError> {
         self.client
             .send_resp::<CoreTriCoreOptionsEndpoint, _>(&CoreTriCoreOptionsRequest {
@@ -1735,6 +1738,18 @@ impl CoreInterface {
                 core: self.core,
                 mask_step_interrupts,
                 perf_window,
+                halt_after_reset,
+            })
+            .await
+    }
+
+    /// Takes the messages for the user that the core collected since the last call (TriCore: a
+    /// reset of the device it saw).
+    pub async fn take_notices(&self) -> Result<Vec<String>, ClientError> {
+        self.client
+            .send_resp::<CoreNoticesEndpoint, _>(&CoreAccessRequest {
+                sessid: self.sessid,
+                core: self.core,
             })
             .await
     }

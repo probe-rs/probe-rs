@@ -89,6 +89,10 @@ pub struct CoreWatchpointRequest {
     pub access: Option<WireWatchpointAccess>,
 }
 
+/// The messages for the user that a core collected since the last request (TriCore: a reset of
+/// the device it saw).
+pub type CoreNoticesResponse = RpcResult<Vec<String>>;
+
 /// Sets debug options of a TriCore core. `None` leaves an option as it is.
 #[derive(Serialize, Deserialize, Schema, Clone)]
 pub struct CoreTriCoreOptionsRequest {
@@ -98,6 +102,8 @@ pub struct CoreTriCoreOptionsRequest {
     pub mask_step_interrupts: Option<bool>,
     /// The performance counter window (start, stop addresses): `Some(None)` clears it.
     pub perf_window: Option<Option<(u64, u64)>>,
+    /// Whether the core halts after a reset of the device that the session did not make.
+    pub halt_after_reset: Option<bool>,
 }
 
 #[derive(Serialize, Deserialize, Schema, Clone)]

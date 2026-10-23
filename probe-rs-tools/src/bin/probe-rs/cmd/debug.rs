@@ -333,6 +333,7 @@ impl Cmd {
                         catch_hlt: !self.no_catch_hlt,
                         step_interrupts: Default::default(),
                         perf_window: None,
+                        reset_behavior: Default::default(),
                     }],
                 })
                 .ok(),

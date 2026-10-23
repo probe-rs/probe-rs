@@ -362,6 +362,12 @@ impl RpcBackend {
         client.set_halt_group(join).await.map_err(rpc_err)
     }
 
+    /// Takes the messages for the user that a core collected (a reset of the device it saw).
+    pub(crate) async fn take_notices(&mut self, core_index: usize) -> Result<Vec<String>, Error> {
+        let client = self.core(core_index);
+        client.take_notices().await.map_err(rpc_err)
+    }
+
     /// Sets a data watchpoint on the `len` bytes at `address`.
     pub(crate) async fn set_watchpoint(
         &mut self,
@@ -414,10 +420,11 @@ impl RpcBackend {
         core_index: usize,
         mask_step_interrupts: Option<bool>,
         perf_window: Option<Option<(u64, u64)>>,
+        halt_after_reset: Option<bool>,
     ) -> Result<(), Error> {
         let client = self.core(core_index);
         client
-            .set_tricore_options(mask_step_interrupts, perf_window)
+            .set_tricore_options(mask_step_interrupts, perf_window, halt_after_reset)
             .await
             .map_err(rpc_err)
     }

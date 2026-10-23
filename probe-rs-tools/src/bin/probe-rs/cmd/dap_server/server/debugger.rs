@@ -1,5 +1,5 @@
 use super::{
-    configuration::{self, ConsoleLog, StepInterrupts},
+    configuration::{self, ConsoleLog, ResetBehavior, StepInterrupts},
     core_data::{EntryBreakpoint, function_address},
     logger::DebugLogger,
     session_data::SessionData,
@@ -793,11 +793,23 @@ impl Debugger {
         if target_core_config.step_interrupts == StepInterrupts::Allow
             && let Err(error) = session_data
                 .backend
-                .set_tricore_options(core_index, Some(false), None)
+                .set_tricore_options(core_index, Some(false), None, None)
                 .await
         {
             debug_adapter.log_to_console(format!(
                 "`stepInterrupts` is ignored for core {core_index} (TriCore only): {error}"
+            ));
+        }
+
+        // TriCore cores run on after a reset of the device by default; only a change is sent.
+        if target_core_config.reset_behavior == ResetBehavior::Halt
+            && let Err(error) = session_data
+                .backend
+                .set_tricore_options(core_index, None, None, Some(true))
+                .await
+        {
+            debug_adapter.log_to_console(format!(
+                "`resetBehavior` is ignored for core {core_index} (TriCore only): {error}"
             ));
         }
 
@@ -819,7 +831,7 @@ impl Debugger {
             let message = match (resolve(&window.start), resolve(&window.stop)) {
                 (Ok(start), Ok(stop)) => match session_data
                     .backend
-                    .set_tricore_options(core_index, None, Some(Some((start, stop))))
+                    .set_tricore_options(core_index, None, Some(Some((start, stop))), None)
                     .await
                 {
                     Ok(()) => format!(

@@ -803,6 +803,15 @@ impl SessionData {
                 CoreStatus::Unknown
             };
 
+            // Messages the status check collected, such as a reset of the device.
+            if debug_adapter.configuration_is_done()
+                && let Ok(notices) = self.backend.take_notices(core_index).await
+            {
+                for notice in notices {
+                    debug_adapter.log_to_console(notice);
+                }
+            }
+
             let previous_core_status = self.core_data[cd_idx].last_known_status;
 
             let mut current_core_status = self
