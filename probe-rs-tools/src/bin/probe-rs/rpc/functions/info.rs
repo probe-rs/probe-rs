@@ -343,6 +343,24 @@ async fn try_read_tricore_info(
         },
     )
     .await?;
+    // The AURIX Flasher device file and the SVD file that match the device.
+    let device_file =
+        probe_rs_infineon::device_config::find(idcode, chip_id.as_ref().ok().copied());
+    let device = match &device_file {
+        Some(config) => format!(
+            "{} ({}, {})",
+            config.device_name,
+            config.flax_file_name,
+            config.file.display()
+        ),
+        None => "no AURIX Flasher device file matches".to_string(),
+    };
+    let svd = device_file
+        .as_ref()
+        .and_then(|config| {
+            probe_rs_infineon::svd::find_svd(config.device_name.split_whitespace().next()?, &[])
+        })
+        .map_or("none".to_string(), |path| path.display().to_string());
     let chip_id = match chip_id {
         Ok(value) => format!("{value:#010x}"),
         Err(error) => format!("unreadable ({error})"),
@@ -350,7 +368,7 @@ async fn try_read_tricore_info(
     ctx.publish::<TargetInfoDataTopic>(
         VarSeq::Seq2(0),
         &InfoEvent::Message(format!(
-            "  SCU_CHIPID: {chip_id}\n  {} core(s):\n{}",
+            "  SCU_CHIPID: {chip_id}\n  Device file: {device}\n  SVD: {svd}\n  {} core(s):\n{}",
             cores.len(),
             cores.join("\n")
         )),

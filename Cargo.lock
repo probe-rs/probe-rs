@@ -3155,6 +3155,7 @@ dependencies = [
  "probe-rs",
  "probe-rs-debug",
  "probe-rs-target",
+ "serde",
  "serde_json",
  "thiserror 2.0.21",
  "tracing",

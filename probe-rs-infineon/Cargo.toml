@@ -21,6 +21,8 @@ probe-rs-target.workspace = true
 bincode = { version = "2", features = ["serde"] }
 docsplay.workspace = true
 libloading = { version = "0.8", optional = true }
+serde.workspace = true
+serde_json = "1"
 thiserror.workspace = true
 tracing = "0.1"
 

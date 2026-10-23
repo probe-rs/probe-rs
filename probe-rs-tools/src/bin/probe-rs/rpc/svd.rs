@@ -289,11 +289,20 @@ impl SvdVariable {
     }
 }
 
-/// Read and parse an SVD file at `path`, then build the variable cache.
+/// Read and parse an SVD file at `path` (plain, or gzip compressed with a `.gz` extension), then
+/// build the variable cache.
 #[tracing::instrument(skip_all)]
 pub fn parse_svd_file(path: &Path) -> Result<SvdVariableCache, DebugError> {
     let mut svd_xml = String::new();
-    std::fs::File::open(path)?.read_to_string(&mut svd_xml)?;
+    let file = std::fs::File::open(path)?;
+    if path
+        .extension()
+        .is_some_and(|extension| extension.eq_ignore_ascii_case("gz"))
+    {
+        flate2::read::GzDecoder::new(file).read_to_string(&mut svd_xml)?;
+    } else {
+        std::io::BufReader::new(file).read_to_string(&mut svd_xml)?;
+    }
 
     let device = svd_parser::parse_with_config(
         &svd_xml,
@@ -433,4 +442,31 @@ fn build_svd_cache(
     }
 
     Ok(svd_cache)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The Infineon TC27x SVD parses from its gzip file, and every peripheral of the device
+    /// becomes a variable.
+    #[test]
+    fn a_gzip_compressed_aurix_svd_parses() {
+        let path = probe_rs_infineon::svd::find_svd("TC275", &[]).unwrap();
+        let start = std::time::Instant::now();
+        let cache = parse_svd_file(&path).unwrap();
+        let names = cache
+            .get_children(cache.root_variable_key())
+            .into_iter()
+            .map(|v| v.name().to_string())
+            .collect::<Vec<_>>();
+        println!(
+            "{} top-level entries in {:?}: {}",
+            names.len(),
+            start.elapsed(),
+            names.join(" ")
+        );
+        assert!(names.iter().any(|n| n.contains("CPU0")), "{names:?}");
+        assert!(names.iter().any(|n| n.contains("SCU")), "{names:?}");
+    }
 }

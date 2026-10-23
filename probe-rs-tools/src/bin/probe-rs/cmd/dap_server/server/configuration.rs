@@ -202,6 +202,24 @@ impl SessionConfig {
                         ));
                     }
                 };
+            // Without an SVD file, use the one that matches the chip, if there is one.
+            if target_core_config.svd_file.is_none()
+                && let Some(chip) = self.chip.as_deref()
+            {
+                let dirs = self
+                    .cwd
+                    .iter()
+                    .flat_map(|cwd| [cwd.join(".vscode").join("svd"), cwd.join("svd")])
+                    .collect::<Vec<_>>();
+                if let Some(svd_file) = probe_rs_infineon::svd::find_svd(chip, &dirs) {
+                    tracing::info!(
+                        "Using the SVD file {} for {chip}, core {}",
+                        svd_file.display(),
+                        target_core_config.core_index
+                    );
+                    target_core_config.svd_file = Some(svd_file);
+                }
+            }
         }
 
         self.chip_description_path =

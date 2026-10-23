@@ -30,6 +30,8 @@ use probe_rs::{
 };
 use probe_rs_target::NvmRegion;
 
+use crate::device_config;
+
 /// The TC27x loader, built by `loader/build.ps1`.
 const LOADER: &[u8] = include_bytes!("../loader/m25_flash_loader_tc27x.bin");
 
@@ -243,12 +245,120 @@ struct SavedState {
     running: Vec<bool>,
 }
 
+/// SCU_CHIPID, which tells the device step and variant apart.
+const SCU_CHIPID: u64 = 0xF003_6140;
+
+/// The PFLASH sectors of the connected device.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FlashMap {
+    /// Where the map comes from: an AURIX Flasher device file, or the built-in TC27x map.
+    pub source: String,
+    /// The logical sectors.
+    pub sectors: Vec<Sector>,
+    /// The bases of the sectors that must not be written.
+    pub restricted: BTreeSet<u32>,
+}
+
+impl FlashMap {
+    /// The built-in TC27x map.
+    pub fn builtin() -> Self {
+        Self {
+            source: "the built-in TC27x map".into(),
+            sectors: tc27x_sectors(),
+            restricted: BTreeSet::new(),
+        }
+    }
+
+    /// The map for a device with these IDs: from its AURIX Flasher device file in `dirs` if
+    /// there is one, else the built-in TC27x map. Fails for a device this loader cannot program.
+    pub fn for_device(
+        dirs: &[std::path::PathBuf],
+        jtag_id: u32,
+        chip_id: Option<u32>,
+    ) -> Result<Self, Error> {
+        let config = device_config::find_in(dirs, jtag_id, chip_id);
+        let is_tc27x = jtag_id & 0x0FFF_FFFF == 0x001D_A083;
+        let Some(config) = config else {
+            if !is_tc27x {
+                return Err(other(format!(
+                    "the TC27x flash loader does not support JTAG ID {jtag_id:#010x}"
+                )));
+            }
+            return Ok(Self::builtin());
+        };
+        let name = &config.device_name;
+        if config.flax_file_name != device_config::FLAX_TC2XX {
+            return Err(other(format!(
+                "{name} uses the flash controller of {}; probe-rs has a flash loader for the \
+                 TC27x only",
+                config.flax_file_name
+            )));
+        }
+        if !is_tc27x {
+            return Err(other(format!(
+                "{name} is a TC2xx device, but the probe-rs flash loader is built and tested \
+                 for the TC27x only"
+            )));
+        }
+        let pflash = config
+            .program_flash()
+            .filter(|m| !m.sectors.is_empty())
+            .ok_or_else(|| {
+                other(format!(
+                    "{} has no ProgramFlash sectors",
+                    config.file.display()
+                ))
+            })?;
+        let sectors = pflash
+            .sectors
+            .iter()
+            .map(|s| Sector {
+                base: s.base,
+                size: s.size,
+            })
+            .collect::<Vec<_>>();
+        if sectors != tc27x_sectors() {
+            tracing::warn!(
+                "The PFLASH map of {name} differs from the built-in TC27x map; using {}",
+                config.file.display()
+            );
+        }
+        Ok(Self {
+            source: format!("{name} ({})", config.file.display()),
+            restricted: pflash
+                .sectors
+                .iter()
+                .filter(|s| s.restricted)
+                .map(|s| s.base)
+                .collect(),
+            sectors,
+        })
+    }
+
+    fn sector(&self, address: u64) -> Result<Sector, Error> {
+        let uncached = to_uncached(address);
+        let sector = u32::try_from(uncached)
+            .ok()
+            .and_then(|a| sector_at(&self.sectors, a))
+            .ok_or_else(|| other(format!("{address:#010x} is not in the PFLASH")))?;
+        if self.restricted.contains(&sector.base) {
+            return Err(other(format!(
+                "sector {:#010x} is restricted in {}",
+                sector.base, self.source
+            )));
+        }
+        Ok(sector)
+    }
+}
+
 /// Programs the TC27x PFLASH through the RAM loader.
 #[derive(Debug, Default)]
 pub struct Tc27xFlash {
     saved: Mutex<Option<SavedState>>,
     /// The pages written in this session, which must read back as data.
     programmed: Mutex<BTreeSet<u32>>,
+    /// The sector map of the connected device, found when the loader starts.
+    map: Mutex<Option<FlashMap>>,
 }
 
 fn other(message: impl Into<String>) -> Error {
@@ -256,14 +366,28 @@ fn other(message: impl Into<String>) -> Error {
 }
 
 impl Tc27xFlash {
-    fn check_device(session: &mut Session) -> Result<(), Error> {
+    /// Checks that the loader can program the device and takes its sector map.
+    fn check_device(&self, session: &mut Session) -> Result<(), Error> {
         let jtag_id = session.get_tricore_bus()?.jtag_id()?;
-        if jtag_id & 0x0FFF_FFFF != 0x001D_A083 {
-            return Err(other(format!(
-                "the TC27x flash loader does not support JTAG ID {jtag_id:#010x}"
-            )));
-        }
+        let chip_id = session.core(0)?.read_word_32(SCU_CHIPID).ok();
+        let map = FlashMap::for_device(&device_config::config_dirs(), jtag_id, chip_id)?;
+        tracing::info!(
+            "PFLASH map: {} ({} sectors; JTAG ID {jtag_id:#010x}, chip ID {})",
+            map.source,
+            map.sectors.len(),
+            chip_id.map_or("?".into(), |c| format!("{c:#010x}"))
+        );
+        *self.map.lock().unwrap_or_else(|e| e.into_inner()) = Some(map);
         Ok(())
+    }
+
+    /// The sector map of the device (the built-in one before the loader started).
+    fn flash_map(&self) -> FlashMap {
+        self.map
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone()
+            .unwrap_or_else(FlashMap::builtin)
     }
 
     fn mailbox_read(session: &mut Session, index: u32) -> Result<u32, Error> {
@@ -369,7 +493,7 @@ impl Tc27xFlash {
     }
 
     fn start_loader(&self, session: &mut Session) -> Result<(), Error> {
-        Self::check_device(session)?;
+        self.check_device(session)?;
 
         let mut running = Vec::new();
         for id in 0..session.list_cores().len() {
@@ -456,14 +580,6 @@ impl Tc27xFlash {
         tracing::info!("Flash loader stopped; reset the device to run the new image");
         Ok(())
     }
-
-    fn sector(address: u64) -> Result<Sector, Error> {
-        let uncached = to_uncached(address);
-        u32::try_from(uncached)
-            .ok()
-            .and_then(|a| sector_at(&tc27x_sectors(), a))
-            .ok_or_else(|| other(format!("{address:#010x} is not in the TC27x PFLASH")))
-    }
 }
 
 impl DebugFlashSequence for Tc27xFlash {
@@ -488,7 +604,7 @@ impl DebugFlashSequence for Tc27xFlash {
     }
 
     fn erase_sector(&self, session: &mut Session, address: u64) -> Result<(), Error> {
-        let sector = Self::sector(address)?;
+        let sector = self.flash_map().sector(address)?;
         if sector.base as u64 != to_uncached(address) {
             return Err(other(format!(
                 "{address:#010x} is not the start of a sector"
@@ -500,7 +616,7 @@ impl DebugFlashSequence for Tc27xFlash {
     fn program(&self, session: &mut Session, address: u64, data: &[u8]) -> Result<(), Error> {
         // Only used when `program_image` is not: write the data as given.
         let base = to_uncached(address) as u32;
-        Self::sector(address)?;
+        self.flash_map().sector(address)?;
         if !base.is_multiple_of(PAGE as u32) {
             return Err(other(format!("{address:#010x} is not page aligned")));
         }
@@ -525,11 +641,10 @@ impl DebugFlashSequence for Tc27xFlash {
             patches.extend(page_patches(layout));
         }
 
-        let sectors = tc27x_sectors();
+        let map = self.flash_map();
         let mut touched = BTreeMap::new();
         for page in patches.keys() {
-            let sector = sector_at(&sectors, *page)
-                .ok_or_else(|| other(format!("{page:#010x} is not in the TC27x PFLASH")))?;
+            let sector = map.sector(*page as u64)?;
             touched.insert(sector.base, sector);
         }
 
@@ -633,6 +748,108 @@ mod tests {
         expected[1] = 0xAB;
         assert_eq!(image[2], Some(expected));
         assert_eq!(image.iter().filter(|p| p.is_some()).count(), 1);
+    }
+
+    /// A directory with one AURIX Flasher style device file (made-up content).
+    fn device_dir(
+        name: &str,
+        flax: &str,
+        jtag: &str,
+        sectors: &[(u32, u32, bool)],
+    ) -> std::path::PathBuf {
+        let dir =
+            std::env::temp_dir().join(format!("probe-rs-flash-map-{name}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let sectors = sectors
+            .iter()
+            .map(|(base, size, restricted)| {
+                format!(
+                    r#"{{ "sectorStartAddress": "{base:#010X}", "sectorSize": "{size:#X}", "restricted": {restricted} }}"#
+                )
+            })
+            .collect::<Vec<_>>()
+            .join(",");
+        let json = format!(
+            r#"{{ "deviceName": "{name}", "flaxFileName": "{flax}",
+                 "registers": [ {{ "registerName": "JTAGID", "registerValue": ["{jtag}"] }},
+                                {{ "registerName": "ChipID", "registerValue": ["0x47427060"] }} ],
+                 "memory": [ {{ "memoryName": "ProgramFlash", "memoryStartAddress": "0xA0000000",
+                                "memoryEndAddress": "0xA03FFFFF", "logicalSectors": [{sectors}] }} ] }}"#
+        );
+        std::fs::write(dir.join(format!("{name}.json")), json).unwrap();
+        dir
+    }
+
+    fn builtin_runs() -> Vec<(u32, u32, bool)> {
+        tc27x_sectors()
+            .iter()
+            .map(|s| (s.base, s.size, false))
+            .collect()
+    }
+
+    #[test]
+    fn the_map_comes_from_the_matching_device_file() {
+        let dir = device_dir(
+            "TC27x_test",
+            "flax_TC2xx.hex",
+            "0x401DA083",
+            &builtin_runs(),
+        );
+        let map = FlashMap::for_device(std::slice::from_ref(&dir), 0x401D_A083, Some(0x4742_7060))
+            .unwrap();
+        assert!(map.source.starts_with("TC27x_test"), "{}", map.source);
+        assert_eq!(map.sectors, tc27x_sectors());
+        assert_eq!(map.sector(0x8021_C0B0).unwrap().base, 0xA021_C000);
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn restricted_sectors_are_refused() {
+        let mut runs = builtin_runs();
+        runs[0].2 = true;
+        let dir = device_dir("TC27x_restricted", "flax_TC2xx.hex", "0x401DA083", &runs);
+        let map = FlashMap::for_device(std::slice::from_ref(&dir), 0x401D_A083, None).unwrap();
+        let error = map.sector(0xA000_0100).unwrap_err().to_string();
+        assert!(error.contains("restricted"), "{error}");
+        assert!(map.sector(0xA000_4000).is_ok());
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn devices_without_a_loader_are_refused() {
+        let tc3 = device_dir(
+            "TC37x_test",
+            "flax_TC37x.hex",
+            "0x10207083",
+            &[(0xA000_0000, 0x4000, false)],
+        );
+        let error = FlashMap::for_device(std::slice::from_ref(&tc3), 0x1020_7083, None)
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("flax_TC37x.hex"), "{error}");
+        std::fs::remove_dir_all(tc3).unwrap();
+
+        let tc26 = device_dir(
+            "TC26x_test",
+            "flax_TC2xx.hex",
+            "0x201E8083",
+            &[(0xA000_0000, 0x4000, false)],
+        );
+        let error = FlashMap::for_device(std::slice::from_ref(&tc26), 0x201E_8083, None)
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("TC27x only"), "{error}");
+        std::fs::remove_dir_all(tc26).unwrap();
+    }
+
+    #[test]
+    fn without_a_device_file_the_builtin_map_is_used_for_the_tc27x_only() {
+        assert_eq!(
+            FlashMap::for_device(&[], 0x401D_A083, None).unwrap(),
+            FlashMap::builtin()
+        );
+        assert!(FlashMap::for_device(&[], 0x1020_7083, None).is_err());
     }
 
     #[test]
