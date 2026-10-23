@@ -1853,6 +1853,7 @@ pub(crate) trait MultiSubscription {
     }
 }
 
+#[derive(Debug)]
 pub enum MonitorEvent {
     Rtt(RttEvent),
     Semihosting(SemihostingEvent),

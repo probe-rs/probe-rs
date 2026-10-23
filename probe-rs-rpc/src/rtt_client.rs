@@ -44,13 +44,13 @@ pub struct RttDownRequest {
 /// blocking, so this may be less than the request's data length.
 pub type RttDownResponse = RpcResult<u32>;
 
-#[derive(Serialize, Deserialize, Schema, Clone)]
+#[derive(Debug, Serialize, Deserialize, Schema, Clone)]
 pub struct RttChannelMeta {
     pub number: u32,
     pub name: String,
 }
 
-#[derive(Serialize, Deserialize, Schema, Clone, Default)]
+#[derive(Debug, Serialize, Deserialize, Schema, Clone, Default)]
 pub struct RttChannels {
     pub up: Vec<RttChannelMeta>,
     pub down: Vec<RttChannelMeta>,
