@@ -168,6 +168,18 @@ pub mod ocds {
         if first & 1 == 1 { 4 } else { 2 }
     }
 
+    /// `TRnEVT` of the start of a performance counter window: PC input, break before make, no
+    /// halt (`EVTA` 001 with `BOD`), `CNT` 01 (start the counters in task mode).
+    pub const TRIG_EVT_PERF_START: u32 = 0x1059;
+    /// `TRnEVT` of the end of a performance counter window: as the start, `CNT` 10 (stop).
+    pub const TRIG_EVT_PERF_STOP: u32 = 0x1099;
+    /// `CCTRL.CM`: task mode, the counters count between start and stop events.
+    pub const CCTRL_CM: u32 = 1 << 0;
+    /// `CCTRL.CE`: the counters are enabled.
+    pub const CCTRL_CE: u32 = 1 << 1;
+    /// `CCTRL.M1`-`M3`: the events that `M1CNT`-`M3CNT` count.
+    pub const CCTRL_EVENTS: u32 = 0x7FC;
+
     /// `ICR.IE`: interrupts enabled.
     pub const ICR_IE: u32 = 1 << 15;
 
@@ -337,6 +349,17 @@ impl Watchpoint {
     }
 }
 
+/// A performance counter window (A-to-B): the counters count from `start` to `stop`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct PerfWindow {
+    start: u32,
+    stop: u32,
+    /// The trigger units of the start and the stop.
+    units: [usize; 2],
+    /// `CCTRL` from before the window, put back when it is cleared.
+    saved_cctrl: u32,
+}
+
 /// How long CSFR accesses may fail while the device reboots after a reset.
 const REBOOT_TIME: Duration = Duration::from_secs(2);
 
@@ -409,6 +432,8 @@ pub struct TriCoreCoreState {
     mask_step_interrupts: bool,
     /// The data watchpoints, in trigger units that no breakpoint uses.
     watchpoints: Vec<Watchpoint>,
+    /// The performance counter window, in two trigger units.
+    perf_window: Option<PerfWindow>,
 }
 
 impl TriCoreCoreState {
@@ -428,12 +453,21 @@ impl TriCoreCoreState {
             running_peers: Vec::new(),
             mask_step_interrupts: true,
             watchpoints: Vec::new(),
+            perf_window: None,
         }
     }
 
-    /// Whether a breakpoint or a watchpoint uses trigger unit `unit`.
+    /// Whether a breakpoint, a watchpoint or the performance counter window uses trigger unit
+    /// `unit`.
     fn unit_used(&self, unit: usize) -> bool {
-        self.breakpoints[unit].is_some() || self.watchpoints.iter().any(|w| w.uses(unit))
+        self.breakpoints[unit].is_some()
+            || self.watchpoints.iter().any(|w| w.uses(unit))
+            || self.perf_window.is_some_and(|p| p.units.contains(&unit))
+    }
+
+    /// Whether this session set a performance counter window on the core.
+    pub(crate) fn has_perf_window(&self) -> bool {
+        self.perf_window.is_some()
     }
 
     /// Sets whether single steps run with interrupts disabled (the default).
@@ -745,8 +779,66 @@ impl<'probe> TriCore<'probe> {
                 self.write_csfr(Self::trigger_adr(unit), w.address.wrapping_add(w.len))?;
                 self.write_csfr(Self::trigger_evt(unit), 0)
             }
+            (None, None) => match self.state.perf_window {
+                // The window counts whether breakpoints are enabled or not.
+                Some(p) if p.units[0] == unit => {
+                    self.write_csfr(Self::trigger_adr(unit), p.start)?;
+                    self.write_csfr(Self::trigger_evt(unit), ocds::TRIG_EVT_PERF_START)
+                }
+                Some(p) if p.units[1] == unit => {
+                    self.write_csfr(Self::trigger_adr(unit), p.stop)?;
+                    self.write_csfr(Self::trigger_evt(unit), ocds::TRIG_EVT_PERF_STOP)
+                }
+                _ => self.write_csfr(Self::trigger_evt(unit), 0),
+            },
             _ => self.write_csfr(Self::trigger_evt(unit), 0),
         }
+    }
+
+    /// Sets the performance counter window (A-to-B): the counters (`CCNT`, `ICNT`,
+    /// `M1CNT`-`M3CNT`) are cleared and from then on count only from an execution of `start` to
+    /// one of `stop`, each time. `None` clears the window and puts `CCTRL` back.
+    ///
+    /// The window takes two trigger units (the highest free ones), which do not halt the core.
+    pub fn set_perf_window(&mut self, window: Option<(u32, u32)>) -> Result<(), TriCoreError> {
+        self.take_triggers()?;
+        if let Some(old) = self.state.perf_window.take() {
+            for unit in old.units {
+                self.write_trigger(unit)?;
+            }
+            self.write_csfr(registers::CSFR_CCTRL, old.saved_cctrl)?;
+        }
+        let Some((start, stop)) = window else {
+            return Ok(());
+        };
+        let free = (0..ocds::TRIGGER_UNITS)
+            .rev()
+            .filter(|&unit| !self.state.unit_used(unit))
+            .take(2)
+            .collect::<Vec<_>>();
+        let [stop_unit, start_unit] = free[..] else {
+            return Err(TriCoreError::Protocol(format!(
+                "no two free trigger units for the performance counter window (the {} units \
+                 are in use)",
+                ocds::TRIGGER_UNITS
+            )));
+        };
+        let saved_cctrl = self.read_csfr(registers::CSFR_CCTRL)?;
+        // The counters can be written only while they are disabled.
+        self.write_csfr(registers::CSFR_CCTRL, 0)?;
+        self.write_csfr_words(registers::CSFR_CCNT, &[0; 5])?;
+        self.state.perf_window = Some(PerfWindow {
+            start,
+            stop,
+            units: [start_unit, stop_unit],
+            saved_cctrl,
+        });
+        self.write_trigger(start_unit)?;
+        self.write_trigger(stop_unit)?;
+        self.write_csfr(
+            registers::CSFR_CCTRL,
+            (saved_cctrl & ocds::CCTRL_EVENTS) | ocds::CCTRL_CM | ocds::CCTRL_CE,
+        )
     }
 
     /// Rewrites the trigger units in use. The single step sequence reprograms the trigger

@@ -413,10 +413,11 @@ impl RpcBackend {
         &mut self,
         core_index: usize,
         mask_step_interrupts: Option<bool>,
+        perf_window: Option<Option<(u64, u64)>>,
     ) -> Result<(), Error> {
         let client = self.core(core_index);
         client
-            .set_tricore_options(mask_step_interrupts)
+            .set_tricore_options(mask_step_interrupts, perf_window)
             .await
             .map_err(rpc_err)
     }

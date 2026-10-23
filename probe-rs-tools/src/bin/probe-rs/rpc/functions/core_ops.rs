@@ -233,6 +233,9 @@ pub async fn core_tricore_options(
     if let Some(mask) = request.mask_step_interrupts {
         probe_rs_try!(session.set_tricore_mask_step_interrupts(request.core as usize, mask));
     }
+    if let Some(window) = request.perf_window {
+        probe_rs_try!(session.set_tricore_perf_window(request.core as usize, window));
+    }
     Ok(())
 }
 

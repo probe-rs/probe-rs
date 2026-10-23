@@ -1722,16 +1722,19 @@ impl CoreInterface {
     }
 
     /// Sets debug options of this TriCore core: whether single steps run with interrupts
-    /// disabled. `None` leaves an option as it is.
+    /// disabled, and the performance counter window (`Some(None)` clears it). `None` leaves an
+    /// option as it is.
     pub async fn set_tricore_options(
         &self,
         mask_step_interrupts: Option<bool>,
+        perf_window: Option<Option<(u64, u64)>>,
     ) -> Result<(), ClientError> {
         self.client
             .send_resp::<CoreTriCoreOptionsEndpoint, _>(&CoreTriCoreOptionsRequest {
                 sessid: self.sessid,
                 core: self.core,
                 mask_step_interrupts,
+                perf_window,
             })
             .await
     }

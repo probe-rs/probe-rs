@@ -242,6 +242,11 @@ impl Session {
                 core.clear_all_watchpoints()?;
             }
         }
+        for core in 0..self.cores.len() {
+            if self.cores[core].tricore_has_perf_window() {
+                self.set_tricore_perf_window(core, None)?;
+            }
+        }
         Ok(())
     }
 
@@ -628,6 +633,34 @@ impl Session {
             .get_mut(core_index)
             .ok_or(Error::CoreNotFound(core_index))?
             .tricore_set_mask_step_interrupts(mask)
+    }
+
+    /// Sets the performance counter window (A-to-B) of TriCore core `core_index`: its counters
+    /// are cleared and count only from `start` to `stop`. `None` clears the window. The session
+    /// clears it when it ends.
+    pub fn set_tricore_perf_window(
+        &mut self,
+        core_index: usize,
+        window: Option<(u64, u64)>,
+    ) -> Result<(), Error> {
+        let window = window
+            .map(|(start, stop)| {
+                let address = |a: u64| {
+                    u32::try_from(a)
+                        .map_err(|_| Error::Other(format!("address {a:#x} out of range")))
+                };
+                Ok::<_, Error>((address(start)?, address(stop)?))
+            })
+            .transpose()?;
+        let ArchitectureInterface::TriCore(probe) = &mut self.interfaces else {
+            return Err(TriCoreError::NoTriCoreTarget.into());
+        };
+        let bus = probe.try_get_tricore_bus()?;
+        let core = self
+            .cores
+            .get_mut(core_index)
+            .ok_or(Error::CoreNotFound(core_index))?;
+        core.tricore_set_perf_window(&self.target, bus, window)
     }
 
     /// Takes the TriCore cores that this session put in the halt group out of it.

@@ -294,6 +294,22 @@ impl CombinedCoreState {
         Ok(self.tricore(target, bus).set_halt_group(join)?)
     }
 
+    /// Sets or clears the performance counter window of this TriCore core (see
+    /// [`TriCore::set_perf_window`]).
+    pub(crate) fn tricore_set_perf_window(
+        &mut self,
+        target: &Target,
+        bus: &mut dyn TriCoreBusAccess,
+        window: Option<(u32, u32)>,
+    ) -> Result<(), Error> {
+        Ok(self.tricore(target, bus).set_perf_window(window)?)
+    }
+
+    /// Whether this is a TriCore core with a performance counter window of this session.
+    pub(crate) fn tricore_has_perf_window(&self) -> bool {
+        matches!(&self.specific_state, SpecificCoreState::TriCore(state) if state.has_perf_window())
+    }
+
     /// Sets whether single steps of this TriCore core run with interrupts disabled.
     pub(crate) fn tricore_set_mask_step_interrupts(&mut self, mask: bool) -> Result<(), Error> {
         match &mut self.specific_state {

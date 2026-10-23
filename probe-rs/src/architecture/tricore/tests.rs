@@ -1083,6 +1083,42 @@ fn a_member_halted_at_a_watchpoint_stays_halted() {
     }
 }
 
+const CCTRL: u32 = CSFR_BASE + registers::CSFR_CCTRL as u32;
+
+#[test]
+fn a_perf_window_counts_between_two_triggers_and_puts_cctrl_back() {
+    let mut bus = FakeBus::new();
+    bus.halted = true;
+    // M1 configured by the application, counters disabled.
+    bus.set_word(CCTRL, 0x0000_0004);
+    bus.set_word(CSFR_BASE + registers::CSFR_ICNT as u32, 1234);
+    let mut state = TriCoreCoreState::new();
+    let mut core = core(&mut bus, &mut state);
+    core.set_perf_window(Some((0x8021_C000, 0x8021_C024)))
+        .unwrap();
+    // The window takes the two highest units: a watchpoint range finds no pair there.
+    core.set_watchpoint(0x7000_A004, 4, WatchpointAccess::Write)
+        .unwrap();
+    core.step().unwrap();
+    drop(core);
+
+    assert_eq!(bus.word(trig_adr(6)), 0x8021_C000);
+    assert_eq!(bus.word(trig_evt(6)), ocds::TRIG_EVT_PERF_START);
+    assert_eq!(bus.word(trig_adr(7)), 0x8021_C024);
+    assert_eq!(bus.word(trig_evt(7)), ocds::TRIG_EVT_PERF_STOP);
+    assert_eq!(bus.word(trig_evt(4)), 0x0800_2032);
+    // Cleared counters, task mode, enabled, M1 kept.
+    assert_eq!(bus.word(CSFR_BASE + registers::CSFR_ICNT as u32), 0);
+    assert_eq!(bus.word(CCTRL), 0x0000_0007);
+
+    self::core(&mut bus, &mut state)
+        .set_perf_window(None)
+        .unwrap();
+    assert_eq!(bus.word(trig_evt(6)), 0);
+    assert_eq!(bus.word(trig_evt(7)), 0);
+    assert_eq!(bus.word(CCTRL), 0x0000_0004);
+}
+
 const ICR: u32 = CSFR_BASE + registers::CSFR_ICR as u32;
 
 /// The (index, value) of every ICR write.

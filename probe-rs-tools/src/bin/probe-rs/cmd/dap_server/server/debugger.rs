@@ -793,12 +793,46 @@ impl Debugger {
         if target_core_config.step_interrupts == StepInterrupts::Allow
             && let Err(error) = session_data
                 .backend
-                .set_tricore_options(core_index, Some(false))
+                .set_tricore_options(core_index, Some(false), None)
                 .await
         {
             debug_adapter.log_to_console(format!(
                 "`stepInterrupts` is ignored for core {core_index} (TriCore only): {error}"
             ));
+        }
+
+        if let Some(window) = &target_core_config.perf_window {
+            let elf = target_core_config
+                .program_binary
+                .as_deref()
+                .and_then(|path| std::fs::read(path).ok());
+            let resolve = |name: &str| -> Result<u64, String> {
+                match parse_int::parse::<u64>(name.trim()) {
+                    Ok(address) => Ok(address),
+                    Err(_) => function_address(
+                        elf.as_deref()
+                            .ok_or("a function name needs the `programBinary`")?,
+                        name,
+                    ),
+                }
+            };
+            let message = match (resolve(&window.start), resolve(&window.stop)) {
+                (Ok(start), Ok(stop)) => match session_data
+                    .backend
+                    .set_tricore_options(core_index, None, Some(Some((start, stop))))
+                    .await
+                {
+                    Ok(()) => format!(
+                        "Performance counters of core {core_index} count from {} ({start:#010x}) to {} ({stop:#010x}).",
+                        window.start, window.stop
+                    ),
+                    Err(error) => format!("`perfWindow` is not available: {error}"),
+                },
+                (Err(error), _) | (_, Err(error)) => {
+                    format!("`perfWindow` is ignored: {error}")
+                }
+            };
+            debug_adapter.log_to_console(message);
         }
 
         // Synchronize the optional SVD configuration before exposing scopes.

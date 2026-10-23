@@ -332,6 +332,7 @@ impl Cmd {
                         catch_svc: !self.no_catch_svc,
                         catch_hlt: !self.no_catch_hlt,
                         step_interrupts: Default::default(),
+                        perf_window: None,
                     }],
                 })
                 .ok(),

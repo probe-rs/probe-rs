@@ -96,6 +96,8 @@ pub struct CoreTriCoreOptionsRequest {
     pub core: u32,
     /// Whether single steps run with interrupts disabled (`ICR.IE` cleared during the step).
     pub mask_step_interrupts: Option<bool>,
+    /// The performance counter window (start, stop addresses): `Some(None)` clears it.
+    pub perf_window: Option<Option<(u64, u64)>>,
 }
 
 #[derive(Serialize, Deserialize, Schema, Clone)]

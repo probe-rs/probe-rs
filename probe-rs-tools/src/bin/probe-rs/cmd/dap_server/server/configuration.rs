@@ -410,6 +410,19 @@ pub struct CoreConfig {
     /// ones a source line step is made of). See [`StepInterrupts`].
     #[serde(default)]
     pub(crate) step_interrupts: StepInterrupts,
+
+    /// TriCore: the performance counter window (A-to-B). The counters `ccnt`, `icnt` and
+    /// `m1cnt`-`m3cnt` (registers view, watch expressions) are cleared at the attach or launch,
+    /// and then count only from an execution of `start` to one of `stop`. Each is a function
+    /// of `programBinary` or an address (`0x...`).
+    pub(crate) perf_window: Option<PerfWindowConfig>,
+}
+
+/// The start and stop of a performance counter window: function names or addresses.
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub struct PerfWindowConfig {
+    pub start: String,
+    pub stop: String,
 }
 
 /// Interrupts during the instruction steps of a TriCore core.

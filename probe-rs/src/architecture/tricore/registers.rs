@@ -31,6 +31,16 @@ pub const CSFR_ISP: u16 = 0xFE28;
 pub const CSFR_ICR: u16 = 0xFE2C;
 /// CSFR offset of `FCX` (free CSA list head).
 pub const CSFR_FCX: u16 = 0xFE38;
+/// CSFR offset of `CCTRL` (performance counter control: `CM` bit 0, `CE` bit 1, `M1`-`M3`
+/// event selection in bits 10:2).
+pub const CSFR_CCTRL: u16 = 0xFC00;
+/// CSFR offset of `CCNT` (CPU clock count). `ICNT`, `M1CNT`, `M2CNT` and `M3CNT` follow every
+/// 4 bytes. The counters have 31 bits, bit 31 is the sticky overflow flag; they can be written
+/// only while `CCTRL.CE` is 0.
+pub const CSFR_CCNT: u16 = 0xFC04;
+/// CSFR offset of `ICNT` (instruction count).
+pub const CSFR_ICNT: u16 = 0xFC08;
+
 /// CSFR offset of `D0`. `Dn` is at `CSFR_D0 + 4 * n`.
 pub const CSFR_D0: u16 = 0xFF00;
 /// CSFR offset of `A0`. `An` is at `CSFR_A0 + 4 * n`.
@@ -145,6 +155,17 @@ pub const ICR: CoreRegister = reg(
     UnwindRule::Preserve,
 );
 
+/// A performance counter register: no DWARF number, not changed by calls.
+const fn perf(roles: &'static [RegisterRole], id: u16) -> CoreRegister {
+    CoreRegister {
+        roles,
+        id: RegisterId(id),
+        dwarf_id: None,
+        data_type: RegisterDataType::UnsignedInteger(32),
+        unwind_rule: UnwindRule::Preserve,
+    }
+}
+
 use UnwindRule::{Clear, Preserve, SpecialRule};
 
 static TRICORE_REGISTERS_SET: &[CoreRegister] = &[
@@ -235,6 +256,13 @@ static TRICORE_REGISTERS_SET: &[CoreRegister] = &[
     reg(&[RegisterRole::Core("isp")], CSFR_ISP, 45, Preserve),
     reg(&[RegisterRole::Core("biv")], CSFR_BIV, 48, Preserve),
     reg(&[RegisterRole::Core("btv")], CSFR_BTV, 49, Preserve),
+    // Performance counters.
+    perf(&[RegisterRole::Core("cctrl")], CSFR_CCTRL),
+    perf(&[RegisterRole::Core("ccnt")], CSFR_CCNT),
+    perf(&[RegisterRole::Core("icnt")], CSFR_ICNT),
+    perf(&[RegisterRole::Core("m1cnt")], CSFR_ICNT + 4),
+    perf(&[RegisterRole::Core("m2cnt")], CSFR_ICNT + 8),
+    perf(&[RegisterRole::Core("m3cnt")], CSFR_ICNT + 12),
 ];
 
 /// The registers of a TriCore core.
@@ -304,7 +332,24 @@ mod tests {
         assert_eq!(SP.id, RegisterId(0xFFA8));
         assert_eq!(RA.id, RegisterId(0xFFAC));
         assert_eq!(FP.id, RegisterId(0xFFB8));
-        // PC, D0-D15, A0-A15, PSW, PCXI, FCX, ICR, ISP, BIV, BTV.
-        assert_eq!(TRICORE_CORE_REGISTERS.all_registers().count(), 40);
+        // PC, D0-D15, A0-A15, PSW, PCXI, FCX, ICR, ISP, BIV, BTV, then CCTRL, CCNT, ICNT,
+        // M1CNT-M3CNT.
+        assert_eq!(TRICORE_CORE_REGISTERS.all_registers().count(), 46);
+        let names = TRICORE_CORE_REGISTERS
+            .all_registers()
+            .skip(40)
+            .map(|r| (r.name(), r.id.0))
+            .collect::<Vec<_>>();
+        assert_eq!(
+            names,
+            [
+                ("cctrl", 0xFC00),
+                ("ccnt", 0xFC04),
+                ("icnt", 0xFC08),
+                ("m1cnt", 0xFC0C),
+                ("m2cnt", 0xFC10),
+                ("m3cnt", 0xFC14)
+            ]
+        );
     }
 }
