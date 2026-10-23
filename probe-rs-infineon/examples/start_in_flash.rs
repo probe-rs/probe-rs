@@ -1,10 +1,11 @@
-//! Points CPU0 of a TC275 at the entry of an image in PFLASH, without a reset.
+//! Points CPU0 of a TC275 at the entry of an image in PFLASH or RAM, without a reset.
 //!
 //! For images the boot code does not start, like the demo in the PF1 test sector: it checks
-//! that the flash holds the image, halts CPU0 and sets PC = entry, A10 = the stack top,
-//! A11 = PCXI = 0 (the entry is the outermost frame) and clears ICR.IE. CPU0 stays halted, so a
-//! debugger can attach (DAP `attach` request) and set breakpoints. The application's context
-//! on CPU0 is abandoned: reset the device afterwards.
+//! that the flash holds the image (segments in RAM, like the demo in the CPU0 PSPR, are written
+//! instead), halts CPU0 and sets PC = entry, A10 = the stack top, A11 = PCXI = 0 (the entry is
+//! the outermost frame) and clears ICR.IE. CPU0 stays halted, so a debugger can attach (DAP
+//! `attach` request) and set breakpoints. The application's context on CPU0 is abandoned:
+//! reset the device afterwards.
 //!
 //! ```text
 //! cargo run -p probe-rs-infineon --example start_in_flash -- <elf> [stack top, default 0x7000C000]
@@ -53,11 +54,20 @@ fn main() -> Result<()> {
         if u32_at(ph) != 1 {
             continue;
         }
-        let (offset, address, size) = (
+        let (offset, address, size, mem_size) = (
             u32_at(ph + 4) as usize,
             u32_at(ph + 8),
             u32_at(ph + 16) as usize,
+            u32_at(ph + 20) as usize,
         );
+        // PFLASH is 0x8... (cached) and 0xA...; the rest is RAM (scratchpads, LMU).
+        if !matches!(address >> 28, 0x8 | 0xA) {
+            let mut data = elf[offset..offset + size].to_vec();
+            data.resize(mem_size, 0);
+            core.write(address as u64, &data)?;
+            println!("RAM @{address:#010x} {mem_size} B: written");
+            continue;
+        }
         let mut flash = vec![0; size];
         core.read(address as u64, &mut flash)?;
         if flash != elf[offset..offset + size] {

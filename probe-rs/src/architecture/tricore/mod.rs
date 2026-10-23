@@ -36,8 +36,9 @@ use sequences::TriCoreDebugSequence;
 pub mod ocds {
     /// Debug status register.
     pub const DBGSR: u16 = 0xFD00;
-    /// Debug configuration register, written by the debug init.
-    pub const DBG_CFG: u16 = 0xFD10;
+    /// Software debug event register: the debug action of the `DEBUG` instruction. The debug
+    /// init writes [`SWEVT_HALT`] here.
+    pub const SWEVT: u16 = 0xFD10;
     /// Trigger accumulator: one bit per trigger unit that fired. Reading clears it.
     pub const TRIG_ACC: u16 = 0xFD30;
     /// `TR0EVT`. `TRnEVT` is at `TRIG + 8 * n`, `TRnADR` at `TRIG + 4 + 8 * n`.
@@ -120,8 +121,32 @@ pub mod ocds {
         0,
         0,
     ];
-    /// The value written to [`DBG_CFG`] by the debug init.
-    pub const DBG_CFG_VALUE: u32 = 0x2A;
+    /// The [`SWEVT`] value of the debug init: a `DEBUG` instruction halts the core, break before
+    /// make (the PC stays at the instruction).
+    pub const SWEVT_HALT: u32 = 0x2A;
+
+    /// `DBGSR.EVTSRC` after a halt by a `DEBUG` instruction.
+    pub const EVTSRC_SWEVT: u32 = 2;
+
+    /// The 16-bit `DEBUG` instruction.
+    pub const DEBUG16: [u8; 2] = [0x00, 0xA0];
+    /// The 32-bit `DEBUG` instruction.
+    pub const DEBUG32: [u8; 4] = [0x0D, 0x00, 0x00, 0x01];
+
+    /// The `DEBUG` instruction that replaces an instruction of `len` bytes (2 or 4).
+    pub fn debug_instruction(len: usize) -> &'static [u8] {
+        if len == 4 { &DEBUG32 } else { &DEBUG16 }
+    }
+
+    /// The length of the instruction that starts with byte `first`: bit 0 set means 32 bits.
+    pub fn instruction_len(first: u8) -> usize {
+        if first & 1 == 1 { 4 } else { 2 }
+    }
+
+    /// The number of software breakpoints (`DEBUG` instructions) of a core.
+    pub const SOFTWARE_BREAKPOINTS: usize = 32;
+    /// The breakpoint slots of a core: the trigger units and the software breakpoints.
+    pub const BREAKPOINT_SLOTS: usize = TRIGGER_UNITS + SOFTWARE_BREAKPOINTS;
 
     /// External event register: the debug action on the core break-in signal.
     pub const EXEVT: u16 = 0xFD08;
@@ -179,6 +204,45 @@ pub fn translate_local_address(core_index: u8, address: u32) -> u32 {
     }
 }
 
+/// The bus address (global alias) of `address` when it is in the PSPR of core `core_index`,
+/// local or global. Software breakpoints are planted only there: no cache sits in front of it,
+/// and only that core runs its code.
+pub fn own_pspr_address(core_index: u8, address: u32) -> Option<u32> {
+    let address = translate_local_address(core_index, address);
+    let base = spr::PSPR_GLOBAL - core_index as u32 * spr::CORE_STEP;
+    (base..base + spr::PSPR_SIZE)
+        .contains(&address)
+        .then_some(address)
+}
+
+/// A `DEBUG` instruction planted over an instruction in the PSPR of a core.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct SoftwareBreakpoint {
+    /// The bus address (global alias).
+    address: u32,
+    /// The instruction under the `DEBUG` instruction: 2 or 4 bytes.
+    original: Vec<u8>,
+}
+
+impl SoftwareBreakpoint {
+    fn debug(&self) -> &'static [u8] {
+        ocds::debug_instruction(self.original.len())
+    }
+
+    /// The (offset in the breakpoint, offset in the access) of every byte that an access of
+    /// `len` bytes at `address` shares with the breakpoint.
+    fn overlap(&self, address: u32, len: usize) -> impl Iterator<Item = (usize, usize)> + use<> {
+        let start = self.address as u64;
+        let access = address as u64..address as u64 + len as u64;
+        (0..self.original.len()).filter_map(move |i| {
+            let byte = start + i as u64;
+            access
+                .contains(&byte)
+                .then(|| (i, (byte - access.start) as usize))
+        })
+    }
+}
+
 /// How long CSFR accesses may fail while the device reboots after a reset.
 const REBOOT_TIME: Duration = Duration::from_secs(2);
 
@@ -215,8 +279,14 @@ enum LastAction {
 /// The state of a TriCore core that persists between [`TriCore`] handles.
 #[derive(Debug)]
 pub struct TriCoreCoreState {
-    /// The planted hardware breakpoints, per trigger unit.
+    /// The breakpoint addresses, per slot that the debugger sees. A breakpoint in the PSPR of
+    /// the core is a `DEBUG` instruction (`software`), one elsewhere takes a trigger unit
+    /// (`breakpoints`).
+    slots: Vec<Option<u32>>,
+    /// The hardware breakpoints, per trigger unit.
     breakpoints: [Option<u32>; ocds::TRIGGER_UNITS],
+    /// The planted software breakpoints. Lent to [`TriCoreMemory`] while a [`TriCore`] exists.
+    software: Vec<SoftwareBreakpoint>,
     /// Whether hardware breakpoints are enabled.
     breakpoints_enabled: bool,
     /// Whether the core was halted at the last status check.
@@ -246,7 +316,9 @@ impl TriCoreCoreState {
     /// Creates the state of a core that was not attached yet.
     pub(crate) fn new() -> Self {
         Self {
+            slots: vec![None; ocds::BREAKPOINT_SLOTS],
             breakpoints: [None; ocds::TRIGGER_UNITS],
+            software: Vec::new(),
             breakpoints_enabled: false,
             was_halted: false,
             halt_reason: None,
@@ -271,17 +343,25 @@ impl TriCoreCoreState {
 
 /// Memory access of one TriCore core.
 ///
-/// Local scratchpad addresses are translated to the global aliases of the core.
+/// Local scratchpad addresses are translated to the global aliases of the core. The planted
+/// software breakpoints are hidden: reads return the instructions under them, and writes over
+/// them change those instructions and keep the breakpoints.
 #[derive(Debug)]
 pub struct TriCoreMemory<'probe> {
     bus: &'probe mut dyn TriCoreBusAccess,
     core_index: u8,
+    /// The planted software breakpoints, lent by the core state while a [`TriCore`] exists.
+    software: Vec<SoftwareBreakpoint>,
 }
 
 impl<'probe> TriCoreMemory<'probe> {
     /// Creates the memory interface of core `core_index`.
     pub fn new(bus: &'probe mut dyn TriCoreBusAccess, core_index: u8) -> Self {
-        Self { bus, core_index }
+        Self {
+            bus,
+            core_index,
+            software: Vec::new(),
+        }
     }
 
     fn address(&self, address: u64) -> Result<u32, TriCoreError> {
@@ -293,12 +373,30 @@ impl<'probe> TriCoreMemory<'probe> {
 
     fn read_bytes(&mut self, address: u64, data: &mut [u8]) -> Result<(), TriCoreError> {
         let address = self.address(address)?;
-        self.bus.read_block(AddressMap::Target, address, data)
+        self.bus.read_block(AddressMap::Target, address, data)?;
+        for sw in &self.software {
+            let debug = sw.debug();
+            for (i, j) in sw.overlap(address, data.len()) {
+                // Code written over the breakpoint by other means is shown as it is.
+                if data[j] == debug[i] {
+                    data[j] = sw.original[i];
+                }
+            }
+        }
+        Ok(())
     }
 
     fn write_bytes(&mut self, address: u64, data: &[u8]) -> Result<(), TriCoreError> {
         let address = self.address(address)?;
-        self.bus.write_block(AddressMap::Target, address, data)
+        let mut data = std::borrow::Cow::Borrowed(data);
+        for sw in &mut self.software {
+            let debug = sw.debug();
+            for (i, j) in sw.overlap(address, data.len()) {
+                sw.original[i] = data[j];
+                data.to_mut()[j] = debug[i];
+            }
+        }
+        self.bus.write_block(AddressMap::Target, address, &data)
     }
 }
 
@@ -426,8 +524,10 @@ impl<'probe> TriCore<'probe> {
         options: TriCoreCoreAccessOptions,
         sequence: Arc<dyn TriCoreDebugSequence>,
     ) -> Self {
+        let mut memory = TriCoreMemory::new(bus, options.core_index);
+        memory.software = std::mem::take(&mut state.software);
         Self {
-            memory: TriCoreMemory::new(bus, options.core_index),
+            memory,
             state,
             options,
             peers: Vec::new(),
@@ -559,7 +659,7 @@ impl<'probe> TriCore<'probe> {
     fn step_debug_init(&mut self, arm_step: bool) -> Result<(), TriCoreError> {
         self.write_csfr_words(ocds::TRIG, &ocds::STEP_TRIGGERS_INIT)?;
         self.write_csfr_words(ocds::DBGSR, &[0; 4])?;
-        self.write_csfr(ocds::DBG_CFG, ocds::DBG_CFG_VALUE)?;
+        self.write_csfr(ocds::SWEVT, ocds::SWEVT_HALT)?;
         if arm_step {
             self.write_csfr_words(ocds::TRIG, &ocds::STEP_TRIGGERS_ARM)?;
         }
@@ -582,9 +682,16 @@ impl<'probe> TriCore<'probe> {
                 .iter()
                 .enumerate()
                 .any(|(unit, bp)| trigger_acc & (1 << unit) != 0 && *bp == Some(pc));
+        // A `DEBUG` instruction: one of the software breakpoints, or one in the program. In the
+        // halt group the break-in that follows the halt overwrites `EVTSRC`, so a software
+        // breakpoint is told by the PC.
+        let debug_instruction = ocds::event_source(dbgsr) == ocds::EVTSRC_SWEVT
+            || (self.software_at(pc).is_some() && self.state.last_action != LastAction::Halt);
 
         let reason = if breakpoint_hit {
             HaltReason::Breakpoint(BreakpointCause::Hardware)
+        } else if debug_instruction {
+            HaltReason::Breakpoint(BreakpointCause::Software)
         } else {
             match self.state.last_action {
                 LastAction::Step => HaltReason::Step,
@@ -613,6 +720,9 @@ impl<'probe> TriCore<'probe> {
         let halted = ocds::is_halted(dbgsr);
         if halted && !self.state.was_halted {
             self.on_halted(dbgsr)?;
+            // A member that ran when this core halted missed the halt on the group line (it was
+            // still halted itself, or resumed just after): halt it now.
+            self.halt_group_members()?;
         }
         if !halted {
             self.state.halt_reason = None;
@@ -680,14 +790,45 @@ impl<'probe> TriCore<'probe> {
         }
     }
 
-    /// Whether the core is halted at a planted instruction breakpoint. Running from there would
-    /// hit the same trigger again, so the instruction is stepped first.
+    /// Whether the core is halted at a planted breakpoint. Running from there would hit the same
+    /// trigger or `DEBUG` instruction again, so the instruction is stepped first.
     fn at_breakpoint(&mut self) -> Result<bool, TriCoreError> {
-        if !self.state.breakpoints_enabled || self.state.breakpoints.iter().all(Option::is_none) {
+        if !self.state.breakpoints_enabled || self.state.slots.iter().all(Option::is_none) {
             return Ok(false);
         }
         let pc = self.pc()?;
-        Ok(self.state.breakpoints.contains(&Some(pc)))
+        Ok(self.state.breakpoints.contains(&Some(pc)) || self.software_at(pc).is_some())
+    }
+
+    /// The index of the software breakpoint at CPU address `address`.
+    fn software_at(&self, address: u32) -> Option<usize> {
+        let address = translate_local_address(self.core(), address);
+        self.memory
+            .software
+            .iter()
+            .position(|sw| sw.address == address)
+    }
+
+    /// Moves the PC past a `DEBUG` instruction of the program that halted the core (break before
+    /// make leaves the PC at it, so running would halt there again). Returns whether it did.
+    fn skip_program_debug(&mut self, dbgsr: u32, pc: u32) -> Result<bool, TriCoreError> {
+        if ocds::event_source(dbgsr) != ocds::EVTSRC_SWEVT || self.software_at(pc).is_some() {
+            return Ok(false);
+        }
+        let address = translate_local_address(self.core(), pc);
+        let mut code = [0; 4];
+        self.bus()
+            .read_block(AddressMap::Target, address, &mut code[..2])?;
+        let len = ocds::instruction_len(code[0]);
+        if len == 4 {
+            self.bus()
+                .read_block(AddressMap::Target, address, &mut code)?;
+        }
+        if code[..len] != *ocds::debug_instruction(len) {
+            return Ok(false);
+        }
+        self.write_csfr(registers::CSFR_PC, pc + len as u32)?;
+        Ok(true)
     }
 
     fn step_core(&mut self) -> Result<(), TriCoreError> {
@@ -697,6 +838,33 @@ impl<'probe> TriCore<'probe> {
         }
         self.take_triggers()?;
 
+        let pc = self.pc()?;
+        if self.skip_program_debug(dbgsr, pc)? {
+            // Moving past the `DEBUG` instruction is the step.
+            self.state.last_action = LastAction::Step;
+            self.state.halt_reason = Some(HaltReason::Step);
+            self.state.was_halted = true;
+            return Ok(());
+        }
+        // The instruction under a software breakpoint at the PC runs, the breakpoint is planted
+        // again after the step.
+        let lifted = self
+            .software_at(pc)
+            .map(|i| self.memory.software[i].clone());
+        if let Some(sw) = &lifted {
+            self.bus()
+                .write_block(AddressMap::Target, sw.address, &sw.original)?;
+        }
+        let stepped = self.step_once();
+        if let Some(sw) = &lifted {
+            self.bus()
+                .write_block(AddressMap::Target, sw.address, sw.debug())?;
+        }
+        stepped
+    }
+
+    /// The single step sequence of [`Self::step_core`].
+    fn step_once(&mut self) -> Result<(), TriCoreError> {
         self.step_debug_init(true)?;
         let dbgsr = self.csfr(ocds::DBGSR);
         self.write_bracketed(&[
@@ -728,13 +896,15 @@ impl<'probe> TriCore<'probe> {
     }
 
     fn run_core(&mut self) -> Result<(), TriCoreError> {
-        if !ocds::is_halted(self.dbgsr()?) {
+        let dbgsr = self.dbgsr()?;
+        if !ocds::is_halted(dbgsr) {
             // Already running.
             return Ok(());
         }
         // A run does not take over the triggers: a session that only resumes the core (for
         // example a command line tool) keeps the breakpoints of the session debugging it.
-        if self.at_breakpoint()? {
+        let pc = self.pc()?;
+        if !self.skip_program_debug(dbgsr, pc)? && self.at_breakpoint()? {
             self.step_core()?;
         }
 
@@ -742,18 +912,26 @@ impl<'probe> TriCore<'probe> {
         // In the halt group, the members that the group halted run again with this core, in the
         // same request: a member that ran on alone could halt again before the others run, and
         // that halt would not reach them.
-        let mut writes = Self::run_writes(self.csfr(ocds::DBGSR)).to_vec();
+        // This core runs last: it is the one the user continues, often close to a breakpoint, and
+        // a halt before the others run would not reach them.
+        let mut writes = Vec::new();
         for dbgsr in self.halted_group_members()? {
             writes.extend(Self::run_writes(dbgsr));
         }
+        let peers_run = !writes.is_empty();
+        writes.extend(Self::run_writes(self.csfr(ocds::DBGSR)));
         self.write_bracketed(&writes)?;
 
         let dbgsr = self.dbgsr()?;
         if !ocds::is_running(dbgsr) {
-            // A trigger that catches the core right after the start is a normal halt: keep its
-            // accumulator bits for the halt reason.
+            if peers_run {
+                // Halted again before the request ran the others.
+                self.halt_group_members()?;
+            }
+            // A trigger or `DEBUG` instruction that catches the core right after the start is a
+            // normal halt: keep the trigger accumulator bits for the halt reason.
             let trigger_acc = self.read_csfr(ocds::TRIG_ACC)?;
-            if trigger_acc == 0 {
+            if trigger_acc == 0 && ocds::event_source(dbgsr) != ocds::EVTSRC_SWEVT {
                 return Err(TriCoreError::CoreDidNotRun {
                     core: self.core(),
                     dbgsr,
@@ -821,28 +999,47 @@ impl<'probe> TriCore<'probe> {
 
     /// The `DBGSR` addresses of the other halt group members to run with this core, when this
     /// session put the core in the group: the members that ran while this core last ran, and
-    /// halted since. A member halted at one of its breakpoints stays halted: its own debugger
-    /// steps over the breakpoint when it runs the core.
+    /// halted since. A member halted at one of its breakpoints (a trigger unit or a `DEBUG`
+    /// instruction) stays halted: its own debugger steps over the breakpoint when it runs the
+    /// core.
+    ///
+    /// The members that run now and the ones returned become the `running_peers` of the run: the
+    /// core may halt again before a status check sees it running.
     fn halted_group_members(&mut self) -> Result<Vec<u32>, TriCoreError> {
-        if self.state.halt_group.is_none() || self.state.running_peers.is_empty() {
+        if self.state.halt_group.is_none() || self.peers.is_empty() {
             return Ok(Vec::new());
         }
-        let peers = self.read_group()?.peers;
-        let running_peers = std::mem::take(&mut self.state.running_peers);
-        let halted = peers
-            .into_iter()
-            .filter(|&(core, trc, dbgsr)| {
-                running_peers.contains(&core) && ocds::in_halt_group(trc) && ocds::is_halted(dbgsr)
+        let group = self.read_group()?;
+        let previous = std::mem::take(&mut self.state.running_peers);
+        self.state.running_peers = group.running_members();
+        let to_run = self.members_to_run(&group, &previous)?;
+        self.state
+            .running_peers
+            .extend(to_run.iter().map(|&(core, _)| core));
+        Ok(to_run.into_iter().map(|(_, dbgsr)| dbgsr).collect())
+    }
+
+    /// The (core index, `DBGSR` address) of the members for [`Self::halted_group_members`].
+    fn members_to_run(
+        &mut self,
+        group: &GroupState,
+        previous: &[u8],
+    ) -> Result<Vec<(u8, u32)>, TriCoreError> {
+        let halted = group
+            .peers
+            .iter()
+            .filter(|&&(core, trc, dbgsr)| {
+                previous.contains(&core) && ocds::in_halt_group(trc) && ocds::is_halted(dbgsr)
             })
-            .filter_map(|(core, _, _)| self.peer_csfr_base(core))
+            .filter_map(|&(core, _, _)| Some((core, self.peer_csfr_base(core)?)))
             .collect::<Vec<_>>();
         if halted.is_empty() {
-            return Ok(halted);
+            return Ok(Vec::new());
         }
 
         // The PC and the trigger units of each halted member, in one request.
         let mut transfers = Vec::new();
-        for &csfr_base in &halted {
+        for &(_, csfr_base) in &halted {
             transfers.push(BusTransfer::read(
                 AddressMap::Target,
                 csfr_base + registers::CSFR_PC as u32,
@@ -855,8 +1052,8 @@ impl<'probe> TriCore<'probe> {
             ));
         }
         self.bus().execute(&mut transfers)?;
-        let mut members = Vec::new();
-        for (csfr_base, pair) in halted.into_iter().zip(transfers.chunks(2)) {
+        let mut candidates = Vec::new();
+        for (&(core, csfr_base), pair) in halted.iter().zip(transfers.chunks(2)) {
             let pc = pair[0].read_u32()?;
             pair[1].check()?;
             // Each trigger unit is `TRnEVT` followed by `TRnADR`.
@@ -866,9 +1063,33 @@ impl<'probe> TriCore<'probe> {
                     && u32::from_le_bytes([a0, a1, a2, a3]) == pc
             });
             if !at_breakpoint {
-                members.push(csfr_base + ocds::DBGSR as u32);
+                candidates.push((core, translate_local_address(core, pc), csfr_base));
             }
         }
+        if candidates.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        // A member halted at a `DEBUG` instruction (a software breakpoint) stays halted as well.
+        let mut transfers = candidates
+            .iter()
+            .map(|&(_, pc, _)| BusTransfer::read(AddressMap::Target, pc, 4))
+            .collect::<Vec<_>>();
+        self.bus().execute(&mut transfers)?;
+        let members = candidates
+            .into_iter()
+            .zip(&transfers)
+            .filter(|(_, code)| {
+                // Code at the end of a memory may not have 4 bytes: then it is no `DEBUG32`.
+                let code = if code.check().is_ok() {
+                    code.data.as_slice()
+                } else {
+                    &[]
+                };
+                !code.starts_with(&ocds::DEBUG16) && !code.starts_with(&ocds::DEBUG32)
+            })
+            .map(|((core, _, csfr_base), _)| (core, csfr_base + ocds::DBGSR as u32))
+            .collect();
         Ok(members)
     }
 
@@ -963,6 +1184,10 @@ impl<'probe> TriCore<'probe> {
             }
         }
         self.reinit_triggers()?;
+        // The reset cleared SWEVT as well: the planted `DEBUG` instructions would not halt.
+        if !self.memory.software.is_empty() {
+            self.write_csfr(ocds::SWEVT, ocds::SWEVT_HALT)?;
+        }
         // The reset cleared the halt group routing. This core is routed again here, the members
         // of other sessions at their next status check.
         self.state.running_peers.clear();
@@ -977,11 +1202,173 @@ impl<'probe> TriCore<'probe> {
         Ok(())
     }
 
-    fn ensure_unit(&self, unit_index: usize) -> Result<(), TriCoreError> {
-        if unit_index >= ocds::TRIGGER_UNITS {
-            return Err(TriCoreError::BreakpointOutOfBounds(unit_index));
+    fn ensure_slot(&self, slot: usize) -> Result<(), TriCoreError> {
+        if slot >= ocds::BREAKPOINT_SLOTS {
+            return Err(TriCoreError::BreakpointOutOfBounds(slot));
         }
         Ok(())
+    }
+
+    fn trigger_unit_of(&self, address: u32) -> Option<usize> {
+        self.state
+            .breakpoints
+            .iter()
+            .position(|&bp| bp == Some(address))
+    }
+
+    /// Sets the breakpoint of `slot` to `address`.
+    fn set_breakpoint(&mut self, slot: usize, address: u32) -> Result<(), Error> {
+        self.ensure_slot(slot)?;
+        self.take_triggers()?;
+        if self.state.slots[slot].is_some_and(|old| old != address) {
+            self.clear_breakpoint(slot)?;
+        }
+        self.state.slots[slot] = Some(address);
+        self.place(slot, address)
+    }
+
+    /// Puts the breakpoint of `slot` at `address` in place: a `DEBUG` instruction in the PSPR of
+    /// the core, a trigger unit elsewhere. Software breakpoints wait while breakpoints are
+    /// disabled.
+    fn place(&mut self, slot: usize, address: u32) -> Result<(), Error> {
+        if let Some(unit) = self.trigger_unit_of(address) {
+            return Ok(self.write_trigger(unit)?);
+        }
+        if self.software_at(address).is_some() {
+            return Ok(());
+        }
+        if let Some(bus_address) = own_pspr_address(self.core(), address) {
+            if !self.state.breakpoints_enabled {
+                return Ok(());
+            }
+            match self.plant(bus_address) {
+                Ok(()) => return Ok(()),
+                Err(error) => tracing::warn!(
+                    "TriCore core {}: no software breakpoint at {address:#010x} ({error}), \
+                     using a trigger unit",
+                    self.core()
+                ),
+            }
+        }
+        // The trigger unit of the same number as the slot, else the first free one.
+        let free = |unit: usize| self.state.breakpoints[unit].is_none();
+        let unit = if slot < ocds::TRIGGER_UNITS && free(slot) {
+            Some(slot)
+        } else {
+            (0..ocds::TRIGGER_UNITS).find(|&unit| free(unit))
+        };
+        let Some(unit) = unit else {
+            self.state.slots[slot] = None;
+            return Err(Error::Other(format!(
+                "No free hardware breakpoint for {address:#010x}: all {} trigger units are in use \
+                 (software breakpoints work only in the PSPR of the core)",
+                ocds::TRIGGER_UNITS
+            )));
+        };
+        self.state.breakpoints[unit] = Some(address);
+        Ok(self.write_trigger(unit)?)
+    }
+
+    /// Plants a `DEBUG` instruction at bus address `address`, over the instruction there.
+    fn plant(&mut self, address: u32) -> Result<(), TriCoreError> {
+        let mut head = [0; 2];
+        self.bus()
+            .read_block(AddressMap::Target, address, &mut head)?;
+        let mut original = vec![0; ocds::instruction_len(head[0])];
+        self.bus()
+            .read_block(AddressMap::Target, address, &mut original)?;
+        let sw = SoftwareBreakpoint { address, original };
+        let debug = sw.debug();
+        if sw.original == debug {
+            // Left by a session that did not end cleanly, or the program's own: the instruction
+            // under it is unknown.
+            return Err(TriCoreError::Protocol(
+                "a DEBUG instruction is there already".to_string(),
+            ));
+        }
+
+        self.write_csfr(ocds::SWEVT, ocds::SWEVT_HALT)?;
+        self.bus().write_block(AddressMap::Target, address, debug)?;
+        let mut check = vec![0; debug.len()];
+        self.bus()
+            .read_block(AddressMap::Target, address, &mut check)?;
+        if check != debug {
+            return Err(TriCoreError::Protocol(
+                "the memory did not take the DEBUG instruction".to_string(),
+            ));
+        }
+        self.memory.software.push(sw);
+        Ok(())
+    }
+
+    /// Puts the instruction under a software breakpoint back, unless the code there changed by
+    /// other means (the program was loaded again, for example).
+    fn unplant(&mut self, sw: &SoftwareBreakpoint) -> Result<(), TriCoreError> {
+        let mut code = vec![0; sw.original.len()];
+        self.bus()
+            .read_block(AddressMap::Target, sw.address, &mut code)?;
+        if code == sw.debug() {
+            self.bus()
+                .write_block(AddressMap::Target, sw.address, &sw.original)?;
+        }
+        Ok(())
+    }
+
+    /// Clears the breakpoint of `slot`.
+    fn clear_breakpoint(&mut self, slot: usize) -> Result<(), TriCoreError> {
+        self.ensure_slot(slot)?;
+        self.take_triggers()?;
+        let Some(address) = self.state.slots[slot].take() else {
+            // An empty slot: its trigger unit is disabled, which clears what another session may
+            // have left there.
+            if slot < ocds::TRIGGER_UNITS && self.state.breakpoints[slot].is_none() {
+                self.write_trigger(slot)?;
+            }
+            return Ok(());
+        };
+        if self.state.slots.contains(&Some(address)) {
+            // Another slot holds the same breakpoint.
+            return Ok(());
+        }
+        if let Some(unit) = self.trigger_unit_of(address) {
+            self.state.breakpoints[unit] = None;
+            self.write_trigger(unit)?;
+        } else if let Some(i) = self.software_at(address) {
+            let sw = self.memory.software.remove(i);
+            self.unplant(&sw)?;
+        }
+        Ok(())
+    }
+
+    /// Enables or disables the breakpoints. Disabled software breakpoints are taken out of the
+    /// code, and planted again when the breakpoints are enabled.
+    fn set_breakpoints_enabled(&mut self, state: bool) -> Result<(), Error> {
+        self.take_triggers()?;
+        self.state.breakpoints_enabled = state;
+        for unit in 0..ocds::TRIGGER_UNITS {
+            if self.state.breakpoints[unit].is_some() {
+                self.write_trigger(unit)?;
+            }
+        }
+        if state {
+            for slot in 0..ocds::BREAKPOINT_SLOTS {
+                if let Some(address) = self.state.slots[slot] {
+                    self.place(slot, address)?;
+                }
+            }
+        } else {
+            for sw in std::mem::take(&mut self.memory.software) {
+                self.unplant(&sw)?;
+            }
+        }
+        Ok(())
+    }
+}
+
+impl Drop for TriCore<'_> {
+    fn drop(&mut self) {
+        // Give the software breakpoints back to the core state.
+        self.state.software = std::mem::take(&mut self.memory.software);
     }
 }
 
@@ -1059,44 +1446,38 @@ impl CoreInterface for TriCore<'_> {
         Ok(self.write_csfr(address.0, value)?)
     }
 
+    /// The breakpoint slots: the trigger units, plus the software breakpoints that the PSPR of
+    /// the core can hold.
     fn available_breakpoint_units(&mut self) -> Result<u32, Error> {
-        Ok(ocds::TRIGGER_UNITS as u32)
+        Ok(ocds::BREAKPOINT_SLOTS as u32)
     }
 
     fn hw_breakpoints(&mut self) -> Result<Vec<Option<u64>>, Error> {
         Ok(self
             .state
-            .breakpoints
+            .slots
             .iter()
             .map(|bp| bp.map(u64::from))
             .collect())
     }
 
     fn enable_breakpoints(&mut self, state: bool) -> Result<(), Error> {
-        self.take_triggers()?;
-        self.state.breakpoints_enabled = state;
-        for unit in 0..ocds::TRIGGER_UNITS {
-            if self.state.breakpoints[unit].is_some() {
-                self.write_trigger(unit)?;
-            }
-        }
-        Ok(())
+        self.set_breakpoints_enabled(state)
     }
 
     fn set_hw_breakpoint(&mut self, unit_index: usize, addr: u64) -> Result<(), Error> {
-        self.ensure_unit(unit_index)?;
         let address = u32::try_from(addr)
             .map_err(|_| Error::Other(format!("breakpoint address {addr:#x} out of range")))?;
-        self.take_triggers()?;
-        self.state.breakpoints[unit_index] = Some(address);
-        Ok(self.write_trigger(unit_index)?)
+        if !address.is_multiple_of(2) {
+            return Err(Error::Other(format!(
+                "breakpoint address {address:#010x} is not an instruction address"
+            )));
+        }
+        self.set_breakpoint(unit_index, address)
     }
 
     fn clear_hw_breakpoint(&mut self, unit_index: usize) -> Result<(), Error> {
-        self.ensure_unit(unit_index)?;
-        self.take_triggers()?;
-        self.state.breakpoints[unit_index] = None;
-        Ok(self.write_trigger(unit_index)?)
+        Ok(self.clear_breakpoint(unit_index)?)
     }
 
     fn registers(&self) -> &'static CoreRegisters {
