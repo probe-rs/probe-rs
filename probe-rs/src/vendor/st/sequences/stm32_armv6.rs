@@ -2,13 +2,19 @@
 //!
 //! This covers devices where DBGMCU is at 0x40015800 and has the DBG_STANDBY and DBG_STOP bits.
 
-use std::sync::Arc;
+use std::{
+    sync::Arc,
+    time::{Duration, Instant},
+};
 
 use probe_rs_target::CoreType;
 
-use crate::architecture::arm::{
-    ArmDebugInterface, ArmError, FullyQualifiedApAddress, memory::ArmMemoryInterface,
-    sequences::ArmDebugSequence,
+use crate::{
+    MemoryMappedRegister,
+    architecture::arm::{
+        ArmDebugInterface, ArmError, FullyQualifiedApAddress, armv6m::Dhcsr,
+        memory::ArmMemoryInterface, sequences::ArmDebugSequence,
+    },
 };
 
 /// Supported families for custom sequences on ARMv6 STM32 devices.
@@ -111,6 +117,68 @@ mod dbgmcu {
     }
 }
 
+impl Stm32Armv6 {
+    fn dbgen(&self, memory: &mut dyn ArmMemoryInterface) -> Result<bool, ArmError> {
+        Ok(match self.family {
+            Stm32Armv6Family::F0 => rcc::EnrF0::read(memory)?.dbgen(),
+            Stm32Armv6Family::L0 => rcc::EnrL0::read(memory)?.dbgen(),
+            Stm32Armv6Family::G0 => rcc::EnrG0::read(memory)?.dbgen(),
+        })
+    }
+
+    /// Sets or clears DBGEN and the stop and standby debug bits. The RCC register is shared with
+    /// the firmware: a clock it enables between our read and write would be switched off again, so
+    /// a running core is halted around the read-modify-writes.
+    fn set_debug(&self, memory: &mut dyn ArmMemoryInterface, on: bool) -> Result<(), ArmError> {
+        let dhcsr = Dhcsr(memory.read_word_32(Dhcsr::get_mmio_address())?);
+        let running = !dhcsr.s_halt();
+        if running {
+            let mut halt = Dhcsr(0);
+            halt.enable_write();
+            halt.set_c_debugen(true);
+            halt.set_c_halt(true);
+            memory.write_word_32(Dhcsr::get_mmio_address(), halt.into())?;
+            let start = Instant::now();
+            while !Dhcsr(memory.read_word_32(Dhcsr::get_mmio_address())?).s_halt() {
+                if start.elapsed() > Duration::from_millis(100) {
+                    tracing::warn!("Core did not halt, changing DBGMCU while it runs");
+                    break;
+                }
+            }
+        }
+
+        match self.family {
+            Stm32Armv6Family::F0 => {
+                let mut enr = rcc::EnrF0::read(memory)?;
+                enr.enable_dbg(on);
+                enr.write(memory)?;
+            }
+            Stm32Armv6Family::L0 => {
+                let mut enr = rcc::EnrL0::read(memory)?;
+                enr.enable_dbg(on);
+                enr.write(memory)?;
+            }
+            Stm32Armv6Family::G0 => {
+                let mut enr = rcc::EnrG0::read(memory)?;
+                enr.enable_dbg(on);
+                enr.write(memory)?;
+            }
+        }
+        let mut cr = dbgmcu::Control::read(memory)?;
+        cr.enable_standby_debug(on);
+        cr.enable_stop_debug(on);
+        cr.write(memory)?;
+
+        if running {
+            let mut resume = Dhcsr(0);
+            resume.enable_write();
+            resume.set_c_debugen(dhcsr.c_debugen());
+            memory.write_word_32(Dhcsr::get_mmio_address(), resume.into())?;
+        }
+        Ok(())
+    }
+}
+
 impl ArmDebugSequence for Stm32Armv6 {
     fn debug_device_unlock(
         &self,
@@ -119,31 +187,13 @@ impl ArmDebugSequence for Stm32Armv6 {
         _permissions: &crate::Permissions,
     ) -> Result<(), ArmError> {
         let mut memory = interface.memory_interface(default_ap)?;
-
-        match self.family {
-            Stm32Armv6Family::F0 => {
-                let mut enr = rcc::EnrF0::read(&mut *memory)?;
-                enr.enable_dbg(true);
-                enr.write(&mut *memory)?;
-            }
-            Stm32Armv6Family::L0 => {
-                let mut enr = rcc::EnrL0::read(&mut *memory)?;
-                enr.enable_dbg(true);
-                enr.write(&mut *memory)?;
-            }
-            Stm32Armv6Family::G0 => {
-                let mut enr = rcc::EnrG0::read(&mut *memory)?;
-                enr.enable_dbg(true);
-                enr.write(&mut *memory)?;
+        if self.dbgen(&mut *memory)? {
+            let cr = dbgmcu::Control::read(&mut *memory)?;
+            if cr.dbg_standby() && cr.dbg_stop() {
+                return Ok(());
             }
         }
-
-        let mut cr = dbgmcu::Control::read(&mut *memory)?;
-        cr.enable_standby_debug(true);
-        cr.enable_stop_debug(true);
-        cr.write(&mut *memory)?;
-
-        Ok(())
+        self.set_debug(&mut *memory, true)
     }
 
     fn debug_core_stop(
@@ -151,29 +201,10 @@ impl ArmDebugSequence for Stm32Armv6 {
         memory: &mut dyn ArmMemoryInterface,
         _core_type: CoreType,
     ) -> Result<(), ArmError> {
-        match self.family {
-            Stm32Armv6Family::F0 => {
-                let mut enr = rcc::EnrF0::read(&mut *memory)?;
-                enr.enable_dbg(false);
-                enr.write(&mut *memory)?;
-            }
-            Stm32Armv6Family::L0 => {
-                let mut enr = rcc::EnrL0::read(&mut *memory)?;
-                enr.enable_dbg(false);
-                enr.write(&mut *memory)?;
-            }
-            Stm32Armv6Family::G0 => {
-                let mut enr = rcc::EnrG0::read(&mut *memory)?;
-                enr.enable_dbg(false);
-                enr.write(&mut *memory)?;
-            }
+        // Without DBGEN, DBGMCU is not clocked: there is nothing to switch off.
+        if !self.dbgen(memory)? {
+            return Ok(());
         }
-
-        let mut cr = dbgmcu::Control::read(&mut *memory)?;
-        cr.enable_standby_debug(false);
-        cr.enable_stop_debug(false);
-        cr.write(&mut *memory)?;
-
-        Ok(())
+        self.set_debug(memory, false)
     }
 }
