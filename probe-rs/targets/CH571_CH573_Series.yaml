@@ -1,4 +1,4 @@
-name: CH57X Series
+name: CH571 / CH573 Series
 chip_detection:
 - !WchLink
   mask: 0xff000000
