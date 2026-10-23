@@ -74,6 +74,9 @@ impl MCX {
         "MCXA156", "MCXA155", "MCXA154", "MCXA146", "MCXA145", "MCXA144",
     ];
     const VARIANT_A2: [&str; 6] = ["MCXA16", "MCXA17", "MCXA18", "MCXA25", "MCXA26", "MCXA27"];
+    const VARIANT_A3: [&str; 8] = [
+        "MCXA343", "MCXA344", "MCXA345", "MCXA346", "MCXA355", "MCXA356", "MCXA365", "MCXA366",
+    ];
     const VARIANT_A5: [&str; 6] = ["MCXA28", "MCXA45", "MCXA53", "MCXA55", "MCXA56", "MCXA57"];
     const VARIANT_N: [&str; 1] = ["MCXN"];
     const VARIANT_N0: [&str; 2] = ["MCXN947", "MCXN526"];
@@ -81,19 +84,20 @@ impl MCX {
     /// Parts whose reference manual documents the FMU at 0x4009_5000 with the Read into
     /// MISR command, so flash can be verified by signature rather than by reading it back.
     ///
-    /// Taken from two manuals, which describe the same register block and the same command:
+    /// Taken from three manuals, which describe the same register block and the same command:
     ///
     /// - MCX A175, A176, A185, A186, A255, A256, A265 and A266, confirmed against an
     ///   MCXA266.
     /// - MCX A577, A567, A566, A557, A556, A537, A536, A457, A456, A287 and A286.
+    /// - MCX A345, A346, A355, A356, A365 and A366 (MCXAP144M240F60RM, section 6.3.2.6).
     ///
     /// A27x is also here without a manual of its own: it is the same die as A265/A266, and
     /// early boards identify as A275/A276 rather than A265/A266.
     ///
     /// Extend this only alongside the manual for the part being added.
-    const VARIANT_FMU_MISR: [&str; 11] = [
+    const VARIANT_FMU_MISR: [&str; 17] = [
         "MCXA17", "MCXA18", "MCXA25", "MCXA26", "MCXA27", "MCXA28", "MCXA45", "MCXA53", "MCXA55",
-        "MCXA56", "MCXA57",
+        "MCXA56", "MCXA57", "MCXA345", "MCXA346", "MCXA355", "MCXA356", "MCXA365", "MCXA366",
     ];
 
     /// How long to wait for the boot ROM to grant debug access after a successful
@@ -279,6 +283,28 @@ impl MCX {
             interface.write_word_32(AHBRESETSET0_ADDR, 1 << 29)?;
             // Enable Port0 clock
             interface.write_word_32(AHBCLKCTRLSET0_ADDR, 1 << 29)?;
+        } else if self.is_variant(Self::VARIANT_A3) {
+            // MCXAP144M240F60RM, section 14.5.2. The MCXA343/344 use periph3's
+            // MRCC layout instead, as defined in their CMSIS PERI_MRCC.h and SVD.
+            // Do not copy the stale trace addresses in the packs' debug scripts.
+            const MRCC_BASE: u64 = 0x4009_1000;
+            let trace_clksel = MRCC_BASE
+                + if self.is_variant(["MCXA343", "MCXA344"]) {
+                    0x150
+                } else {
+                    0x1A8
+                };
+            let trace_clkdiv = trace_clksel + 4;
+
+            // Preserve a selected source; MUX=3 means no clock.
+            if interface.read_word_32(trace_clksel)? & 0x3 == 0x3 {
+                interface.write_word_32(trace_clksel, 0)?;
+            }
+            // DIV is four bits wide. Clear HALT/RESET without writing reserved bits.
+            let divider = interface.read_word_32(trace_clkdiv)? & 0xF;
+            interface.write_word_32(trace_clkdiv, divider)?;
+            interface.write_word_32(MRCC_BASE + 0x14, 1 << 12)?;
+            interface.write_word_32(MRCC_BASE + 0x54, 1 << 12)?;
         }
 
         interface.flush()?;
@@ -506,7 +532,11 @@ impl ArmDebugSequence for MCX {
             interface.write_word_32(0x4000_0220, 0xE000)?;
             interface.write_word_32(0x4000_0140, 0xE000)?;
         } else {
-            tracing::warn!("unknown variant, using default watchpoint configuration");
+            // MCXA3's ResetSystem sequence watches the whole flash address range,
+            // rather than the SYSCON accesses used by the other MCXA variants.
+            if !self.is_variant(Self::VARIANT_A3) {
+                tracing::warn!("unknown variant, using default watchpoint configuration");
+            }
             interface.write_word_32(0xE000_1020, 0x0000_0000)?;
             interface.write_word_32(0xE000_1028, 0x0000_0412)?;
             interface.write_word_32(0xE000_1030, 0x000F_FFFF)?;
