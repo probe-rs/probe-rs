@@ -1789,6 +1789,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
         &mut self,
         address: u64,
     ) -> Result<V, RiscvError> {
+        let start = Instant::now();
         loop {
             let mut sbcs = Sbcs(0);
 
@@ -1817,6 +1818,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
                 break V::read_scheduled_result(self, &mut results);
             }
             tracing::debug!("System bus was busy while reading, repeating operation");
+            self.wait_for_sysbus_idle(sbcs, start)?;
         }
     }
 
@@ -1831,6 +1833,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
         if data.is_empty() {
             return Ok(());
         }
+        let start = Instant::now();
         loop {
             let mut sbcs = Sbcs(0);
 
@@ -1877,6 +1880,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
                 break Ok(());
             }
             tracing::debug!("System bus was busy while reading, repeating operation");
+            self.wait_for_sysbus_idle(sbcs, start)?;
         }
     }
 
@@ -2322,6 +2326,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
             return Ok(());
         }
 
+        let start = Instant::now();
         loop {
             let mut sbcs = Sbcs(0);
             // Reset busy error flag;
@@ -2349,6 +2354,24 @@ impl<'state> RiscvCommunicationInterface<'state> {
                 break Ok(());
             }
             tracing::debug!("System bus was busy while writing, repeating write");
+            self.wait_for_sysbus_idle(sbcs, start)?;
+        }
+    }
+
+    /// Wait until `sbbusy` is clear, so that a system bus access can start again.
+    ///
+    /// Fails if the access that started at `start` takes longer than `RISCV_TIMEOUT`.
+    fn wait_for_sysbus_idle(&mut self, mut sbcs: Sbcs, start: Instant) -> Result<(), RiscvError> {
+        loop {
+            if start.elapsed() > RISCV_TIMEOUT {
+                tracing::warn!("System bus access timed out, sbcs: {:?}", sbcs);
+                return Err(RiscvError::Timeout);
+            }
+            if !sbcs.sbbusy() {
+                return Ok(());
+            }
+            std::thread::sleep(Duration::from_millis(1));
+            sbcs = self.read_dm_register::<Sbcs>()?;
         }
     }
 
