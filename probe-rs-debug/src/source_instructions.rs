@@ -84,6 +84,10 @@ impl VerifiedBreakpoint {
         line: u64,
         column: Option<u64>,
     ) -> Result<Self, DebugError> {
+        // Fallback for when no exact file/line match exists: the halt location on the nearest
+        // line at or after the requested one. Only used if every exact match below fails.
+        let mut next_available: Option<VerifiedBreakpoint> = None;
+
         for program_unit in &debug_info.unit_infos {
             let Some(ref line_program) = program_unit.unit.line_program else {
                 // Not all compilation units need to have debug line information, so we skip those.
@@ -165,9 +169,27 @@ impl VerifiedBreakpoint {
                     ) {
                         return Ok(verified_breakpoint);
                     }
+
+                    if let Some(candidate) = match_file_line_next_available(
+                        &instruction_sequence,
+                        *matching_file_index,
+                        line,
+                        debug_info,
+                        program_unit,
+                    ) && next_available.as_ref().is_none_or(|best| {
+                        candidate.source_location.line < best.source_location.line
+                    }) {
+                        next_available = Some(candidate);
+                    }
                 }
             }
         }
+
+        // No exact match, but we found a later line to move the breakpoint to.
+        if let Some(verified_breakpoint) = next_available {
+            return Ok(verified_breakpoint);
+        }
+
         // If we get here, we have not found a valid breakpoint location.
         Err(DebugError::Other(format!(
             "No valid breakpoint information found for file: {}, line: {line:?}, column: {column:?}",
@@ -255,6 +277,43 @@ fn match_file_line_first_available_column(
                     && matching_file_index == instruction_location.file_index
                     && NonZeroU64::new(line) == instruction_location.line
             })?;
+
+    let source_location =
+        SourceLocation::from_instruction_location(debug_info, program_unit, instruction_location)?;
+
+    Some(VerifiedBreakpoint {
+        address: instruction_location.address,
+        source_location,
+    })
+}
+
+/// Find the halt location on the first line at or after `line` in the file.
+///
+/// Used when the requested line has no halt location of its own (e.g. a blank line, or one
+/// the compiler folded), so the breakpoint moves forward to the next line that does have one.
+fn match_file_line_next_available(
+    instruction_sequence: &InstructionSequence<'_>,
+    matching_file_index: u64,
+    line: u64,
+    debug_info: &DebugInfo,
+    program_unit: &UnitInfo,
+) -> Option<VerifiedBreakpoint> {
+    let instruction_location = instruction_sequence
+        .instructions
+        .iter()
+        .filter(|instruction_location| {
+            instruction_location.instruction_type == InstructionType::HaltLocation
+                && matching_file_index == instruction_location.file_index
+                && instruction_location
+                    .line
+                    .is_some_and(|il_line| il_line.get() >= line)
+        })
+        .min_by_key(|instruction_location| {
+            (
+                instruction_location.line.map(NonZeroU64::get),
+                instruction_location.address,
+            )
+        })?;
 
     let source_location =
         SourceLocation::from_instruction_location(debug_info, program_unit, instruction_location)?;
