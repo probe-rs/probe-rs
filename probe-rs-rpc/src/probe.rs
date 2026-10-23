@@ -12,6 +12,26 @@ use crate::{Key, RpcResult, Session};
 pub struct DebugProbeEntry {
     /// The name of the debug probe.
     pub identifier: String,
+    /// How the probe is reached.
+    pub transport: ProbeTransport,
+
+    pub probe_type: String,
+
+    /// The probe was found but the current user cannot access its device
+    /// (e.g. a missing udev rule on Linux).
+    pub inaccessible: bool,
+}
+
+/// How a debug probe is reached. See `probe_rs::probe::ProbeTransport`.
+#[derive(Debug, Serialize, Deserialize, Clone, Schema)]
+pub enum ProbeTransport {
+    /// A USB probe.
+    Usb(UsbProbeEntry),
+}
+
+/// A USB debug probe. See `probe_rs::probe::UsbProbeInfo`.
+#[derive(Debug, Serialize, Deserialize, Clone, Schema)]
+pub struct UsbProbeEntry {
     /// The USB vendor ID of the debug probe.
     pub vendor_id: u16,
     /// The USB product ID of the debug probe.
@@ -21,30 +41,25 @@ pub struct DebugProbeEntry {
     /// The serial number of the debug probe.
     pub serial_number: String,
 
-    pub probe_type: String,
-
-    /// The probe was found but the current user cannot access its device
-    /// (e.g. a missing udev rule on Linux).
-    pub inaccessible: bool,
-
     /// USB bus ID and device address, if known.
-    /// See `probe_rs::probe::DebugProbeInfo::usb_location`.
+    /// See `probe_rs::probe::UsbProbeInfo::usb_location`.
     pub usb_location: Option<(String, u8)>,
 }
 
 impl Display for DebugProbeEntry {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let ProbeTransport::Usb(usb) = &self.transport;
         write!(
             f,
             "{} -- {:04x}:{:04x}",
-            self.identifier, self.vendor_id, self.product_id,
+            self.identifier, usb.vendor_id, usb.product_id,
         )?;
 
-        if let Some(interface) = self.interface {
+        if let Some(interface) = usb.interface {
             write!(f, "-{}", interface)?;
         }
 
-        write!(f, ":{} ({})", self.serial_number, self.probe_type)?;
+        write!(f, ":{} ({})", usb.serial_number, self.probe_type)?;
 
         Ok(())
     }
@@ -52,13 +67,14 @@ impl Display for DebugProbeEntry {
 
 impl DebugProbeEntry {
     pub fn selector(&self) -> DebugProbeSelector {
-        DebugProbeSelector {
-            vendor_id: self.vendor_id,
-            product_id: self.product_id,
-            serial_number: Some(self.serial_number.clone()),
-            interface: self.interface,
-            usb_location: self.usb_location.clone(),
-        }
+        let ProbeTransport::Usb(usb) = &self.transport;
+        DebugProbeSelector::Usb(UsbSelector {
+            vendor_id: usb.vendor_id,
+            product_id: usb.product_id,
+            serial_number: Some(usb.serial_number.clone()),
+            interface: usb.interface,
+            usb_location: usb.usb_location.clone(),
+        })
     }
 }
 
@@ -98,8 +114,16 @@ pub enum WireProtocol {
     Swd,
 }
 
+/// Describes the way a probe should be selected. See `probe_rs::probe::DebugProbeSelector`.
 #[derive(Clone, Debug, Serialize, Deserialize, Schema)]
-pub struct DebugProbeSelector {
+pub enum DebugProbeSelector {
+    /// A USB probe.
+    Usb(UsbSelector),
+}
+
+/// Selects a USB probe. See `probe_rs::probe::UsbSelector`.
+#[derive(Clone, Debug, Serialize, Deserialize, Schema)]
+pub struct UsbSelector {
     /// The the USB vendor id of the debug probe to be used.
     pub vendor_id: u16,
     /// The the USB product id of the debug probe to be used.
@@ -109,7 +133,7 @@ pub struct DebugProbeSelector {
     /// The the serial number of the debug probe to be used.
     pub serial_number: Option<String>,
     /// USB bus ID and device address, if known.
-    /// See `probe_rs::probe::DebugProbeInfo::usb_location`.
+    /// See `probe_rs::probe::UsbProbeInfo::usb_location`.
     pub usb_location: Option<(String, u8)>,
 }
 

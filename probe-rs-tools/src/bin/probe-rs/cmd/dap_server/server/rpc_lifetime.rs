@@ -128,10 +128,11 @@ mod tests {
         use crate::util::cli::attach_probe;
 
         let probes = client.list_probes().await?;
-        anyhow::ensure!(
-            probes.iter().any(|p| p.serial_number == serial),
-            "probe {serial} not listed"
-        );
+        let is_probe = |p: &probe_rs_rpc::probe::DebugProbeEntry| {
+            let probe_rs_rpc::probe::ProbeTransport::Usb(usb) = &p.transport;
+            usb.serial_number == serial
+        };
+        anyhow::ensure!(probes.iter().any(is_probe), "probe {serial} not listed");
 
         let options = ProbeOptions {
             chip: Some(TEST_CHIP_NAME.to_owned()),
@@ -141,7 +142,7 @@ mod tests {
             non_interactive: true,
             probe: probes
                 .into_iter()
-                .find(|p| p.serial_number == serial)
+                .find(|p| is_probe(p))
                 .map(|p| from_wire_debug_probe_selector(p.selector())),
             speed: None,
             connect_under_reset: false,
