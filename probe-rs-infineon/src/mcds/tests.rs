@@ -22,6 +22,10 @@ struct Bus {
     eec_blocked: bool,
     resets: usize,
     port_reads: u8,
+    /// The MCDS timestamp counter in the server map, if the probe offers it.
+    counter: Option<u64>,
+    /// The address maps of every request.
+    requests: Vec<Vec<AddressMap>>,
 }
 
 impl Bus {
@@ -30,7 +34,15 @@ impl Bus {
     }
 
     fn read(&mut self, map: AddressMap, address: u32, len: usize) -> Option<Vec<u8>> {
-        if map == AddressMap::Eec && self.eec_blocked || map == AddressMap::Server {
+        if map == AddressMap::Server {
+            let counter = self
+                .counter
+                .as_mut()
+                .filter(|_| address == TIMESTAMP && len == 8)?;
+            *counter += 1000;
+            return Some(counter.to_le_bytes().to_vec());
+        }
+        if map == AddressMap::Eec && self.eec_blocked {
             return None;
         }
         if map == AddressMap::Target && address == EMEM_PROBE && self.no_emem {
@@ -55,6 +67,8 @@ impl Bus {
 
 impl TriCoreBusAccess for Bus {
     fn execute(&mut self, transfers: &mut [BusTransfer]) -> Result<(), TriCoreError> {
+        self.requests
+            .push(transfers.iter().map(|t| t.map).collect());
         for transfer in transfers {
             let ok = match transfer.kind {
                 TransferKind::Read { len } => {
@@ -305,5 +319,46 @@ fn the_cleanup_is_written_after_the_trace() {
             (AddressMap::Eec, 0xF00E_6000, 0),
             (AddressMap::Eec, 0xF00E_8210, 0)
         ]
+    );
+}
+
+#[test]
+fn a_timestamped_read_brackets_the_word_with_the_counter() {
+    let mut bus = ed_bus();
+    bus.counter = Some(5000);
+    bus.set(AddressMap::Target, 0x7000_0000, 0x1234_5678);
+    let reading = read_timestamped(&mut bus, 0x7000_0000).unwrap();
+    assert_eq!(
+        reading,
+        Timestamped {
+            before: 6000,
+            value: 0x1234_5678,
+            after: 7000
+        }
+    );
+    // One request per address map.
+    assert_eq!(
+        bus.requests,
+        [
+            vec![AddressMap::Server],
+            vec![AddressMap::Target],
+            vec![AddressMap::Server]
+        ]
+    );
+}
+
+#[test]
+fn a_probe_without_the_server_map_has_no_timestamps() {
+    let mut bus = ed_bus();
+    let error = read_timestamped(&mut bus, 0x7000_0000).unwrap_err();
+    assert!(
+        matches!(
+            error,
+            McdsError::Access(TriCoreError::TransferFailed {
+                map: AddressMap::Server,
+                ..
+            })
+        ),
+        "{error}"
     );
 }

@@ -60,6 +60,9 @@ const FREQUENCY_MIN: u32 = 2_000_000;
 /// that was reset and halted (HAR).
 const CPU0_START: [u32; 2] = [0xF000_0490, 0xFA10_1010];
 
+/// The free-running 64-bit MCDS timestamp counter, in the TAS server map.
+const TIMESTAMP: u32 = 0x5000_0090;
+
 /// The size of one trace port read.
 const BLOCK: usize = 1024;
 /// How often the FIFO fill level is read during a recording.
@@ -350,6 +353,41 @@ fn write_config(bus: &mut dyn TriCoreBusAccess, writes: &[(u32, u32)]) -> Result
         }
     }
     Ok(())
+}
+
+/// A device word read between two readings of the MCDS timestamp counter.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Timestamped {
+    /// The counter before the read.
+    pub before: u64,
+    /// The word read.
+    pub value: u32,
+    /// The counter after the read.
+    pub after: u64,
+}
+
+/// Reads the MCDS timestamp counter, which the TAS server offers in its own address map.
+pub fn read_timestamp(bus: &mut dyn TriCoreBusAccess) -> Result<u64, McdsError> {
+    let mut bytes = [0; 8];
+    bus.read_block(AddressMap::Server, TIMESTAMP, &mut bytes)?;
+    Ok(u64::from_le_bytes(bytes))
+}
+
+/// Reads the word at `address` (map 0) between two readings of the MCDS timestamp counter, as
+/// the Infineon recorder does. Each access is a request of its own, because a request may only
+/// address one address map.
+pub fn read_timestamped(
+    bus: &mut dyn TriCoreBusAccess,
+    address: u32,
+) -> Result<Timestamped, McdsError> {
+    let before = read_timestamp(bus)?;
+    let value = bus.read_u32(AddressMap::Target, address)?;
+    let after = read_timestamp(bus)?;
+    Ok(Timestamped {
+        before,
+        value,
+        after,
+    })
 }
 
 /// Records a trace with `config`.

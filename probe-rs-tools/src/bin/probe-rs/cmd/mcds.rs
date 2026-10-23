@@ -23,6 +23,64 @@ enum Action {
     /// START_OF_MCDS_CONFIG section) or a list of `ADDRESS VALUE` lines. Decode the recording
     /// with the Infineon MCDS tools.
     Record(Record),
+    /// Read the MCDS timestamp counter, optionally around reads of a device word.
+    ///
+    /// The counter is in the address map of the TAS server, so this needs a TAS probe.
+    Timestamp(TimestampCmd),
+}
+
+#[derive(clap::Parser)]
+struct TimestampCmd {
+    #[clap(flatten)]
+    common: ProbeOptions,
+
+    /// A device address (map 0) to read between two counter readings.
+    #[arg(long, value_parser = parse_int::parse::<u32>)]
+    address: Option<u32>,
+
+    /// How many readings to take.
+    #[arg(long, default_value_t = 1)]
+    count: u32,
+
+    /// The time between readings, in milliseconds.
+    #[arg(long, default_value_t = 100)]
+    interval_ms: u64,
+}
+
+impl TimestampCmd {
+    fn run(self, registry: &mut Registry, lister: &Lister) -> anyhow::Result<()> {
+        let (mut session, _probe_options) = self.common.simple_attach(registry, lister)?;
+        let bus = session
+            .get_tricore_bus()
+            .context("MCDS timestamps need a TriCore probe (Infineon TAS)")?;
+        let mut last = None;
+        for n in 0..self.count {
+            if n > 0 {
+                std::thread::sleep(Duration::from_millis(self.interval_ms));
+            }
+            let (counter, line) = match self.address {
+                Some(address) => {
+                    let reading = mcds::read_timestamped(bus, address)?;
+                    (
+                        reading.before,
+                        format!(
+                            "{:#010x} = {:#010x}, read within {} ticks",
+                            address,
+                            reading.value,
+                            reading.after.wrapping_sub(reading.before)
+                        ),
+                    )
+                }
+                None => (mcds::read_timestamp(bus)?, String::new()),
+            };
+            let delta = last
+                .map(|last: u64| format!(" (+{})", counter.wrapping_sub(last)))
+                .unwrap_or_default();
+            println!("timestamp {counter:#018x}{delta} {line}");
+            last = Some(counter);
+        }
+        Ok(())
+    }
 }
 
 #[derive(clap::Parser)]
@@ -61,6 +119,7 @@ impl Cmd {
     ) -> anyhow::Result<()> {
         match self.action {
             Action::Record(record) => record.run(registry, lister, utc_offset),
+            Action::Timestamp(timestamp) => timestamp.run(registry, lister),
         }
     }
 }
