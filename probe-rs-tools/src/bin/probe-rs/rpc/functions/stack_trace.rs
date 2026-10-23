@@ -34,6 +34,37 @@ pub async fn load_debug_info(
     Ok(())
 }
 
+/// Runs `f` with the cores it unwinds halted: only `core` when one is requested, else all of
+/// them ([`probe_rs::Session::halted_access`]). Each core that ran is resumed afterwards.
+///
+/// Halting the other cores too would stop them for every stack trace of one core, which a
+/// debugger of another core (one debug session per core) sees as unexplained halts.
+fn halted_cores_access<R>(
+    session: &mut probe_rs::Session,
+    core: Option<u32>,
+    f: impl FnOnce(&mut probe_rs::Session) -> Result<R, Error>,
+) -> Result<R, Error> {
+    let Some(core) = core.map(|c| c as usize) else {
+        return session.halted_access(f);
+    };
+    let resume = match session.core(core) {
+        Ok(mut c) => {
+            let running = !c.core_halted()?;
+            if running {
+                c.halt(std::time::Duration::from_millis(100))?;
+            }
+            running
+        }
+        Err(Error::CoreDisabled(_)) => false,
+        Err(e) => return Err(e),
+    };
+    let result = f(session);
+    if resume {
+        session.core(core)?.run()?;
+    }
+    result
+}
+
 /// Shared per-core unwind loop used by [`take_stack_trace`]. Returns
 /// `(core_index, frames)` pairs, where each `StackFrame` is converted to `F`
 /// via `F::from`.
@@ -119,7 +150,7 @@ pub async fn take_rich_stack_trace(
         Vec<StackFrame>,
         VariableCache,
         Vec<RichStackTraceFrame>,
-    )> = lift(session.halted_access(|session| {
+    )> = lift(halted_cores_access(&mut session, request.core, |session| {
         let mut cores = Vec::new();
         for (idx, core_type) in session.list_cores() {
             if let Some(requested_core) = request.core

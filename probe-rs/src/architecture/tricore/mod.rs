@@ -28,7 +28,7 @@ pub mod bus;
 pub mod registers;
 pub mod sequences;
 
-use bus::{AddressMap, ResetKind, TriCoreBusAccess, TriCoreError};
+use bus::{AddressMap, BusTransfer, ResetKind, TriCoreBusAccess, TriCoreError};
 use registers::{FP, PC, RA, SP, TRICORE_CORE_REGISTERS};
 use sequences::TriCoreDebugSequence;
 
@@ -166,6 +166,13 @@ pub struct TriCoreCoreState {
     /// Trigger accumulator bits read before the halt was reported.
     pending_trigger_acc: u32,
     last_action: LastAction,
+    /// Whether this session has taken over the trigger units of the core: it cleared what an
+    /// earlier session left there, and keeps the units in step with `breakpoints` since.
+    ///
+    /// A session takes over a core only when it first steps it or changes its breakpoints, so
+    /// that several sessions (one per core, for example one debugger per core) can share a
+    /// device without clearing each other's breakpoints.
+    owns_triggers: bool,
 }
 
 impl TriCoreCoreState {
@@ -178,7 +185,13 @@ impl TriCoreCoreState {
             halt_reason: None,
             pending_trigger_acc: 0,
             last_action: LastAction::None,
+            owns_triggers: false,
         }
+    }
+
+    /// Whether this session has written the trigger units of the core.
+    pub(crate) fn owns_triggers(&self) -> bool {
+        self.owns_triggers
     }
 }
 
@@ -375,8 +388,18 @@ impl<'probe> TriCore<'probe> {
         self.bus().write_block(AddressMap::Target, address, &bytes)
     }
 
-    fn write_access_hw(&mut self, address: u32, value: u32) -> Result<(), TriCoreError> {
-        self.bus().write_u32(AddressMap::Target, address, value)
+    /// Writes `DBGSR` between writes of the access hardware registers, in one request.
+    ///
+    /// The access hardware registers belong to the whole device. One request keeps another
+    /// client of the probe, for example the debugger of another core, from running its own
+    /// sequence in between.
+    fn write_bracketed(&mut self, writes: &[(u32, u32)]) -> Result<(), TriCoreError> {
+        let mut transfers = writes
+            .iter()
+            .map(|&(address, value)| BusTransfer::write_u32(AddressMap::Target, address, value))
+            .collect::<Vec<_>>();
+        self.bus().execute(&mut transfers)?;
+        transfers.iter().try_for_each(BusTransfer::check)
     }
 
     fn dbgsr(&mut self) -> Result<u32, TriCoreError> {
@@ -432,6 +455,16 @@ impl<'probe> TriCore<'probe> {
         }
         self.read_csfr(ocds::TRIG_ACC)?;
         self.state.pending_trigger_acc = 0;
+        self.state.owns_triggers = true;
+        Ok(())
+    }
+
+    /// Takes over the trigger units before the first step or breakpoint change of this session:
+    /// triggers that an earlier session left behind are cleared.
+    fn take_triggers(&mut self) -> Result<(), TriCoreError> {
+        if !self.state.owns_triggers {
+            self.reinit_triggers()?;
+        }
         Ok(())
     }
 
@@ -533,11 +566,15 @@ impl<'probe> TriCore<'probe> {
         if !ocds::is_halted(dbgsr) {
             return Err(TriCoreError::NotHalted(self.core()));
         }
+        self.take_triggers()?;
 
         self.step_debug_init(true)?;
-        self.write_access_hw(ocds::ACCESS_HW_CTRL, ocds::ACCESS_HW_STEP_ON)?;
-        self.write_csfr(ocds::DBGSR, ocds::DBGSR_RUN)?;
-        self.write_access_hw(ocds::ACCESS_HW_CTRL, ocds::ACCESS_HW_STEP_OFF)?;
+        let dbgsr = self.csfr(ocds::DBGSR);
+        self.write_bracketed(&[
+            (ocds::ACCESS_HW_CTRL, ocds::ACCESS_HW_STEP_ON),
+            (dbgsr, ocds::DBGSR_RUN),
+            (ocds::ACCESS_HW_CTRL, ocds::ACCESS_HW_STEP_OFF),
+        ])?;
         self.step_debug_init(false)?;
         // The debug init disabled the trigger units, restore the breakpoints.
         self.rearm_triggers()?;
@@ -562,16 +599,21 @@ impl<'probe> TriCore<'probe> {
             // Already running.
             return Ok(());
         }
+        // A run does not take over the triggers: a session that only resumes the core (for
+        // example a command line tool) keeps the breakpoints of the session debugging it.
         if self.at_breakpoint()? {
             self.step_core()?;
         }
 
         self.state.last_action = LastAction::Run;
-        self.write_access_hw(ocds::ACCESS_HW_CTRL, ocds::ACCESS_HW_STEP_ON)?;
-        self.write_csfr(ocds::DBGSR, ocds::DBGSR_RUN)?;
-        self.write_access_hw(ocds::ACCESS_HW_CTRL, ocds::ACCESS_HW_STEP_OFF)?;
-        self.write_csfr(ocds::DBGSR, ocds::DBGSR_RUN)?;
-        self.write_access_hw(ocds::ACCESS_HW_RUNCMD, 2)?;
+        let dbgsr = self.csfr(ocds::DBGSR);
+        self.write_bracketed(&[
+            (ocds::ACCESS_HW_CTRL, ocds::ACCESS_HW_STEP_ON),
+            (dbgsr, ocds::DBGSR_RUN),
+            (ocds::ACCESS_HW_CTRL, ocds::ACCESS_HW_STEP_OFF),
+            (dbgsr, ocds::DBGSR_RUN),
+            (ocds::ACCESS_HW_RUNCMD, 2),
+        ])?;
 
         let dbgsr = self.dbgsr()?;
         if !ocds::is_running(dbgsr) {
@@ -709,6 +751,7 @@ impl CoreInterface for TriCore<'_> {
     }
 
     fn enable_breakpoints(&mut self, state: bool) -> Result<(), Error> {
+        self.take_triggers()?;
         self.state.breakpoints_enabled = state;
         for unit in 0..ocds::TRIGGER_UNITS {
             if self.state.breakpoints[unit].is_some() {
@@ -722,12 +765,14 @@ impl CoreInterface for TriCore<'_> {
         self.ensure_unit(unit_index)?;
         let address = u32::try_from(addr)
             .map_err(|_| Error::Other(format!("breakpoint address {addr:#x} out of range")))?;
+        self.take_triggers()?;
         self.state.breakpoints[unit_index] = Some(address);
         Ok(self.write_trigger(unit_index)?)
     }
 
     fn clear_hw_breakpoint(&mut self, unit_index: usize) -> Result<(), Error> {
         self.ensure_unit(unit_index)?;
+        self.take_triggers()?;
         self.state.breakpoints[unit_index] = None;
         Ok(self.write_trigger(unit_index)?)
     }

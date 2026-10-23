@@ -43,6 +43,11 @@ impl CombinedCoreState {
         self.core_state.is_arm()
     }
 
+    /// Whether this is a TriCore core whose trigger units this session has written.
+    pub(crate) fn tricore_owns_triggers(&self) -> bool {
+        matches!(&self.specific_state, SpecificCoreState::TriCore(state) if state.owns_triggers())
+    }
+
     /// Creates the debug module state of an Xtensa core, with the properties that the target
     /// description defines.
     pub(crate) fn xtensa_interface_state(&self) -> Result<XtensaDebugInterfaceState, Error> {

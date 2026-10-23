@@ -17,6 +17,8 @@ struct FakeBus {
     trig_acc: u32,
     access_hw_step: bool,
     resets: usize,
+    /// The write addresses of every request.
+    requests: Vec<Vec<u32>>,
 }
 
 impl FakeBus {
@@ -120,6 +122,13 @@ impl FakeBus {
 
 impl TriCoreBusAccess for FakeBus {
     fn execute(&mut self, transfers: &mut [BusTransfer]) -> Result<(), TriCoreError> {
+        self.requests.push(
+            transfers
+                .iter()
+                .filter(|t| !t.is_read())
+                .map(|t| t.address)
+                .collect(),
+        );
         for transfer in transfers {
             match transfer.kind {
                 TransferKind::Read { len } => {
@@ -191,15 +200,68 @@ fn run_uses_the_access_hardware_sequence() {
     core.run().unwrap();
     assert_eq!(core.status().unwrap(), CoreStatus::Running);
     drop(core);
+    // A run leaves the trigger units alone: another session may own them.
+    assert!(!state.owns_triggers());
     assert_eq!(
         bus.write_words(),
-        vec![
+        [
             (0xF000_0494, 0x8000_003E),
             (CSFR_BASE + 0xFD00, 4),
             (0xF000_0494, 0x8000_003F),
             (CSFR_BASE + 0xFD00, 4),
             (0xF000_049C, 2),
         ]
+    );
+    // One request, so the debugger of another core cannot run its sequence in between.
+    assert!(bus.requests.contains(&vec![
+        0xF000_0494,
+        CSFR_BASE + 0xFD00,
+        0xF000_0494,
+        CSFR_BASE + 0xFD00,
+        0xF000_049C
+    ]));
+}
+
+#[test]
+fn a_session_leaves_the_triggers_of_a_core_it_only_watches() {
+    let mut bus = FakeBus::new();
+    // Another session's breakpoint on this core.
+    bus.set_word(FakeBus::csfr(ocds::TRIG), ocds::TRIG_EVT_IP);
+    bus.set_word(FakeBus::csfr(ocds::TRIG + 4), 0x8000_0400);
+    let mut state = TriCoreCoreState::new();
+    {
+        let mut core = core(&mut bus, &mut state);
+        core.status().unwrap();
+        core.halt(Duration::from_millis(100)).unwrap();
+        core.read_core_reg(SP.id).unwrap();
+    }
+    assert!(!state.owns_triggers());
+    assert_eq!(bus.word(FakeBus::csfr(ocds::TRIG)), ocds::TRIG_EVT_IP);
+
+    // Setting a breakpoint takes the core over and clears what was left there.
+    core(&mut bus, &mut state)
+        .set_hw_breakpoint(1, 0x8000_0200)
+        .unwrap();
+    assert!(state.owns_triggers());
+    assert_eq!(bus.word(FakeBus::csfr(ocds::TRIG)), 0);
+}
+
+#[test]
+fn the_step_bracket_is_one_request() {
+    let mut bus = FakeBus::new();
+    bus.halted = true;
+    let mut state = TriCoreCoreState::new();
+    core(&mut bus, &mut state).step().unwrap();
+    assert!(
+        bus.requests
+            .contains(&vec![0xF000_0494, CSFR_BASE + 0xFD00, 0xF000_0494])
+    );
+    // No request writes the shared register on its own.
+    assert!(
+        bus.requests
+            .iter()
+            .filter(|r| r.contains(&0xF000_0494))
+            .all(|r| r.len() == 3)
     );
 }
 

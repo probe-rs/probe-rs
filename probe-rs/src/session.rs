@@ -222,9 +222,25 @@ impl Session {
             Self::attach_jtag(probe, target, attach_method, permissions, cores)?
         };
 
-        session.clear_all_hw_breakpoints()?;
+        // A TriCore session clears the triggers of a core when it first uses the core instead:
+        // one session per core can then share a device without halting the other cores or
+        // clearing their breakpoints.
+        if session.architecture() != Architecture::TriCore {
+            session.clear_all_hw_breakpoints()?;
+        }
 
         Ok(session)
+    }
+
+    /// Clears the breakpoints of the TriCore cores whose triggers this session wrote, without
+    /// halting any core.
+    fn clear_owned_tricore_breakpoints(&mut self) -> Result<(), Error> {
+        for core in 0..self.cores.len() {
+            if self.cores[core].tricore_owns_triggers() {
+                self.core(core)?.clear_all_hw_breakpoints()?;
+            }
+        }
+        Ok(())
     }
 
     fn attach_arm_debug_interface(
@@ -1167,7 +1183,12 @@ const _: fn() = || {
 impl Drop for Session {
     #[tracing::instrument(name = "session_drop", skip(self))]
     fn drop(&mut self) {
-        if let Err(err) = self.clear_all_hw_breakpoints() {
+        let cleared = if self.architecture() == Architecture::TriCore {
+            self.clear_owned_tricore_breakpoints()
+        } else {
+            self.clear_all_hw_breakpoints()
+        };
+        if let Err(err) = cleared {
             tracing::warn!(
                 "Could not clear all hardware breakpoints: {:?}",
                 anyhow::anyhow!(err)
