@@ -319,6 +319,11 @@ impl Debugger {
                     .evaluate(session_data, core_index, request)
                     .await?;
             }
+            "liveWatch" => {
+                debug_adapter
+                    .live_watch(session_data, core_index, request)
+                    .await?;
+            }
             "stackTrace" => {
                 debug_adapter
                     .stack_trace(session_data, core_index, request)

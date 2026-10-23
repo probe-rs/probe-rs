@@ -312,6 +312,63 @@ impl DebugAdapter {
         self.send_response(request, Ok(Some(VariablesResponseBody { variables })))
     }
 
+    /// The custom `liveWatch` request: the values of global variables, read without halting the
+    /// core, for a live watch view that refreshes them while the target runs.
+    ///
+    /// Arguments: `{ "expressions": ["g_ticks", ...] }`. Response body:
+    /// `{ "values": [{ "expression", "value"?, "type"?, "error"? }, ...] }`.
+    pub(crate) async fn live_watch(
+        &mut self,
+        session_data: &mut SessionData,
+        core_index: usize,
+        request: &Request,
+    ) -> Result<()> {
+        #[derive(serde::Deserialize)]
+        struct LiveWatchArguments {
+            expressions: Vec<String>,
+        }
+        #[derive(Debug, serde::Serialize)]
+        struct LiveWatchValue {
+            expression: String,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            value: Option<String>,
+            #[serde(rename = "type", skip_serializing_if = "Option::is_none")]
+            type_: Option<String>,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            error: Option<String>,
+        }
+        #[derive(Debug, serde::Serialize)]
+        struct LiveWatchBody {
+            values: Vec<LiveWatchValue>,
+        }
+
+        let arguments: LiveWatchArguments = get_arguments(self, request)?;
+        let result = session_data
+            .backend
+            .live_watch(core_index, arguments.expressions)
+            .await;
+        match result {
+            Ok(values) => {
+                let values = values
+                    .into_iter()
+                    .map(|v| LiveWatchValue {
+                        expression: v.expression,
+                        value: v.value,
+                        type_: v.type_,
+                        error: v.error,
+                    })
+                    .collect();
+                self.send_response(request, Ok(Some(LiveWatchBody { values })))
+            }
+            Err(error) => self.send_response::<()>(
+                request,
+                Err(&DebuggerError::UserMessage(format!(
+                    "Live watch failed: {error}"
+                ))),
+            ),
+        }
+    }
+
     /// Route watch/hover and non-command REPL expressions to the server-owned
     /// evaluator. Registered REPL commands remain adapter-side dispatch, but
     /// their target operations use the RPC backend.

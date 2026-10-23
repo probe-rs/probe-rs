@@ -44,8 +44,9 @@ use probe_rs_rpc::core_ops::{
 };
 use probe_rs_rpc::cores::{CoresRequest, CoresStatusMap, HaltCoresRequest};
 use probe_rs_rpc::debug_vars::{
-    ClearCoreDebugStateRequest, EvaluateRequest, LoadSvdRequest, ScopesRequest, SetVariableRequest,
-    VariablesRequest, WireEvaluateResponse, WireScope, WireSetVariableResponse, WireVariable,
+    ClearCoreDebugStateRequest, EvaluateRequest, LiveWatchRequest, LoadSvdRequest, ScopesRequest,
+    SetVariableRequest, VariablesRequest, WireEvaluateResponse, WireLiveWatchValue, WireScope,
+    WireSetVariableResponse, WireVariable,
 };
 use probe_rs_rpc::disassemble::{DisassembleRequest, WireDisassembledInstruction};
 use probe_rs_rpc::file::{AppendFileRequest, TempFile};
@@ -90,16 +91,17 @@ use probe_rs_rpc::{
     CreateTempFileEndpoint, DisassembleEndpoint, EraseAllEndpoint, EraseRangeEndpoint,
     EvaluateEndpoint, FlashEndpoint, GetRttChannelsEndpoint, HaltCoresEndpoint,
     HandleSemihostingEndpoint, ListChipFamiliesEndpoint, ListProbesEndpoint, ListTestsEndpoint,
-    LoadChipFamilyEndpoint, LoadDebugInfoEndpoint, LoadRegionEndpoint, LoadSvdEndpoint,
-    MonitorEndpoint, NewFlashLoaderEndpoint, PollRttUpEndpoint, ProgressEventTopic,
-    ReadBytesEndpoint, ReadMemory8Endpoint, ReadMemory16Endpoint, ReadMemory32Endpoint,
-    ReadMemory64Endpoint, ResetCoreAndHaltEndpoint, ResetCoreEndpoint, ResetTargetEndpoint,
-    ResolveSourceBreakpointsEndpoint, ResolveSourceLocationsEndpoint, ResumeCoresEndpoint,
-    RpcError, RpcResult, RttDownEndpoint, RttTopic, RunTestEndpoint, ScopesEndpoint,
-    SelectProbeEndpoint, SemihostingTopic, SetVariableEndpoint, TakeRichStackTraceEndpoint,
-    TakeStackTraceEndpoint, TargetInfoDataTopic, TargetInfoEndpoint, TargetMetadataEndpoint,
-    TempFileDataEndpoint, TestKickoffEndpoint, TokioSpawner, VariablesEndpoint, VerifyEndpoint,
-    WriteMemory8Endpoint, WriteMemory16Endpoint, WriteMemory32Endpoint, WriteMemory64Endpoint,
+    LiveWatchEndpoint, LoadChipFamilyEndpoint, LoadDebugInfoEndpoint, LoadRegionEndpoint,
+    LoadSvdEndpoint, MonitorEndpoint, NewFlashLoaderEndpoint, PollRttUpEndpoint,
+    ProgressEventTopic, ReadBytesEndpoint, ReadMemory8Endpoint, ReadMemory16Endpoint,
+    ReadMemory32Endpoint, ReadMemory64Endpoint, ResetCoreAndHaltEndpoint, ResetCoreEndpoint,
+    ResetTargetEndpoint, ResolveSourceBreakpointsEndpoint, ResolveSourceLocationsEndpoint,
+    ResumeCoresEndpoint, RpcError, RpcResult, RttDownEndpoint, RttTopic, RunTestEndpoint,
+    ScopesEndpoint, SelectProbeEndpoint, SemihostingTopic, SetVariableEndpoint,
+    TakeRichStackTraceEndpoint, TakeStackTraceEndpoint, TargetInfoDataTopic, TargetInfoEndpoint,
+    TargetMetadataEndpoint, TempFileDataEndpoint, TestKickoffEndpoint, TokioSpawner,
+    VariablesEndpoint, VerifyEndpoint, WriteMemory8Endpoint, WriteMemory16Endpoint,
+    WriteMemory32Endpoint, WriteMemory64Endpoint,
 };
 use probe_rs_rpc::{FlashLoader, Key, RttClient, Session};
 
@@ -1365,6 +1367,21 @@ impl SessionInterface {
                 core,
                 frame_id,
                 expression,
+            })
+            .await
+    }
+
+    /// Reads global variables by name without halting the core (a live watch).
+    pub async fn live_watch(
+        &self,
+        core: u32,
+        expressions: Vec<String>,
+    ) -> Result<Vec<WireLiveWatchValue>, ClientError> {
+        self.client
+            .send_resp::<LiveWatchEndpoint, _>(&LiveWatchRequest {
+                sessid: self.sessid,
+                core,
+                expressions,
             })
             .await
     }

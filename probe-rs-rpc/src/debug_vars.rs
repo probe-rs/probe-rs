@@ -68,6 +68,28 @@ pub struct WireEvaluateResponse {
 
 pub type EvaluateResponse = RpcResult<WireEvaluateResponse>;
 
+/// Reads global variables while the core may be running (a live watch).
+#[derive(Serialize, Deserialize, Schema)]
+pub struct LiveWatchRequest {
+    pub sessid: Key<Session>,
+    pub core: u32,
+    /// The names of global (static) variables.
+    pub expressions: Vec<String>,
+}
+
+/// The value of one live watch expression.
+#[derive(Serialize, Deserialize, Schema, Clone, Debug, PartialEq)]
+pub struct WireLiveWatchValue {
+    pub expression: String,
+    /// The value, as the variables view shows it; `None` when it could not be read.
+    pub value: Option<String>,
+    pub type_: Option<String>,
+    /// Why there is no value.
+    pub error: Option<String>,
+}
+
+pub type LiveWatchResponse = RpcResult<Vec<WireLiveWatchValue>>;
+
 #[derive(Serialize, Deserialize, Schema, Clone)]
 pub struct WireVariable {
     pub name: String,

@@ -13,9 +13,9 @@ use crate::core_ops::{
 };
 use crate::cores::{CoresRequest, CoresStatusResponse, HaltCoresRequest};
 use crate::debug_vars::{
-    ClearCoreDebugStateRequest, EvaluateRequest, EvaluateResponse, LoadSvdRequest, LoadSvdResponse,
-    ScopesRequest, ScopesResponse, SetVariableRequest, SetVariableResult, VariablesRequest,
-    VariablesResponse,
+    ClearCoreDebugStateRequest, EvaluateRequest, EvaluateResponse, LiveWatchRequest,
+    LiveWatchResponse, LoadSvdRequest, LoadSvdResponse, ScopesRequest, ScopesResponse,
+    SetVariableRequest, SetVariableResult, VariablesRequest, VariablesResponse,
 };
 use crate::disassemble::{DisassembleRequest, DisassembleResponse};
 use crate::file::{AppendFileRequest, CreateFileResponse};
@@ -101,6 +101,7 @@ endpoints! {
     | ResolveSourceLocationsEndpoint   | ResolveSourceLocationsRequest   | ResolveSourceLocationsResponse   | "debug_state/resolve_source_locations"   |
     | ClearCoreDebugStateEndpoint      | ClearCoreDebugStateRequest      | NoResponse                       | "debug_state/clear_core"                 |
     | LoadSvdEndpoint                  | LoadSvdRequest                  | LoadSvdResponse                  | "debug_state/load_svd"                   |
+    | LiveWatchEndpoint                | LiveWatchRequest                | LiveWatchResponse                | "debug_state/live_watch"                 |
 
     | CreateRttClientEndpoint      | CreateRttClientRequest | CreateRttClientResponse | "create_rtt"              |
     | RttDownEndpoint              | RttDownRequest         | RttDownResponse         | "rtt/down"                |

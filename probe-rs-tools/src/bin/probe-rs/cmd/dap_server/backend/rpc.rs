@@ -801,6 +801,18 @@ impl RpcBackend {
         Ok(Self::evaluate_response_body(wire))
     }
 
+    /// Read global variables by name without halting the core.
+    pub(crate) async fn live_watch(
+        &mut self,
+        core_index: usize,
+        expressions: Vec<String>,
+    ) -> Result<Vec<probe_rs_rpc::debug_vars::WireLiveWatchValue>, Error> {
+        self.session_interface()
+            .live_watch(core_index as u32, expressions)
+            .await
+            .map_err(rpc_err)
+    }
+
     /// Resolve one REPL variable against the server-owned cache.
     pub(crate) async fn evaluate_repl_variable(
         &mut self,

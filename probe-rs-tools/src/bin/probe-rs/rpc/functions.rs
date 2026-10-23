@@ -16,8 +16,8 @@ use crate::rpc::{
         },
         cores::{cores_status, halt_cores, resume_cores},
         debug_vars::{
-            clear_core_debug_state, evaluate as debug_evaluate, load_svd as debug_load_svd,
-            scopes as debug_scopes, set_variable as debug_set_variable,
+            clear_core_debug_state, evaluate as debug_evaluate, live_watch as debug_live_watch,
+            load_svd as debug_load_svd, scopes as debug_scopes, set_variable as debug_set_variable,
             variables as debug_variables,
         },
         disassemble::disassemble as disassemble_handler,
@@ -476,6 +476,7 @@ postcard_rpc::define_dispatch! {
         | ClearCoreDebugStateEndpoint      | async | clear_core_debug_state     |
         | LoadSvdEndpoint                  | async | debug_load_svd             |
         | EvaluateEndpoint                 | async | debug_evaluate             |
+        | LiveWatchEndpoint                | async | debug_live_watch           |
         | SetVariableEndpoint              | async | debug_set_variable         |
         | DisassembleEndpoint              | async | disassemble_handler        |
         | NewFlashLoaderEndpoint           | async | new_flash_loader           |

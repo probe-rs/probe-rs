@@ -4,9 +4,10 @@ use probe_rs_debug::{
     VariableLocation, VariableName,
 };
 use probe_rs_rpc::debug_vars::{
-    ClearCoreDebugStateRequest, EvaluateRequest, EvaluateResponse, LoadSvdRequest, LoadSvdResponse,
-    ScopesRequest, ScopesResponse, SetVariableRequest, SetVariableResult, VariablesRequest,
-    VariablesResponse, WireEvaluateResponse, WireScope, WireSetVariableResponse, WireVariable,
+    ClearCoreDebugStateRequest, EvaluateRequest, EvaluateResponse, LiveWatchRequest,
+    LiveWatchResponse, LoadSvdRequest, LoadSvdResponse, ScopesRequest, ScopesResponse,
+    SetVariableRequest, SetVariableResult, VariablesRequest, VariablesResponse,
+    WireEvaluateResponse, WireLiveWatchValue, WireScope, WireSetVariableResponse, WireVariable,
 };
 
 use crate::rpc::functions::{RpcContext, convert::lift};
@@ -441,6 +442,56 @@ fn resolve_expression(
         indexed_variables: Some(indexed),
         memory_reference: memory_reference(&variable.memory_location),
     })
+}
+
+/// Reads global variables by name without halting the core (a live watch).
+///
+/// Every request builds a fresh static scope cache, so each value is read from the target now,
+/// whether the core runs or not. Only variables with a static location qualify: there are no
+/// stack frames of a running core.
+pub async fn live_watch(
+    ctx: &mut RpcContext,
+    _header: VarHeader,
+    request: LiveWatchRequest,
+) -> LiveWatchResponse {
+    let debug_info = ctx
+        .with_server_debug_state(request.sessid, |state| state.debug_info.clone())
+        .await;
+    let Some(debug_info) = debug_info else {
+        Err("No debug information for the session (the core configuration has no program binary)")?
+    };
+
+    let mut session = ctx.session(request.sessid).await;
+    let mut core = lift(session.core(request.core as usize))?;
+    let registers = DebugRegisters::default();
+    let frame = StackFrameInfo {
+        registers: &registers,
+        frame_base: None,
+        canonical_frame_address: None,
+        caller: None,
+    };
+    let mut cache = debug_info.create_static_scope_cache();
+
+    Ok(request
+        .expressions
+        .into_iter()
+        .map(|expression| {
+            match resolve_expression(&debug_info, &mut core, &mut cache, &expression, &frame) {
+                Some(response) => WireLiveWatchValue {
+                    expression,
+                    value: Some(response.result),
+                    type_: response.type_,
+                    error: None,
+                },
+                None => WireLiveWatchValue {
+                    expression,
+                    value: None,
+                    type_: None,
+                    error: Some("not a global variable".to_string()),
+                },
+            }
+        })
+        .collect())
 }
 
 pub async fn evaluate(
