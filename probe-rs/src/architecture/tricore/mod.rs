@@ -389,6 +389,10 @@ struct PerfWindow {
 /// How long CSFR accesses may fail while the device reboots after a reset.
 const REBOOT_TIME: Duration = Duration::from_secs(2);
 
+/// How long after a reset of the device the status checks plant the software breakpoints again
+/// where the program's start code copied code over them.
+const RESET_SETTLE_TIME: Duration = Duration::from_secs(3);
+
 /// The halt group registers of a core and its peers, read in one request.
 struct GroupState {
     /// `CBS_TRCn` of the core.
@@ -422,9 +426,9 @@ enum LastAction {
 /// The state of a TriCore core that persists between [`TriCore`] handles.
 #[derive(Debug)]
 pub struct TriCoreCoreState {
-    /// The breakpoint addresses, per slot that the debugger sees. A breakpoint in the PSPR of
-    /// the core is a `DEBUG` instruction (`software`), one elsewhere takes a trigger unit
-    /// (`breakpoints`).
+    /// The breakpoint addresses, per slot that the debugger sees. A breakpoint takes a trigger
+    /// unit (`breakpoints`); one in the PSPR of the core is a `DEBUG` instruction (`software`)
+    /// when no unit is free (see `TriCore::place`).
     slots: Vec<Option<u32>>,
     /// The hardware breakpoints, per trigger unit.
     breakpoints: [Option<u32>; ocds::TRIGGER_UNITS],
@@ -467,6 +471,14 @@ pub struct TriCoreCoreState {
     halt_after_reset: bool,
     /// Set while the core halts because of such a reset, for the halt reason.
     reset_halt: bool,
+    /// When such a reset was seen. For a while after it, the status checks plant the software
+    /// breakpoints again where the program copied its code over them.
+    reset_seen: Option<Instant>,
+    /// Whether a breakpoint in the PSPR of the core is a `DEBUG` instruction even when a trigger
+    /// unit is free. By default it takes a free unit, which a reset of the device and a program
+    /// that copies its code into the PSPR leave alone; `DEBUG` instructions are for the
+    /// breakpoints beyond the units.
+    software_first: bool,
     /// Messages for the user (a reset was seen), taken by [`Self::take_notices`].
     notices: Vec<String>,
 }
@@ -492,8 +504,17 @@ impl TriCoreCoreState {
             last_stm: None,
             halt_after_reset: false,
             reset_halt: false,
+            reset_seen: None,
+            software_first: false,
             notices: Vec::new(),
         }
+    }
+
+    /// Makes breakpoints in the PSPR of the core `DEBUG` instructions even when a trigger unit
+    /// is free (see `software_first`).
+    #[cfg(test)]
+    pub(crate) fn set_software_first(&mut self, software_first: bool) {
+        self.software_first = software_first;
     }
 
     /// Takes the messages for the user that the core collected since the last call (for
@@ -860,14 +881,15 @@ impl<'probe> TriCore<'probe> {
             self.write_csfr(registers::CSFR_CCTRL, old.saved_cctrl)?;
         }
         let Some((start, stop)) = window else {
-            return Ok(());
+            return self.promote_software();
         };
-        let free = (0..ocds::TRIGGER_UNITS)
+        // Any two units, the highest first.
+        let candidates = (0..ocds::TRIGGER_UNITS)
             .rev()
-            .filter(|&unit| !self.state.unit_used(unit))
-            .take(2)
+            .flat_map(|high| (0..high).rev().map(move |low| vec![high, low]))
             .collect::<Vec<_>>();
-        let [stop_unit, start_unit] = free[..] else {
+        let claimed = self.claim_units(&candidates)?.unwrap_or_default();
+        let [stop_unit, start_unit] = claimed[..] else {
             return Err(TriCoreError::Protocol(format!(
                 "no two free trigger units for the performance counter window (the {} units \
                  are in use)",
@@ -1040,7 +1062,10 @@ impl<'probe> TriCore<'probe> {
         if self.state.owns_triggers {
             self.rearm_triggers()?;
         }
+        // The units compare the PC: copied code does not take them away.
+        self.promote_software()?;
         self.replant_software()?;
+        self.state.reset_seen = Some(Instant::now());
         if self.state.halt_after_reset {
             self.state.reset_halt = true;
             self.write_csfr(ocds::DBGSR, ocds::DBGSR_HALT)?;
@@ -1054,17 +1079,50 @@ impl<'probe> TriCore<'probe> {
         if self.memory.software.is_empty() {
             return Ok(());
         }
-        self.write_csfr(ocds::SWEVT, ocds::SWEVT_HALT)?;
-        for i in 0..self.memory.software.len() {
-            let sw = self.memory.software[i].clone();
-            let mut code = vec![0; sw.original.len()];
-            self.bus()
-                .read_block(AddressMap::Target, sw.address, &mut code)?;
-            if code != sw.debug() {
-                self.memory.software[i].original = code;
-                self.bus()
-                    .write_block(AddressMap::Target, sw.address, sw.debug())?;
+        // The aligned words around each breakpoint (it is halfword aligned), in one request: 32
+        // bit reads need an aligned address.
+        let words = |sw: &SoftwareBreakpoint| {
+            let start = sw.address & !3;
+            let end = (sw.address + sw.original.len() as u32 + 3) & !3;
+            (start..end).step_by(4)
+        };
+        let mut reads = self
+            .memory
+            .software
+            .iter()
+            .flat_map(words)
+            .map(|word| BusTransfer::read(AddressMap::Target, word, 4))
+            .collect::<Vec<_>>();
+        self.bus().execute(&mut reads)?;
+        let mut changed = Vec::new();
+        let mut next = reads.iter();
+        for (i, sw) in self.memory.software.iter().enumerate() {
+            let mut bytes = Vec::new();
+            for read in next.by_ref().take(words(sw).count()) {
+                read.check()?;
+                bytes.extend_from_slice(&read.data);
             }
+            let offset = (sw.address & 3) as usize;
+            let code = bytes[offset..offset + sw.original.len()].to_vec();
+            if code != sw.debug() {
+                changed.push((i, code));
+            }
+        }
+        if changed.is_empty() {
+            return Ok(());
+        }
+        self.write_csfr(ocds::SWEVT, ocds::SWEVT_HALT)?;
+        for (i, code) in changed {
+            tracing::debug!(
+                "TriCore core {}: the code under the software breakpoint at {:#010x} changed, \
+                 planting it again",
+                self.core(),
+                self.memory.software[i].address
+            );
+            self.memory.software[i].original = code;
+            let sw = self.memory.software[i].clone();
+            self.bus()
+                .write_block(AddressMap::Target, sw.address, sw.debug())?;
         }
         Ok(())
     }
@@ -1077,6 +1135,14 @@ impl<'probe> TriCore<'probe> {
             if reset {
                 self.on_device_reset()?;
                 dbgsr = self.dbgsr()?;
+            } else if let Some(seen) = self.state.reset_seen {
+                // The start code may copy its code into the PSPR after the reset was seen, over
+                // the software breakpoints planted then.
+                if seen.elapsed() < RESET_SETTLE_TIME {
+                    self.replant_software()?;
+                } else {
+                    self.state.reset_seen = None;
+                }
             }
         }
         let halted = ocds::is_halted(dbgsr);
@@ -1295,6 +1361,9 @@ impl<'probe> TriCore<'probe> {
             // Already running.
             return Ok(());
         }
+        // Code written over the software breakpoints by other means while the core was halted
+        // (another tool loaded the program, start code after a reset): plant them again.
+        self.replant_software()?;
         // A run does not take over the triggers: a session that only resumes the core (for
         // example a command line tool) keeps the breakpoints of the session debugging it.
         let pc = self.pc()?;
@@ -1467,21 +1536,30 @@ impl<'probe> TriCore<'probe> {
         }
 
         // A member halted at a `DEBUG` instruction (a software breakpoint) stays halted as well.
+        // The two aligned words from the PC (halfword aligned) hold the instruction: 32 bit
+        // reads need an aligned address.
         let mut transfers = candidates
             .iter()
-            .map(|&(_, pc, _)| BusTransfer::read(AddressMap::Target, pc, 4))
+            .flat_map(|&(_, pc, _)| {
+                let word = pc & !3;
+                [word, word + 4].map(|address| BusTransfer::read(AddressMap::Target, address, 4))
+            })
             .collect::<Vec<_>>();
         self.bus().execute(&mut transfers)?;
         let members = candidates
             .into_iter()
-            .zip(&transfers)
-            .filter(|(_, code)| {
-                // Code at the end of a memory may not have 4 bytes: then it is no `DEBUG32`.
-                let code = if code.check().is_ok() {
-                    code.data.as_slice()
-                } else {
-                    &[]
-                };
+            .zip(transfers.chunks(2))
+            .filter(|((_, pc, _), words)| {
+                // Code at the end of a memory may not have the second word: then it is no
+                // `DEBUG32` there.
+                let mut bytes = Vec::new();
+                for word in *words {
+                    if word.check().is_err() {
+                        break;
+                    }
+                    bytes.extend_from_slice(&word.data);
+                }
+                let code = bytes.get((pc & 3) as usize..).unwrap_or_default();
                 !code.starts_with(&ocds::DEBUG16) && !code.starts_with(&ocds::DEBUG32)
             })
             .map(|((core, _, csfr_base), _)| (core, csfr_base + ocds::DBGSR as u32))
@@ -1638,9 +1716,13 @@ impl<'probe> TriCore<'probe> {
         self.place(slot, address)
     }
 
-    /// Puts the breakpoint of `slot` at `address` in place: a `DEBUG` instruction in the PSPR of
-    /// the core, a trigger unit elsewhere. Software breakpoints wait while breakpoints are
-    /// disabled.
+    /// Puts the breakpoint of `slot` at `address` in place, in a trigger unit or as a `DEBUG`
+    /// instruction (only in the PSPR of the core).
+    ///
+    /// A breakpoint in the PSPR takes a free trigger unit; without one it is a `DEBUG`
+    /// instruction, which waits while breakpoints are disabled. A breakpoint elsewhere needs a
+    /// unit: when none is free, a breakpoint in the PSPR gives its unit up for a `DEBUG`
+    /// instruction.
     fn place(&mut self, slot: usize, address: u32) -> Result<(), Error> {
         if let Some(unit) = self.trigger_unit_of(address) {
             return Ok(self.write_trigger(unit)?);
@@ -1648,7 +1730,10 @@ impl<'probe> TriCore<'probe> {
         if self.software_at(address).is_some() {
             return Ok(());
         }
-        if let Some(bus_address) = own_pspr_address(self.core(), address) {
+        let pspr = own_pspr_address(self.core(), address);
+        if let Some(bus_address) = pspr
+            && self.state.software_first
+        {
             if !self.state.breakpoints_enabled {
                 return Ok(());
             }
@@ -1661,23 +1746,124 @@ impl<'probe> TriCore<'probe> {
                 ),
             }
         }
-        // The trigger unit of the same number as the slot, else the first free one.
-        let free = |unit: usize| !self.state.unit_used(unit);
-        let unit = if slot < ocds::TRIGGER_UNITS && free(slot) {
-            Some(slot)
+        // The trigger unit of the same number as the slot, else the lowest one.
+        let candidates = (slot < ocds::TRIGGER_UNITS)
+            .then_some(slot)
+            .into_iter()
+            .chain(0..ocds::TRIGGER_UNITS)
+            .map(|unit| vec![unit])
+            .collect::<Vec<_>>();
+        // Taking the unit of another breakpoint in the PSPR would only swap the two.
+        let unit = if pspr.is_some() {
+            candidates
+                .iter()
+                .find(|units| !self.state.unit_used(units[0]))
+                .map(|units| units[0])
         } else {
-            (0..ocds::TRIGGER_UNITS).find(|&unit| free(unit))
+            self.claim_units(&candidates)?.map(|units| units[0])
         };
-        let Some(unit) = unit else {
-            self.state.slots[slot] = None;
-            return Err(Error::Other(format!(
-                "No free hardware breakpoint for {address:#010x}: all {} trigger units are in use \
-                 (software breakpoints work only in the PSPR of the core)",
-                ocds::TRIGGER_UNITS
-            )));
+        match (unit, pspr) {
+            (Some(unit), _) => {
+                self.state.breakpoints[unit] = Some(address);
+                Ok(self.write_trigger(unit)?)
+            }
+            (None, Some(_)) if !self.state.breakpoints_enabled => Ok(()),
+            (None, Some(bus_address)) => self.plant(bus_address).map_err(|error| {
+                self.state.slots[slot] = None;
+                Error::Other(format!(
+                    "No breakpoint at {address:#010x}: all {} trigger units are in use, and no \
+                     DEBUG instruction could be planted ({error})",
+                    ocds::TRIGGER_UNITS
+                ))
+            }),
+            (None, None) => {
+                self.state.slots[slot] = None;
+                Err(Error::Other(format!(
+                    "No free hardware breakpoint for {address:#010x}: all {} trigger units are \
+                     in use (software breakpoints work only in the PSPR of the core)",
+                    ocds::TRIGGER_UNITS
+                )))
+            }
+        }
+    }
+
+    /// Whether the breakpoint in trigger unit `unit` can give the unit up for a `DEBUG`
+    /// instruction: it is in the PSPR of the core.
+    fn movable_to_software(&self, unit: usize) -> bool {
+        !self.state.software_first
+            && self.state.breakpoints[unit]
+                .is_some_and(|address| own_pspr_address(self.core(), address).is_some())
+    }
+
+    /// Frees units for a new trigger: the first of `candidates` (each a set of units) whose
+    /// units are all free, else the first whose units are free or hold breakpoints that can move
+    /// to `DEBUG` instructions, which they then do. `None` if no candidate can be freed.
+    fn claim_units(
+        &mut self,
+        candidates: &[Vec<usize>],
+    ) -> Result<Option<Vec<usize>>, TriCoreError> {
+        let free = |this: &Self, unit: usize| !this.state.unit_used(unit);
+        let Some(units) = candidates
+            .iter()
+            .find(|units| units.iter().all(|&unit| free(self, unit)))
+            .or_else(|| {
+                candidates.iter().find(|units| {
+                    units
+                        .iter()
+                        .all(|&unit| free(self, unit) || self.movable_to_software(unit))
+                })
+            })
+            .cloned()
+        else {
+            return Ok(None);
         };
-        self.state.breakpoints[unit] = Some(address);
-        Ok(self.write_trigger(unit)?)
+        for &unit in &units {
+            let Some(address) = self.state.breakpoints[unit] else {
+                continue;
+            };
+            let bus_address = own_pspr_address(self.core(), address)
+                .expect("only breakpoints in the PSPR are moved");
+            // Disabled breakpoints have no `DEBUG` instruction: they are placed when enabled.
+            if self.state.breakpoints_enabled
+                && let Err(error) = self.plant(bus_address)
+            {
+                tracing::warn!(
+                    "TriCore core {}: the breakpoint at {address:#010x} keeps its trigger unit, \
+                     no DEBUG instruction ({error})",
+                    self.core()
+                );
+                return Ok(None);
+            }
+            self.state.breakpoints[unit] = None;
+            self.write_trigger(unit)?;
+        }
+        Ok(Some(units))
+    }
+
+    /// Moves software breakpoints into trigger units that became free: the units compare the
+    /// PC, so code that the program copies over them leaves them in place.
+    fn promote_software(&mut self) -> Result<(), TriCoreError> {
+        if self.state.software_first || self.memory.software.is_empty() {
+            return Ok(());
+        }
+        for slot in 0..ocds::BREAKPOINT_SLOTS {
+            let Some(address) = self.state.slots[slot] else {
+                continue;
+            };
+            let Some(i) = self.software_at(address) else {
+                continue;
+            };
+            let Some(unit) = (0..ocds::TRIGGER_UNITS).find(|&unit| !self.state.unit_used(unit))
+            else {
+                break;
+            };
+            // The unit first: the breakpoint stays in place throughout.
+            self.state.breakpoints[unit] = Some(address);
+            self.write_trigger(unit)?;
+            let sw = self.memory.software.remove(i);
+            self.unplant(&sw)?;
+        }
+        Ok(())
     }
 
     /// Plants a `DEBUG` instruction at bus address `address`, over the instruction there.
@@ -1744,6 +1930,7 @@ impl<'probe> TriCore<'probe> {
         if let Some(unit) = self.trigger_unit_of(address) {
             self.state.breakpoints[unit] = None;
             self.write_trigger(unit)?;
+            self.promote_software()?;
         } else if let Some(i) = self.software_at(address) {
             let sw = self.memory.software.remove(i);
             self.unplant(&sw)?;
@@ -1792,16 +1979,19 @@ impl<'probe> TriCore<'probe> {
             self.set_breakpoints_enabled(true)?;
         }
         self.clear_watchpoint_units(address)?;
-        let free = |unit: usize| !self.state.unit_used(unit);
-        let unit = if len == 1 {
-            (0..ocds::TRIGGER_UNITS).rev().find(|&unit| free(unit))
+        let candidates = if len == 1 {
+            (0..ocds::TRIGGER_UNITS)
+                .rev()
+                .map(|unit| vec![unit])
+                .collect::<Vec<_>>()
         } else {
             (0..ocds::TRIGGER_UNITS)
                 .step_by(2)
                 .rev()
-                .find(|&unit| free(unit) && free(unit + 1))
+                .map(|unit| vec![unit, unit + 1])
+                .collect()
         };
-        let Some(unit) = unit else {
+        let Some(unit) = self.claim_units(&candidates)?.map(|units| units[0]) else {
             return Err(Error::Other(format!(
                 "No free trigger unit for a data breakpoint on {len} byte(s) at {address:#010x}: \
                  the {} units are in use (one of more than one byte takes an even and odd pair)",
@@ -1836,7 +2026,7 @@ impl<'probe> TriCore<'probe> {
         for unit in (0..ocds::TRIGGER_UNITS).filter(|&u| watchpoint.uses(u)) {
             self.write_trigger(unit)?;
         }
-        Ok(())
+        self.promote_software()
     }
 }
 

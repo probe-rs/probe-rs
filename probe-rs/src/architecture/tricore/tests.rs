@@ -193,6 +193,13 @@ impl TriCoreBusAccess for FakeBus {
         );
         for transfer in transfers {
             match transfer.kind {
+                // The access hardware refuses 32 and 64 bit reads at unaligned addresses.
+                TransferKind::Read { len }
+                    if (len == 4 || len == 8) && transfer.address % len as u32 != 0 =>
+                {
+                    transfer.status = Some(TransferStatus::Failed(0x8D));
+                    return Ok(());
+                }
                 TransferKind::Read { len } => {
                     transfer.data = self.on_read(transfer.address, len);
                 }
@@ -729,6 +736,13 @@ const ST_W: [u8; 4] = [0x59, 0xE4, 0xFC, 0xFF];
 const PSPR_MOV_AA: u32 = 0x7010_0010;
 const MOV_AA: [u8; 2] = [0x40, 0xAE];
 
+/// The state of a core whose breakpoints in the PSPR are `DEBUG` instructions from the first.
+fn software_state() -> TriCoreCoreState {
+    let mut state = TriCoreCoreState::new();
+    state.set_software_first(true);
+    state
+}
+
 fn pspr_bus() -> FakeBus {
     let mut bus = FakeBus::new();
     bus.set_bytes(PSPR_ST_W, &ST_W);
@@ -740,7 +754,7 @@ fn pspr_bus() -> FakeBus {
 #[test]
 fn a_breakpoint_in_the_pspr_is_a_debug_instruction() {
     let mut bus = pspr_bus();
-    let mut state = TriCoreCoreState::new();
+    let mut state = software_state();
     let mut core = core(&mut bus, &mut state);
     core.enable_breakpoints(true).unwrap();
     core.set_hw_breakpoint(0, PSPR_ST_W as u64).unwrap();
@@ -811,7 +825,7 @@ fn software_breakpoints_go_beyond_the_trigger_units() {
 #[test]
 fn a_software_breakpoint_halt_is_reported_and_stepped_over() {
     let mut bus = pspr_bus();
-    let mut state = TriCoreCoreState::new();
+    let mut state = software_state();
     {
         let mut core = core(&mut bus, &mut state);
         core.enable_breakpoints(true).unwrap();
@@ -852,7 +866,7 @@ fn a_run_that_steps_onto_the_next_software_breakpoint_halts_there() {
     let mut bus = pspr_bus();
     bus.set_bytes(PSPR_MOV_AA + 2, &[0x20, 0x08]);
     bus.set_word(FakeBus::csfr(registers::CSFR_PC), PSPR_MOV_AA);
-    let mut state = TriCoreCoreState::new();
+    let mut state = software_state();
     let mut core = core(&mut bus, &mut state);
     core.enable_breakpoints(true).unwrap();
     core.set_hw_breakpoint(0, PSPR_MOV_AA as u64).unwrap();
@@ -869,7 +883,7 @@ fn a_run_that_steps_onto_the_next_software_breakpoint_halts_there() {
 #[test]
 fn code_written_over_a_software_breakpoint_keeps_it() {
     let mut bus = pspr_bus();
-    let mut state = TriCoreCoreState::new();
+    let mut state = software_state();
     let mut core = core(&mut bus, &mut state);
     core.enable_breakpoints(true).unwrap();
     core.set_hw_breakpoint(0, PSPR_ST_W as u64).unwrap();
@@ -888,7 +902,7 @@ fn code_written_over_a_software_breakpoint_keeps_it() {
 #[test]
 fn disabled_breakpoints_leave_the_code() {
     let mut bus = pspr_bus();
-    let mut state = TriCoreCoreState::new();
+    let mut state = software_state();
     {
         let mut core = core(&mut bus, &mut state);
         core.enable_breakpoints(true).unwrap();
@@ -949,7 +963,7 @@ fn a_member_halted_at_a_software_breakpoint_stays_halted() {
 #[test]
 fn a_software_breakpoint_in_the_halt_group_is_a_breakpoint() {
     let mut bus = pspr_bus();
-    let mut state = TriCoreCoreState::new();
+    let mut state = software_state();
     {
         let mut core = group_core(&mut bus, &mut state);
         core.set_halt_group(true).unwrap();
@@ -1101,8 +1115,20 @@ fn a_reset_of_the_device_is_noticed_and_the_core_runs_on() {
     {
         let mut core = core(&mut bus, &mut state);
         core.enable_breakpoints(true).unwrap();
-        core.set_hw_breakpoint(0, PSPR_MOV_AA as u64).unwrap();
+        // The flash takes every trigger unit: the breakpoint in the PSPR is a DEBUG instruction.
+        for slot in 0..ocds::TRIGGER_UNITS {
+            core.set_hw_breakpoint(slot, 0x8000_0200 + 4 * slot as u64)
+                .unwrap();
+        }
+        core.set_hw_breakpoint(ocds::TRIGGER_UNITS, PSPR_MOV_AA as u64)
+            .unwrap();
     }
+    assert_eq!(bus.bytes(PSPR_MOV_AA, 2), ocds::DEBUG16);
+    // And one at a halfword (not word) aligned address.
+    bus.set_bytes(0x7010_0016, &MOV_AA);
+    core(&mut bus, &mut state)
+        .set_hw_breakpoint(ocds::TRIGGER_UNITS + 1, 0x7010_0016)
+        .unwrap();
     set_stm(&mut bus, 0x5_0000_0000);
     assert_eq!(
         core(&mut bus, &mut state).status().unwrap(),
@@ -1114,6 +1140,7 @@ fn a_reset_of_the_device_is_noticed_and_the_core_runs_on() {
     // again (over the DEBUG instruction).
     set_stm(&mut bus, 1000);
     bus.set_bytes(PSPR_MOV_AA, &[0x40, 0xAF]);
+    bus.set_bytes(0x7010_0016, &[0x40, 0xAF]);
     assert_eq!(
         core(&mut bus, &mut state).status().unwrap(),
         CoreStatus::Running
@@ -1123,11 +1150,94 @@ fn a_reset_of_the_device_is_noticed_and_the_core_runs_on() {
     assert!(notices[0].contains("reset by software"), "{}", notices[0]);
     // Planted again over the new code, which reads back through the memory interface.
     assert_eq!(bus.bytes(PSPR_MOV_AA, 2), ocds::DEBUG16);
+    assert_eq!(bus.bytes(0x7010_0016, 2), ocds::DEBUG16);
     let mut code = [0; 2];
     core(&mut bus, &mut state)
         .read(PSPR_MOV_AA as u64, &mut code)
         .unwrap();
     assert_eq!(code, [0x40, 0xAF]);
+
+    // The start code copies its code only after the reset was seen: the next status check
+    // plants the breakpoint again.
+    set_stm(&mut bus, 2000);
+    bus.set_bytes(PSPR_MOV_AA, &[0x40, 0xBF]);
+    core(&mut bus, &mut state).status().unwrap();
+    assert_eq!(bus.bytes(PSPR_MOV_AA, 2), ocds::DEBUG16);
+    assert!(state.take_notices().is_empty());
+
+    // Code loaded while the core is halted: the run plants the breakpoints again.
+    bus.halted = true;
+    core(&mut bus, &mut state).status().unwrap();
+    bus.set_bytes(0x7010_0016, &[0x40, 0xCF]);
+    core(&mut bus, &mut state).run().unwrap();
+    assert_eq!(bus.bytes(0x7010_0016, 2), ocds::DEBUG16);
+}
+
+#[test]
+fn a_breakpoint_in_the_pspr_takes_a_free_trigger_unit() {
+    let mut bus = pspr_bus();
+    let mut state = TriCoreCoreState::new();
+    let mut core = core(&mut bus, &mut state);
+    core.enable_breakpoints(true).unwrap();
+    core.set_hw_breakpoint(0, PSPR_ST_W as u64).unwrap();
+    drop(core);
+    // No DEBUG instruction: a reset, or code the program copies there, leaves it alone.
+    assert_eq!(bus.bytes(PSPR_ST_W, 4), ST_W);
+    assert_eq!(bus.word(trig_adr(0)), PSPR_ST_W);
+    assert_eq!(bus.word(trig_evt(0)), ocds::TRIG_EVT_IP);
+
+    bus.halted = false;
+    self::core(&mut bus, &mut state).run().unwrap();
+    bus.hit_trigger(0);
+    assert_eq!(
+        self::core(&mut bus, &mut state).status().unwrap(),
+        CoreStatus::Halted(HaltReason::Breakpoint(BreakpointCause::Hardware))
+    );
+}
+
+#[test]
+fn a_breakpoint_in_the_pspr_gives_its_unit_up_and_gets_one_back() {
+    let mut bus = pspr_bus();
+    let mut state = TriCoreCoreState::new();
+    let mut core = core(&mut bus, &mut state);
+    core.enable_breakpoints(true).unwrap();
+    core.set_hw_breakpoint(0, PSPR_MOV_AA as u64).unwrap();
+    for slot in 1..ocds::TRIGGER_UNITS {
+        core.set_hw_breakpoint(slot, 0x8000_0200 + 4 * slot as u64)
+            .unwrap();
+    }
+    // Every unit is in use; a breakpoint in the flash needs one: the PSPR breakpoint becomes a
+    // DEBUG instruction.
+    core.set_hw_breakpoint(ocds::TRIGGER_UNITS, 0x8000_0300)
+        .unwrap();
+    drop(core);
+    assert_eq!(bus.bytes(PSPR_MOV_AA, 2), ocds::DEBUG16);
+    assert_eq!(bus.word(trig_adr(0)), 0x8000_0300);
+
+    // The flash gives two units back: the software breakpoint takes the first.
+    let mut core = self::core(&mut bus, &mut state);
+    core.clear_hw_breakpoint(6).unwrap();
+    core.clear_hw_breakpoint(7).unwrap();
+    drop(core);
+    assert_eq!(bus.bytes(PSPR_MOV_AA, 2), MOV_AA);
+    assert_eq!(bus.word(trig_adr(6)), PSPR_MOV_AA);
+    assert_eq!(bus.word(trig_evt(7)), 0);
+
+    let mut core = self::core(&mut bus, &mut state);
+    core.set_watchpoint(0x7000_A004, 4, WatchpointAccess::Write)
+        .unwrap();
+    drop(core);
+    // Units 6 and 7 are the pair: the breakpoint in unit 6 moves to a DEBUG instruction.
+    assert_eq!(bus.word(trig_adr(6)), 0x7000_A004);
+    assert_eq!(bus.bytes(PSPR_MOV_AA, 2), ocds::DEBUG16);
+
+    // A breakpoint in the flash with no unit to free is refused.
+    let mut core = self::core(&mut bus, &mut state);
+    assert!(core.set_hw_breakpoint(20, 0x8000_0400).is_err());
+    // The data breakpoint gone, the PSPR breakpoint takes a unit again.
+    core.clear_watchpoint(0x7000_A004).unwrap();
+    drop(core);
+    assert_eq!(bus.bytes(PSPR_MOV_AA, 2), MOV_AA);
 }
 
 #[test]
