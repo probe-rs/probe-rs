@@ -750,4 +750,43 @@ mod tests {
 
         assert!(result.is_ok(), "run_blocking panicked");
     }
+
+    /// A task can send events after a cancel, for example the RTT output of
+    /// its last poll. The publisher must forward them.
+    #[tokio::test]
+    async fn run_blocking_publishes_events_sent_after_a_cancel() {
+        let (wire_tx, mut wire_rx) = channel::<Vec<u8>>(16);
+        let frames = tokio::spawn(async move {
+            let mut frames = 0;
+            while wire_rx.recv().await.is_some() {
+                frames += 1;
+            }
+            frames
+        });
+
+        let mut ctx = RpcSpawnContext {
+            state: ConnectionState::new(),
+            sender: PostcardSender::new(WireTx::new(wire_tx), VarKeyKind::Key4),
+            probe_broker: Arc::new(ProbeBroker::new()),
+            lister: Arc::new(LimitedLister::new(ProbeAccess::All)),
+        };
+        let token = ctx.cancellation_token();
+
+        let sent = ctx
+            .run_blocking::<RttTopic, _, _, _>((), move |_, (), sender| {
+                token.cancel();
+                // Give the publisher time to see the cancel.
+                std::thread::sleep(std::time::Duration::from_millis(100));
+                let event = RttEvent::Output {
+                    channel: 0,
+                    bytes: vec![0],
+                };
+                sender.blocking_send(event).is_ok()
+            })
+            .await;
+
+        drop(ctx);
+        assert!(sent, "the publisher stopped at the cancel");
+        assert_eq!(frames.await.unwrap(), 1);
+    }
 }
