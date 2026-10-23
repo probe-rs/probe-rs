@@ -23,6 +23,11 @@ pub const DEFAULT_PORT: u16 = 24817;
 
 /// PL1 success code.
 pub const PL1_OK: u8 = 0x08;
+/// PL1 error code `DEV_RESET`: the device was reset since this client's last request. The
+/// server rejects the first request of each client after a reset with it (one request, however
+/// late it comes), without running it. The client that reset the device itself through
+/// `DEVICE_CONNECT` does not get it.
+pub const PL1_ERR_DEVICE_RESET: u8 = 0x44;
 /// PL0 (per transfer) success code.
 pub const PL0_OK: u8 = 0x80;
 
@@ -470,6 +475,8 @@ pub struct Connection {
     /// The PL0 frame counter. The reference client starts at 0xFFC0, so the first frame is
     /// 0xFFC1.
     pl1_cnt: u16,
+    /// The device resets the server reported (`DEV_RESET`).
+    device_resets: u64,
 }
 
 impl Connection {
@@ -485,6 +492,7 @@ impl Connection {
                     return Ok(Self {
                         stream,
                         pl1_cnt: 0xFFC0,
+                        device_resets: 0,
                     });
                 }
                 Err(error) => last_error = Some(error),
@@ -564,7 +572,22 @@ impl Connection {
     /// `PING`: keeps the session alive and refreshes its information.
     pub fn ping(&mut self) -> Result<(), TasError> {
         let r = self.request(&[0x00, CMD_PING, 0x00, 0x00])?;
-        check_pl1_response(&r, CMD_PING, "PING")
+        match check_pl1_response(&r, CMD_PING, "PING") {
+            Err(TasError::Rejected {
+                code: PL1_ERR_DEVICE_RESET,
+                ..
+            }) => {
+                self.device_resets += 1;
+                let r = self.request(&[0x00, CMD_PING, 0x00, 0x00])?;
+                check_pl1_response(&r, CMD_PING, "PING")
+            }
+            result => result,
+        }
+    }
+
+    /// The number of device resets the server reported on this connection (`DEV_RESET`).
+    pub fn device_resets(&self) -> u64 {
+        self.device_resets
     }
 
     /// `SET_DEVICE_KEY` without a key, which the following `DEVICE_CONNECT` uses.
@@ -599,8 +622,18 @@ impl Connection {
             self.pl1_cnt = self.pl1_cnt.wrapping_add(1);
             let request = encode_frame(&transfers[frame.clone()], self.pl1_cnt)?;
             tracing::trace!("TAS PL0 request: {request:02X?}");
-            let response = self.request(&request)?;
+            let mut response = self.request(&request)?;
             tracing::trace!("TAS PL0 response: {response:02X?}");
+            if response.get(1) == Some(&PL0_START) && response.get(3) == Some(&PL1_ERR_DEVICE_RESET)
+            {
+                // The server tells of a device reset and did not run the frame: send it again.
+                self.device_resets += 1;
+                tracing::debug!("TAS: the device was reset, sending the frame again");
+                self.pl1_cnt = self.pl1_cnt.wrapping_add(1);
+                let request = encode_frame(&transfers[frame.clone()], self.pl1_cnt)?;
+                response = self.request(&request)?;
+                tracing::trace!("TAS PL0 response: {response:02X?}");
+            }
             decode_frame(&response, &mut transfers[frame.clone()], self.pl1_cnt)?;
             if transfers[frame]
                 .iter()

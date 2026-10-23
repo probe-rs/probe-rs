@@ -305,6 +305,15 @@ impl TasProbe {
             .unwrap_or(0)
     }
 
+    /// The number of device resets the server reported on the current connection. The server
+    /// rejects one request after each reset (`DEV_RESET`); the probe sends it again.
+    pub fn device_resets(&self) -> u64 {
+        self.link
+            .as_ref()
+            .and_then(|link| link.lock().ok().map(|link| link.connection.device_resets()))
+            .unwrap_or(0)
+    }
+
     /// The name of the TAS target this probe is connected to.
     pub fn target_name(&self) -> &str {
         &self.target_name

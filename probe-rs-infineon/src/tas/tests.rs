@@ -22,6 +22,10 @@ struct ServerLog {
     device_connects: Vec<u16>,
     frames: usize,
     pings: usize,
+    /// Set by a test: the device was reset, the next request gets `DEV_RESET` (0x44).
+    reset_pending: bool,
+    /// The requests rejected with `DEV_RESET`.
+    reset_rejections: usize,
 }
 
 /// A fake TAS server with one target and a byte-addressed memory per address map.
@@ -76,6 +80,12 @@ fn serve(
     reject_hot_attach: bool,
 ) {
     while let Some(rq) = receive(&mut stream) {
+        // After a reset of the device, the first PL0 frame or PING is refused, not run.
+        if matches!(rq[1], 0xA2 | 0xB0) && std::mem::take(&mut log.lock().unwrap().reset_pending) {
+            log.lock().unwrap().reset_rejections += 1;
+            send(&mut stream, &[0x00, rq[1], 0x81, 0x44]);
+            continue;
+        }
         let response = match rq[1] {
             0x80 => {
                 let mut r = vec![0x21, 0x80, 0x00, 0x08, 0, 0, 0, 0];
@@ -326,6 +336,50 @@ fn an_idle_connection_is_kept_alive_with_pings() {
     probe.detach().unwrap();
     thread::sleep(Duration::from_millis(300));
     assert_eq!(server.log.lock().unwrap().pings, pings);
+}
+
+#[test]
+fn a_device_reset_notice_is_counted_and_the_frame_sent_again() {
+    let server = FakeServer::start(false);
+    let mut probe = TasProbe::new(server.endpoint(None));
+    probe.set_idle_ping_interval(Duration::from_secs(60));
+    probe.attach().unwrap();
+    probe
+        .write_u32(AddressMap::Target, 0x7000_0000, 0x1234)
+        .unwrap();
+
+    // Another client reset the device: the next frame is refused once.
+    server.log.lock().unwrap().reset_pending = true;
+    assert_eq!(
+        probe.read_u32(AddressMap::Target, 0x7000_0000).unwrap(),
+        0x1234
+    );
+    // A write is not lost either.
+    server.log.lock().unwrap().reset_pending = true;
+    probe
+        .write_u32(AddressMap::Target, 0x7000_0004, 0x5678)
+        .unwrap();
+    assert_eq!(
+        probe.read_u32(AddressMap::Target, 0x7000_0004).unwrap(),
+        0x5678
+    );
+    assert_eq!(probe.device_resets(), 2);
+    assert_eq!(server.log.lock().unwrap().reset_rejections, 2);
+}
+
+#[test]
+fn a_keep_alive_ping_takes_the_device_reset_notice() {
+    let server = FakeServer::start(false);
+    let mut probe = TasProbe::new(server.endpoint(None));
+    probe.set_idle_ping_interval(Duration::from_millis(100));
+    probe.attach().unwrap();
+    server.log.lock().unwrap().reset_pending = true;
+    thread::sleep(Duration::from_millis(300));
+    assert_eq!(probe.device_resets(), 1);
+    assert!(probe.pings() >= 1);
+    // The notice is taken: the next access goes through at once.
+    assert_eq!(probe.read_u32(AddressMap::Target, 0x7000_0000).unwrap(), 0);
+    assert_eq!(probe.device_resets(), 1);
 }
 
 #[test]
