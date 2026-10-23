@@ -352,6 +352,16 @@ impl RpcBackend {
             .map_err(rpc_err)
     }
 
+    /// Puts a TriCore core in the halt group of the device (`join`), or takes it out.
+    pub(crate) async fn set_halt_group(
+        &mut self,
+        core_index: usize,
+        join: bool,
+    ) -> Result<(), Error> {
+        let client = self.core(core_index);
+        client.set_halt_group(join).await.map_err(rpc_err)
+    }
+
     pub(crate) async fn halt(
         &mut self,
         core_index: usize,

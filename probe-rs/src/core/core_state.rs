@@ -274,7 +274,44 @@ impl CombinedCoreState {
         target: &'probe Target,
         bus: &'probe mut dyn TriCoreBusAccess,
     ) -> Result<Core<'probe>, Error> {
-        let name = &target.cores[self.id].name;
+        let id = self.id;
+        let name = &target.cores[id].name;
+        let tricore = self.tricore(target, bus);
+        Ok(Core::new(id, name, target, tricore))
+    }
+
+    /// Puts this TriCore core in the halt group of the device, or takes it out (see
+    /// [`TriCore::set_halt_group`]).
+    pub(crate) fn tricore_set_halt_group(
+        &mut self,
+        target: &Target,
+        bus: &mut dyn TriCoreBusAccess,
+        join: bool,
+    ) -> Result<(), Error> {
+        Ok(self.tricore(target, bus).set_halt_group(join)?)
+    }
+
+    /// Whether this is a TriCore core that this session put in the halt group.
+    pub(crate) fn tricore_in_halt_group(&self) -> bool {
+        matches!(&self.specific_state, SpecificCoreState::TriCore(state) if state.in_halt_group())
+    }
+
+    fn tricore<'probe>(
+        &'probe mut self,
+        target: &Target,
+        bus: &'probe mut dyn TriCoreBusAccess,
+    ) -> TriCore<'probe> {
+        // The other cores of the device, for the halt group.
+        let peers = target
+            .cores
+            .iter()
+            .filter_map(|core| match &core.core_access_options {
+                probe_rs_target::CoreAccessOptions::TriCore(options) => {
+                    Some((options.core_index, options.csfr_base as u32))
+                }
+                _ => None,
+            })
+            .collect::<Vec<_>>();
 
         let ResolvedCoreOptions::TriCore { sequence, options } =
             &self.core_state.core_access_options
@@ -294,12 +331,7 @@ impl CombinedCoreState {
             );
         };
 
-        Ok(Core::new(
-            self.id,
-            name,
-            target,
-            TriCore::new(bus, s, options, debug_sequence),
-        ))
+        TriCore::new(bus, s, options, debug_sequence).with_peers(peers)
     }
 
     /// Get the memory AP for this core.

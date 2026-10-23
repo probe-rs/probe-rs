@@ -79,6 +79,14 @@ pub struct SessionConfig {
     #[serde(default)]
     pub(crate) allow_erase_all: bool,
 
+    /// TriCore: put the core of this session in the halt group of the device (all-stop).
+    ///
+    /// The cores of all sessions that set this halt together: a breakpoint, a step or a pause on
+    /// one of them halts the others, which report the reason `external`. Continuing one of them
+    /// runs the others that the group halted. The core leaves the group when the session ends.
+    #[serde(default)]
+    pub(crate) all_stop: bool,
+
     /// Flashing configuration
     #[serde(default)]
     pub(crate) flashing_config: FlashingConfig,

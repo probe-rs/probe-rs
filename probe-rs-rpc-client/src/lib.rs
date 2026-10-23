@@ -36,8 +36,8 @@ use probe_rs_rpc::breakpoints::{
 };
 use probe_rs_rpc::chip::{ChipData, ChipFamily, ChipInfoRequest, LoadChipFamilyRequest};
 use probe_rs_rpc::core_ops::{
-    CoreAccessRequest, CoreBreakpointsRequest, CoreDumpRequest, CoreHaltRequest,
-    CoreReadRegistersRequest, CoreVectorCatchRequest, CoreWriteRegRequest,
+    CoreAccessRequest, CoreBreakpointsRequest, CoreDumpRequest, CoreHaltGroupRequest,
+    CoreHaltRequest, CoreReadRegistersRequest, CoreVectorCatchRequest, CoreWriteRegRequest,
     HandleSemihostingRequest, HandleSemihostingResult, StepRequest, StepResponse, WireCoreDump,
     WireCoreInformation, WireCoreMetadata, WireCoreStatus, WireRegisterId, WireRegisterReadResult,
     WireRegisterValue, WireSteppingMode, WireVectorCatchCondition,
@@ -85,11 +85,11 @@ use probe_rs_rpc::transport::memory::{PostcardReceiver, PostcardSender, WireRx, 
 use probe_rs_rpc::{
     AttachEndpoint, BootEndpoint, BuildEndpoint, ChipInfoEndpoint, CleanUpRttEndpoint,
     ClearCoreDebugStateEndpoint, ClearRttControlBlockEndpoint, CoreClearHwBpsEndpoint,
-    CoreDumpEndpoint, CoreEnableVcEndpoint, CoreHaltEndpoint, CoreMetadataEndpoint,
-    CoreReadRegistersEndpoint, CoreRunEndpoint, CoreSetHwBpsEndpoint, CoreStatusEndpoint,
-    CoreStepEndpoint, CoreWriteRegEndpoint, CoresStatusEndpoint, CreateRttClientEndpoint,
-    CreateTempFileEndpoint, DisassembleEndpoint, EraseAllEndpoint, EraseRangeEndpoint,
-    EvaluateEndpoint, FlashEndpoint, GetRttChannelsEndpoint, HaltCoresEndpoint,
+    CoreDumpEndpoint, CoreEnableVcEndpoint, CoreHaltEndpoint, CoreHaltGroupEndpoint,
+    CoreMetadataEndpoint, CoreReadRegistersEndpoint, CoreRunEndpoint, CoreSetHwBpsEndpoint,
+    CoreStatusEndpoint, CoreStepEndpoint, CoreWriteRegEndpoint, CoresStatusEndpoint,
+    CreateRttClientEndpoint, CreateTempFileEndpoint, DisassembleEndpoint, EraseAllEndpoint,
+    EraseRangeEndpoint, EvaluateEndpoint, FlashEndpoint, GetRttChannelsEndpoint, HaltCoresEndpoint,
     HandleSemihostingEndpoint, ListChipFamiliesEndpoint, ListProbesEndpoint, ListTestsEndpoint,
     LiveWatchEndpoint, LoadChipFamilyEndpoint, LoadDebugInfoEndpoint, LoadRegionEndpoint,
     LoadSvdEndpoint, MonitorEndpoint, NewFlashLoaderEndpoint, PollRttUpEndpoint,
@@ -1704,6 +1704,17 @@ impl CoreInterface {
                 sessid: self.sessid,
                 core: self.core,
                 addresses,
+            })
+            .await
+    }
+
+    /// Puts this TriCore core in the halt group of the device (`join`), or takes it out.
+    pub async fn set_halt_group(&self, join: bool) -> Result<(), ClientError> {
+        self.client
+            .send_resp::<CoreHaltGroupEndpoint, _>(&CoreHaltGroupRequest {
+                sessid: self.sessid,
+                core: self.core,
+                join,
             })
             .await
     }

@@ -6,8 +6,8 @@ use crate::breakpoints::{
 };
 use crate::chip::{ChipInfoRequest, ChipInfoResponse, ListFamiliesResponse, LoadChipFamilyRequest};
 use crate::core_ops::{
-    CoreAccessRequest, CoreBreakpointsRequest, CoreDumpRequest, CoreHaltRequest,
-    CoreReadRegistersRequest, CoreVectorCatchRequest, CoreWriteRegRequest,
+    CoreAccessRequest, CoreBreakpointsRequest, CoreDumpRequest, CoreHaltGroupRequest,
+    CoreHaltRequest, CoreReadRegistersRequest, CoreVectorCatchRequest, CoreWriteRegRequest,
     HandleSemihostingRequest, HandleSemihostingResponse, StepRequest, StepResult, WireCoreDump,
     WireCoreInformation, WireCoreMetadata, WireCoreStatus, WireRegisterReadResult,
 };
@@ -135,6 +135,7 @@ endpoints! {
     | CoreSetHwBpsEndpoint         | CoreBreakpointsRequest   | CoreSetHwBpsResponse       | "core/set_hw_bps"         |
     | CoreClearHwBpsEndpoint       | CoreBreakpointsRequest   | NoResponse                 | "core/clear_hw_bps"       |
     | CoreEnableVcEndpoint         | CoreVectorCatchRequest   | NoResponse                 | "core/enable_vc"          |
+    | CoreHaltGroupEndpoint        | CoreHaltGroupRequest     | NoResponse                 | "core/halt_group"         |
     | CoreMetadataEndpoint         | CoreAccessRequest        | CoreMetadataResponse       | "core/metadata"           |
     | CoreReadRegistersEndpoint    | CoreReadRegistersRequest | CoreReadRegistersResponse  | "core/read_registers"     |
     | CoreDumpEndpoint             | CoreDumpRequest          | CoreDumpResponse           | "core/dump"               |

@@ -10,9 +10,9 @@ use crate::rpc::{
         breakpoints::{resolve_source_breakpoints, resolve_source_locations},
         chip::{chip_info, list_families, load_chip_family},
         core_ops::{
-            core_clear_hw_bps, core_dump, core_enable_vc, core_halt, core_handle_semihosting,
-            core_metadata, core_read_registers, core_run, core_set_hw_bps, core_status, core_step,
-            core_write_reg,
+            core_clear_hw_bps, core_dump, core_enable_vc, core_halt, core_halt_group,
+            core_handle_semihosting, core_metadata, core_read_registers, core_run, core_set_hw_bps,
+            core_status, core_step, core_write_reg,
         },
         cores::{cores_status, halt_cores, resume_cores},
         debug_vars::{
@@ -519,6 +519,7 @@ postcard_rpc::define_dispatch! {
         | CoreSetHwBpsEndpoint             | async | core_set_hw_bps            |
         | CoreClearHwBpsEndpoint           | async | core_clear_hw_bps          |
         | CoreEnableVcEndpoint             | async | core_enable_vc             |
+        | CoreHaltGroupEndpoint            | async | core_halt_group            |
         | CoreMetadataEndpoint             | async | core_metadata              |
         | CoreReadRegistersEndpoint        | async | core_read_registers        |
         | CoreDumpEndpoint                 | async | core_dump                  |

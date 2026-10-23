@@ -310,6 +310,7 @@ impl Cmd {
                     wire_protocol: self.common.protocol,
                     attach_timeout: self.common.attach_timeout.map(|t| t.as_secs_f64()),
                     allow_erase_all: false,
+                    all_stop: false,
                     flashing_config: FlashingConfig {
                         flashing_enabled: false,
                         ..FlashingConfig::default()

@@ -53,6 +53,11 @@ pub mod ocds {
     /// `TRnEVT` value of an instruction (PC) breakpoint: break before make, halt.
     pub const TRIG_EVT_IP: u32 = 0x0000_101A;
 
+    /// Whether a `TRnEVT` value halts the core when the trigger fires (`EVTA` = 010b).
+    pub fn is_halt_trigger(evt: u32) -> bool {
+        evt & 0b111 == 0b010
+    }
+
     /// Control register of the DAS access hardware (in the CBS address range).
     pub const ACCESS_HW_CTRL: u32 = 0xF000_0494;
     /// Run command register of the DAS access hardware.
@@ -117,6 +122,37 @@ pub mod ocds {
     ];
     /// The value written to [`DBG_CFG`] by the debug init.
     pub const DBG_CFG_VALUE: u32 = 0x2A;
+
+    /// External event register: the debug action on the core break-in signal.
+    pub const EXEVT: u16 = 0xFD08;
+    /// `EXEVT` value of a halt group member: halt on break-in, without a break-out pulse.
+    pub const EXEVT_HALT: u32 = 0x12;
+
+    /// The `EVTSRC` field (bits 12:8) of a `DBGSR` value. It is 0 after an external event:
+    /// the core break-in signal, or a halt request written to `DBGSR`.
+    pub fn event_source(dbgsr: u32) -> u32 {
+        (dbgsr >> 8) & 0x1F
+    }
+
+    /// `CBS_TRC0`, the trigger switch routing of CPU0. `CBS_TRCn` follows every 4 bytes.
+    pub const CBS_TRC0: u32 = 0xF000_0420;
+    /// The trigger switch line that connects the cores of the halt group.
+    pub const HALT_GROUP_LINE: u32 = 7;
+    /// The `HALT` (halt state to a line, bits 3:0) and `BRKIN` (a line to the core break-in,
+    /// bits 23:20) fields of `CBS_TRCn`.
+    pub const TRC_HALT_BRKIN: u32 = 0x00F0_000F;
+    /// `HALT` and `BRKIN` of a halt group member: both on [`HALT_GROUP_LINE`].
+    pub const TRC_HALT_GROUP: u32 = HALT_GROUP_LINE | (HALT_GROUP_LINE << 20);
+
+    /// The address of `CBS_TRCn` for CPU `core_index`.
+    pub fn trc(core_index: u8) -> u32 {
+        CBS_TRC0 + 4 * core_index as u32
+    }
+
+    /// Whether a `CBS_TRCn` value puts the core in the halt group.
+    pub fn in_halt_group(trc: u32) -> bool {
+        trc & TRC_HALT_BRKIN == TRC_HALT_GROUP
+    }
 }
 
 /// The local scratchpad windows of a core, and their global aliases.
@@ -140,6 +176,30 @@ pub fn translate_local_address(core_index: u8, address: u32) -> u32 {
         spr::PSPR_GLOBAL - base + (address - spr::PSPR_LOCAL)
     } else {
         address
+    }
+}
+
+/// How long CSFR accesses may fail while the device reboots after a reset.
+const REBOOT_TIME: Duration = Duration::from_secs(2);
+
+/// The halt group registers of a core and its peers, read in one request.
+struct GroupState {
+    /// `CBS_TRCn` of the core.
+    trc: u32,
+    /// `EXEVT` of the core.
+    exevt: u32,
+    /// (core index, `CBS_TRCn`, `DBGSR`) of every peer.
+    peers: Vec<(u8, u32, u32)>,
+}
+
+impl GroupState {
+    /// The peers that are in the halt group and run.
+    fn running_members(&self) -> Vec<u8> {
+        self.peers
+            .iter()
+            .filter(|&&(_, trc, dbgsr)| ocds::in_halt_group(trc) && ocds::is_running(dbgsr))
+            .map(|&(core, _, _)| core)
+            .collect()
     }
 }
 
@@ -173,6 +233,13 @@ pub struct TriCoreCoreState {
     /// that several sessions (one per core, for example one debugger per core) can share a
     /// device without clearing each other's breakpoints.
     owns_triggers: bool,
+    /// Set while this session keeps the core in the halt group: the `CBS_TRCn` and `EXEVT`
+    /// values from before, put back when the core leaves the group.
+    halt_group: Option<(u32, u32)>,
+    /// The other halt group members seen running at the last status check of this running core.
+    /// Only these run again with this core: a core that never ran since the reset (CPU1 and CPU2
+    /// before the application starts them) looks the same as one that the group halted.
+    running_peers: Vec<u8>,
 }
 
 impl TriCoreCoreState {
@@ -186,12 +253,19 @@ impl TriCoreCoreState {
             pending_trigger_acc: 0,
             last_action: LastAction::None,
             owns_triggers: false,
+            halt_group: None,
+            running_peers: Vec::new(),
         }
     }
 
     /// Whether this session has written the trigger units of the core.
     pub(crate) fn owns_triggers(&self) -> bool {
         self.owns_triggers
+    }
+
+    /// Whether this session put the core in the halt group.
+    pub(crate) fn in_halt_group(&self) -> bool {
+        self.halt_group.is_some()
     }
 }
 
@@ -337,6 +411,9 @@ pub struct TriCore<'probe> {
     memory: TriCoreMemory<'probe>,
     state: &'probe mut TriCoreCoreState,
     options: TriCoreCoreAccessOptions,
+    /// The other TriCore cores of the device, as (core index, CSFR base). A run resumes the
+    /// halt group members among them.
+    peers: Vec<(u8, u32)>,
     #[expect(dead_code, reason = "kept for chip specific core hooks")]
     sequence: Arc<dyn TriCoreDebugSequence>,
 }
@@ -353,8 +430,17 @@ impl<'probe> TriCore<'probe> {
             memory: TriCoreMemory::new(bus, options.core_index),
             state,
             options,
+            peers: Vec::new(),
             sequence,
         }
+    }
+
+    /// Sets the other TriCore cores of the device, as (core index, CSFR base). The core itself
+    /// is left out if it is in the list.
+    pub fn with_peers(mut self, peers: impl IntoIterator<Item = (u8, u32)>) -> Self {
+        let core = self.core();
+        self.peers = peers.into_iter().filter(|&(i, _)| i != core).collect();
+        self
     }
 
     fn core(&self) -> u8 {
@@ -481,7 +567,7 @@ impl<'probe> TriCore<'probe> {
     }
 
     /// Called once the core is seen halted after it ran: works out why it halted.
-    fn on_halted(&mut self) -> Result<(), TriCoreError> {
+    fn on_halted(&mut self, dbgsr: u32) -> Result<(), TriCoreError> {
         let trigger_acc = self.read_csfr(ocds::TRIG_ACC)? | self.state.pending_trigger_acc;
         self.state.pending_trigger_acc = 0;
         let pc = self.pc()?;
@@ -503,6 +589,11 @@ impl<'probe> TriCore<'probe> {
             match self.state.last_action {
                 LastAction::Step => HaltReason::Step,
                 LastAction::Halt => HaltReason::Request,
+                // Not halted by this session: the break-in of the halt group, or a halt request
+                // of another session.
+                LastAction::Run | LastAction::None if ocds::event_source(dbgsr) == 0 => {
+                    HaltReason::External
+                }
                 LastAction::Run if trigger_acc != 0 => {
                     HaltReason::Breakpoint(BreakpointCause::Unknown)
                 }
@@ -518,20 +609,58 @@ impl<'probe> TriCore<'probe> {
     }
 
     fn update_halted(&mut self) -> Result<bool, TriCoreError> {
-        let halted = ocds::is_halted(self.dbgsr()?);
+        let dbgsr = self.dbgsr()?;
+        let halted = ocds::is_halted(dbgsr);
         if halted && !self.state.was_halted {
-            self.on_halted()?;
+            self.on_halted(dbgsr)?;
         }
         if !halted {
             self.state.halt_reason = None;
+            if self.state.was_halted {
+                // Something else ran the core (the halt group, another session): the next halt is
+                // not the one this session asked for.
+                self.state.last_action = LastAction::Run;
+            }
+        }
+        if self.state.halt_group.is_some() {
+            self.check_group(halted)?;
         }
         self.state.was_halted = halted;
         Ok(halted)
     }
 
+    /// [`Self::update_halted`] that rides out a device reboot: while another session resets the
+    /// device, CSFR accesses fail for a short while.
+    fn update_halted_through_reboot(&mut self) -> Result<bool, TriCoreError> {
+        let start = Instant::now();
+        loop {
+            match self.update_halted() {
+                Err(TriCoreError::TransferFailed { .. }) if start.elapsed() < REBOOT_TIME => {
+                    std::thread::sleep(Duration::from_millis(10));
+                }
+                result => return result,
+            }
+        }
+    }
+
+    /// For a core that this session put in the halt group: routes it again when a reset (by
+    /// another session, for example) cleared the routing, and notes the members that run while
+    /// this core runs (see `running_peers`).
+    fn check_group(&mut self, halted: bool) -> Result<(), TriCoreError> {
+        let group = self.read_group()?;
+        if !ocds::in_halt_group(group.trc) || group.exevt != ocds::EXEVT_HALT {
+            let csfr_base = self.options.csfr_base as u32;
+            self.write_group_routing(self.core(), csfr_base)?;
+        }
+        if !halted {
+            self.state.running_peers = group.running_members();
+        }
+        Ok(())
+    }
+
     fn halt_core(&mut self, timeout: Duration) -> Result<(), TriCoreError> {
         if self.update_halted()? {
-            return Ok(());
+            return self.halt_group_members();
         }
         self.state.last_action = LastAction::Halt;
         self.write_csfr(ocds::DBGSR, ocds::DBGSR_HALT)?;
@@ -539,7 +668,7 @@ impl<'probe> TriCore<'probe> {
         let start = Instant::now();
         loop {
             if self.update_halted()? {
-                return Ok(());
+                return self.halt_group_members();
             }
             if start.elapsed() > timeout {
                 let dbgsr = self.dbgsr()?;
@@ -578,6 +707,10 @@ impl<'probe> TriCore<'probe> {
         self.step_debug_init(false)?;
         // The debug init disabled the trigger units, restore the breakpoints.
         self.rearm_triggers()?;
+        // It cleared EXEVT as well, which a halt group member needs to halt on break-in.
+        if self.state.halt_group.is_some() {
+            self.write_csfr(ocds::EXEVT, ocds::EXEVT_HALT)?;
+        }
 
         for _ in 0..20 {
             if ocds::is_halted(self.dbgsr()?) {
@@ -606,14 +739,14 @@ impl<'probe> TriCore<'probe> {
         }
 
         self.state.last_action = LastAction::Run;
-        let dbgsr = self.csfr(ocds::DBGSR);
-        self.write_bracketed(&[
-            (ocds::ACCESS_HW_CTRL, ocds::ACCESS_HW_STEP_ON),
-            (dbgsr, ocds::DBGSR_RUN),
-            (ocds::ACCESS_HW_CTRL, ocds::ACCESS_HW_STEP_OFF),
-            (dbgsr, ocds::DBGSR_RUN),
-            (ocds::ACCESS_HW_RUNCMD, 2),
-        ])?;
+        // In the halt group, the members that the group halted run again with this core, in the
+        // same request: a member that ran on alone could halt again before the others run, and
+        // that halt would not reach them.
+        let mut writes = Self::run_writes(self.csfr(ocds::DBGSR)).to_vec();
+        for dbgsr in self.halted_group_members()? {
+            writes.extend(Self::run_writes(dbgsr));
+        }
+        self.write_bracketed(&writes)?;
 
         let dbgsr = self.dbgsr()?;
         if !ocds::is_running(dbgsr) {
@@ -633,12 +766,194 @@ impl<'probe> TriCore<'probe> {
         Ok(())
     }
 
+    /// The writes that run one core: a `DBGSR` run write between the access hardware writes.
+    fn run_writes(dbgsr: u32) -> [(u32, u32); 5] {
+        [
+            (ocds::ACCESS_HW_CTRL, ocds::ACCESS_HW_STEP_ON),
+            (dbgsr, ocds::DBGSR_RUN),
+            (ocds::ACCESS_HW_CTRL, ocds::ACCESS_HW_STEP_OFF),
+            (dbgsr, ocds::DBGSR_RUN),
+            (ocds::ACCESS_HW_RUNCMD, 2),
+        ]
+    }
+
+    /// Reads the `CBS_TRCn` and `EXEVT` of this core and the `CBS_TRCn` and `DBGSR` of its peers,
+    /// in one request.
+    fn read_group(&mut self) -> Result<GroupState, TriCoreError> {
+        let mut transfers = vec![
+            BusTransfer::read(AddressMap::Target, ocds::trc(self.core()), 4),
+            BusTransfer::read(AddressMap::Target, self.csfr(ocds::EXEVT), 4),
+        ];
+        for &(core, csfr_base) in &self.peers {
+            transfers.push(BusTransfer::read(AddressMap::Target, ocds::trc(core), 4));
+            transfers.push(BusTransfer::read(
+                AddressMap::Target,
+                csfr_base + ocds::DBGSR as u32,
+                4,
+            ));
+        }
+        self.bus().execute(&mut transfers)?;
+        let peers = self
+            .peers
+            .iter()
+            .zip(transfers[2..].chunks(2))
+            .map(|(&(core, _), pair)| Ok((core, pair[0].read_u32()?, pair[1].read_u32()?)))
+            .collect::<Result<_, TriCoreError>>()?;
+        Ok(GroupState {
+            trc: transfers[0].read_u32()?,
+            exevt: transfers[1].read_u32()?,
+            peers,
+        })
+    }
+
+    /// Notes the other halt group members that run now (see `running_peers`).
+    fn note_running_peers(&mut self) -> Result<(), TriCoreError> {
+        self.state.running_peers = self.read_group()?.running_members();
+        Ok(())
+    }
+
+    fn peer_csfr_base(&self, core: u8) -> Option<u32> {
+        self.peers
+            .iter()
+            .find(|&&(i, _)| i == core)
+            .map(|&(_, csfr_base)| csfr_base)
+    }
+
+    /// The `DBGSR` addresses of the other halt group members to run with this core, when this
+    /// session put the core in the group: the members that ran while this core last ran, and
+    /// halted since. A member halted at one of its breakpoints stays halted: its own debugger
+    /// steps over the breakpoint when it runs the core.
+    fn halted_group_members(&mut self) -> Result<Vec<u32>, TriCoreError> {
+        if self.state.halt_group.is_none() || self.state.running_peers.is_empty() {
+            return Ok(Vec::new());
+        }
+        let peers = self.read_group()?.peers;
+        let running_peers = std::mem::take(&mut self.state.running_peers);
+        let halted = peers
+            .into_iter()
+            .filter(|&(core, trc, dbgsr)| {
+                running_peers.contains(&core) && ocds::in_halt_group(trc) && ocds::is_halted(dbgsr)
+            })
+            .filter_map(|(core, _, _)| self.peer_csfr_base(core))
+            .collect::<Vec<_>>();
+        if halted.is_empty() {
+            return Ok(halted);
+        }
+
+        // The PC and the trigger units of each halted member, in one request.
+        let mut transfers = Vec::new();
+        for &csfr_base in &halted {
+            transfers.push(BusTransfer::read(
+                AddressMap::Target,
+                csfr_base + registers::CSFR_PC as u32,
+                4,
+            ));
+            transfers.push(BusTransfer::read(
+                AddressMap::Target,
+                csfr_base + ocds::TRIG as u32,
+                8 * ocds::TRIGGER_UNITS,
+            ));
+        }
+        self.bus().execute(&mut transfers)?;
+        let mut members = Vec::new();
+        for (csfr_base, pair) in halted.into_iter().zip(transfers.chunks(2)) {
+            let pc = pair[0].read_u32()?;
+            pair[1].check()?;
+            // Each trigger unit is `TRnEVT` followed by `TRnADR`.
+            let at_breakpoint = pair[1].data.as_chunks::<8>().0.iter().any(|unit| {
+                let [e0, e1, e2, e3, a0, a1, a2, a3] = *unit;
+                ocds::is_halt_trigger(u32::from_le_bytes([e0, e1, e2, e3]))
+                    && u32::from_le_bytes([a0, a1, a2, a3]) == pc
+            });
+            if !at_breakpoint {
+                members.push(csfr_base + ocds::DBGSR as u32);
+            }
+        }
+        Ok(members)
+    }
+
+    /// Halts the other halt group members that run: a member that stays halted keeps the group
+    /// line active, so the halt of this core does not reach them through the line.
+    fn halt_group_members(&mut self) -> Result<(), TriCoreError> {
+        if self.state.halt_group.is_none() || self.peers.is_empty() {
+            return Ok(());
+        }
+        let running = self
+            .read_group()?
+            .running_members()
+            .into_iter()
+            .filter_map(|core| self.peer_csfr_base(core))
+            .collect::<Vec<_>>();
+        let writes = running
+            .into_iter()
+            .map(|csfr_base| (csfr_base + ocds::DBGSR as u32, ocds::DBGSR_HALT))
+            .collect::<Vec<_>>();
+        if !writes.is_empty() {
+            self.write_bracketed(&writes)?;
+        }
+        Ok(())
+    }
+
+    /// Writes the halt group routing of CPU `core` (`CBS_TRCn` and `EXEVT`), keeping the other
+    /// `CBS_TRCn` fields.
+    fn write_group_routing(&mut self, core: u8, csfr_base: u32) -> Result<(), TriCoreError> {
+        let trc = self.bus().read_u32(AddressMap::Target, ocds::trc(core))?;
+        let routed = (trc & !ocds::TRC_HALT_BRKIN) | ocds::TRC_HALT_GROUP;
+        self.bus()
+            .write_u32(AddressMap::Target, ocds::trc(core), routed)?;
+        self.bus().write_u32(
+            AddressMap::Target,
+            csfr_base + ocds::EXEVT as u32,
+            ocds::EXEVT_HALT,
+        )
+    }
+
+    /// Puts the core in the halt group of the device (`join`), or takes it out.
+    ///
+    /// The members of the halt group halt together: when one halts (a breakpoint, a step, a
+    /// halt request), the trigger switch line [`ocds::HALT_GROUP_LINE`] carries its halt state to
+    /// the break-in of the others, and they halt as well. A run of a member also runs the members
+    /// that the group halted.
+    ///
+    /// Leaving the group puts back the `CBS_TRCn` fields and `EXEVT` from before the core joined.
+    pub fn set_halt_group(&mut self, join: bool) -> Result<(), TriCoreError> {
+        let core = self.core();
+        let trc_address = ocds::trc(core);
+        if join {
+            if self.state.halt_group.is_none() {
+                let trc = self.bus().read_u32(AddressMap::Target, trc_address)?;
+                let exevt = self.read_csfr(ocds::EXEVT)?;
+                // A core that is in the group already (an earlier session left it there) leaves
+                // it to the reset values.
+                self.state.halt_group = Some(if ocds::in_halt_group(trc) {
+                    (trc & !ocds::TRC_HALT_BRKIN, 0)
+                } else {
+                    (trc, exevt)
+                });
+            }
+            // Joining while this core is halted halts the members that run now (a debugger halts
+            // the core when it attaches): note them, so that the next run of this core runs them
+            // again.
+            self.note_running_peers()?;
+            let csfr_base = self.options.csfr_base as u32;
+            self.write_group_routing(core, csfr_base)
+        } else if let Some((saved_trc, saved_exevt)) = self.state.halt_group.take() {
+            let trc = self.bus().read_u32(AddressMap::Target, trc_address)?;
+            let restored = (trc & !ocds::TRC_HALT_BRKIN) | (saved_trc & ocds::TRC_HALT_BRKIN);
+            self.bus()
+                .write_u32(AddressMap::Target, trc_address, restored)?;
+            self.write_csfr(ocds::EXEVT, saved_exevt)
+        } else {
+            Ok(())
+        }
+    }
+
     fn reset_and_halt_core(&mut self, timeout: Duration) -> Result<(), TriCoreError> {
         self.bus().reset(ResetKind::ResetAndHalt)?;
 
         // The device reboots: CSFR accesses fail for a short while. Callers pass short timeouts
         // meant for a halt, so allow the reboot at least two seconds.
-        let reboot_timeout = timeout.max(Duration::from_secs(2));
+        let reboot_timeout = timeout.max(REBOOT_TIME);
         let start = Instant::now();
         loop {
             match self.dbgsr() {
@@ -648,6 +963,13 @@ impl<'probe> TriCore<'probe> {
             }
         }
         self.reinit_triggers()?;
+        // The reset cleared the halt group routing. This core is routed again here, the members
+        // of other sessions at their next status check.
+        self.state.running_peers.clear();
+        if self.state.halt_group.is_some() {
+            let csfr_base = self.options.csfr_base as u32;
+            self.write_group_routing(self.core(), csfr_base)?;
+        }
         self.state.last_action = LastAction::Halt;
         self.state.was_halted = false;
         self.halt_core(timeout)?;
@@ -688,11 +1010,11 @@ impl CoreInterface for TriCore<'_> {
     }
 
     fn core_halted(&mut self) -> Result<bool, Error> {
-        Ok(self.update_halted()?)
+        Ok(self.update_halted_through_reboot()?)
     }
 
     fn status(&mut self) -> Result<CoreStatus, Error> {
-        if self.update_halted()? {
+        if self.update_halted_through_reboot()? {
             Ok(CoreStatus::Halted(
                 self.state.halt_reason.unwrap_or(HaltReason::Unknown),
             ))

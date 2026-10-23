@@ -763,6 +763,18 @@ impl Debugger {
             .await
             .map_err(DebuggerError::from)?;
 
+        if self.config.all_stop {
+            let message = match session_data.backend.set_halt_group(core_index, true).await {
+                Ok(()) => format!(
+                    "All-stop: core {core_index} halts together with the other cores that set `allStop`."
+                ),
+                Err(error) => format!(
+                    "All-stop is not available for core {core_index}, `allStop` is ignored: {error}"
+                ),
+            };
+            debug_adapter.log_to_console(message);
+        }
+
         // Synchronize the optional SVD configuration before exposing scopes.
         // This is non-fatal: a failed load leaves the server cache cleared.
         let svd_timestamp = target_core_config

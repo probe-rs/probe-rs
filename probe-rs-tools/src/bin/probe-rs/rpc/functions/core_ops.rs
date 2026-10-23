@@ -5,8 +5,8 @@ use std::time::Duration;
 
 use postcard_rpc::header::VarHeader;
 use probe_rs_rpc::core_ops::{
-    CoreAccessRequest, CoreBreakpointsRequest, CoreDumpRequest, CoreHaltRequest,
-    CoreReadRegistersRequest, CoreVectorCatchRequest, CoreWriteRegRequest,
+    CoreAccessRequest, CoreBreakpointsRequest, CoreDumpRequest, CoreHaltGroupRequest,
+    CoreHaltRequest, CoreReadRegistersRequest, CoreVectorCatchRequest, CoreWriteRegRequest,
     HandleSemihostingRequest, HandleSemihostingResponse, HandleSemihostingResult, StepRequest,
     StepResponse, StepResult, WireBreakpointCause, WireCoreDump, WireCoreInformation,
     WireCoreMetadata, WireCoreStatus, WireCoreType, WireExitErrorDetails, WireHaltReason,
@@ -185,6 +185,17 @@ pub async fn core_clear_hw_bps(
             }));
         }
     });
+    Ok(())
+}
+
+/// Puts a TriCore core in the halt group of the device, or takes it out.
+pub async fn core_halt_group(
+    ctx: &mut RpcContext,
+    _header: VarHeader,
+    request: CoreHaltGroupRequest,
+) -> NoResponse {
+    let mut session = ctx.session(request.sessid).await;
+    probe_rs_try!(session.set_tricore_halt_group(request.core as usize, request.join));
     Ok(())
 }
 

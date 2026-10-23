@@ -62,6 +62,14 @@ pub struct CoreBreakpointsRequest {
     pub addresses: Vec<u64>,
 }
 
+/// Puts a TriCore core in the halt group of the device, or takes it out.
+#[derive(Serialize, Deserialize, Schema, Clone)]
+pub struct CoreHaltGroupRequest {
+    pub sessid: Key<Session>,
+    pub core: u32,
+    pub join: bool,
+}
+
 #[derive(Serialize, Deserialize, Schema, Clone)]
 pub struct CoreVectorCatchRequest {
     pub sessid: Key<Session>,

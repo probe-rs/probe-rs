@@ -597,6 +597,34 @@ impl Session {
         Ok(session)
     }
 
+    /// Puts TriCore core `core_index` in the halt group of the device (`join`), or takes it out.
+    ///
+    /// The members of the halt group halt together (all-stop): when one halts at a breakpoint,
+    /// after a step or on a halt request, the OCDS trigger switch halts the others. A run of a
+    /// member runs the members that the group halted along with it. The group lasts until the
+    /// core leaves it, at the latest when the session ends, and is set up again after a reset.
+    pub fn set_tricore_halt_group(&mut self, core_index: usize, join: bool) -> Result<(), Error> {
+        let ArchitectureInterface::TriCore(probe) = &mut self.interfaces else {
+            return Err(TriCoreError::NoTriCoreTarget.into());
+        };
+        let bus = probe.try_get_tricore_bus()?;
+        let core = self
+            .cores
+            .get_mut(core_index)
+            .ok_or(Error::CoreNotFound(core_index))?;
+        core.tricore_set_halt_group(&self.target, bus, join)
+    }
+
+    /// Takes the TriCore cores that this session put in the halt group out of it.
+    fn leave_tricore_halt_group(&mut self) -> Result<(), Error> {
+        for core in 0..self.cores.len() {
+            if self.cores[core].tricore_in_halt_group() {
+                self.set_tricore_halt_group(core, false)?;
+            }
+        }
+        Ok(())
+    }
+
     /// Get the memory and reset access of a TriCore target.
     pub fn get_tricore_bus(&mut self) -> Result<&mut dyn TriCoreBusAccess, Error> {
         match &mut self.interfaces {
@@ -1191,6 +1219,14 @@ impl Drop for Session {
         if let Err(err) = cleared {
             tracing::warn!(
                 "Could not clear all hardware breakpoints: {:?}",
+                anyhow::anyhow!(err)
+            );
+        }
+        if self.architecture() == Architecture::TriCore
+            && let Err(err) = self.leave_tricore_halt_group()
+        {
+            tracing::warn!(
+                "Could not take the cores out of the halt group: {:?}",
                 anyhow::anyhow!(err)
             );
         }
