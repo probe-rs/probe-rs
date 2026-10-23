@@ -13,10 +13,18 @@
 //! --probe "058b:0000:DAS JTAG AURDUINO 46YPEADW"          a target of the local server
 //! --probe "058b:0000:192.168.1.10:24817/DAS JTAG AURDUINO 46YPEADW"
 //! ```
+//!
+//! Any of these forms also selects the probe from a probe list, as the DAP server does. While
+//! the connection is idle (no access for [`IDLE_PING_INTERVAL`]), the probe sends `PING`.
 
 pub mod protocol;
 
-use std::{fmt, time::Duration};
+use std::{
+    fmt,
+    sync::{Arc, Mutex, mpsc},
+    thread,
+    time::{Duration, Instant},
+};
 
 use probe_rs::{
     architecture::tricore::bus::{
@@ -125,36 +133,63 @@ impl ProbeFactory for TasFactory {
 
     fn list_probes(&self) -> Vec<ProbeListItem> {
         // Only the local server is listed. Other servers are selected explicitly.
-        let local = Endpoint::default();
-        let Ok(mut connection) = Connection::connect(&local.host, local.port, LIST_TIMEOUT) else {
-            return Vec::new();
-        };
-        let targets = connection
-            .server_connect(CLIENT_NAME, &user_name())
-            .and_then(|_| connection.get_targets());
-        match targets {
-            Ok(targets) => targets
-                .into_iter()
-                .map(|target| {
-                    let endpoint = Endpoint {
-                        target: Some(target.identifier.clone()),
-                        ..local.clone()
-                    };
-                    ProbeListItem::accessible(DebugProbeInfo::new(
-                        format!("TAS {}", target.identifier),
-                        TAS_VID,
-                        TAS_PID,
-                        Some(endpoint.serial()),
-                        &TasFactory,
-                        None,
-                        false,
-                    ))
-                })
-                .collect(),
-            Err(error) => {
-                tracing::debug!("TAS server at {}:{}: {error}", local.host, local.port);
-                Vec::new()
+        list_server(&Endpoint::default())
+    }
+
+    fn list_probes_filtered(&self, selector: Option<&DebugProbeSelector>) -> Vec<ProbeListItem> {
+        match selector {
+            None => self.list_probes(),
+            // The selector names the server, which can be another host, and may name a target
+            // in a short form (only the target name) that the listed serial does not match.
+            Some(selector) if selector.vendor_id == TAS_VID && selector.product_id == TAS_PID => {
+                let Ok(endpoint) = Endpoint::parse(selector.serial_number.as_deref().unwrap_or(""))
+                else {
+                    return Vec::new();
+                };
+                list_server(&endpoint)
             }
+            Some(_) => Vec::new(),
+        }
+    }
+}
+
+/// The targets of the TAS server of `endpoint`, only its target if it names one.
+fn list_server(endpoint: &Endpoint) -> Vec<ProbeListItem> {
+    let Ok(mut connection) = Connection::connect(&endpoint.host, endpoint.port, LIST_TIMEOUT)
+    else {
+        return Vec::new();
+    };
+    let targets = connection
+        .server_connect(CLIENT_NAME, &user_name())
+        .and_then(|_| connection.get_targets());
+    match targets {
+        Ok(targets) => targets
+            .into_iter()
+            .filter(|target| {
+                endpoint
+                    .target
+                    .as_deref()
+                    .is_none_or(|name| target.identifier.eq_ignore_ascii_case(name))
+            })
+            .map(|target| {
+                let listed = Endpoint {
+                    target: Some(target.identifier.clone()),
+                    ..endpoint.clone()
+                };
+                ProbeListItem::accessible(DebugProbeInfo::new(
+                    format!("TAS {}", target.identifier),
+                    TAS_VID,
+                    TAS_PID,
+                    Some(listed.serial()),
+                    &TasFactory,
+                    None,
+                    false,
+                ))
+            })
+            .collect(),
+        Err(error) => {
+            tracing::debug!("TAS server at {}:{}: {error}", endpoint.host, endpoint.port);
+            Vec::new()
         }
     }
 }
@@ -165,11 +200,77 @@ fn user_name() -> String {
         .unwrap_or_else(|_| "probe-rs".to_string())
 }
 
+/// How long the connection may be idle before the probe sends a `PING`.
+pub const IDLE_PING_INTERVAL: Duration = Duration::from_secs(2);
+
+/// The connection and when it was last used, shared with the keep-alive thread.
+#[derive(Debug)]
+struct Link {
+    connection: Connection,
+    last_used: Instant,
+    pings: usize,
+}
+
+/// The keep-alive thread of a connection. It sends `PING` while the connection is idle, as
+/// the reference client does, and ends when this is dropped.
+#[derive(Debug)]
+struct KeepAlive {
+    stop: Option<mpsc::Sender<()>>,
+    thread: Option<thread::JoinHandle<()>>,
+}
+
+impl KeepAlive {
+    fn start(link: Arc<Mutex<Link>>, interval: Duration) -> Self {
+        let (stop, stopped) = mpsc::channel::<()>();
+        let thread = thread::Builder::new()
+            .name("tas-keepalive".into())
+            .spawn(move || {
+                let mut failed = false;
+                // Wakes up at least every interval; a send or a dropped sender stops it.
+                while let Err(mpsc::RecvTimeoutError::Timeout) = stopped.recv_timeout(interval / 2)
+                {
+                    let Ok(mut link) = link.lock() else { return };
+                    if link.last_used.elapsed() < interval {
+                        continue;
+                    }
+                    match link.connection.ping() {
+                        Ok(()) => {
+                            link.pings += 1;
+                            failed = false;
+                        }
+                        Err(error) if !failed => {
+                            tracing::warn!("TAS: PING failed: {error}");
+                            failed = true;
+                        }
+                        Err(_) => {}
+                    }
+                    link.last_used = Instant::now();
+                }
+            })
+            .ok();
+        Self {
+            stop: Some(stop),
+            thread,
+        }
+    }
+}
+
+impl Drop for KeepAlive {
+    fn drop(&mut self) {
+        drop(self.stop.take());
+        if let Some(thread) = self.thread.take() {
+            let _ = thread.join();
+        }
+    }
+}
+
 /// A connection to a device through a TAS server.
 #[derive(Debug)]
 pub struct TasProbe {
     endpoint: Endpoint,
-    connection: Option<Connection>,
+    link: Option<Arc<Mutex<Link>>>,
+    keep_alive: Option<KeepAlive>,
+    idle_ping_interval: Duration,
     info: ConInfo,
     target_name: String,
     device_type: u32,
@@ -181,7 +282,9 @@ impl TasProbe {
     pub fn new(endpoint: Endpoint) -> Self {
         Self {
             endpoint,
-            connection: None,
+            link: None,
+            keep_alive: None,
+            idle_ping_interval: IDLE_PING_INTERVAL,
             info: ConInfo::default(),
             target_name: String::new(),
             device_type: 0,
@@ -189,13 +292,42 @@ impl TasProbe {
         }
     }
 
+    /// Sets how long the connection may be idle before a `PING`, for the next attach.
+    pub fn set_idle_ping_interval(&mut self, interval: Duration) {
+        self.idle_ping_interval = interval;
+    }
+
+    /// The number of `PING`s sent on the current connection.
+    pub fn pings(&self) -> usize {
+        self.link
+            .as_ref()
+            .and_then(|link| link.lock().ok().map(|link| link.pings))
+            .unwrap_or(0)
+    }
+
     /// The name of the TAS target this probe is connected to.
     pub fn target_name(&self) -> &str {
         &self.target_name
     }
 
-    fn connection(&mut self) -> Result<&mut Connection, TasError> {
-        self.connection.as_mut().ok_or(TasError::NotConnected)
+    /// Runs `f` on the connection and records the use, so the keep-alive thread stays quiet.
+    fn with_connection<T>(
+        &mut self,
+        f: impl FnOnce(&mut Connection) -> Result<T, TasError>,
+    ) -> Result<T, TasError> {
+        let link = self.link.as_ref().ok_or(TasError::NotConnected)?;
+        let mut link = link
+            .lock()
+            .map_err(|_| TasError::Protocol("the keep-alive thread panicked".into()))?;
+        let result = f(&mut link.connection);
+        link.last_used = Instant::now();
+        result
+    }
+
+    fn disconnect(&mut self) {
+        // Stop the thread first: it holds the connection between its pings.
+        self.keep_alive = None;
+        self.link = None;
     }
 
     fn connect(&mut self) -> Result<(), TasError> {
@@ -260,7 +392,14 @@ impl TasProbe {
         );
 
         self.target_name = target.identifier;
-        self.connection = Some(connection);
+        self.disconnect();
+        let link = Arc::new(Mutex::new(Link {
+            connection,
+            last_used: Instant::now(),
+            pings: 0,
+        }));
+        self.keep_alive = Some(KeepAlive::start(link.clone(), self.idle_ping_interval));
+        self.link = Some(link);
         Ok(())
     }
 }
@@ -297,13 +436,12 @@ impl DebugProbe for TasProbe {
     }
 
     fn detach(&mut self) -> Result<(), probe_rs::Error> {
-        self.connection = None;
+        self.disconnect();
         Ok(())
     }
 
     fn target_reset(&mut self) -> Result<(), DebugProbeError> {
-        self.connection()
-            .and_then(|c| c.device_connect(CONNECT_RESET_AND_HALT))
+        self.with_connection(|c| c.device_connect(CONNECT_RESET_AND_HALT))
             .map(|_| ())
             .map_err(probe_error)
     }
@@ -336,7 +474,7 @@ impl DebugProbe for TasProbe {
     }
 
     fn try_as_tricore_bus(&mut self) -> Option<&mut dyn TriCoreBusAccess> {
-        if self.connection.is_some() {
+        if self.link.is_some() {
             Some(self)
         } else {
             None
@@ -351,8 +489,7 @@ fn bus_error(error: TasError) -> TriCoreError {
 impl TriCoreBusAccess for TasProbe {
     fn execute(&mut self, transfers: &mut [BusTransfer]) -> Result<(), TriCoreError> {
         let info = self.info.clone();
-        self.connection()
-            .and_then(|c| c.execute(transfers, &info))
+        self.with_connection(|c| c.execute(transfers, &info))
             .map_err(bus_error)
     }
 
@@ -369,8 +506,7 @@ impl TriCoreBusAccess for TasProbe {
     fn reset(&mut self, kind: ResetKind) -> Result<(), TriCoreError> {
         match kind {
             ResetKind::ResetAndHalt => self
-                .connection()
-                .and_then(|c| c.device_connect(CONNECT_RESET_AND_HALT))
+                .with_connection(|c| c.device_connect(CONNECT_RESET_AND_HALT))
                 .map(|_| ())
                 .map_err(bus_error),
         }

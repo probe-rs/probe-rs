@@ -6,6 +6,7 @@ use std::{
     net::{TcpListener, TcpStream},
     sync::{Arc, Mutex},
     thread,
+    time::Duration,
 };
 
 use probe_rs::architecture::tricore::bus::{AddressMap, TriCoreBusAccess};
@@ -20,6 +21,7 @@ const JTAG_ID: u32 = 0x401D_A083;
 struct ServerLog {
     device_connects: Vec<u16>,
     frames: usize,
+    pings: usize,
 }
 
 /// A fake TAS server with one target and a byte-addressed memory per address map.
@@ -92,8 +94,11 @@ fn serve(
                 r.extend(t);
                 r
             }
-            0xA1 => {
-                let mut r = vec![0x20, 0xA1, 0x00, 0x08, 1, 1, 0, 0];
+            0xA1 | 0xA2 => {
+                if rq[1] == 0xA2 {
+                    log.lock().unwrap().pings += 1;
+                }
+                let mut r = vec![0x20, rq[1], 0x00, 0x08, 1, 1, 0, 0];
                 let mut ci = [0u8; 124];
                 ci[0..4].copy_from_slice(&1060u32.to_le_bytes());
                 ci[4..8].copy_from_slice(&1040u32.to_le_bytes());
@@ -294,6 +299,70 @@ fn a_refused_hot_attach_suggests_connecting_under_reset() {
         server.log.lock().unwrap().device_connects,
         vec![0x0000, 0x0003]
     );
+}
+
+#[test]
+fn an_idle_connection_is_kept_alive_with_pings() {
+    let server = FakeServer::start(false);
+    let mut probe = TasProbe::new(server.endpoint(None));
+    probe.set_idle_ping_interval(Duration::from_millis(100));
+    probe.attach().unwrap();
+
+    // Busy: an access every 20 ms leaves no idle interval.
+    for _ in 0..15 {
+        probe.read_u32(AddressMap::Target, 0x7000_0000).unwrap();
+        thread::sleep(Duration::from_millis(20));
+    }
+    assert_eq!(server.log.lock().unwrap().pings, 0);
+
+    // Idle.
+    thread::sleep(Duration::from_millis(450));
+    let pings = server.log.lock().unwrap().pings;
+    assert!((2..=5).contains(&pings), "{pings} pings");
+    assert_eq!(probe.pings(), pings);
+
+    // The connection still works, and no PING follows the detach.
+    assert_eq!(probe.read_u32(AddressMap::Target, 0x7000_0000).unwrap(), 0);
+    probe.detach().unwrap();
+    thread::sleep(Duration::from_millis(300));
+    assert_eq!(server.log.lock().unwrap().pings, pings);
+}
+
+#[test]
+fn a_selector_lists_the_server_and_target_it_names() {
+    let server = FakeServer::start(false);
+    let list = |serial: &str| {
+        let selector: DebugProbeSelector = format!("058b:0000:{serial}").parse().unwrap();
+        TasFactory
+            .list_probes_filtered(Some(&selector))
+            .into_iter()
+            .map(|item| item.info.serial_number.unwrap())
+            .collect::<Vec<_>>()
+    };
+    let listed = format!("127.0.0.1:{}/{TARGET}", server.port);
+
+    // A server on another port (or host) than the local default.
+    assert_eq!(
+        list(&format!("127.0.0.1:{}/", server.port)),
+        vec![listed.clone()]
+    );
+    assert_eq!(
+        list(&format!(
+            "127.0.0.1:{}/{}",
+            server.port,
+            TARGET.to_lowercase()
+        )),
+        vec![listed.clone()]
+    );
+    assert!(list(&format!("127.0.0.1:{}/other", server.port)).is_empty());
+    // The listed serial opens the same probe.
+    let mut probe = TasFactory
+        .open(&format!("058b:0000:{listed}").parse().unwrap())
+        .unwrap();
+    probe.attach().unwrap();
+
+    let other: DebugProbeSelector = "0483:3748".parse().unwrap();
+    assert!(TasFactory.list_probes_filtered(Some(&other)).is_empty());
 }
 
 #[test]

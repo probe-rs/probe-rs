@@ -1,8 +1,9 @@
 //! Connects through a TAS server and prints the device identification and the core states,
-//! without halting or writing anything.
+//! without halting or writing anything. `--idle <seconds>` then leaves the connection idle
+//! (the probe keeps it alive with `PING`s) and reads the device again.
 //!
 //! ```text
-//! cargo run -p probe-rs-infineon --example tas_info -- ["DAS JTAG AURDUINO 46YPEADW"]
+//! cargo run -p probe-rs-infineon --example tas_info -- ["DAS JTAG AURDUINO 46YPEADW"] [--idle 10]
 //! ```
 
 use probe_rs::{
@@ -20,7 +21,17 @@ const CSFR_BASE: u32 = 0xF881_0000;
 const CSFR_STRIDE: u32 = 0x2_0000;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let target = std::env::args().nth(1);
+    let args = std::env::args().skip(1).collect::<Vec<_>>();
+    let idle = args.iter().position(|a| a == "--idle").map(|i| {
+        args.get(i + 1)
+            .and_then(|s| s.parse::<u64>().ok())
+            .unwrap_or(10)
+    });
+    let target = args
+        .iter()
+        .enumerate()
+        .find(|(i, a)| !a.starts_with("--") && (*i == 0 || args[i - 1] != "--idle"))
+        .map(|(_, a)| a.clone());
     let mut probe = TasProbe::new(Endpoint {
         target,
         ..Endpoint::default()
@@ -48,6 +59,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         };
         let pc = probe.read_u32(AddressMap::Target, base + 0xFE08)?;
         println!("CPU{core} DBGSR : {dbgsr:#010x} ({state}), PC {pc:#010x}");
+    }
+    if let Some(seconds) = idle {
+        println!("idle for {seconds} s ...");
+        std::thread::sleep(std::time::Duration::from_secs(seconds));
+        println!(
+            "PINGs sent: {}, SCU_CHIPID {:#010x} after the idle time",
+            probe.pings(),
+            probe.read_u32(AddressMap::Target, SCU_CHIPID)?
+        );
     }
     probe.detach()?;
     Ok(())

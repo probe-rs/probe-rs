@@ -66,6 +66,16 @@ pub(crate) fn rpc_err(err: impl Into<anyhow::Error>) -> Error {
     Error::Other(format!("{err:?}"))
 }
 
+/// The address of a DAP memory reference (`0x...`).
+fn parse_memory_reference(reference: &str) -> Option<u64> {
+    let digits = reference.trim();
+    let digits = digits
+        .strip_prefix("0x")
+        .or_else(|| digits.strip_prefix("0X"))
+        .unwrap_or(digits);
+    u64::from_str_radix(digits, 16).ok()
+}
+
 /// Rebuild a [`DebugRegisters`] from a wire register dump, using the same
 /// static [`CoreRegisters`] file the server used so the resulting
 /// `DebugRegister` ordering and DWARF ids match what the server's `unwind`
@@ -406,12 +416,34 @@ impl RpcBackend {
             .variables(core_index as u32, variables_reference, None)
             .await
             .map_err(rpc_err)?;
-        Ok(wire.into_iter().find(|w| w.name == name).and_then(|w| {
-            let reference = w.memory_reference?;
-            let address = reference.trim().trim_start_matches("0x");
-            let address = u64::from_str_radix(address.trim_start_matches("0X"), 16).ok()?;
-            Some((address, w.byte_size))
-        }))
+        Ok(wire
+            .into_iter()
+            .find(|w| w.name == name)
+            .and_then(|w| Some((parse_memory_reference(&w.memory_reference?)?, w.byte_size))))
+    }
+
+    /// The address and size of the value of `expression` (a variable name, as in the watch
+    /// view) in frame `frame_id`, when it has a memory location. The core has to be halted.
+    pub(crate) async fn expression_location(
+        &mut self,
+        core_index: usize,
+        frame_id: Option<i64>,
+        expression: &str,
+    ) -> Result<Option<(u64, Option<u64>)>, Error> {
+        let wire = self
+            .session_interface()
+            .evaluate(
+                core_index as u32,
+                frame_id.map(|id| id as u32),
+                expression.to_string(),
+            )
+            .await
+            .map_err(rpc_err)?;
+        Ok(wire
+            .memory_reference
+            .as_deref()
+            .and_then(parse_memory_reference)
+            .map(|address| (address, wire.byte_size)))
     }
 
     /// Sets debug options of a TriCore core (`None` leaves an option as it is).

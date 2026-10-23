@@ -64,6 +64,8 @@ pub struct WireEvaluateResponse {
     pub named_variables: Option<i64>,
     pub indexed_variables: Option<i64>,
     pub memory_reference: Option<String>,
+    /// The size of the value in memory, when known (for data breakpoints).
+    pub byte_size: Option<u64>,
 }
 
 pub type EvaluateResponse = RpcResult<WireEvaluateResponse>;

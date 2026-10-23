@@ -466,6 +466,7 @@ fn resolve_expression(
         named_variables: Some(named),
         indexed_variables: Some(indexed),
         memory_reference: memory_reference(&variable.memory_location),
+        byte_size: variable.byte_size,
     })
 }
 
@@ -550,6 +551,7 @@ pub async fn evaluate(
         named_variables: None,
         indexed_variables: None,
         memory_reference: None,
+        byte_size: None,
     };
 
     let frame_ref = match request.frame_id {
@@ -583,6 +585,7 @@ pub async fn evaluate(
             named_variables: None,
             indexed_variables: None,
             memory_reference: None,
+            byte_size: None,
         });
     }
 

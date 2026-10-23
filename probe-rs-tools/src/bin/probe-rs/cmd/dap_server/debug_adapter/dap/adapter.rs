@@ -1055,7 +1055,16 @@ impl DebugAdapter {
                     None
                 })
         } else {
-            None
+            // An expression, from the watch view. It is evaluated like a watch expression,
+            // which needs the core halted.
+            session_data
+                .backend
+                .expression_location(core_index, arguments.frame_id, arguments.name.trim())
+                .await
+                .unwrap_or_else(|error| {
+                    tracing::debug!("No memory location for {}: {error}", arguments.name);
+                    None
+                })
         };
 
         let body = match location {
@@ -1074,7 +1083,10 @@ impl DebugAdapter {
                     ]),
                     can_persist: Some(false),
                     data_id: Some(format!("{address:#x}/{len}")),
-                    description: format!("{} ({len} byte(s) at {address:#010x})", arguments.name),
+                    description: format!(
+                        "{} ({len} byte(s) at {address:#010x})",
+                        arguments.name.trim()
+                    ),
                 }
             }
             None => DataBreakpointInfoResponseBody {
@@ -1083,7 +1095,7 @@ impl DebugAdapter {
                 data_id: None,
                 description: format!(
                     "{} has no memory location for a data breakpoint",
-                    arguments.name
+                    arguments.name.trim()
                 ),
             },
         };
