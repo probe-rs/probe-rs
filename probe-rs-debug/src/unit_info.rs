@@ -150,6 +150,19 @@ impl UnitInfo {
             .map(|param| param.value.clone())
     }
 
+    /// The entry addresses (lowest address) of the functions of the unit that are not inlined.
+    /// A function with several address ranges enters through the lowest one.
+    pub(crate) fn function_entries(&self) -> HashSet<u64> {
+        let mut entries = HashMap::<UnitOffset, u64>::new();
+        for (range, offset) in &self.function_dies {
+            entries
+                .entry(*offset)
+                .and_modify(|start| *start = (*start).min(range.start))
+                .or_insert(range.start);
+        }
+        entries.into_values().collect()
+    }
+
     /// Retrieve the value of the `DW_AT_language` attribute of the compilation unit.
     ///
     /// In the unlikely event that we are unable to retrieve the language, we assume Rust.

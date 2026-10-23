@@ -442,30 +442,52 @@ impl<'debug_info> InstructionSequence<'debug_info> {
         };
         let mut prologue_completed = false;
         let mut previous_row: Option<gimli::LineRow> = None;
+        // For GNU C/C++, it is known that `DW_LNS_set_prologue_end` is not emitted, so we employ the same heuristic as GDB to determine when the prologue is complete.
+        // For other C/C++ compilers, they will either set the `DW_LNS_set_prologue_end` or they will trigger this heuristic also.
+        // C++ must be included here: g++ omits prologue_end just like gcc, and without this every instruction is classified as Prologue, so no line ever becomes a valid breakpoint (HaltLocation) location.
+        // See https://gcc.gnu.org/legacy-ml/gcc-patches/2011-03/msg02106.html
+        let gnu_heuristic = matches!(
+            program_language,
+            gimli::DW_LANG_C99
+                | gimli::DW_LANG_C11
+                | gimli::DW_LANG_C17
+                | gimli::DW_LANG_C_plus_plus
+                | gimli::DW_LANG_C_plus_plus_03
+                | gimli::DW_LANG_C_plus_plus_11
+                | gimli::DW_LANG_C_plus_plus_14
+                | gimli::DW_LANG_C_plus_plus_17
+                | gimli::DW_LANG_C_plus_plus_20
+        );
+        // A sequence can hold several functions (GCC puts all functions of a section into one
+        // sequence), each with its own prologue: with the heuristic, the prologue state starts
+        // over at the entry of each function.
+        let function_entries = if gnu_heuristic {
+            program_unit.function_entries()
+        } else {
+            Default::default()
+        };
+        // The row the heuristic compares with: none at the start of a function.
+        let mut heuristic_row: Option<gimli::LineRow> = None;
+        // The first instruction of the current function, while its prologue is not complete.
+        let mut function_start: Option<usize> = None;
         while let Ok(Some((_, row))) = sequence_rows.next_row() {
+            if function_entries.contains(&row.address())
+                && previous_row.is_none_or(|previous| previous.address() != row.address())
+            {
+                instruction_sequence.end_function(function_start.take(), prologue_completed);
+                prologue_completed = false;
+                heuristic_row = None;
+                function_start = Some(instruction_sequence.instructions.len());
+            }
+
             // Don't do anything until we are at least at the prologue_end() of a function.
             if row.prologue_end() {
                 prologue_completed = true;
             }
 
-            // For GNU C/C++, it is known that `DW_LNS_set_prologue_end` is not emitted, so we employ the same heuristic as GDB to determine when the prologue is complete.
-            // For other C/C++ compilers, they will either set the `DW_LNS_set_prologue_end` or they will trigger this heuristic also.
-            // C++ must be included here: g++ omits prologue_end just like gcc, and without this every instruction is classified as Prologue, so no line ever becomes a valid breakpoint (HaltLocation) location.
-            // See https://gcc.gnu.org/legacy-ml/gcc-patches/2011-03/msg02106.html
             if !prologue_completed
-                && matches!(
-                    program_language,
-                    gimli::DW_LANG_C99
-                        | gimli::DW_LANG_C11
-                        | gimli::DW_LANG_C17
-                        | gimli::DW_LANG_C_plus_plus
-                        | gimli::DW_LANG_C_plus_plus_03
-                        | gimli::DW_LANG_C_plus_plus_11
-                        | gimli::DW_LANG_C_plus_plus_14
-                        | gimli::DW_LANG_C_plus_plus_17
-                        | gimli::DW_LANG_C_plus_plus_20
-                )
-                && let Some(prev_row) = previous_row
+                && gnu_heuristic
+                && let Some(prev_row) = heuristic_row
                 && (row.end_sequence()
                     || (row.is_stmt()
                         && (row.file_index() == prev_row.file_index()
@@ -488,8 +510,24 @@ impl<'debug_info> InstructionSequence<'debug_info> {
 
             instruction_sequence.add(prologue_completed, row, previous_row.as_ref());
             previous_row = Some(*row);
+            heuristic_row = Some(*row);
         }
+        instruction_sequence.end_function(function_start, prologue_completed);
         instruction_sequence
+    }
+
+    /// At the end of a function whose first instruction is at `start` (in `instructions`): when
+    /// the heuristic never saw its prologue end (every row of the function is on one line), the
+    /// function entry is its halt location, as GDB does it.
+    fn end_function(&mut self, start: Option<usize>, prologue_completed: bool) {
+        if prologue_completed {
+            return;
+        }
+        if let Some(first) = start.and_then(|start| self.instructions.get_mut(start))
+            && first.instruction_type == InstructionType::Prologue
+        {
+            first.instruction_type = InstructionType::HaltLocation;
+        }
     }
 
     /// Add a instruction location to the list.

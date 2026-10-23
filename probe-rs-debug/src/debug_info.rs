@@ -2774,4 +2774,28 @@ mod test {
     fn path_matches_mixed_flavours(full_path: TypedPath, partial_path: TypedPath, expected: bool) {
         assert_eq!(path_matches(full_path, partial_path), expected);
     }
+
+    /// GCC (here for TriCore, without `-ffunction-sections`) puts every function of a C file into
+    /// one line sequence. Each function has its own prologue: the first halt location of each
+    /// is its second line (the first statement), not the line of its opening brace.
+    #[test]
+    fn every_function_of_a_gcc_line_sequence_skips_its_prologue() {
+        let debug_info = load_test_elf_as_debug_info("debug-unwind-tests/tricore_tc275_demo.elf");
+        // (function, entry, first statement, its line)
+        for (function, entry, body, line) in [
+            ("square", 0x8021_c000, 0x8021_c008, 17),
+            ("scale", 0x8021_c010, 0x8021_c01c, 22),
+            ("accumulate", 0x8021_c036, 0x8021_c03e, 29),
+            ("compute", 0x8021_c07e, 0x8021_c080, 38),
+            ("main", 0x8021_c0aa, 0x8021_c0ac, 45),
+        ] {
+            let breakpoint = crate::VerifiedBreakpoint::for_address(&debug_info, entry)
+                .unwrap_or_else(|e| panic!("{function}: no halt location after {entry:#x}: {e:?}"));
+            assert_eq!(
+                (breakpoint.address, breakpoint.source_location.line),
+                (body, Some(line)),
+                "{function}"
+            );
+        }
+    }
 }
