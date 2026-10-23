@@ -51,5 +51,8 @@ tokio-tungstenite = { version = "0.30", features = [
     "rustls-tls-webpki-roots",
 ], optional = true }
 
+[dev-dependencies]
+tokio = { version = "1.0", features = ["macros", "rt"] }
+
 [lints]
 workspace = true
