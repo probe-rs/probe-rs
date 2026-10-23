@@ -9,12 +9,13 @@ use nusb::{
 };
 
 use crate::probe::{
-    DebugProbeError, DebugProbeInfo, DebugProbeSelector, ProbeCreationError, WireProtocol,
+    DebugProbeError, DebugProbeInfo, DebugProbeSelector, ProbeCreationError, ResetLine,
+    WireProtocol,
     list::{ProbeListItem, usb_probe_accessibility},
 };
 
 use super::Ch347Factory;
-use super::board::{Board, LedActivity};
+use super::board::{Board, LedActivity, ResetPin};
 use super::capabilities::{Capabilities, Clock, Pack, Variant, jtag_clock};
 use super::swd::{SwdClock, WAIT_BACKOFF};
 use super::transport::{Ch347Error, Transport, UsbTransport};
@@ -67,7 +68,15 @@ pub(crate) struct Ch347Device {
     pub(super) capabilities: Capabilities,
     pub(super) board: Option<Board>,
     pub(super) protocol: WireProtocol,
-    pub(super) reset_asserted: bool,
+    /// The GPIO wired to the target's reset line: the board's, or the one the driver settings
+    /// name.
+    pub(super) reset_pin: Option<ResetPin>,
+    /// The `reset_line_connected` setting. If false, the reset line is never pulled low.
+    pub(super) reset_line: ResetLine,
+    /// The reset line while pulled low.
+    pub(super) reset_asserted: Option<ResetPin>,
+    /// Set once this session drives the reset line.
+    pub(super) reset_driven: bool,
     /// Some for a session, between attach and detach.
     pub(super) led: Option<LedActivity>,
     pub(super) timing: Timing,
@@ -149,8 +158,7 @@ impl Ch347Device {
         let transport = UsbTransport::open(interface, out, inp);
 
         let mut device = Self::new(Box::new(transport), capabilities, board);
-        // The chip keeps GPIO state across sessions, set to known state.
-        device.release_reset()?;
+        // The chip keeps GPIO state across sessions.
         device.set_led(false)?;
         Ok(device)
     }
@@ -165,7 +173,10 @@ impl Ch347Device {
             capabilities,
             board,
             protocol: WireProtocol::Jtag,
-            reset_asserted: false,
+            reset_pin: board.and_then(|board| board.reset),
+            reset_line: ResetLine::default(),
+            reset_asserted: None,
+            reset_driven: false,
             led: None,
             timing: Timing::DEFAULT,
             pack: None,
@@ -242,6 +253,11 @@ impl Ch347Device {
 
     /// Runs the protocol's init with the resolved clock.
     pub(crate) fn attach(&mut self) -> Result<(), DebugProbeError> {
+        // The chip keeps GPIO state across sessions, and an earlier session may have left the
+        // target held. Connect under reset asserts the line before attach, so leave it then.
+        if !self.reset_driven {
+            self.release_reset()?;
+        }
         match self.clock()? {
             Clock::Jtag { index, khz } => {
                 if !self.capabilities.bytewise_jtag() {

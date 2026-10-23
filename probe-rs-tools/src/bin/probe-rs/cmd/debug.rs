@@ -420,6 +420,18 @@ impl Cmd {
                             break 'commands;
                         }
                     },
+                    // The session runs only while this task polls it. Without
+                    // this arm, the session does not answer the command.
+                    res = &mut server, if server_result.is_none() => {
+                        server_result = Some(res);
+
+                        // Show the messages that the session sent before it stopped.
+                        // Keep the first error.
+                        while let Ok((event, body)) = msg_receiver.try_recv() {
+                            command_result = command_result.and(debug_client.process_event(&event, body));
+                        }
+                        break 'commands;
+                    },
                     _ = debug_client.req_sender.closed() => break 'commands,
                 }
             }

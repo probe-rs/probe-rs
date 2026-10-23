@@ -110,7 +110,7 @@ const CPUSS_AP_CTL_ENABLE: u32 = 0x0000_53F7;
 bitfield! {
     /// SRSS soft reset control register payload.
     #[derive(Clone, Copy)]
-    struct SrssResSoftCtl(u32);
+    struct SrssResSoftCtl(pub u32);
     impl Debug;
 
     pub trig_soft, set_trig_soft: 0;

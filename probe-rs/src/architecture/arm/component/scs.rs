@@ -41,7 +41,7 @@ mod register {
 
     memory_mapped_bitfield_register! {
         /// B3.2.3 CPUID Base Register
-        pub struct CPUID(u32);
+        pub struct CPUID(pub u32);
         0xD00, "CPUID",
         impl From;
         pub implementer, _: 31, 24;

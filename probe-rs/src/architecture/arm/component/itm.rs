@@ -192,7 +192,7 @@ mod register {
     };
 
     memory_mapped_bitfield_register! {
-        pub struct ITM_TER(u32);
+        pub struct ITM_TER(pub u32);
         0xE00,"ITM_TER",
         impl From;
 
@@ -241,7 +241,7 @@ mod register {
     }
 
     memory_mapped_bitfield_register! {
-        pub struct ITM_TCR(u32);
+        pub struct ITM_TCR(pub u32);
         0xE80, "ITM_TCR",
         impl From;
 

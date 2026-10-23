@@ -37,7 +37,7 @@ bitfield! {
     ///
     /// Bit layout matches the standard AMBA AHB-AP CSW layout (ADI spec C2.2).
     #[derive(Clone, Copy)]
-    pub(super) struct SysApCsw(u32);
+    pub(super) struct SysApCsw(pub u32);
     impl Debug;
 
     /// DbgSwEnable — must be 1 to enable DAP software access.
@@ -75,7 +75,7 @@ impl SysApCsw {
 bitfield! {
     /// CM33 AP CSW register (TrustZone-aware AHB5 AP).
     #[derive(Clone, Copy)]
-    pub(super) struct Cm33ApCsw(u32);
+    pub(super) struct Cm33ApCsw(pub u32);
     impl Debug;
 
     /// CSW.Size\[2:0\] — access size: 0=byte, 1=halfword, 2=word.

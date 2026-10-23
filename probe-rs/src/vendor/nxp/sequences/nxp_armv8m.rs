@@ -751,7 +751,7 @@ bitfield! {
     /// Reference:
     /// `27.6.1.5` in `i.MX RT1180 Reference Manual, Rev. 6, 09/2024`
     #[derive(Copy, Clone)]
-    pub struct Srmask(u32);
+    pub struct Srmask(pub u32);
     impl Debug;
     /// Masks CM33 reset source
     ///

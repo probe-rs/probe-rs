@@ -1294,7 +1294,7 @@ macro_rules! u32_register {
 bitfield::bitfield! {
     /// The `DEBUGCAUSE` register.
     #[derive(Copy, Clone)]
-    pub struct DebugCause(u32);
+    pub struct DebugCause(pub u32);
     impl Debug;
 
     /// Instruction counter exception
@@ -1375,7 +1375,7 @@ bitfield::bitfield! {
     ///
     /// The physical register depends on the debug level.
     #[derive(Copy, Clone)]
-    pub struct ProgramStatus(u32);
+    pub struct ProgramStatus(pub u32);
     impl Debug;
 
     /// Interrupt level disable

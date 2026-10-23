@@ -411,7 +411,7 @@ mod builtin {
         fn load(
             &self,
             flash_loader: &mut FlashLoader,
-            _session: &mut Session,
+            session: &mut Session,
             file: &mut dyn ImageReader,
         ) -> Result<(), FileDownloadError> {
             let mut elf_buffer = Vec::new();
@@ -440,11 +440,14 @@ mod builtin {
                 flash_loader.add_data(data.address.into(), data.data)?;
             }
 
-            // get the vector_table_addr, it will be used to prepare boot
-            if let Some(address) = crate::flashing::vector_table::find_in_elf(
-                &elf_buffer,
-                flash_loader.flash_builder(),
-            ) {
+            // get the vector_table_addr, it will be used to prepare boot.
+            // RAM boot is only implemented for ARM.
+            if session.target().architecture() == probe_rs_target::Architecture::Arm
+                && let Some(address) = crate::flashing::vector_table::find_in_elf(
+                    &elf_buffer,
+                    flash_loader.flash_builder(),
+                )
+            {
                 flash_loader.set_vector_table_addr(address);
             }
 
@@ -948,6 +951,8 @@ impl FlashLoader {
                     })
                     .map_err(FlashError::Core)?;
             }
+
+            session.prepare_loading_to_ram().map_err(FlashError::Core)?;
         }
 
         let mut ram_write_result = Ok(());

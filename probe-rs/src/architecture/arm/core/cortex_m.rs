@@ -12,7 +12,7 @@ use crate::{
 use std::time::{Duration, Instant};
 
 memory_mapped_bitfield_register! {
-    pub struct Vtor(u32);
+    pub struct Vtor(pub u32);
     0xE000_ED08, "VTOR",
     impl From;
     /// This fields holds bits `[31:7]` of the table offset.
@@ -20,7 +20,7 @@ memory_mapped_bitfield_register! {
 }
 
 memory_mapped_bitfield_register! {
-    pub struct Dhcsr(u32);
+    pub struct Dhcsr(pub u32);
     0xE000_EDF0, "DHCSR",
     impl From;
     pub s_reset_st, _: 25;
@@ -52,7 +52,7 @@ memory_mapped_bitfield_register! {
     /// Debug Exception and Monitor Control Register, DEMCR
     ///
     /// Only the vector catch bits common to ARMv6-M and ARMv7-M are modelled here.
-    pub struct Demcr(u32);
+    pub struct Demcr(pub u32);
     0xE000_EDFC, "DEMCR",
     impl From;
     pub vc_harderr, set_vc_harderr: 10;
@@ -60,7 +60,7 @@ memory_mapped_bitfield_register! {
 }
 
 memory_mapped_bitfield_register! {
-    pub struct Dcrsr(u32);
+    pub struct Dcrsr(pub u32);
     0xE000_EDF4, "DCRSR",
     impl From;
     pub _, set_regwnr: 16;
@@ -70,14 +70,14 @@ memory_mapped_bitfield_register! {
 }
 
 memory_mapped_bitfield_register! {
-    pub struct Dcrdr(u32);
+    pub struct Dcrdr(pub u32);
     0xE000_EDF8, "DCRDR",
     impl From;
 }
 
 memory_mapped_bitfield_register! {
     ///  Coprocessor Access Control Register
-    pub struct Cpacr(u32);
+    pub struct Cpacr(pub u32);
     0xE000_ED88, "CPACR",
     impl From;
     pub fpu_privilege, _: 21,20;
@@ -91,7 +91,7 @@ impl Cpacr {
 
 memory_mapped_bitfield_register! {
     ///  Media and VFP Feature Register 0
-    pub struct Mvfr0(u32);
+    pub struct Mvfr0(pub u32);
     0xE000_EF40, "MVFR0",
     impl From;
     pub fpdp, _: 11, 8;
@@ -124,7 +124,7 @@ impl From<u8> for SecurityExtension {
 
 memory_mapped_bitfield_register! {
     /// Processor Feature Register 1
-    pub struct IdPfr1(u32);
+    pub struct IdPfr1(pub u32);
     0xE000_ED44, "ID_PFR1",
     impl From;
     /// Identifies support for the M-Profile programmer's model

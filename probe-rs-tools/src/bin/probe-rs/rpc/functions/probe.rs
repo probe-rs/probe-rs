@@ -1,15 +1,18 @@
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use postcard_rpc::{header::VarHeader, server::Sender};
-use probe_rs::probe::DebugProbeSelector;
+use probe_rs::probe::{DebugProbeSelector, Probe, list::Lister};
 use probe_rs_rpc::probe::{
     AttachRequest, AttachResult, DebugProbeEntry, ListProbesResponse, SelectProbeRequest,
     SelectProbeResponse, SelectProbeResult, WireProtocol,
 };
 
 use crate::rpc::functions::{RpcContext, RpcSpawnContext, WireTxImpl};
+use crate::rpc::probe_broker::ProbeLease;
 use crate::util::common_options::{
-    OPEN_RETRY_INTERVAL, OperationError, ProbeOptions, probe_may_become_available,
+    LoadedProbeOptions, OPEN_RETRY_INTERVAL, OperationError, ProbeOptions,
+    probe_may_become_available,
 };
 use probe_rs_rpc::{AttachEndpoint, RpcResult};
 
@@ -85,42 +88,109 @@ pub async fn attach(
 async fn attach_impl(ctx: RpcSpawnContext, request: AttachRequest) -> RpcResult<AttachResult> {
     let probe_options = ProbeOptions::from(&request);
     let selector = convert::from_wire_debug_probe_selector(request.probe.selector());
-    let cancel = ctx.cancellation_token();
-
     let wait_for_probe = request.wait_for_probe.unwrap_or(Duration::ZERO);
+
+    let attempt = {
+        let ctx = ctx.clone();
+        let selector = selector.clone();
+        move || {
+            attach_once(
+                ctx.clone(),
+                probe_options.clone(),
+                selector.clone(),
+                request.resume_target,
+            )
+        }
+    };
+
+    let opened = open_with_retry(&ctx, &selector, wait_for_probe, "attach", attempt).await?;
+    let result = match opened.into_opened() {
+        Ok((session, lease)) => AttachResult::Success(ctx.set_session(*session, lease).await),
+        Err(failure) => failure,
+    };
+    Ok(result)
+}
+
+/// Why an attempt did not open the probe.
+pub(super) enum OpenFailure {
+    /// The probe is not in the probe list. A probe that another process holds
+    /// can drop out of the list, so this is not necessarily permanent.
+    ProbeGone,
+    Failed(Box<OperationError>),
+}
+
+/// The result of [`open_with_retry`].
+pub(super) enum OpenResult<T> {
+    /// The attempt opened the probe. The lease keeps it for the caller.
+    Opened(T, ProbeLease),
+    /// Another user kept the probe for the whole wait.
+    InUse,
+    /// The last attempt failed.
+    Failed(Box<OperationError>),
+    /// The probe was not in the probe list at the last attempt.
+    Gone,
+}
+
+impl<T> OpenResult<T> {
+    /// Returns the opened value, or the failure as an [`AttachResult`].
+    pub(super) fn into_opened<S>(self) -> Result<(T, ProbeLease), AttachResult<S>> {
+        match self {
+            OpenResult::Opened(value, lease) => Ok((value, lease)),
+            OpenResult::InUse => Err(AttachResult::ProbeInUse),
+            OpenResult::Failed(error) => Err(match *error {
+                OperationError::AttachingFailed {
+                    source,
+                    connect_under_reset,
+                } => AttachResult::TargetAttachFailed {
+                    message: source.to_string(),
+                    connect_under_reset,
+                },
+                other => AttachResult::FailedToOpenProbe(format!("{:?}", anyhow::anyhow!(other))),
+            }),
+            OpenResult::Gone => Err(AttachResult::ProbeNotFound),
+        }
+    }
+}
+
+/// Leases the probe of `selector`, then runs `attempt` until it opens the probe, the probe
+/// fails for good, or `wait_for_probe` runs out. `operation` names the operation in the
+/// error when the request is cancelled.
+pub(super) async fn open_with_retry<T: Send + 'static>(
+    ctx: &RpcSpawnContext,
+    selector: &DebugProbeSelector,
+    wait_for_probe: Duration,
+    operation: &str,
+    attempt: impl Fn() -> RpcResult<Result<T, OpenFailure>> + Send + Sync + 'static,
+) -> RpcResult<OpenResult<T>> {
+    let cancel = ctx.cancellation_token();
+    let cancelled = || Err(format!("{operation} cancelled").into());
+
     let acquire = ctx.probe_broker().acquire(selector.clone());
     let lease = tokio::select! {
         granted = tokio::time::timeout(wait_for_probe, acquire) => match granted {
             Ok(lease) => lease,
-            Err(_) => return Ok(AttachResult::ProbeInUse),
+            Err(_) => return Ok(OpenResult::InUse),
         },
-        _ = cancel.cancelled() => return Err("attach cancelled".into()),
+        _ = cancel.cancelled() => return cancelled(),
     };
 
+    let attempt = Arc::new(attempt);
     let start = Instant::now();
 
     loop {
-        let attempt = {
-            let ctx = ctx.clone();
-            let probe_options = probe_options.clone();
-            let selector = selector.clone();
-
-            tokio::task::spawn_blocking(move || {
-                attach_once(ctx, probe_options, selector, request.resume_target)
-            })
-            .await
-            .unwrap()?
+        let result = {
+            let attempt = attempt.clone();
+            tokio::task::spawn_blocking(move || attempt())
+                .await
+                .unwrap()?
         };
 
         // Only the outcome of the last attempt is reported, so that the caller
         // learns why the probe is unusable now, not why it was earlier.
-        let failure = match attempt {
-            AttachAttempt::Attached(session) => {
-                let session_id = ctx.set_session(*session, lease).await;
-                return Ok(AttachResult::Success(session_id));
-            }
-            AttachAttempt::ProbeGone => None,
-            AttachAttempt::Failed(error) => Some(error),
+        let failure = match result {
+            Ok(opened) => return Ok(OpenResult::Opened(opened, lease)),
+            Err(OpenFailure::ProbeGone) => None,
+            Err(OpenFailure::Failed(error)) => Some(error),
         };
 
         let broken = failure
@@ -130,35 +200,30 @@ async fn attach_impl(ctx: RpcSpawnContext, request: AttachRequest) -> RpcResult<
         let elapsed = start.elapsed();
         if broken || elapsed >= wait_for_probe {
             return Ok(match failure {
-                Some(error) => match *error {
-                    OperationError::AttachingFailed {
-                        source,
-                        connect_under_reset,
-                    } => AttachResult::TargetAttachFailed {
-                        message: source.to_string(),
-                        connect_under_reset,
-                    },
-                    other => {
-                        AttachResult::FailedToOpenProbe(format!("{:?}", anyhow::anyhow!(other)))
-                    }
-                },
-                None => AttachResult::ProbeNotFound,
+                Some(error) => OpenResult::Failed(error),
+                None => OpenResult::Gone,
             });
         }
 
         tokio::select! {
             _ = tokio::time::sleep(OPEN_RETRY_INTERVAL.min(wait_for_probe - elapsed)) => {}
-            _ = cancel.cancelled() => return Err("attach cancelled".into()),
+            _ = cancel.cancelled() => return cancelled(),
         }
     }
 }
 
-enum AttachAttempt {
-    Attached(Box<probe_rs::Session>),
-    /// The probe is not in the probe list. A probe that another process holds
-    /// can drop out of the list, so this is not necessarily permanent.
-    ProbeGone,
-    Failed(Box<OperationError>),
+/// Opens the probe of `selector` once.
+pub(super) fn open_probe(
+    lister: &Lister,
+    loaded: &LoadedProbeOptions,
+    selector: &DebugProbeSelector,
+) -> Result<Probe, OpenFailure> {
+    match loaded.attach_probe(lister) {
+        Ok(probe) => Ok(probe),
+        Err(OperationError::NoProbesFound) => Err(OpenFailure::ProbeGone),
+        Err(_) if lister.list_with_access(Some(selector)).is_empty() => Err(OpenFailure::ProbeGone),
+        Err(error) => Err(OpenFailure::Failed(Box::new(error))),
+    }
 }
 
 fn attach_once(
@@ -166,7 +231,7 @@ fn attach_once(
     probe_options: ProbeOptions,
     selector: DebugProbeSelector,
     resume_target: bool,
-) -> RpcResult<AttachAttempt> {
+) -> RpcResult<Result<Box<probe_rs::Session>, OpenFailure>> {
     use crate::rpc::functions::convert::lift;
 
     let lister = ctx.lister();
@@ -174,15 +239,9 @@ fn attach_once(
     let loaded = probe_options.load(&mut registry)?;
     let target = loaded.get_target_selector()?;
 
-    let probe = match loaded.attach_probe(&lister) {
+    let probe = match open_probe(&lister, &loaded, &selector) {
         Ok(probe) => probe,
-        Err(OperationError::NoProbesFound) => return Ok(AttachAttempt::ProbeGone),
-        Err(error) => {
-            if lister.list_with_access(Some(&selector)).is_empty() {
-                return Ok(AttachAttempt::ProbeGone);
-            }
-            return Ok(AttachAttempt::Failed(Box::new(error)));
-        }
+        Err(failure) => return Ok(Err(failure)),
     };
 
     let mut session = loaded.attach_session(probe, target)?;
@@ -190,7 +249,7 @@ fn attach_once(
         lift(session.resume_all_cores())?;
     }
 
-    Ok(AttachAttempt::Attached(Box::new(session)))
+    Ok(Ok(Box::new(session)))
 }
 
 #[cfg(test)]

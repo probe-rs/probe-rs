@@ -300,6 +300,8 @@ impl DebugProbe for GoldenRecorder {
         })
     }
 
+    fn set_reset_line_connected(&mut self, _connected: bool) {}
+
     fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
         Ok(())
     }

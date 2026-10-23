@@ -29,6 +29,7 @@ pub mod infineon;
 pub mod maxim;
 pub mod microchip;
 pub mod nordicsemi;
+pub mod nsing;
 pub mod nuclei;
 pub mod nxp;
 pub mod raspberrypi;
@@ -107,6 +108,7 @@ static VENDORS: LazyLock<RwLock<Vec<&'static dyn Vendor>>> = LazyLock::new(|| {
         &renesas::Renesas,
         &wch::Wch,
         &gigadevice::GigaDevice,
+        &nsing::Nsing,
     ];
 
     RwLock::new(vendors)

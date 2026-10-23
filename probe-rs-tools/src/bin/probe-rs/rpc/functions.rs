@@ -28,7 +28,7 @@ use crate::rpc::{
         memory::{read_bytes, read_memory, write_memory},
         monitor::monitor,
         probe::{attach, list_probes, select_probe},
-        reset::{reset, reset_and_halt},
+        reset::{reset, reset_and_halt, reset_target},
         rtt_client::{
             clean_up_rtt, clear_rtt_control_block, create_rtt_client, get_rtt_channels,
             poll_rtt_up, write_rtt_down,
@@ -508,6 +508,7 @@ postcard_rpc::define_dispatch! {
         | TargetInfoEndpoint               | async | target_info                |
         | ResetCoreEndpoint                | async | reset                      |
         | ResetCoreAndHaltEndpoint         | async | reset_and_halt             |
+        | ResetTargetEndpoint              | spawn | reset_target               |
 
         | CoreStatusEndpoint               | async | core_status                |
         | CoreHaltEndpoint                 | async | core_halt                  |

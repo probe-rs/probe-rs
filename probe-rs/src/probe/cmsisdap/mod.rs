@@ -1,4 +1,5 @@
 //! CMSIS-DAP probe implementation.
+mod arm;
 mod cmsis_swd;
 mod commands;
 mod tcp;
@@ -10,7 +11,7 @@ use crate::{
         arm::{
             ArmCommunicationInterface, ArmDebugInterface, ArmError, DapError, SwoAccess, SwoConfig,
             SwoMode,
-            dp::{Abort, Ctrl, DpRegister},
+            dp::{Abort, Ctrl, DpRegister, DpRegisterAddress},
             sequences::ArmDebugSequence,
             swo::poll_interval_from_buf_size,
         },
@@ -24,10 +25,15 @@ use crate::{
     },
     probe::{
         DebugProbe, DebugProbeError, DebugProbeSelector, JtagChain, JtagChainAccess,
-        JtagChainState, ProbeFactory, WireProtocol,
-        cmsisdap::commands::{
-            CmsisDapError, RequestError,
-            general::info::{CapabilitiesCommand, PacketCountCommand, SWOTraceBufferSizeCommand},
+        JtagChainState, ProbeFactory, ResetLine, WireProtocol,
+        cmsisdap::{
+            arm::CmsisDapTransport,
+            commands::{
+                CmsisDapError, RequestError,
+                general::info::{
+                    CapabilitiesCommand, PacketCountCommand, SWOTraceBufferSizeCommand,
+                },
+            },
         },
         swd::SwdProbe,
     },
@@ -56,7 +62,7 @@ use commands::{
         sequence::{SequenceRequest, SequenceResponse},
     },
     swo,
-    transfer::{Ack, TransferRequest, configure::ConfigureRequest},
+    transfer::{Ack, TransferRequest, configure::ConfigureRequest, write_abort::WriteAbortRequest},
 };
 use probe_rs_target::ScanChainElement;
 
@@ -158,6 +164,14 @@ pub struct CmsisDap {
     transfer_wait_retry: u16,
 
     jtag_state: JtagChainState,
+    reset_line: ResetLine,
+
+    /// Whether the probe got the scan chain with `DAP_JTAG_Configure` since it connected.
+    /// `DAP_Transfer` over JTAG needs it.
+    jtag_configured: bool,
+
+    /// The last value written to DP SELECT. Its DP bank decides what DP address 0x4 reaches.
+    dp_select: u32,
 }
 
 impl std::fmt::Debug for CmsisDap {
@@ -237,6 +251,9 @@ impl CmsisDap {
             speed_khz: 1_000,
             transfer_wait_retry: 0,
             jtag_state: JtagChainState::default(),
+            reset_line: ResetLine::default(),
+            jtag_configured: false,
+            dp_select: 0,
         })
     }
 
@@ -583,7 +600,39 @@ impl CmsisDap {
     }
 
     fn write_abort(&mut self, abort: Abort) -> Result<(), ArmError> {
-        let mut request = TransferRequest::write(Abort::ADDRESS, abort.into());
+        if self.protocol == Some(WireProtocol::Jtag) {
+            // A JTAG-DP has only DAPABORT, and clears its sticky flags through CTRL/STAT. The
+            // abort goes first, because CTRL/STAT answers WAIT while an AP transaction is stuck.
+            let value = u32::from(abort);
+            if value & 1 != 0 {
+                let request = WriteAbortRequest {
+                    dap_index: self.jtag_state.chain_params.index as u8,
+                    value: 1,
+                };
+                let response = commands::send_command(&mut self.device, &request)
+                    .map_err(DebugProbeError::from)?;
+                if response.status == Status::DapError {
+                    return Err(DebugProbeError::from(CmsisDapError::ErrorResponse(
+                        RequestError::WriteAbort { request },
+                    ))
+                    .into());
+                }
+            }
+            if value & !1 != 0 {
+                self.clear_jtag_sticky_err()?;
+            }
+            return Ok(());
+        }
+
+        self.write_dp_register(Abort::ADDRESS, abort.into())
+    }
+
+    fn write_dp_register(
+        &mut self,
+        address: DpRegisterAddress,
+        value: u32,
+    ) -> Result<(), ArmError> {
+        let mut request = TransferRequest::write(address, value);
         request.dap_index = self.jtag_state.chain_params.index as u8;
         let response =
             commands::send_command(&mut self.device, &request).map_err(DebugProbeError::from)?;
@@ -780,11 +829,15 @@ impl CmsisDap {
             .ok();
         }
         self.connected = true;
+        self.jtag_configured = false;
 
         Ok(())
     }
 
     pub(crate) fn configure_jtag(&mut self, skip_scan: bool) -> Result<(), DebugProbeError> {
+        // Until the new chain is in the probe, the old one may not describe the target.
+        self.jtag_configured = false;
+
         let ir_lengths = if skip_scan {
             let expected = self
                 .jtag_state
@@ -825,6 +878,7 @@ impl CmsisDap {
         };
         tracing::info!("Configuring JTAG with ir lengths: {:?}", ir_lengths);
         self.send_jtag_configure(JtagConfigureRequest::new(ir_lengths)?)?;
+        self.jtag_configured = true;
 
         Ok(())
     }
@@ -917,6 +971,7 @@ impl DebugProbe for CmsisDap {
         let _: Result<HostStatusResponse, _> = commands::send_command(&mut self.device, &request);
 
         self.connected = false;
+        self.jtag_configured = false;
 
         match response {
             DisconnectResponse(Status::DapOk) => Ok(()),
@@ -927,6 +982,7 @@ impl DebugProbe for CmsisDap {
     }
 
     fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError> {
+        self.jtag_configured = false;
         match protocol {
             WireProtocol::Jtag if self.capabilities.jtag_implemented => {
                 self.protocol = Some(WireProtocol::Jtag);
@@ -946,6 +1002,7 @@ impl DebugProbe for CmsisDap {
 
     /// Asserts the nRESET pin.
     fn target_reset(&mut self) -> Result<(), DebugProbeError> {
+        self.reset_line.check_assert()?;
         commands::send_command(&mut self.device, &ResetRequest).map(|v: ResetResponse| {
             tracing::info!("Target reset response: {:?}", v);
         })?;
@@ -953,6 +1010,7 @@ impl DebugProbe for CmsisDap {
     }
 
     fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
+        self.reset_line.check_assert()?;
         let request = SWJPinsRequestBuilder::new().nreset(false).build();
 
         commands::send_command(&mut self.device, &request).map(|v: SWJPinsResponse| {
@@ -970,6 +1028,10 @@ impl DebugProbe for CmsisDap {
         Ok(())
     }
 
+    fn set_reset_line_connected(&mut self, connected: bool) {
+        self.reset_line.set_connected(connected);
+    }
+
     fn get_swo_interface(&self) -> Option<&dyn SwoAccess> {
         Some(self as _)
     }
@@ -982,20 +1044,11 @@ impl DebugProbe for CmsisDap {
         self: Box<Self>,
         sequence: Arc<dyn ArmDebugSequence>,
     ) -> Result<Box<dyn ArmDebugInterface + 'probe>, (Box<dyn DebugProbe>, ArmError)> {
-        match self.protocol {
-            Some(WireProtocol::Jtag) => {
-                let settings = SwdProbe::swd_settings(self.as_ref());
-                Ok(ArmCommunicationInterface::create_jtag(
-                    self, settings, sequence, false,
-                ))
-            }
-            _ => {
-                let settings = SwdProbe::swd_settings(self.as_ref());
-                Ok(ArmCommunicationInterface::create_swd(
-                    self, settings, sequence, false,
-                ))
-            }
-        }
+        Ok(ArmCommunicationInterface::create(
+            Box::new(CmsisDapTransport(self)),
+            sequence,
+            false,
+        ))
     }
 
     fn has_arm_interface(&self) -> bool {

@@ -338,6 +338,10 @@ impl DebugProbe for SifliUart {
         todo!()
     }
 
+    fn set_reset_line_connected(&mut self, _connected: bool) {
+        // The probe has no reset line.
+    }
+
     fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError> {
         match protocol {
             WireProtocol::Swd => Ok(()),

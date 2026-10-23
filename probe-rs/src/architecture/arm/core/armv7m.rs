@@ -32,7 +32,7 @@ bitfield! {
     ///
     /// To write this register successfully, you need to set the debug key via [`Dhcsr::enable_write`] first!
     #[derive(Copy, Clone)]
-    pub struct Dhcsr(u32);
+    pub struct Dhcsr(pub u32);
     impl Debug;
     /// Indicates whether the processor has been reset since the last read of DHCSR:
     /// `0`: No reset since last DHCSR read.\
@@ -211,7 +211,7 @@ impl MemoryMappedRegister<u32> for Dhcsr {
 
 /// Debug Core Register Data Register, DCRDR (see armv7-M Architecture Reference Manual C1.6.3)
 #[derive(Debug, Copy, Clone)]
-pub struct Dcrdr(u32);
+pub struct Dcrdr(pub u32);
 
 impl From<u32> for Dcrdr {
     fn from(value: u32) -> Self {
@@ -235,7 +235,7 @@ bitfield! {
     ///
     /// [`Aircr::vectkey`] must be called before this register can effectively be written!
     #[derive(Copy, Clone)]
-    pub struct Aircr(u32);
+    pub struct Aircr(pub u32);
     impl Debug;
     /// Vector Key. The value 0x05FA must be written to this register, otherwise
     /// the register write is UNPREDICTABLE.
@@ -319,7 +319,7 @@ impl MemoryMappedRegister<u32> for Aircr {
 bitfield! {
     /// Debug Exception and Monitor Control Register, DEMCR (see armv7-M Architecture Reference Manual C1.6.5)
     #[derive(Copy, Clone)]
-    pub struct Demcr(u32);
+    pub struct Demcr(pub u32);
     impl Debug;
     /// Global enable for DWT and ITM features
     pub trcena, set_trcena: 24;
@@ -373,7 +373,7 @@ impl MemoryMappedRegister<u32> for Demcr {
 bitfield! {
     /// MPU Control Register, MPU_CTRL (see armv7-M Architecture Reference Manual B3.5.3)
     #[derive(Copy, Clone)]
-    pub struct MpuCtrl(u32);
+    pub struct MpuCtrl(pub u32);
     impl Debug;
     /// When the ENABLE bit is set to `1`, controls whether privileged software
     /// access to the default memory map is enabled:
@@ -417,7 +417,7 @@ impl MemoryMappedRegister<u32> for MpuCtrl {
 bitfield! {
     /// Flash Patch Control Register, FP_CTRL (see armv7-M Architecture Reference Manual C1.11.3)
     #[derive(Copy,Clone)]
-    pub struct FpCtrl(u32);
+    pub struct FpCtrl(pub u32);
     impl Debug;
     /// Flash Patch breakpoint architecture revision:
     ///
@@ -471,7 +471,7 @@ impl From<FpCtrl> for u32 {
 bitfield! {
     /// Flash Patch Comparator register, FP_COMPn (see armv7-M Architecture Reference Manual C1.11.5)
     #[derive(Copy,Clone)]
-    pub struct FpRev1CompX(u32);
+    pub struct FpRev1CompX(pub u32);
     impl Debug;
     /// For an instruction address comparator:
     ///
@@ -585,7 +585,7 @@ impl FpRev1CompX {
 bitfield! {
     /// The FP_COMPn register bit assignments for FPB Version 2 where the Flash Patch is not implemented (see [`FpRev1CompX`]).
     #[derive(Copy,Clone)]
-    pub struct FpRev2CompX(u32);
+    pub struct FpRev2CompX(pub u32);
     impl Debug;
     /// BPADDR, `bits[31:1]` Breakpoint address. Specifies `bits[31:1]` of the breakpoint instruction address.
     ///

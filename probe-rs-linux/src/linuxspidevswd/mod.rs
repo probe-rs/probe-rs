@@ -378,6 +378,10 @@ impl DebugProbe for LinuxSpidevSwdProbe {
         })
     }
 
+    fn set_reset_line_connected(&mut self, _connected: bool) {
+        // The probe has no reset line.
+    }
+
     fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError> {
         if protocol != WireProtocol::Swd {
             Err(DebugProbeError::UnsupportedProtocol(protocol))
@@ -557,7 +561,7 @@ fn parse_swd_ack(ack: u64) -> Result<(), DebugProbeError> {
 bitfield::bitfield! {
     /// A SWD write packet
     #[derive(Copy, Clone)]
-    struct SwdWritePacket(u64);
+    struct SwdWritePacket(pub u64);
     impl Debug;
 
     // Common header
@@ -581,7 +585,7 @@ bitfield::bitfield! {
 bitfield::bitfield! {
     /// A SWD read packet
     #[derive(Copy, Clone)]
-    struct SwdReadPacket(u64);
+    struct SwdReadPacket(pub u64);
     impl Debug;
 
     // Common header

@@ -51,7 +51,7 @@ memory_mapped_bitfield_register! {
     /// The control register is described in "DDI0314H CoreSight Components Technical Reference
     /// Manual" on page 7-5.
     #[derive(Default)]
-    pub struct Control(u32);
+    pub struct Control(pub u32);
     0x00, "CSTF/CTRL",
     impl From;
 

@@ -129,7 +129,7 @@ impl<'a> Dwt<'a> {
 }
 
 memory_mapped_bitfield_register! {
-    pub struct Ctrl(u32);
+    pub struct Ctrl(pub u32);
     0x00, "DWT/CTRL",
     impl From;
     pub u8, numcomp, _: 31, 28;
@@ -160,25 +160,25 @@ memory_mapped_bitfield_register! {
 impl DebugComponentInterface for Ctrl {}
 
 memory_mapped_bitfield_register! {
-    pub struct Cyccnt(u32);
+    pub struct Cyccnt(pub u32);
     0x04, "DWT/CYCCNT",
     impl From;
 }
 
 memory_mapped_bitfield_register! {
-    pub struct Cpicnt(u32);
+    pub struct Cpicnt(pub u32);
     0x08, "DWT/CPICNT",
     impl From;
 }
 
 memory_mapped_bitfield_register! {
-    pub struct Exccnt(u32);
+    pub struct Exccnt(pub u32);
     0x0C, "DWT/EXCCNT",
     impl From;
 }
 
 memory_mapped_bitfield_register! {
-    pub struct Comp(u32);
+    pub struct Comp(pub u32);
     0x20, "DWT/COMP",
     impl From;
     pub u32, comp, set_comp: 31, 0;
@@ -187,7 +187,7 @@ memory_mapped_bitfield_register! {
 impl DebugComponentInterface for Comp {}
 
 memory_mapped_bitfield_register! {
-    pub struct Mask(u32);
+    pub struct Mask(pub u32);
     0x24, "DWT/MASK",
     impl From;
     pub u32, mask, set_mask: 4, 0;
@@ -196,7 +196,7 @@ memory_mapped_bitfield_register! {
 impl DebugComponentInterface for Mask {}
 
 memory_mapped_bitfield_register! {
-    pub struct Function(u32);
+    pub struct Function(pub u32);
     0x28, "DWT/FUNCTION",
     impl From;
     pub matched, _: 24;
@@ -216,7 +216,7 @@ memory_mapped_bitfield_register! {
 impl DebugComponentInterface for Function {}
 
 memory_mapped_bitfield_register! {
-    pub struct Pcsr(u32);
+    pub struct Pcsr(pub u32);
     0x1C, "DWT/PCSR",
     impl From;
     pub u32, eiasample, _: 31, 0;

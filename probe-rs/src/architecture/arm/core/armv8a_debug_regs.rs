@@ -4,7 +4,7 @@ use crate::{HaltReason, core::BreakpointCause, memory_mapped_bitfield_register};
 
 memory_mapped_bitfield_register! {
     /// EDSCR - Debug Status and Control Register
-    pub struct Edscr(u32);
+    pub struct Edscr(pub u32);
     0x088, "EDSCR",
     impl From;
 
@@ -147,7 +147,7 @@ impl Edscr {
 
 memory_mapped_bitfield_register! {
     /// EDLAR - Lock Access Register
-    pub struct Edlar(u32);
+    pub struct Edlar(pub u32);
     0xFB0,"EDLAR",
     impl From;
 
@@ -158,7 +158,7 @@ memory_mapped_bitfield_register! {
 
 memory_mapped_bitfield_register! {
     /// OSLAR_EL1 - OS Lock Access Register
-    pub struct Oslar(u32);
+    pub struct Oslar(pub u32);
     0x300,"OSLAR_EL1",
     impl From;
 
@@ -168,7 +168,7 @@ memory_mapped_bitfield_register! {
 
 memory_mapped_bitfield_register! {
     /// DBGBVR - Breakpoint Value Register
-    pub struct Dbgbvr(u32);
+    pub struct Dbgbvr(pub u32);
     0x400, "DBGBVR",
     impl From;
 
@@ -178,7 +178,7 @@ memory_mapped_bitfield_register! {
 
 memory_mapped_bitfield_register! {
     /// DBGBCR - Breakpoint Control Register
-    pub struct Dbgbcr(u32);
+    pub struct Dbgbcr(pub u32);
     0x408, "DBGBCR",
     impl From;
 
@@ -206,7 +206,7 @@ memory_mapped_bitfield_register! {
 
 memory_mapped_bitfield_register! {
     /// EDDFR - External Debug Feature Register
-    pub struct Eddfr(u32);
+    pub struct Eddfr(pub u32);
     0xD28, "EDDFR",
     impl From;
 
@@ -228,7 +228,7 @@ memory_mapped_bitfield_register! {
 
 memory_mapped_bitfield_register! {
     /// EDITR - External Debug Instruction Transfer Register
-    pub struct Editr(u32);
+    pub struct Editr(pub u32);
     0x084, "EDITR",
     impl From;
 
@@ -238,7 +238,7 @@ memory_mapped_bitfield_register! {
 
 memory_mapped_bitfield_register! {
     /// EDRCR - External Debug Reserve Control Register
-    pub struct Edrcr(u32);
+    pub struct Edrcr(pub u32);
     0x090, "EDRCR",
     impl From;
 
@@ -254,7 +254,7 @@ memory_mapped_bitfield_register! {
 
 memory_mapped_bitfield_register! {
     /// EDECR - External Debug Execution Control Register
-    pub struct Edecr(u32);
+    pub struct Edecr(pub u32);
     0x024, "EDECR",
     impl From;
 
@@ -270,7 +270,7 @@ memory_mapped_bitfield_register! {
 
 memory_mapped_bitfield_register! {
     /// EDPRCR - External Debug Power/Reset Control Register
-    pub struct Edprcr(u32);
+    pub struct Edprcr(pub u32);
     0x310, "EDPRCR",
     impl From;
 
@@ -286,7 +286,7 @@ memory_mapped_bitfield_register! {
 
 memory_mapped_bitfield_register! {
     /// DBGDTRTX - Debug Data Transfer Register, Transmit
-    pub struct Dbgdtrtx(u32);
+    pub struct Dbgdtrtx(pub u32);
     0x08C, "DBGDTRTX",
     impl From;
 
@@ -296,7 +296,7 @@ memory_mapped_bitfield_register! {
 
 memory_mapped_bitfield_register! {
     /// DBGDTRRX - Debug Data Transfer Register, Receive
-    pub struct Dbgdtrrx(u32);
+    pub struct Dbgdtrrx(pub u32);
     0x080, "DBGDTRRX",
     impl From;
 
@@ -306,7 +306,7 @@ memory_mapped_bitfield_register! {
 
 memory_mapped_bitfield_register! {
     /// EDPRSR - External Debug Processor Status Register
-    pub struct Edprsr(u32);
+    pub struct Edprsr(pub u32);
     0x314, "EDPRSR",
     impl From;
 
@@ -349,7 +349,7 @@ memory_mapped_bitfield_register! {
 
 memory_mapped_bitfield_register! {
     /// CTICONTROL - CTI control register
-    pub struct CtiControl(u32);
+    pub struct CtiControl(pub u32);
     0x000, "CTICONTROL",
     impl From;
 
@@ -359,7 +359,7 @@ memory_mapped_bitfield_register! {
 
 memory_mapped_bitfield_register! {
     /// CTIGATE - CTI gate register
-    pub struct CtiGate(u32);
+    pub struct CtiGate(pub u32);
     0x140, "CTIGATE",
     impl From;
 
@@ -369,7 +369,7 @@ memory_mapped_bitfield_register! {
 
 memory_mapped_bitfield_register! {
     /// CTIOUTEN<n> - CTI output enable register
-    pub struct CtiOuten(u32);
+    pub struct CtiOuten(pub u32);
     0x0A0, "CTIOUTEN",
     impl From;
 
@@ -379,7 +379,7 @@ memory_mapped_bitfield_register! {
 
 memory_mapped_bitfield_register! {
     /// CTIAPPPULSE - CTI application pulse register
-    pub struct CtiApppulse(u32);
+    pub struct CtiApppulse(pub u32);
     0x01C, "CTIAPPPULSE",
     impl From;
 
@@ -389,7 +389,7 @@ memory_mapped_bitfield_register! {
 
 memory_mapped_bitfield_register! {
     /// CTIINTACK - CTI Output Trigger Acknowledge register
-    pub struct CtiIntack(u32);
+    pub struct CtiIntack(pub u32);
     0x010, "CTIINTACK",
     impl From;
 
@@ -399,7 +399,7 @@ memory_mapped_bitfield_register! {
 
 memory_mapped_bitfield_register! {
     /// CTITRIGOUTSTATUS - CTI Trigger Out Status register
-    pub struct CtiTrigoutstatus(u32);
+    pub struct CtiTrigoutstatus(pub u32);
     0x134, "CTITRIGOUTSTATUS",
     impl From;
 

@@ -23,7 +23,8 @@ use crate::{
     probe::{
         BitbangSwd, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector,
         IoSequenceItem, JtagChain, JtagChainAccess, JtagChainState, JtagOp, JtagProbe,
-        ProbeCreationError, ProbeError, ProbeFactory, SwdProbe, SwdSettings, WireProtocol,
+        ProbeCreationError, ProbeError, ProbeFactory, ResetLine, SwdProbe, SwdSettings,
+        WireProtocol,
         blackmagic::arm::BlackMagicProbeArmDebug,
         jtag::{Step, TapState, distribute_captures, walk_batch},
         list::ProbeListItem,
@@ -89,7 +90,7 @@ impl core::fmt::Display for ProtocolVersion {
 
 bitfield! {
     #[derive(Copy, Clone)]
-    struct Accelerators(u64);
+    struct Accelerators(pub u64);
     impl Debug;
 
     bool, has_adiv5, set_has_adiv5: 0;
@@ -683,7 +684,7 @@ impl core::fmt::Display for RemoteError {
 
 impl ProbeError for RemoteError {}
 
-struct RemoteResponse(u64);
+struct RemoteResponse(pub u64);
 
 #[derive(PartialEq, Copy, Clone)]
 enum SwdDirection {
@@ -721,6 +722,7 @@ pub struct BlackMagicProbe {
     jtag_state: JtagChainState,
     swd_settings: SwdSettings,
     swd_direction: SwdDirection,
+    reset_line: ResetLine,
 }
 
 impl core::fmt::Debug for BlackMagicProbe {
@@ -794,6 +796,7 @@ impl BlackMagicProbe {
             jtag_state: JtagChainState::default(),
             swd_settings: SwdSettings::default(),
             swd_direction: SwdDirection::Output,
+            reset_line: ResetLine::default(),
         };
 
         probe.command(RemoteCommand::SetNrst(false)).ok();
@@ -1265,6 +1268,7 @@ impl DebugProbe for BlackMagicProbe {
     }
 
     fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
+        self.reset_line.check_assert()?;
         self.command(RemoteCommand::TargetReset(true))?;
         Ok(())
     }
@@ -1272,6 +1276,10 @@ impl DebugProbe for BlackMagicProbe {
     fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
         self.command(RemoteCommand::TargetReset(false))?;
         Ok(())
+    }
+
+    fn set_reset_line_connected(&mut self, connected: bool) {
+        self.reset_line.set_connected(connected);
     }
 
     fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError> {
@@ -1439,6 +1447,7 @@ impl BitbangSwd for BlackMagicProbe {
         select: Pins,
         _wait: Duration,
     ) -> Result<(), DebugProbeError> {
+        self.reset_line.check_pins(out, select)?;
         let pin_out = out.0 as u32;
         let pin_select = select.0 as u32;
 
@@ -1850,7 +1859,7 @@ mod remote_tests {
     use super::{BlackMagicProbe, ProtocolVersion, RemoteCommand, SwdDirection};
     use crate::probe::{
         BitSequence, BitbangSwd, DebugProbeError, IoSequenceItem, JtagBatch, JtagChainState,
-        JtagProbe, SwdSettings, TapState, WireProtocol,
+        JtagProbe, ResetLine, SwdSettings, TapState, WireProtocol,
     };
 
     struct SharedWriter(Arc<Mutex<Vec<u8>>>);
@@ -1884,6 +1893,7 @@ mod remote_tests {
             jtag_state: JtagChainState::default(),
             swd_settings: SwdSettings::default(),
             swd_direction: SwdDirection::Output,
+            reset_line: ResetLine::default(),
         };
         (probe, sent)
     }

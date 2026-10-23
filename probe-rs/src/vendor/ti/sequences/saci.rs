@@ -35,7 +35,7 @@ bitfield! {
     ///
     /// Reflects the current device and boot state.
     #[derive(Copy, Clone)]
-    pub struct DeviceStatusRegister(u32);
+    pub struct DeviceStatusRegister(pub u32);
     impl Debug;
     /// Indicates whether the AHB-AP is accessible.
     ///
@@ -61,7 +61,7 @@ bitfield! {
     ///
     /// Controls transmission of SACI command words to the device.
     #[derive(Copy, Clone)]
-    struct TxCtrlRegister(u32);
+    struct TxCtrlRegister(pub u32);
     impl Debug;
     /// TX data register is full; wait before writing another word.
     ///
@@ -90,7 +90,7 @@ bitfield! {
     ///
     /// Indicates whether a response word is available from the device.
     #[derive(Copy, Clone)]
-    struct RxCtrlRegister(u32);
+    struct RxCtrlRegister(pub u32);
     impl Debug;
     /// Response word is ready.
     ///
@@ -154,6 +154,10 @@ pub mod regs {
     pub const RX_DATA: u64 = 0x08;
     /// RX_CTRL: check whether a response word is ready.
     pub const RX_CTRL: u64 = 0x0C;
+    /// RSTCTL: writing RSTCTL_RESET resets the device.
+    pub const RSTCTL: u64 = 0x18;
+    /// Value that requests a system reset from the debug probe.
+    pub const RSTCTL_RESET: u32 = 0x5C;
 }
 
 // ---- Result codes -----------------------------------------------------------
@@ -333,6 +337,17 @@ pub fn read_device_status(interface: &mut dyn DapAccess) -> Result<DeviceStatusR
     let cfg_ap: FullyQualifiedApAddress = ApSel::CfgAp.into();
     let val = interface.read_raw_ap_register(&cfg_ap, DEVICE_STATUS_ADDRESS)?;
     Ok(DeviceStatusRegister(val))
+}
+
+/// Reset the device from the SEC-AP.
+///
+/// The reset takes the debug port down before the write is acknowledged, so
+/// the result is ignored. It is sent as a batch so it is never retried.
+pub fn reset_device(interface: &mut dyn DapAccess) {
+    let sec_ap: FullyQualifiedApAddress = ApSel::SecAp.into();
+    let reset = [(regs::RSTCTL, Some(regs::RSTCTL_RESET))];
+    let _ = interface.access_raw_ap_registers(&sec_ap, &reset, &mut []);
+    let _ = interface.flush();
 }
 
 // ---- Utility functions ------------------------------------------------------

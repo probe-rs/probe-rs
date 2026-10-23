@@ -1,4 +1,5 @@
-//! Board GPIO wiring. Supports the target reset line and an activity LED, opt-in by USB identity.
+//! Board GPIO wiring. Supports the target reset line and an activity LED, opt-in by USB identity
+//! or by the driver settings.
 
 use std::num::NonZeroU8;
 use std::thread::sleep;
@@ -6,8 +7,10 @@ use std::time::{Duration, Instant};
 
 use nusb::{DeviceInfo, MaybeFuture};
 
-use crate::probe::{DebugProbeError, Pins};
+use crate::probe::{DebugProbeError, Pins, WireProtocol};
 
+use super::Ch347ResetPin;
+use super::capabilities::Variant;
 use super::device::{Ch347Device, PID_CH347F, VID_WCH};
 use super::transport::{Ch347Error, HEADER_LEN, TIMEOUT, frame};
 
@@ -49,8 +52,8 @@ impl Drive {
     }
 }
 
-/// A board's GPIO wiring, matched on the full USB identity. An unmatched device never gets a GPIO
-/// written.
+/// A board's GPIO wiring, matched on the full USB identity. An unmatched device gets no GPIO write,
+/// unless the driver settings name a reset pin.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct Board {
     pub name: &'static str,
@@ -175,11 +178,48 @@ impl PinState {
     }
 }
 
+/// The GPIO behind the TRST pin. It is pin 9 on both chips, but a different GPIO.
+fn trst_gpio(variant: Variant) -> usize {
+    match variant {
+        Variant::Ch347F => 3,
+        Variant::Ch347T => 5,
+    }
+}
+
 impl Ch347Device {
+    /// Puts the target's reset line on `pin`, in place of the board's. The line is released to
+    /// an input, so it needs a pull-up. JTAG drives TRST, so a reset line on TRST forces SWD.
+    pub(crate) fn set_reset_pin(&mut self, pin: Ch347ResetPin) -> Result<(), DebugProbeError> {
+        let gpio = match pin {
+            Ch347ResetPin::Trst => trst_gpio(self.capabilities.variant),
+            Ch347ResetPin::Gpio(gpio) => usize::from(gpio),
+        };
+        if self
+            .board
+            .and_then(|board| board.led)
+            .is_some_and(|led| led.gpio == gpio)
+        {
+            return Err(Ch347Error::ResetPinIsLed(gpio).into());
+        }
+        self.reset_pin = Some(ResetPin {
+            gpio,
+            release: Drive::Input,
+        });
+        // Leave JTAG before its clock setup runs a JTAG init, which drives TRST.
+        if self.reset_on_trst() && self.protocol == WireProtocol::Jtag {
+            self.select_protocol(WireProtocol::Swd)?;
+        }
+        Ok(())
+    }
+
+    /// JTAG drives the TRST pin, so it cannot also be the reset line.
+    pub(super) fn reset_on_trst(&self) -> bool {
+        self.reset_pin
+            .is_some_and(|pin| pin.gpio == trst_gpio(self.capabilities.variant))
+    }
+
     fn reset_pin(&self) -> Result<ResetPin, DebugProbeError> {
-        self.board
-            .and_then(|board| board.reset)
-            .ok_or(Ch347Error::NoResetPin.into())
+        self.reset_pin.ok_or(Ch347Error::NoResetPin.into())
     }
 
     fn gpio_frame(
@@ -212,10 +252,14 @@ impl Ch347Device {
     /// Pulls the target's reset line low or releases it the way the board wants. Returns
     /// the line's level afterwards.
     fn drive_reset(&mut self, pin: ResetPin, assert: bool) -> Result<bool, DebugProbeError> {
+        if assert {
+            self.reset_line.check_assert()?;
+        }
         let drive = if assert { Drive::Low } else { pin.release };
+        self.reset_driven = true;
         // Recorded before the write, so a lost reply still gets the line released.
         if assert {
-            self.reset_asserted = true;
+            self.reset_asserted = Some(pin);
         }
         let state = self.gpio(pin.gpio, drive)?;
         if state.output != (drive != Drive::Input) {
@@ -225,7 +269,7 @@ impl Ch347Device {
             "target reset {}",
             if assert { "asserted" } else { "released" }
         );
-        self.reset_asserted = assert;
+        self.reset_asserted = assert.then_some(pin);
         Ok(state.high)
     }
 
@@ -242,10 +286,10 @@ impl Ch347Device {
         self.set_reset(false)
     }
 
-    /// Releases the reset line at session start, whatever the protocol. The chip keeps GPIO
-    /// state, so a session killed mid-reset leaves the target held.
+    /// Releases the reset line. The chip keeps GPIO state, so a session killed mid-reset leaves
+    /// the target held.
     pub(super) fn release_reset(&mut self) -> Result<(), DebugProbeError> {
-        if let Some(pin) = self.board.and_then(|board| board.reset) {
+        if let Some(pin) = self.reset_pin {
             self.drive_reset(pin, false)?;
         }
         Ok(())
@@ -268,7 +312,7 @@ impl Ch347Device {
         let unsupported = || DebugProbeError::CommandNotSupportedByProbe {
             command_name: "swj_pins",
         };
-        let pin = self.reset_pin().map_err(|_| unsupported())?;
+        let pin = self.reset_pin()?;
         if select.0 != PIN_NRESET {
             return Err(unsupported());
         }
@@ -333,16 +377,11 @@ impl Drop for Ch347Device {
         if std::thread::panicking() {
             return;
         }
-        let Some(board) = self.board else {
-            return;
-        };
-        if self.reset_asserted
-            && let Some(pin) = board.reset
-        {
+        if let Some(pin) = self.reset_asserted {
             self.gpio_final(pin.gpio, pin.release);
         }
         if self.led.is_some()
-            && let Some(led) = board.led
+            && let Some(led) = self.board.and_then(|board| board.led)
         {
             self.gpio_final(led.gpio, led.drive(false));
         }
@@ -353,7 +392,7 @@ impl Drop for Ch347Device {
 mod tests {
     use super::super::device::tests::{CH347F_1_20, device, scripted};
     use super::*;
-    use crate::probe::{BitSequence, WireProtocol};
+    use crate::probe::BitSequence;
 
     /// The wch-probe board, left in the default JTAG protocol to show reset works there.
     fn wch_probe(
@@ -423,6 +462,62 @@ mod tests {
         dev.release_reset().unwrap();
     }
 
+    // The CH347F's TRST pin is GPIO3, byte index 6 of the pin block.
+    const TRST_LOW: (&[u8], &[u8]) = (
+        &[0xCC, 8, 0, 0, 0, 0, 0xF0, 0, 0, 0, 0],
+        &[0xCC, 8, 0, 0, 0, 0, 0x80, 0, 0, 0, 0],
+    );
+    const TRST_RELEASE: (&[u8], &[u8]) = (
+        &[0xCC, 8, 0, 0, 0, 0, 0xC0, 0, 0, 0, 0],
+        &[0xCC, 8, 0, 0, 0, 0, 0x40, 0, 0, 0, 0],
+    );
+
+    #[test]
+    fn trst_reset_pin_is_released_at_attach() {
+        let swd_init: (&[u8], &[u8]) = (
+            &[0xE5, 8, 0, 0x40, 0x42, 0x0F, 0x00, 4, 0, 0, 0],
+            &[0xE5, 1, 0, 0],
+        );
+        let (mut dev, script) = device(&[TRST_RELEASE, swd_init, TRST_LOW, TRST_RELEASE]);
+        dev.set_reset_pin(Ch347ResetPin::Trst).unwrap();
+        dev.select_protocol(WireProtocol::Swd).unwrap();
+        dev.set_speed(300).unwrap();
+        dev.attach().unwrap();
+        dev.target_reset_assert().unwrap();
+        dev.target_reset_deassert().unwrap();
+        assert!(script.finished());
+    }
+
+    #[test]
+    fn trst_reset_pin_selects_swd_and_rejects_jtag() {
+        // GPIO3 is the TRST pin of the CH347F.
+        for pin in [Ch347ResetPin::Trst, Ch347ResetPin::Gpio(3)] {
+            let (mut dev, script) = device(&[]);
+            dev.set_reset_pin(pin).unwrap();
+            assert_eq!(dev.protocol(), WireProtocol::Swd);
+            dev.set_speed(1000).unwrap();
+            assert!(matches!(
+                dev.select_protocol(WireProtocol::Jtag),
+                Err(DebugProbeError::ProbeSpecific(_))
+            ));
+            assert!(script.finished());
+        }
+    }
+
+    #[test]
+    fn gpio_reset_pin_keeps_jtag() {
+        let (mut dev, script) = device(&[]);
+        dev.set_reset_pin(Ch347ResetPin::Gpio(1)).unwrap();
+        assert_eq!(dev.protocol(), WireProtocol::Jtag);
+        assert!(script.finished());
+    }
+
+    #[test]
+    fn reset_pin_is_not_the_led() {
+        let (mut dev, _) = wch_probe(&[]);
+        assert!(dev.set_reset_pin(Ch347ResetPin::Gpio(0)).is_err());
+    }
+
     #[test]
     fn gpio_is_opt_in() {
         let (mut dev, _) = device(&[]);
@@ -432,7 +527,7 @@ mod tests {
         ));
         assert!(matches!(
             dev.swj_pins(Pins(0), Pins(PIN_NRESET), Duration::ZERO),
-            Err(DebugProbeError::CommandNotSupportedByProbe { .. })
+            Err(DebugProbeError::ProbeSpecific(_))
         ));
         dev.set_led(true).unwrap();
     }

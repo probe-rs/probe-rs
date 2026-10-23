@@ -176,6 +176,12 @@ impl Target {
         &self.cores[0]
     }
 
+    /// Returns whether a session reaches the target through an ARM debug port. Only these
+    /// targets drive the reset line when attaching under reset.
+    pub fn uses_arm_debug_interface(&self) -> bool {
+        self.default_core().memory_ap().is_some()
+    }
+
     /// Returns whether the described JTAG scan chain has a TAP for any core of the target.
     ///
     /// A target that describes its scan chain without a TAP at any core's `jtag_tap` index can't

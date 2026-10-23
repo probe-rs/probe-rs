@@ -57,7 +57,7 @@ mod clock {
     bitfield! {
         /// The TRACECONFIG register of the CLOCK peripheral. This register is described in
         /// "nRF52840 Product Specification" section 5.4.3.11
-        pub struct TraceConfig(u32);
+        pub struct TraceConfig(pub u32);
         impl Debug;
 
         pub u8, traceportspeed, set_traceportspeed: 1, 0;

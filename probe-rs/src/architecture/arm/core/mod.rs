@@ -44,7 +44,7 @@ impl Dump {
 }
 
 memory_mapped_bitfield_register! {
-    pub struct Dfsr(u32);
+    pub struct Dfsr(pub u32);
     0xE000_ED30, "DFSR",
     /// Indicates an asynchronous debug event generated because of **EDBGRQ** being asserted:
     /// * `false`: no **EDBGRQ** debug event.

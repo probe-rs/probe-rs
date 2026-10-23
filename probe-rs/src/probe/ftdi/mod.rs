@@ -402,25 +402,17 @@ impl ProbeFactory for FtdiProbeFactory {
         // to select Channel B on an FT2232H, because interface is always None in the
         // listed entries.
         //
-        // Match only on VID, PID, (optionally) serial number, and (optionally) USB
-        // location, ignoring interface.
+        // So match as the default does, but ignoring interface.
+        let selector = selector.map(|selector| DebugProbeSelector {
+            interface: None,
+            ..selector.clone()
+        });
         self.list_probes()
             .into_iter()
             .filter(|probe| {
-                selector.as_ref().is_none_or(|s| {
-                    probe.info.vendor_id == s.vendor_id
-                        && probe.info.product_id == s.product_id
-                        && s.serial_number.as_ref().is_none_or(|sn| {
-                            if let Some(probe_sn) = &probe.info.serial_number {
-                                probe_sn == sn
-                            } else {
-                                sn.is_empty()
-                            }
-                        })
-                        && s.usb_location
-                            .as_ref()
-                            .is_none_or(|loc| probe.info.usb_location.as_ref() == Some(loc))
-                })
+                selector
+                    .as_ref()
+                    .is_none_or(|s| s.matches_probe(&probe.info))
             })
             .collect()
     }
@@ -476,6 +468,10 @@ impl DebugProbe for FtdiProbe {
         Err(DebugProbeError::NotImplemented {
             function_name: "target_reset_deassert",
         })
+    }
+
+    fn set_reset_line_connected(&mut self, _connected: bool) {
+        // The probe has no reset line.
     }
 
     fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError> {

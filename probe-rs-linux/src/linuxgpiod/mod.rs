@@ -9,8 +9,8 @@ use std::fmt;
 use probe_rs::Error;
 use probe_rs::probe::{
     BitbangSwd, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, IoSequenceItem,
-    ProbeCreationError, ProbeFactory, SwdProbe, SwdSettings, WireProtocol, list::ProbeListItem,
-    swd::Pins,
+    ProbeCreationError, ProbeFactory, ResetLine, SwdProbe, SwdSettings, WireProtocol,
+    list::ProbeListItem, swd::Pins,
 };
 
 use self::error::LinuxGpiodError;
@@ -26,6 +26,7 @@ pub struct LinuxGpiod {
     bus: SwdBus,
     speed_khz: u32,
     swd_settings: SwdSettings,
+    reset_line: ResetLine,
 }
 
 impl fmt::Debug for LinuxGpiod {
@@ -43,6 +44,7 @@ impl LinuxGpiod {
             bus: SwdBus::new(request, pins.swclk, pins.swdio, pins.srst),
             speed_khz: 0,
             swd_settings: SwdSettings::default(),
+            reset_line: ResetLine::default(),
         })
     }
 }
@@ -77,6 +79,7 @@ impl DebugProbe for LinuxGpiod {
     }
 
     fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
+        self.reset_line.check_assert()?;
         if !self
             .bus
             .drive_srst(false)
@@ -100,6 +103,10 @@ impl DebugProbe for LinuxGpiod {
             });
         }
         Ok(())
+    }
+
+    fn set_reset_line_connected(&mut self, connected: bool) {
+        self.reset_line.set_connected(connected);
     }
 
     fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError> {
@@ -146,6 +153,7 @@ impl BitbangSwd for LinuxGpiod {
         select: Pins,
         _wait: std::time::Duration,
     ) -> Result<(), DebugProbeError> {
+        self.reset_line.check_pins(out, select)?;
         const N_RESET: u8 = 1 << 7;
         if select.0 & !N_RESET != 0 {
             return Err(DebugProbeError::CommandNotSupportedByProbe {

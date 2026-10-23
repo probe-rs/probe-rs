@@ -7,7 +7,8 @@ use crate::{
     vendor::{
         Vendor,
         ti::sequences::{
-            cc13xx_cc26xx::CC13xxCC26xx, cc23xx_cc27xx::CC23xxCC27xx, mspm0::MSPM0, tms570::TMS570,
+            am261::AM261, cc13xx_cc26xx::CC13xxCC26xx, cc23xx_cc27xx::CC23xxCC27xx, mspm0::MSPM0,
+            tms570::TMS570,
         },
     },
 };
@@ -26,6 +27,8 @@ impl Vendor for TexasInstruments {
             DebugSequence::Arm(CC23xxCC27xx::create(chip.name.clone()))
         } else if chip.name.starts_with("TMS570") {
             DebugSequence::Arm(TMS570::create(chip.name.clone()))
+        } else if chip.name.starts_with("AM261") {
+            DebugSequence::Arm(AM261::create())
         } else if chip.name.starts_with("MSPM0") || chip.name.starts_with("MSPS") {
             DebugSequence::Arm(MSPM0::create(chip.name.clone()))
         } else {

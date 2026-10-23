@@ -42,7 +42,7 @@ use crate::{
     },
     probe::{
         BitbangSwd, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector,
-        IoSequenceItem, ProbeFactory, SwdProbe, SwdSettings, WireProtocol,
+        IoSequenceItem, ProbeFactory, ResetLine, SwdProbe, SwdSettings, WireProtocol,
         list::{ProbeListItem, usb_probe_accessibility},
         swd::{Pins, output_levels},
     },
@@ -192,6 +192,7 @@ impl ProbeFactory for JLinkFactory {
             speed_khz: 0, // default is unknown
             swd_settings: SwdSettings::default(),
             jtag_state: JtagChainState::default(),
+            reset_line: ResetLine::default(),
             force_legacy_jtag_command: selector.product_id == 0x0101,
 
             jtag_tms_bits: vec![],
@@ -400,6 +401,8 @@ pub struct JLink {
     max_mem_block_size: usize,
 
     swd_settings: SwdSettings,
+
+    reset_line: ResetLine,
 }
 
 impl fmt::Debug for JLink {
@@ -1099,11 +1102,13 @@ impl DebugProbe for JLink {
     }
 
     fn target_reset(&mut self) -> Result<(), DebugProbeError> {
+        self.reset_line.check_assert()?;
         self.write_cmd(&[Command::ResetTarget as u8])?;
         Ok(())
     }
 
     fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
+        self.reset_line.check_assert()?;
         self.set_reset(false)?;
         Ok(())
     }
@@ -1111,6 +1116,10 @@ impl DebugProbe for JLink {
     fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
         self.set_reset(true)?;
         Ok(())
+    }
+
+    fn set_reset_line_connected(&mut self, connected: bool) {
+        self.reset_line.set_connected(connected);
     }
 
     fn try_as_jtag_chain(&mut self) -> Option<JtagChain<'_>> {
@@ -1230,6 +1239,7 @@ impl BitbangSwd for JLink {
         select: Pins,
         wait: Duration,
     ) -> Result<(), DebugProbeError> {
+        self.reset_line.check_pins(out, select)?;
         if select.ntrst() || select.tdi() || select.tdo() {
             Err(DebugProbeError::CommandNotSupportedByProbe {
                 command_name: "swj_pins",
@@ -1545,6 +1555,8 @@ mod test {
                 })
             }
 
+            fn set_reset_line_connected(&mut self, _connected: bool) {}
+
             fn target_reset_deassert(&mut self) -> Result<(), crate::probe::DebugProbeError> {
                 Ok(())
             }
@@ -1682,6 +1694,8 @@ mod test {
                     command_name: "target_reset_assert",
                 })
             }
+
+            fn set_reset_line_connected(&mut self, _connected: bool) {}
 
             fn target_reset_deassert(&mut self) -> Result<(), crate::probe::DebugProbeError> {
                 Ok(())

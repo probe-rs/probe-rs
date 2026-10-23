@@ -1370,7 +1370,7 @@ mod tests {
         assert_eq!(failure.fault_operation, 1);
         assert!(matches!(
             failure.error,
-            BatchError::Probe(DebugProbeError::CommandNotSupportedByProbe { .. })
+            BatchError::Probe(DebugProbeError::ProbeSpecific(_))
         ));
         assert!(script.finished());
     }

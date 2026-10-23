@@ -38,7 +38,7 @@ bitfield! {
     ///
     /// Reference: `D1.2.38` in `Armv8-M Architecture Reference Manual`.
     #[derive(Copy, Clone)]
-    pub struct DwtFunction(u32);
+    pub struct DwtFunction(pub u32);
     impl Debug;
     /// Size of the data value the comparator matches against: 0b10 is a word.
     pub u8, _, set_datavsize: 11, 10;
@@ -51,7 +51,7 @@ bitfield! {
 bitfield! {
     /// `SYSCON3->CPU_STATUS`, the sense core's run state.
     #[derive(Copy, Clone)]
-    pub struct CpuStatus(u32);
+    pub struct CpuStatus(pub u32);
     impl Debug;
     /// Stalls the core. Resets to 1, so it has to be cleared for the core to fetch
     /// anything at all.

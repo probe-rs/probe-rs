@@ -174,11 +174,8 @@ impl Display for DecodedData<'_> {
         match self {
             DecodedData::String(s) => f.write_str(s),
             DecodedData::Binary(data) => {
-                for element in *data {
-                    // Width of 4 allows 0xFF to be printed.
-                    write!(f, "{element:#04x}").expect("Writing to String cannot fail");
-                }
-                Ok(())
+                // A space after each byte keeps the bytes apart across chunks.
+                data.iter().try_for_each(|byte| write!(f, "{byte:02x} "))
             }
         }
     }
@@ -508,6 +505,9 @@ mod tests {
     fn binary_is_shown_as_hex() {
         let mut decoder = auto();
         let data = [0x01u8, 0x02, 0x03, 0x80, 0x81, 0x00, 0x05, 0x06].repeat(4);
-        assert_eq!(decode(&mut decoder, &[&data]), hex(&data));
+        assert_eq!(
+            decode(&mut decoder, &[&data]),
+            "01 02 03 80 81 00 05 06 ".repeat(4)
+        );
     }
 }

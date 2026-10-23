@@ -1,22 +1,18 @@
+use crate::util::stream_decoder::DecodedData;
 use postcard_schema::Schema;
 use probe_rs::rtt::{self, DownChannel, Error, Rtt, UpChannel};
 use probe_rs::{MemoryAccessPort, MemoryInterface, Session, Target, config::MemoryRegion};
 use probe_rs_rpc::rtt_config::{ChannelMode, RttChannelConfig};
 use probe_rs_target::RegionMergeIterator;
 use serde::{Deserialize, Serialize};
-use std::fmt::Write;
 use std::ops::Range;
 
 pub(crate) mod client;
 
 pub trait RttDataHandler {
     async fn on_binary_data(&mut self, data: &[u8]) -> Result<(), Error> {
-        let mut formatted_data = String::with_capacity(data.len() * 4);
-        for element in data {
-            // Width of 4 allows 0xFF to be printed.
-            write!(&mut formatted_data, "{element:#04x}").expect("Writing to String cannot fail");
-        }
-        self.on_string_data(formatted_data).await
+        self.on_string_data(DecodedData::Binary(data).to_string())
+            .await
     }
 
     async fn on_string_data(&mut self, data: String) -> Result<(), Error>;
