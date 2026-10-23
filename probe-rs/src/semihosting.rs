@@ -301,13 +301,10 @@ impl ReadRequest {
             core.write(self.bytes as u64, buf)?;
         }
 
-        let status = match buf.len() {
-            0 => self.len as i32,
-            len if len == self.len as usize => 0,
-            len => len as i32,
-        };
+        // SYS_READ returns the number of bytes that were not filled in.
+        let status = self.len - buf.len() as u32;
 
-        write_status(core, status)
+        write_status(core, status as i32)
     }
 }
 
