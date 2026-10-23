@@ -1023,6 +1023,7 @@ fn build_core_data(
         target_name: format!("{}-{}", core_configuration.core_index, target_name),
         stack_frames: vec![],
         breakpoints: vec![],
+        data_breakpoints: vec![],
         rtt_scan_ranges: WireScanRegion::Ranges(vec![]),
         rtt_connection: None,
         defmt_state: None,

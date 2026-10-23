@@ -73,6 +73,8 @@ pub(crate) struct RuntimeTarget {
     listeners: Vec<TcpListener>,
     gdb: Option<GdbStubStateMachine<'static, RuntimeTarget, TcpStream>>,
     resume_action: (usize, ResumeAction),
+    /// The watchpoints GDB set (address, length, kind), for the stop reply of a watchpoint hit.
+    pub(crate) watchpoints: Vec<(u64, u64, gdbstub::target::ext::breakpoints::WatchKind)>,
 
     target_desc: TargetDescription,
     /// Server-side flash loader created for an in-progress GDB `load`.
@@ -121,6 +123,7 @@ impl RuntimeTarget {
             listeners,
             gdb: None,
             resume_action: (0, ResumeAction::Unchanged),
+            watchpoints: Vec::new(),
             target_desc: TargetDescription::default(),
             flash_loader: None,
             flash_erased: false,
@@ -251,9 +254,17 @@ impl RuntimeTarget {
 
             let tid = NonZeroUsize::new(index as usize + 1).unwrap();
             stop_reason = Some(match reason {
+                // GDB sets its breakpoints as hardware breakpoints (`Z1`); the core may place
+                // one as a software breakpoint (TriCore: a `DEBUG` instruction in the PSPR).
                 WireHaltReason::Breakpoint(
-                    WireBreakpointCause::Hardware | WireBreakpointCause::Unknown,
+                    WireBreakpointCause::Hardware
+                    | WireBreakpointCause::Software
+                    | WireBreakpointCause::Unknown,
                 ) => MultiThreadStopReason::HwBreak(tid),
+                WireHaltReason::Watchpoint => match self.watchpoints.first() {
+                    Some(&(addr, _, kind)) => MultiThreadStopReason::Watch { tid, kind, addr },
+                    None => MultiThreadStopReason::HwBreak(tid),
+                },
                 WireHaltReason::Step => MultiThreadStopReason::DoneStep,
                 _ => MultiThreadStopReason::SignalWithThread {
                     tid,

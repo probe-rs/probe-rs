@@ -237,7 +237,9 @@ impl Session {
     fn clear_owned_tricore_breakpoints(&mut self) -> Result<(), Error> {
         for core in 0..self.cores.len() {
             if self.cores[core].tricore_owns_triggers() {
-                self.core(core)?.clear_all_hw_breakpoints()?;
+                let mut core = self.core(core)?;
+                core.clear_all_hw_breakpoints()?;
+                core.clear_all_watchpoints()?;
             }
         }
         Ok(())

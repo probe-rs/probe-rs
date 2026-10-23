@@ -100,6 +100,8 @@ pub struct WireVariable {
     pub type_: Option<String>,
     pub value: String,
     pub variables_reference: i64,
+    /// The size of the variable in memory, when known (for data breakpoints).
+    pub byte_size: Option<u64>,
 }
 
 pub type VariablesResponse = RpcResult<Vec<WireVariable>>;

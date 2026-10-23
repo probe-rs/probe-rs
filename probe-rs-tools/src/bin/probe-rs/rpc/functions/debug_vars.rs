@@ -166,6 +166,7 @@ pub async fn variables(
                 type_: Some(format!("{}", VariableName::RegistersRoot)),
                 value: register.value.unwrap_or_default().to_string(),
                 variables_reference: 0,
+                byte_size: None,
             })
             .collect();
         return Ok(regs);
@@ -188,6 +189,8 @@ pub async fn variables(
                     type_: variable.type_name(),
                     value: variable.get_value(&mut core),
                     variables_reference: i64::from(variable.variable_key()),
+                    // Peripheral registers are 32-bit words.
+                    byte_size: variable.memory_reference().map(|_| 4),
                 }
             })
             .collect();
@@ -297,6 +300,7 @@ pub async fn variables(
                 type_: Some(variable.type_name()),
                 value: variable.to_string(variable_cache),
                 variables_reference: i64::from(variables_reference),
+                byte_size: variable.byte_size,
             }
         })
         .collect())

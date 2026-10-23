@@ -70,6 +70,25 @@ pub struct CoreHaltGroupRequest {
     pub join: bool,
 }
 
+/// The accesses that trigger a data watchpoint.
+#[derive(Serialize, Deserialize, Schema, Clone, Copy, Debug, PartialEq, Eq)]
+pub enum WireWatchpointAccess {
+    Read,
+    Write,
+    ReadWrite,
+}
+
+/// Sets a data watchpoint on the `len` bytes at `address` (`access` given), or clears the one
+/// at `address` (`access` is `None`).
+#[derive(Serialize, Deserialize, Schema, Clone)]
+pub struct CoreWatchpointRequest {
+    pub sessid: Key<Session>,
+    pub core: u32,
+    pub address: u64,
+    pub len: u64,
+    pub access: Option<WireWatchpointAccess>,
+}
+
 /// Sets debug options of a TriCore core. `None` leaves an option as it is.
 #[derive(Serialize, Deserialize, Schema, Clone)]
 pub struct CoreTriCoreOptionsRequest {

@@ -40,6 +40,10 @@ fn dap_capabilities() -> Capabilities {
         supports_set_variable: Some(true),
         supports_disassemble_request: Some(true),
         supports_instruction_breakpoints: Some(true),
+        // Data breakpoints work on cores that support watchpoints (TriCore); elsewhere
+        // `setDataBreakpoints` reports each one as not verified.
+        supports_data_breakpoints: Some(true),
+        supports_data_breakpoint_bytes: Some(true),
         supports_stepping_granularity: Some(true),
         supports_completions_request: Some(true),
         // ANSI output is emitted only when the client also opts in.
@@ -288,6 +292,16 @@ impl Debugger {
             "setInstructionBreakpoints" => {
                 debug_adapter
                     .set_instruction_breakpoints(session_data, core_index, request)
+                    .await?;
+            }
+            "dataBreakpointInfo" => {
+                debug_adapter
+                    .data_breakpoint_info(session_data, core_index, request)
+                    .await?;
+            }
+            "setDataBreakpoints" => {
+                debug_adapter
+                    .set_data_breakpoints(session_data, core_index, request)
                     .await?;
             }
             "readMemory" => {

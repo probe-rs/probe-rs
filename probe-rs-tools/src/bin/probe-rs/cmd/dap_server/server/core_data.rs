@@ -30,6 +30,8 @@ pub struct CoreData {
     /// complete server unwind succeeds.
     pub stack_frames: Vec<probe_rs_debug::stack_frame::StackFrame>,
     pub breakpoints: Vec<session_data::ActiveBreakpoint>,
+    /// The addresses of the data breakpoints set with `setDataBreakpoints`.
+    pub data_breakpoints: Vec<u64>,
     pub rtt_scan_ranges: WireScanRegion,
     pub rtt_connection: Option<debug_rtt::RttConnection>,
     /// defmt data of the program binary, parsed on the first RTT attach.
@@ -115,6 +117,7 @@ fn stack_frame_display_cache_is_invalidated_before_replacement() {
         target_name: String::new(),
         stack_frames: vec![frame(1)],
         breakpoints: vec![],
+        data_breakpoints: vec![],
         rtt_scan_ranges: WireScanRegion::Ranges(vec![]),
         rtt_connection: None,
         defmt_state: None,

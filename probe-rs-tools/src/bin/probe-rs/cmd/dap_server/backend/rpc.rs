@@ -362,6 +362,52 @@ impl RpcBackend {
         client.set_halt_group(join).await.map_err(rpc_err)
     }
 
+    /// Sets a data watchpoint on the `len` bytes at `address`.
+    pub(crate) async fn set_watchpoint(
+        &mut self,
+        core_index: usize,
+        address: u64,
+        len: u64,
+        access: probe_rs_rpc::core_ops::WireWatchpointAccess,
+    ) -> Result<(), Error> {
+        let client = self.core(core_index);
+        client
+            .set_watchpoint(address, len, access)
+            .await
+            .map_err(rpc_err)
+    }
+
+    /// Clears the data watchpoint at `address`.
+    pub(crate) async fn clear_watchpoint(
+        &mut self,
+        core_index: usize,
+        address: u64,
+    ) -> Result<(), Error> {
+        let client = self.core(core_index);
+        client.clear_watchpoint(address).await.map_err(rpc_err)
+    }
+
+    /// The address and size of the child `name` of variable container `variables_reference`,
+    /// when it has a memory location.
+    pub(crate) async fn variable_location(
+        &mut self,
+        core_index: usize,
+        variables_reference: u32,
+        name: &str,
+    ) -> Result<Option<(u64, Option<u64>)>, Error> {
+        let session = self.session_interface();
+        let wire = session
+            .variables(core_index as u32, variables_reference, None)
+            .await
+            .map_err(rpc_err)?;
+        Ok(wire.into_iter().find(|w| w.name == name).and_then(|w| {
+            let reference = w.memory_reference?;
+            let address = reference.trim().trim_start_matches("0x");
+            let address = u64::from_str_radix(address.trim_start_matches("0X"), 16).ok()?;
+            Some((address, w.byte_size))
+        }))
+    }
+
     /// Sets debug options of a TriCore core (`None` leaves an option as it is).
     pub(crate) async fn set_tricore_options(
         &mut self,

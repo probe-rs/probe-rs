@@ -36,6 +36,17 @@ pub struct CoreInformation {
     pub pc: u64,
 }
 
+/// The accesses that trigger a data watchpoint.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub enum WatchpointAccess {
+    /// Loads.
+    Read,
+    /// Stores.
+    Write,
+    /// Loads and stores.
+    ReadWrite,
+}
+
 /// A generic interface to control a MCU core.
 pub trait CoreInterface: MemoryInterface {
     /// Wait until the core is halted. If the core does not halt on its own,
@@ -93,6 +104,30 @@ pub trait CoreInterface: MemoryInterface {
 
     /// Clears the breakpoint configured in unit `unit_index`.
     fn clear_hw_breakpoint(&mut self, unit_index: usize) -> Result<(), Error>;
+
+    /// Sets a data watchpoint: the core halts after it accesses (`access`) any of the `len`
+    /// bytes at `address`, with [`HaltReason::Watchpoint`]. A watchpoint at the same address is
+    /// replaced. Not every architecture supports this.
+    fn set_watchpoint(
+        &mut self,
+        address: u64,
+        len: u64,
+        access: WatchpointAccess,
+    ) -> Result<(), Error> {
+        let _ = (address, len, access);
+        Err(Error::NotImplemented("data watchpoints"))
+    }
+
+    /// Clears the data watchpoint at `address`.
+    fn clear_watchpoint(&mut self, address: u64) -> Result<(), Error> {
+        let _ = address;
+        Err(Error::NotImplemented("data watchpoints"))
+    }
+
+    /// The addresses of the data watchpoints that are set.
+    fn watchpoints(&mut self) -> Result<Vec<u64>, Error> {
+        Ok(Vec::new())
+    }
 
     /// Returns a list of all the registers of this core.
     fn registers(&self) -> &'static CoreRegisters;
@@ -484,6 +519,30 @@ impl<'probe> Core<'probe> {
         }
     }
 
+    /// Sets a data watchpoint on the `len` bytes at `address` (see
+    /// [`CoreInterface::set_watchpoint`]).
+    pub fn set_watchpoint(
+        &mut self,
+        address: u64,
+        len: u64,
+        access: WatchpointAccess,
+    ) -> Result<(), Error> {
+        self.inner.set_watchpoint(address, len, access)
+    }
+
+    /// Clears the data watchpoint at `address`.
+    pub fn clear_watchpoint(&mut self, address: u64) -> Result<(), Error> {
+        self.inner.clear_watchpoint(address)
+    }
+
+    /// Clears all data watchpoints of this core.
+    pub fn clear_all_watchpoints(&mut self) -> Result<(), Error> {
+        for address in self.inner.watchpoints()? {
+            self.inner.clear_watchpoint(address)?;
+        }
+        Ok(())
+    }
+
     /// Clear all hardware breakpoints
     ///
     /// This function will clear all HW breakpoints which are configured on the target,
@@ -620,6 +679,23 @@ impl CoreInterface for Core<'_> {
     fn clear_hw_breakpoint(&mut self, unit_index: usize) -> Result<(), Error> {
         self.inner.clear_hw_breakpoint(unit_index)?;
         Ok(())
+    }
+
+    fn set_watchpoint(
+        &mut self,
+        address: u64,
+        len: u64,
+        access: WatchpointAccess,
+    ) -> Result<(), Error> {
+        self.inner.set_watchpoint(address, len, access)
+    }
+
+    fn clear_watchpoint(&mut self, address: u64) -> Result<(), Error> {
+        self.inner.clear_watchpoint(address)
+    }
+
+    fn watchpoints(&mut self) -> Result<Vec<u64>, Error> {
+        self.inner.watchpoints()
     }
 
     fn registers(&self) -> &'static CoreRegisters {

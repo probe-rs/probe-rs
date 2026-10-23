@@ -35,13 +35,14 @@ use probe_rs_rpc::breakpoints::{
     SourceBreakpointLocation, WireSourceLocation,
 };
 use probe_rs_rpc::chip::{ChipData, ChipFamily, ChipInfoRequest, LoadChipFamilyRequest};
+use probe_rs_rpc::core_ops::CoreWatchpointRequest;
 use probe_rs_rpc::core_ops::{
     CoreAccessRequest, CoreBreakpointsRequest, CoreDumpRequest, CoreHaltGroupRequest,
     CoreHaltRequest, CoreReadRegistersRequest, CoreTriCoreOptionsRequest, CoreVectorCatchRequest,
     CoreWriteRegRequest, HandleSemihostingRequest, HandleSemihostingResult, StepRequest,
     StepResponse, WireCoreDump, WireCoreInformation, WireCoreMetadata, WireCoreStatus,
     WireRegisterId, WireRegisterReadResult, WireRegisterValue, WireSteppingMode,
-    WireVectorCatchCondition,
+    WireVectorCatchCondition, WireWatchpointAccess,
 };
 use probe_rs_rpc::cores::{CoresRequest, CoresStatusMap, HaltCoresRequest};
 use probe_rs_rpc::debug_vars::{
@@ -88,21 +89,21 @@ use probe_rs_rpc::{
     ClearCoreDebugStateEndpoint, ClearRttControlBlockEndpoint, CoreClearHwBpsEndpoint,
     CoreDumpEndpoint, CoreEnableVcEndpoint, CoreHaltEndpoint, CoreHaltGroupEndpoint,
     CoreMetadataEndpoint, CoreReadRegistersEndpoint, CoreRunEndpoint, CoreSetHwBpsEndpoint,
-    CoreStatusEndpoint, CoreStepEndpoint, CoreTriCoreOptionsEndpoint, CoreWriteRegEndpoint,
-    CoresStatusEndpoint, CreateRttClientEndpoint, CreateTempFileEndpoint, DisassembleEndpoint,
-    EraseAllEndpoint, EraseRangeEndpoint, EvaluateEndpoint, FlashEndpoint, GetRttChannelsEndpoint,
-    HaltCoresEndpoint, HandleSemihostingEndpoint, ListChipFamiliesEndpoint, ListProbesEndpoint,
-    ListTestsEndpoint, LiveWatchEndpoint, LoadChipFamilyEndpoint, LoadDebugInfoEndpoint,
-    LoadRegionEndpoint, LoadSvdEndpoint, MonitorEndpoint, NewFlashLoaderEndpoint,
-    PollRttUpEndpoint, ProgressEventTopic, ReadBytesEndpoint, ReadMemory8Endpoint,
-    ReadMemory16Endpoint, ReadMemory32Endpoint, ReadMemory64Endpoint, ResetCoreAndHaltEndpoint,
-    ResetCoreEndpoint, ResetTargetEndpoint, ResolveSourceBreakpointsEndpoint,
-    ResolveSourceLocationsEndpoint, ResumeCoresEndpoint, RpcError, RpcResult, RttDownEndpoint,
-    RttTopic, RunTestEndpoint, ScopesEndpoint, SelectProbeEndpoint, SemihostingTopic,
-    SetVariableEndpoint, TakeRichStackTraceEndpoint, TakeStackTraceEndpoint, TargetInfoDataTopic,
-    TargetInfoEndpoint, TargetMetadataEndpoint, TempFileDataEndpoint, TestKickoffEndpoint,
-    TokioSpawner, VariablesEndpoint, VerifyEndpoint, WriteMemory8Endpoint, WriteMemory16Endpoint,
-    WriteMemory32Endpoint, WriteMemory64Endpoint,
+    CoreStatusEndpoint, CoreStepEndpoint, CoreTriCoreOptionsEndpoint, CoreWatchpointEndpoint,
+    CoreWriteRegEndpoint, CoresStatusEndpoint, CreateRttClientEndpoint, CreateTempFileEndpoint,
+    DisassembleEndpoint, EraseAllEndpoint, EraseRangeEndpoint, EvaluateEndpoint, FlashEndpoint,
+    GetRttChannelsEndpoint, HaltCoresEndpoint, HandleSemihostingEndpoint, ListChipFamiliesEndpoint,
+    ListProbesEndpoint, ListTestsEndpoint, LiveWatchEndpoint, LoadChipFamilyEndpoint,
+    LoadDebugInfoEndpoint, LoadRegionEndpoint, LoadSvdEndpoint, MonitorEndpoint,
+    NewFlashLoaderEndpoint, PollRttUpEndpoint, ProgressEventTopic, ReadBytesEndpoint,
+    ReadMemory8Endpoint, ReadMemory16Endpoint, ReadMemory32Endpoint, ReadMemory64Endpoint,
+    ResetCoreAndHaltEndpoint, ResetCoreEndpoint, ResetTargetEndpoint,
+    ResolveSourceBreakpointsEndpoint, ResolveSourceLocationsEndpoint, ResumeCoresEndpoint,
+    RpcError, RpcResult, RttDownEndpoint, RttTopic, RunTestEndpoint, ScopesEndpoint,
+    SelectProbeEndpoint, SemihostingTopic, SetVariableEndpoint, TakeRichStackTraceEndpoint,
+    TakeStackTraceEndpoint, TargetInfoDataTopic, TargetInfoEndpoint, TargetMetadataEndpoint,
+    TempFileDataEndpoint, TestKickoffEndpoint, TokioSpawner, VariablesEndpoint, VerifyEndpoint,
+    WriteMemory8Endpoint, WriteMemory16Endpoint, WriteMemory32Endpoint, WriteMemory64Endpoint,
 };
 use probe_rs_rpc::{FlashLoader, Key, RttClient, Session};
 
@@ -1731,6 +1732,37 @@ impl CoreInterface {
                 sessid: self.sessid,
                 core: self.core,
                 mask_step_interrupts,
+            })
+            .await
+    }
+
+    /// Sets a data watchpoint on the `len` bytes at `address`.
+    pub async fn set_watchpoint(
+        &self,
+        address: u64,
+        len: u64,
+        access: WireWatchpointAccess,
+    ) -> Result<(), ClientError> {
+        self.client
+            .send_resp::<CoreWatchpointEndpoint, _>(&CoreWatchpointRequest {
+                sessid: self.sessid,
+                core: self.core,
+                address,
+                len,
+                access: Some(access),
+            })
+            .await
+    }
+
+    /// Clears the data watchpoint at `address`.
+    pub async fn clear_watchpoint(&self, address: u64) -> Result<(), ClientError> {
+        self.client
+            .send_resp::<CoreWatchpointEndpoint, _>(&CoreWatchpointRequest {
+                sessid: self.sessid,
+                core: self.core,
+                address,
+                len: 0,
+                access: None,
             })
             .await
     }

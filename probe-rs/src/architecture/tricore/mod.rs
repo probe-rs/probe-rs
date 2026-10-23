@@ -17,6 +17,7 @@ use probe_rs_target::{Architecture, CoreType, InstructionSet, TriCoreCoreAccessO
 
 use crate::{
     CoreInformation, CoreInterface, CoreRegister, CoreStatus, Error, HaltReason, MemoryInterface,
+    WatchpointAccess,
     core::{
         BreakpointCause,
         registers::{CoreRegisters, RegisterId, RegisterValue},
@@ -127,6 +128,30 @@ pub mod ocds {
 
     /// `DBGSR.EVTSRC` after a halt by a `DEBUG` instruction.
     pub const EVTSRC_SWEVT: u32 = 2;
+
+    /// `DBGSR.SUSP`: the suspend state that the last debug event set.
+    pub const DBGSR_SUSP: u32 = 1 << 4;
+    /// `DBGSR.PREVSUSP`: `SUSP` before the last debug event.
+    pub const DBGSR_PREVSUSP: u32 = 1 << 6;
+
+    /// `TRnEVT` of a data watchpoint without the access bits: address input (`TYP` = 0), halt,
+    /// no break-out pulse, break after make, and `SUSP` set so that the halt can be told from
+    /// the halt group's break-in that follows it (see [`halted_by_suspend_event`]).
+    pub const TRIG_EVT_DATA: u32 = 0x32;
+    /// `TRnEVT.ALD`: trigger on loads.
+    pub const TRIG_EVT_LOAD: u32 = 1 << 28;
+    /// `TRnEVT.AST`: trigger on stores.
+    pub const TRIG_EVT_STORE: u32 = 1 << 27;
+    /// `TRnEVT.RNG`: the unit and its odd neighbour form an address range.
+    pub const TRIG_EVT_RANGE: u32 = 1 << 13;
+
+    /// Whether a halted core's `DBGSR` shows a halt by a debug event with `SUSP` set: a data
+    /// watchpoint or a `DEBUG` instruction. In the halt group the break-in right after such a
+    /// halt overwrites `EVTSRC` (0) and moves `SUSP` to `PREVSUSP`; a run write clears `SUSP`.
+    pub fn halted_by_suspend_event(dbgsr: u32) -> bool {
+        let source = event_source(dbgsr);
+        (source == 0 && dbgsr & DBGSR_PREVSUSP != 0) || (source != 0 && dbgsr & DBGSR_SUSP != 0)
+    }
 
     /// The 16-bit `DEBUG` instruction.
     pub const DEBUG16: [u8; 2] = [0x00, 0xA0];
@@ -277,6 +302,41 @@ impl SoftwareBreakpoint {
     }
 }
 
+/// A data watchpoint in one trigger unit (a single address) or a pair (`unit` even, `unit + 1`;
+/// the range `[address, address + len)`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct Watchpoint {
+    address: u32,
+    len: u32,
+    access: WatchpointAccess,
+    unit: usize,
+}
+
+impl Watchpoint {
+    fn is_range(&self) -> bool {
+        self.len > 1
+    }
+
+    fn uses(&self, unit: usize) -> bool {
+        unit == self.unit || (self.is_range() && unit == self.unit + 1)
+    }
+
+    /// The `TRnEVT` value of the first unit.
+    fn trigger_evt(&self) -> u32 {
+        let access = match self.access {
+            WatchpointAccess::Read => ocds::TRIG_EVT_LOAD,
+            WatchpointAccess::Write => ocds::TRIG_EVT_STORE,
+            WatchpointAccess::ReadWrite => ocds::TRIG_EVT_LOAD | ocds::TRIG_EVT_STORE,
+        };
+        let range = if self.is_range() {
+            ocds::TRIG_EVT_RANGE
+        } else {
+            0
+        };
+        ocds::TRIG_EVT_DATA | access | range
+    }
+}
+
 /// How long CSFR accesses may fail while the device reboots after a reset.
 const REBOOT_TIME: Duration = Duration::from_secs(2);
 
@@ -347,6 +407,8 @@ pub struct TriCoreCoreState {
     /// Whether a single step runs with interrupts disabled: a pending interrupt would otherwise
     /// end the step on the first instruction of its handler.
     mask_step_interrupts: bool,
+    /// The data watchpoints, in trigger units that no breakpoint uses.
+    watchpoints: Vec<Watchpoint>,
 }
 
 impl TriCoreCoreState {
@@ -365,7 +427,13 @@ impl TriCoreCoreState {
             halt_group: None,
             running_peers: Vec::new(),
             mask_step_interrupts: true,
+            watchpoints: Vec::new(),
         }
+    }
+
+    /// Whether a breakpoint or a watchpoint uses trigger unit `unit`.
+    fn unit_used(&self, unit: usize) -> bool {
+        self.breakpoints[unit].is_some() || self.watchpoints.iter().any(|w| w.uses(unit))
     }
 
     /// Sets whether single steps run with interrupts disabled (the default).
@@ -653,23 +721,39 @@ impl<'probe> TriCore<'probe> {
         ocds::TRIG + 4 + 8 * unit as u16
     }
 
-    /// Writes the trigger unit of one breakpoint from the state: armed when it is set and
-    /// breakpoints are enabled, disabled otherwise.
+    /// Writes one trigger unit from the state: armed when a breakpoint or a watchpoint uses it
+    /// and breakpoints are enabled, disabled otherwise. The second unit of a watchpoint range
+    /// only holds the end address.
     fn write_trigger(&mut self, unit: usize) -> Result<(), TriCoreError> {
-        match self.state.breakpoints[unit] {
-            Some(address) if self.state.breakpoints_enabled => {
+        let enabled = self.state.breakpoints_enabled;
+        let watchpoint = self
+            .state
+            .watchpoints
+            .iter()
+            .find(|w| w.uses(unit))
+            .copied();
+        match (self.state.breakpoints[unit], watchpoint) {
+            (Some(address), _) if enabled => {
                 self.write_csfr(Self::trigger_adr(unit), address)?;
                 self.write_csfr(Self::trigger_evt(unit), ocds::TRIG_EVT_IP)
+            }
+            (None, Some(w)) if enabled && w.unit == unit => {
+                self.write_csfr(Self::trigger_adr(unit), w.address)?;
+                self.write_csfr(Self::trigger_evt(unit), w.trigger_evt())
+            }
+            (None, Some(w)) if enabled => {
+                self.write_csfr(Self::trigger_adr(unit), w.address.wrapping_add(w.len))?;
+                self.write_csfr(Self::trigger_evt(unit), 0)
             }
             _ => self.write_csfr(Self::trigger_evt(unit), 0),
         }
     }
 
-    /// Rewrites the trigger units that hold a breakpoint. The single step sequence reprograms
-    /// the trigger window, so the breakpoints are restored after it.
+    /// Rewrites the trigger units in use. The single step sequence reprograms the trigger
+    /// window, so the breakpoints and watchpoints are restored after it.
     fn rearm_triggers(&mut self) -> Result<(), TriCoreError> {
         for unit in 0..ocds::TRIGGER_UNITS {
-            if self.state.breakpoints[unit].is_some() {
+            if self.state.unit_used(unit) {
                 self.write_trigger(unit)?;
             }
         }
@@ -730,9 +814,16 @@ impl<'probe> TriCore<'probe> {
         // breakpoint is told by the PC.
         let debug_instruction = ocds::event_source(dbgsr) == ocds::EVTSRC_SWEVT
             || (self.software_at(pc).is_some() && self.state.last_action != LastAction::Halt);
+        // A data watchpoint halts after the access: its trigger accumulator bit tells it.
+        let watchpoint_hit = self.state.breakpoints_enabled
+            && self.state.watchpoints.iter().any(|w| {
+                (0..ocds::TRIGGER_UNITS).any(|unit| w.uses(unit) && trigger_acc & (1 << unit) != 0)
+            });
 
         let reason = if breakpoint_hit {
             HaltReason::Breakpoint(BreakpointCause::Hardware)
+        } else if watchpoint_hit {
+            HaltReason::Watchpoint
         } else if debug_instruction {
             HaltReason::Breakpoint(BreakpointCause::Software)
         } else {
@@ -1105,6 +1196,8 @@ impl<'probe> TriCore<'probe> {
             .iter()
             .filter(|&&(core, trc, dbgsr)| {
                 previous.contains(&core) && ocds::in_halt_group(trc) && ocds::is_halted(dbgsr)
+                    // Halted at a data watchpoint (or a `DEBUG` instruction).
+                    && !ocds::halted_by_suspend_event(dbgsr)
             })
             .filter_map(|&(core, _, _)| Some((core, self.peer_csfr_base(core)?)))
             .collect::<Vec<_>>();
@@ -1326,7 +1419,7 @@ impl<'probe> TriCore<'probe> {
             }
         }
         // The trigger unit of the same number as the slot, else the first free one.
-        let free = |unit: usize| self.state.breakpoints[unit].is_none();
+        let free = |unit: usize| !self.state.unit_used(unit);
         let unit = if slot < ocds::TRIGGER_UNITS && free(slot) {
             Some(slot)
         } else {
@@ -1396,7 +1489,7 @@ impl<'probe> TriCore<'probe> {
         let Some(address) = self.state.slots[slot].take() else {
             // An empty slot: its trigger unit is disabled, which clears what another session may
             // have left there.
-            if slot < ocds::TRIGGER_UNITS && self.state.breakpoints[slot].is_none() {
+            if slot < ocds::TRIGGER_UNITS && !self.state.unit_used(slot) {
                 self.write_trigger(slot)?;
             }
             return Ok(());
@@ -1421,7 +1514,7 @@ impl<'probe> TriCore<'probe> {
         self.take_triggers()?;
         self.state.breakpoints_enabled = state;
         for unit in 0..ocds::TRIGGER_UNITS {
-            if self.state.breakpoints[unit].is_some() {
+            if self.state.unit_used(unit) {
                 self.write_trigger(unit)?;
             }
         }
@@ -1435,6 +1528,70 @@ impl<'probe> TriCore<'probe> {
             for sw in std::mem::take(&mut self.memory.software) {
                 self.unplant(&sw)?;
             }
+        }
+        Ok(())
+    }
+
+    /// Sets a data watchpoint on the `len` bytes at `address`: one trigger unit for a single
+    /// byte, an even and odd pair (a range) otherwise. It takes the highest free units, leaving
+    /// the low ones to breakpoints (a breakpoint slot prefers the unit of its own number).
+    fn set_watchpoint_units(
+        &mut self,
+        address: u32,
+        len: u32,
+        access: WatchpointAccess,
+    ) -> Result<(), Error> {
+        if len == 0 {
+            return Err(Error::Other("a data breakpoint needs a length".to_string()));
+        }
+        self.take_triggers()?;
+        if !self.state.breakpoints_enabled {
+            self.set_breakpoints_enabled(true)?;
+        }
+        self.clear_watchpoint_units(address)?;
+        let free = |unit: usize| !self.state.unit_used(unit);
+        let unit = if len == 1 {
+            (0..ocds::TRIGGER_UNITS).rev().find(|&unit| free(unit))
+        } else {
+            (0..ocds::TRIGGER_UNITS)
+                .step_by(2)
+                .rev()
+                .find(|&unit| free(unit) && free(unit + 1))
+        };
+        let Some(unit) = unit else {
+            return Err(Error::Other(format!(
+                "No free trigger unit for a data breakpoint on {len} byte(s) at {address:#010x}: \
+                 the {} units are in use (one of more than one byte takes an even and odd pair)",
+                ocds::TRIGGER_UNITS
+            )));
+        };
+        let watchpoint = Watchpoint {
+            address,
+            len,
+            access,
+            unit,
+        };
+        self.state.watchpoints.push(watchpoint);
+        for unit in (0..ocds::TRIGGER_UNITS).filter(|&u| watchpoint.uses(u)) {
+            self.write_trigger(unit)?;
+        }
+        Ok(())
+    }
+
+    /// Clears the data watchpoint at `address`, if there is one.
+    fn clear_watchpoint_units(&mut self, address: u32) -> Result<(), TriCoreError> {
+        let Some(i) = self
+            .state
+            .watchpoints
+            .iter()
+            .position(|w| w.address == address)
+        else {
+            return Ok(());
+        };
+        self.take_triggers()?;
+        let watchpoint = self.state.watchpoints.remove(i);
+        for unit in (0..ocds::TRIGGER_UNITS).filter(|&u| watchpoint.uses(u)) {
+            self.write_trigger(unit)?;
         }
         Ok(())
     }
@@ -1553,6 +1710,36 @@ impl CoreInterface for TriCore<'_> {
 
     fn clear_hw_breakpoint(&mut self, unit_index: usize) -> Result<(), Error> {
         Ok(self.clear_breakpoint(unit_index)?)
+    }
+
+    fn set_watchpoint(
+        &mut self,
+        address: u64,
+        len: u64,
+        access: WatchpointAccess,
+    ) -> Result<(), Error> {
+        let address = u32::try_from(address)
+            .map_err(|_| Error::Other(format!("watchpoint address {address:#x} out of range")))?;
+        let len = u32::try_from(len)
+            .map_err(|_| Error::Other(format!("watchpoint length {len} out of range")))?;
+        // The core accesses its local scratchpads through the local addresses; the triggers
+        // compare the address as the core issues it, so it is used as given.
+        self.set_watchpoint_units(address, len, access)
+    }
+
+    fn clear_watchpoint(&mut self, address: u64) -> Result<(), Error> {
+        let address = u32::try_from(address)
+            .map_err(|_| Error::Other(format!("watchpoint address {address:#x} out of range")))?;
+        Ok(self.clear_watchpoint_units(address)?)
+    }
+
+    fn watchpoints(&mut self) -> Result<Vec<u64>, Error> {
+        Ok(self
+            .state
+            .watchpoints
+            .iter()
+            .map(|w| w.address as u64)
+            .collect())
     }
 
     fn registers(&self) -> &'static CoreRegisters {

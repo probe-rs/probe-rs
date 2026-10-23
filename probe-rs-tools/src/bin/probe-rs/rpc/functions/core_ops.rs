@@ -4,6 +4,7 @@ use std::num::NonZeroU32;
 use std::time::Duration;
 
 use postcard_rpc::header::VarHeader;
+use probe_rs_rpc::core_ops::CoreWatchpointRequest;
 use probe_rs_rpc::core_ops::{
     CoreAccessRequest, CoreBreakpointsRequest, CoreDumpRequest, CoreHaltGroupRequest,
     CoreHaltRequest, CoreReadRegistersRequest, CoreTriCoreOptionsRequest, CoreVectorCatchRequest,
@@ -12,12 +13,12 @@ use probe_rs_rpc::core_ops::{
     WireCoreDump, WireCoreInformation, WireCoreMetadata, WireCoreStatus, WireCoreType,
     WireExitErrorDetails, WireHaltReason, WireInstructionSet, WireRegisterId,
     WireRegisterReadResult, WireRegisterValue, WireSemihostingCommand, WireSemihostingUiEvent,
-    WireSteppingMode, WireVectorCatchCondition,
+    WireSteppingMode, WireVectorCatchCondition, WireWatchpointAccess,
 };
 use probe_rs_rpc::rtt_config::DataFormat;
 
 use probe_rs::{
-    BreakpointCause, CoreDump, CoreStatus, HaltReason, RegisterId, RegisterValue,
+    BreakpointCause, CoreDump, CoreStatus, HaltReason, RegisterId, RegisterValue, WatchpointAccess,
     semihosting::SemihostingCommand,
 };
 use probe_rs_debug::DebugError;
@@ -197,6 +198,28 @@ pub async fn core_halt_group(
 ) -> NoResponse {
     let mut session = ctx.session(request.sessid).await;
     probe_rs_try!(session.set_tricore_halt_group(request.core as usize, request.join));
+    Ok(())
+}
+
+/// Sets or clears a data watchpoint.
+pub async fn core_watchpoint(
+    ctx: &mut RpcContext,
+    _header: VarHeader,
+    request: CoreWatchpointRequest,
+) -> NoResponse {
+    let mut session = ctx.session(request.sessid).await;
+    let mut core = probe_rs_try!(session.core(request.core as usize));
+    match request.access {
+        Some(access) => {
+            let access = match access {
+                WireWatchpointAccess::Read => WatchpointAccess::Read,
+                WireWatchpointAccess::Write => WatchpointAccess::Write,
+                WireWatchpointAccess::ReadWrite => WatchpointAccess::ReadWrite,
+            };
+            probe_rs_try!(core.set_watchpoint(request.address, request.len, access));
+        }
+        None => probe_rs_try!(core.clear_watchpoint(request.address)),
+    }
     Ok(())
 }
 

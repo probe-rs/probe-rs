@@ -1032,6 +1032,145 @@ impl DebugAdapter {
         self.send_response(request, Ok(Some(breakpoint_body)))
     }
 
+    /// `dataBreakpointInfo`: the data ID (`<address>/<length>`) of a variable with a memory
+    /// location, or of an address (`asAddress`) and length (`bytes`).
+    pub(crate) async fn data_breakpoint_info(
+        &mut self,
+        session_data: &mut SessionData,
+        core_index: usize,
+        request: &Request,
+    ) -> Result<()> {
+        let arguments: DataBreakpointInfoArguments = get_arguments(self, request)?;
+        let location = if arguments.as_address == Some(true) {
+            parse::<u64>(arguments.name.trim())
+                .ok()
+                .map(|address| (address, arguments.bytes.and_then(|b| u64::try_from(b).ok())))
+        } else if let Some(reference) = arguments.variables_reference {
+            session_data
+                .backend
+                .variable_location(core_index, reference as u32, &arguments.name)
+                .await
+                .unwrap_or_else(|error| {
+                    tracing::debug!("No memory location for {}: {error}", arguments.name);
+                    None
+                })
+        } else {
+            None
+        };
+
+        let body = match location {
+            Some((address, size)) => {
+                let len = arguments
+                    .bytes
+                    .and_then(|b| u64::try_from(b).ok())
+                    .or(size)
+                    .unwrap_or(4)
+                    .max(1);
+                DataBreakpointInfoResponseBody {
+                    access_types: Some(vec![
+                        DataBreakpointAccessType::Write,
+                        DataBreakpointAccessType::Read,
+                        DataBreakpointAccessType::ReadWrite,
+                    ]),
+                    can_persist: Some(false),
+                    data_id: Some(format!("{address:#x}/{len}")),
+                    description: format!("{} ({len} byte(s) at {address:#010x})", arguments.name),
+                }
+            }
+            None => DataBreakpointInfoResponseBody {
+                access_types: None,
+                can_persist: None,
+                data_id: None,
+                description: format!(
+                    "{} has no memory location for a data breakpoint",
+                    arguments.name
+                ),
+            },
+        };
+        self.send_response(request, Ok(Some(body)))
+    }
+
+    /// `setDataBreakpoints`: replaces the data breakpoints of the core.
+    pub(crate) async fn set_data_breakpoints(
+        &mut self,
+        session_data: &mut SessionData,
+        core_index: usize,
+        request: &Request,
+    ) -> Result<()> {
+        let arguments: SetDataBreakpointsArguments = get_arguments(self, request)?;
+        let previous = match session_data.core_data_mut(core_index) {
+            Err(error) => return self.send_response::<()>(request, Err(&error)),
+            Ok(core_data) => std::mem::take(&mut core_data.data_breakpoints),
+        };
+        for address in previous {
+            if let Err(error) = session_data
+                .backend
+                .clear_watchpoint(core_index, address)
+                .await
+            {
+                tracing::warn!("Failed to clear the data breakpoint at {address:#x}: {error}");
+            }
+        }
+
+        let mut breakpoints = Vec::with_capacity(arguments.breakpoints.len());
+        let mut set = Vec::new();
+        for data_breakpoint in &arguments.breakpoints {
+            let parsed = data_breakpoint
+                .data_id
+                .split_once('/')
+                .and_then(|(a, l)| Some((parse::<u64>(a).ok()?, l.parse::<u64>().ok()?)));
+            let access = match data_breakpoint.access_type {
+                Some(DataBreakpointAccessType::Read) => {
+                    probe_rs_rpc::core_ops::WireWatchpointAccess::Read
+                }
+                Some(DataBreakpointAccessType::ReadWrite) => {
+                    probe_rs_rpc::core_ops::WireWatchpointAccess::ReadWrite
+                }
+                Some(DataBreakpointAccessType::Write) | None => {
+                    probe_rs_rpc::core_ops::WireWatchpointAccess::Write
+                }
+            };
+            let result = match parsed {
+                None => Err(format!("Invalid data ID {:?}", data_breakpoint.data_id)),
+                Some(_) if data_breakpoint.condition.is_some() => {
+                    Err("Conditions on data breakpoints are not supported".to_string())
+                }
+                Some((address, len)) => session_data
+                    .backend
+                    .set_watchpoint(core_index, address, len, access)
+                    .await
+                    .map(|()| address)
+                    .map_err(|error| error.to_string()),
+            };
+            breakpoints.push(Breakpoint {
+                column: None,
+                end_column: None,
+                end_line: None,
+                id: parsed.map(|(address, _)| address as i64),
+                instruction_reference: None,
+                line: None,
+                message: Some(match &result {
+                    Ok(_) => format!("Data breakpoint on {}", data_breakpoint.data_id),
+                    Err(error) => error.clone(),
+                }),
+                offset: None,
+                source: None,
+                verified: result.is_ok(),
+                reason: None,
+            });
+            if let Ok(address) = result {
+                set.push(address);
+            }
+        }
+        if let Ok(core_data) = session_data.core_data_mut(core_index) {
+            core_data.data_breakpoints = set;
+        }
+        self.send_response(
+            request,
+            Ok(Some(SetDataBreakpointsResponseBody { breakpoints })),
+        )
+    }
+
     pub(crate) async fn set_instruction_breakpoints(
         &mut self,
         session_data: &mut SessionData,

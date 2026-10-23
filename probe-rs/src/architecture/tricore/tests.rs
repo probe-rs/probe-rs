@@ -963,6 +963,126 @@ fn a_software_breakpoint_in_the_halt_group_is_a_breakpoint() {
     );
 }
 
+fn trig_evt(unit: usize) -> u32 {
+    FakeBus::csfr(ocds::TRIG + 8 * unit as u16)
+}
+
+fn trig_adr(unit: usize) -> u32 {
+    FakeBus::csfr(ocds::TRIG + 4 + 8 * unit as u16)
+}
+
+#[test]
+fn a_watchpoint_takes_the_highest_free_trigger_units() {
+    let mut bus = FakeBus::new();
+    bus.halted = true;
+    let mut state = TriCoreCoreState::new();
+    let mut core = core(&mut bus, &mut state);
+    // One byte: a single unit, stores only.
+    core.set_watchpoint(0x7000_A000, 1, WatchpointAccess::Write)
+        .unwrap();
+    // Four bytes: an even and odd pair, loads and stores.
+    core.set_watchpoint(0x7000_A004, 4, WatchpointAccess::ReadWrite)
+        .unwrap();
+    assert_eq!(core.watchpoints().unwrap(), [0x7000_A000, 0x7000_A004]);
+    drop(core);
+
+    assert_eq!(bus.word(trig_adr(7)), 0x7000_A000);
+    assert_eq!(bus.word(trig_evt(7)), 0x0800_0032);
+    // Units 6 and 7 are not a free pair: 4 and 5 hold the range.
+    assert_eq!(bus.word(trig_adr(4)), 0x7000_A004);
+    assert_eq!(bus.word(trig_evt(4)), 0x1800_2032);
+    assert_eq!(bus.word(trig_adr(5)), 0x7000_A008);
+    assert_eq!(bus.word(trig_evt(5)), 0);
+
+    let mut core = self::core(&mut bus, &mut state);
+    core.clear_watchpoint(0x7000_A004).unwrap();
+    drop(core);
+    assert_eq!(bus.word(trig_evt(4)), 0);
+    assert_eq!(bus.word(trig_evt(7)), 0x0800_0032);
+}
+
+#[test]
+fn breakpoints_and_watchpoints_share_the_trigger_units() {
+    let mut bus = FakeBus::new();
+    bus.halted = true;
+    let mut state = TriCoreCoreState::new();
+    let mut core = core(&mut bus, &mut state);
+    core.enable_breakpoints(true).unwrap();
+    for slot in 0..7 {
+        core.set_hw_breakpoint(slot, 0x8000_0200 + 4 * slot as u64)
+            .unwrap();
+    }
+    // No even and odd pair is left, a single unit is.
+    let error = core
+        .set_watchpoint(0x7000_A004, 4, WatchpointAccess::Write)
+        .unwrap_err();
+    assert!(
+        error.to_string().contains("No free trigger unit"),
+        "{error}"
+    );
+    core.set_watchpoint(0x7000_A004, 1, WatchpointAccess::Write)
+        .unwrap();
+    // And then no unit is left for a breakpoint in the flash.
+    assert!(core.set_hw_breakpoint(7, 0x8000_0300).is_err());
+}
+
+#[test]
+fn a_watchpoint_halt_is_reported_and_survives_a_step() {
+    let mut bus = FakeBus::new();
+    bus.halted = true;
+    let mut state = TriCoreCoreState::new();
+    {
+        let mut core = core(&mut bus, &mut state);
+        core.set_watchpoint(0x7000_A004, 4, WatchpointAccess::Write)
+            .unwrap();
+        core.run().unwrap();
+    }
+    // The store halts the core after it (break after make): the accumulator bit of unit 6.
+    bus.trig_acc |= 1 << 6;
+    bus.halted = true;
+    bus.evtsrc = 16 + 6;
+    let mut core = core(&mut bus, &mut state);
+    assert_eq!(
+        core.status().unwrap(),
+        CoreStatus::Halted(HaltReason::Watchpoint)
+    );
+    // The step reprograms the trigger window; the watchpoint is armed again after it.
+    core.step().unwrap();
+    drop(core);
+    assert_eq!(bus.word(trig_evt(6)), 0x0800_2032);
+    assert_eq!(bus.word(trig_adr(7)), 0x7000_A008);
+}
+
+#[test]
+fn a_member_halted_at_a_watchpoint_stays_halted() {
+    for peer_dbgsr in [
+        // Its own trigger (EVTSRC 16 + 6, SUSP).
+        0x1613, // The break-in of the group right after it (EVTSRC 0, PREVSUSP).
+        0x0043,
+    ] {
+        let mut bus = FakeBus::new();
+        bus.set_word(ocds::trc(1), ocds::TRC_HALT_GROUP);
+        let mut state = TriCoreCoreState::new();
+        group_core(&mut bus, &mut state)
+            .set_halt_group(true)
+            .unwrap();
+        bus.set_word(PEER_DBGSR, 0x0001);
+        group_core(&mut bus, &mut state).status().unwrap();
+        bus.set_word(PEER_DBGSR, peer_dbgsr);
+        bus.halted = true;
+        let mut core = group_core(&mut bus, &mut state);
+        core.status().unwrap();
+        core.run().unwrap();
+        drop(core);
+        assert!(
+            !bus.write_words()
+                .iter()
+                .any(|&(address, value)| address == PEER_DBGSR && value == ocds::DBGSR_RUN),
+            "DBGSR {peer_dbgsr:#x}"
+        );
+    }
+}
+
 const ICR: u32 = CSFR_BASE + registers::CSFR_ICR as u32;
 
 /// The (index, value) of every ICR write.
