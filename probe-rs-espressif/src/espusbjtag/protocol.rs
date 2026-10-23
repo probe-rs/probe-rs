@@ -55,6 +55,8 @@ const MAX_IN_FLIGHT_TRANSFERS: usize = 4;
 // hold a very large number of clock cycles.
 const MAX_BUFFERED_CLOCKS: usize = 16 * 1024;
 const USB_TIMEOUT: Duration = Duration::from_millis(500);
+// The number of zero-length reads in sequence after which a read of capture data fails.
+const MAX_EMPTY_READS: usize = 8;
 const USB_DEVICE_CLASS: u8 = 0xFF;
 const USB_DEVICE_SUBCLASS: u8 = 0xFF;
 const USB_DEVICE_PROTOCOL: u8 = 0x01;
@@ -702,18 +704,38 @@ impl ProtocolHandler {
         let count = self.pending_in_bits.div_ceil(8).min(IN_EP_BUFFER_SIZE);
         let mut incoming = [0; IN_EP_BUFFER_SIZE];
 
-        let read_bytes = self
-            .ep_in
-            .read_bulk(&mut incoming, USB_TIMEOUT)
-            .map_err(|e| {
+        // A zero-length read gives no capture data. Retry it a limited number of times, so that
+        // the callers that wait for `pending_in_bits` do not loop forever.
+        let mut empty_reads = 0;
+        let read_bytes = loop {
+            let read_bytes = self
+                .ep_in
+                .read_bulk(&mut incoming, USB_TIMEOUT)
+                .map_err(|e| {
+                    tracing::warn!(
+                        "Something went wrong in read_bulk {:?} when trying to read {}bytes - pending_in_bits: {}",
+                        e,
+                        count,
+                        self.pending_in_bits,
+                    );
+                    DebugProbeError::Usb(e)
+                })?;
+
+            if read_bytes > 0 {
+                break read_bytes;
+            }
+
+            empty_reads += 1;
+            if empty_reads == MAX_EMPTY_READS {
                 tracing::warn!(
-                    "Something went wrong in read_bulk {:?} when trying to read {}bytes - pending_in_bits: {}",
-                    e,
-                    count,
-                    self.pending_in_bits,
+                    "The device sent {empty_reads} empty packets - pending_in_bits: {}",
+                    self.pending_in_bits
                 );
-                DebugProbeError::Usb(e)
-            })?;
+                return Err(DebugProbeError::Usb(io::Error::other(
+                    "bulk read returned no data",
+                )));
+            }
+        };
 
         if read_bytes > count {
             tracing::warn!("Read more bytes than expected: {} > {}", read_bytes, count);
