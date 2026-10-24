@@ -124,6 +124,7 @@ pub enum Operation {
     Program,
     Verify,
     Ram,
+    Compare,
 }
 
 #[derive(Clone, Serialize, Deserialize, Schema)]
