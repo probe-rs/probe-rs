@@ -124,11 +124,6 @@ impl<'a> FlashProgress<'a> {
         self.progressed(ProgressOperation::Program, size, time);
     }
 
-    /// Signal that the page filling procedure has made progress.
-    pub(super) fn page_verified(&mut self, size: u64, time: Duration) {
-        self.progressed(ProgressOperation::Verify, size, time);
-    }
-
     /// Signal that the erasing procedure failed.
     pub(super) fn failed_erasing(&mut self) {
         self.failed(ProgressOperation::Erase);
