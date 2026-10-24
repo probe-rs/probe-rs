@@ -1005,7 +1005,8 @@ impl<O: Operation> ActiveFlasher<'_, '_, O> {
                 false,
                 INIT_TIMEOUT,
             )
-            .map_err(|error| FlashError::FlashSizeFailed {
+            .map_err(|error| FlashError::VendorFunctionFailed {
+                name: function.to_string(),
                 source: Box::new(error),
             })?;
 
