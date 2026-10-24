@@ -4,7 +4,7 @@ use std::ops::Range;
 
 use probe_rs_target::{FlashProperties, MemoryRange, NvmRegion, PageInfo};
 
-use super::{FlashAlgorithm, FlashError};
+use super::{CompareOutcome, FlashAlgorithm, FlashError};
 
 /// The description of a page in flash.
 #[derive(Clone, PartialEq, Eq)]
@@ -101,6 +101,8 @@ impl FlashFill {
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct FlashLayout {
     pub(crate) sectors: Vec<FlashSector>,
+    /// The sectors that a compare found empty. Their pages are programmed without an erase.
+    unerased_sectors: Vec<FlashSector>,
     pub(crate) pages: Vec<FlashPage>,
     pub(crate) fills: Vec<FlashFill>,
     data_blocks: Vec<FlashDataBlockSpan>,
@@ -110,6 +112,7 @@ impl FlashLayout {
     /// Merge another flash layout into this one.
     pub fn merge_from(&mut self, other: FlashLayout) {
         self.sectors.extend(other.sectors);
+        self.unerased_sectors.extend(other.unerased_sectors);
         self.pages.extend(other.pages);
         self.fills.extend(other.fills);
         self.data_blocks.extend(other.data_blocks);
@@ -118,6 +121,17 @@ impl FlashLayout {
     /// List of sectors which are erased during flashing.
     pub fn sectors(&self) -> &[FlashSector] {
         &self.sectors
+    }
+
+    /// Returns the sectors that a compare checks, in address order.
+    pub(crate) fn sectors_to_check(&self) -> Vec<&FlashSector> {
+        let mut sectors = self
+            .sectors
+            .iter()
+            .chain(&self.unerased_sectors)
+            .collect::<Vec<_>>();
+        sectors.sort_by_key(|sector| sector.address);
+        sectors
     }
 
     /// List of pages which are programmed during flashing.
@@ -137,6 +151,104 @@ impl FlashLayout {
     /// This is the data which is written during flashing.
     pub fn data_blocks(&self) -> &[FlashDataBlockSpan] {
         &self.data_blocks
+    }
+
+    /// Removes the work that compare results make unnecessary.
+    ///
+    /// `outcomes` holds one result for each sector, in the order of [`Self::sectors`].
+    ///
+    /// - A sector that matches loses its pages, fills and data blocks.
+    /// - An empty sector keeps its pages, so that it is programmed. It needs no erase, and
+    ///   its fills hold the erased value already, so the sector and its fills go.
+    pub(crate) fn prune(&mut self, outcomes: &[CompareOutcome]) {
+        assert_eq!(outcomes.len(), self.sectors.len());
+
+        let ranges = self
+            .sectors
+            .iter()
+            .map(|sector| sector.address..sector.address + sector.size)
+            .collect::<Vec<_>>();
+        let outcome_at = |address: u64| {
+            ranges
+                .iter()
+                .position(|range| range.contains(&address))
+                .map_or(CompareOutcome::Mismatch, |idx| outcomes[idx])
+        };
+        let page_matches = |page: &FlashPage| {
+            let end = page.address + page.data.len() as u64;
+            let mut covered_until = page.address;
+            for (range, outcome) in ranges.iter().zip(outcomes) {
+                if range.end <= covered_until || end <= range.start {
+                    continue;
+                }
+                if range.start > covered_until || *outcome != CompareOutcome::Match {
+                    return false;
+                }
+                covered_until = range.end.min(end);
+                if covered_until == end {
+                    return true;
+                }
+            }
+            false
+        };
+
+        let mut new_index = vec![None; self.pages.len()];
+        let mut pages = Vec::new();
+        for (idx, page) in std::mem::take(&mut self.pages).into_iter().enumerate() {
+            if !page_matches(&page) {
+                new_index[idx] = Some(pages.len());
+                pages.push(page);
+            }
+        }
+        self.pages = pages;
+
+        self.fills.retain_mut(|fill| {
+            let Some(page_index) = new_index[fill.page_index] else {
+                return false;
+            };
+            fill.page_index = page_index;
+            outcome_at(fill.address) != CompareOutcome::Empty
+        });
+
+        let matched = ranges
+            .iter()
+            .zip(outcomes)
+            .filter(|(_, outcome)| **outcome == CompareOutcome::Match)
+            .map(|(range, _)| range.clone())
+            .collect::<Vec<_>>();
+        self.data_blocks = std::mem::take(&mut self.data_blocks)
+            .into_iter()
+            .flat_map(|block| {
+                let mut pieces = vec![block.address..block.address + block.size];
+                for range in &matched {
+                    pieces = pieces
+                        .into_iter()
+                        .flat_map(|piece| {
+                            [
+                                piece.start..piece.end.min(range.start),
+                                piece.start.max(range.end)..piece.end,
+                            ]
+                        })
+                        .filter(|piece| !piece.is_empty())
+                        .collect();
+                }
+                pieces.into_iter().map(|piece| FlashDataBlockSpan {
+                    address: piece.start,
+                    size: piece.end - piece.start,
+                })
+            })
+            .collect();
+
+        for (sector, outcome) in mem::take(&mut self.sectors)
+            .into_iter()
+            .zip(outcomes.iter())
+        {
+            match outcome {
+                CompareOutcome::Match => {}
+                CompareOutcome::Empty => self.unerased_sectors.push(sector),
+                CompareOutcome::Mismatch => self.sectors.push(sector),
+            }
+        }
     }
 
     /// Returns the parts of a page that hold image data, as `(address, data)` pairs.
@@ -536,6 +648,7 @@ mod tests {
         assert_eq!(
             flash_layout,
             FlashLayout {
+                unerased_sectors: vec![],
                 sectors: vec![FlashSector {
                     address: 0x0000,
                     size: 0x1000,
@@ -609,6 +722,87 @@ mod tests {
         assert!(flash_layout.page_data_without_fills(1).is_empty());
     }
 
+    /// Two sectors with data: one byte at 0x0010, and one byte at 0x1010.
+    fn two_sector_layout() -> FlashLayout {
+        let (region, flash_algorithm) = assemble_demo_flash1();
+        let mut flash_builder = FlashBuilder::new();
+        flash_builder.add_data(0x0010, &[1]).unwrap();
+        flash_builder.add_data(0x1010, &[2]).unwrap();
+        flash_builder
+            .build_sectors_and_pages(&region, &flash_algorithm, false)
+            .unwrap()
+    }
+
+    #[test]
+    fn prune_removes_a_matching_sector() {
+        let mut layout = two_sector_layout();
+
+        layout.prune(&[CompareOutcome::Match, CompareOutcome::Mismatch]);
+
+        assert_eq!(layout.sectors().len(), 1);
+        assert_eq!(layout.sectors()[0].address(), 0x1000);
+        assert_eq!(layout.pages().len(), 1);
+        assert_eq!(layout.pages()[0].address(), 0x1000);
+        assert!(layout.fills().iter().all(|fill| fill.page_index() == 0));
+        assert_eq!(layout.fills().len(), 2);
+        assert_eq!(
+            layout.data_blocks(),
+            &[FlashDataBlockSpan {
+                address: 0x1010,
+                size: 1
+            }]
+        );
+    }
+
+    #[test]
+    fn prune_keeps_the_pages_of_an_empty_sector() {
+        let mut layout = two_sector_layout();
+
+        layout.prune(&[CompareOutcome::Empty, CompareOutcome::Mismatch]);
+
+        assert_eq!(layout.sectors().len(), 1);
+        assert_eq!(layout.sectors()[0].address(), 0x1000);
+        assert_eq!(layout.pages().len(), 2);
+        // The fills of the empty sector go, as they hold the erased value already.
+        assert!(layout.fills().iter().all(|fill| fill.address() >= 0x1000));
+        assert_eq!(layout.data_blocks().len(), 2);
+    }
+
+    #[test]
+    fn prune_with_all_mismatches_changes_nothing() {
+        let mut layout = two_sector_layout();
+        let original = layout.clone();
+
+        layout.prune(&[CompareOutcome::Mismatch, CompareOutcome::Mismatch]);
+
+        assert_eq!(layout, original);
+    }
+
+    #[test]
+    fn prune_keeps_a_page_when_a_later_sector_mismatches() {
+        let (region, flash_algorithm) = assemble_demo_flash2();
+        let mut flash_builder = FlashBuilder::new();
+        flash_builder.add_data(0x300, &[1]).unwrap();
+        let mut layout = flash_builder
+            .build_sectors_and_pages(&region, &flash_algorithm, false)
+            .unwrap();
+        assert_eq!(layout.pages().len(), 1);
+        assert_eq!(layout.sectors().len(), 8);
+
+        layout.prune(&[
+            CompareOutcome::Match,
+            CompareOutcome::Match,
+            CompareOutcome::Match,
+            CompareOutcome::Match,
+            CompareOutcome::Match,
+            CompareOutcome::Match,
+            CompareOutcome::Mismatch,
+            CompareOutcome::Match,
+        ]);
+
+        assert_eq!(layout.pages().len(), 1);
+    }
+
     #[test]
     fn equal_bytes_full_single_page() {
         let (region, flash_algorithm) = assemble_demo_flash1();
@@ -623,6 +817,7 @@ mod tests {
         assert_eq!(
             flash_layout,
             FlashLayout {
+                unerased_sectors: vec![],
                 sectors: vec![FlashSector {
                     address: 0x0000,
                     size: 0x1000,
@@ -684,6 +879,7 @@ mod tests {
         assert_eq!(
             flash_layout,
             FlashLayout {
+                unerased_sectors: vec![],
                 sectors: vec![FlashSector {
                     address: 0x0000,
                     size: 0x1000,
@@ -749,6 +945,7 @@ mod tests {
         assert_eq!(
             flash_layout,
             FlashLayout {
+                unerased_sectors: vec![],
                 sectors: vec![FlashSector {
                     address: 0x0000,
                     size: 0x1000,
@@ -794,6 +991,7 @@ mod tests {
         assert_eq!(
             flash_layout,
             FlashLayout {
+                unerased_sectors: vec![],
                 sectors: vec![FlashSector {
                     address: 0x000000,
                     size: 0x001000,
@@ -872,6 +1070,7 @@ mod tests {
         assert_eq!(
             flash_layout,
             FlashLayout {
+                unerased_sectors: vec![],
                 sectors: vec![
                     FlashSector {
                         address: 0x000000,
@@ -967,6 +1166,7 @@ mod tests {
         assert_eq!(
             flash_layout,
             FlashLayout {
+                unerased_sectors: vec![],
                 sectors: vec![
                     FlashSector {
                         address: 0x000000,
@@ -1140,6 +1340,7 @@ mod tests {
         assert_eq!(
             flash_layout,
             FlashLayout {
+                unerased_sectors: vec![],
                 sectors: {
                     let mut sectors = Vec::with_capacity(88);
                     for i in 0..40 {

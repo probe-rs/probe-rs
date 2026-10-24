@@ -184,7 +184,7 @@ fn sector_checks(
     // does not end before it.
     let mut first = 0;
 
-    layout.sectors().iter().map(move |sector| {
+    layout.sectors_to_check().into_iter().map(move |sector| {
         let range = sector.address()..sector.address() + sector.size();
 
         while pages
@@ -408,6 +408,22 @@ mod tests {
         assert_eq!(checks[0].expected, vec![(0x10, &[1, 2][..])]);
         assert_eq!(checks[1].sector, 0x1000..0x2000);
         assert_eq!(checks[1].expected, vec![(0x1400, &[3][..])]);
+    }
+
+    #[test]
+    fn checks_after_a_prune_cover_the_programmed_sectors() {
+        let mut layout = layout(&[(0x10, &[1]), (0x1010, &[2]), (0x2010, &[3])], false);
+        layout.prune(&[
+            CompareOutcome::Empty,
+            CompareOutcome::Match,
+            CompareOutcome::Mismatch,
+        ]);
+
+        let sectors = sector_checks(&layout, Outside::Any, false)
+            .map(|check| check.sector)
+            .collect::<Vec<_>>();
+
+        assert_eq!(sectors, vec![0x0000..0x1000, 0x2000..0x3000]);
     }
 
     #[test]
