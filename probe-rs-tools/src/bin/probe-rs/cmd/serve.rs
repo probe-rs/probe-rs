@@ -340,16 +340,22 @@ async fn handle_socket(socket: WebSocket, challenge: String, state: Arc<ServerSt
         let mut writer = AxumWebsocketTx::new(writer);
         // Send messages from the server to the client.
         while let Some(msg) = rx.recv().await {
-            writer.send(msg).await.unwrap();
+            if writer.send(msg).await.is_err() {
+                break;
+            }
         }
     };
 
     let receiver = async {
         // Forward messages from the client to the server
         while let Some(msg) = reader.next().await {
-            tx.send(msg.map_err(|_| WireRxErrorKind::Other))
+            if tx
+                .send(msg.map_err(|_| WireRxErrorKind::Other))
                 .await
-                .unwrap();
+                .is_err()
+            {
+                break;
+            }
         }
     };
 

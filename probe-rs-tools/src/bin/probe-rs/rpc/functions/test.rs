@@ -34,10 +34,7 @@ pub async fn list_tests(
         .await
         .map_err(crate::rpc::functions::convert::rpc_error_anyhow);
 
-    sender
-        .reply::<ListTestsEndpoint>(header.seq_no, &resp)
-        .await
-        .unwrap();
+    crate::rpc::functions::reply::<ListTestsEndpoint>(&sender, header, &resp).await;
 }
 
 fn list_tests_impl(
@@ -47,7 +44,7 @@ fn list_tests_impl(
 ) -> anyhow::Result<Tests> {
     let shared_session = ctx.shared_session(request.sessid);
     let mut list_handler = ListEventHandler::new(request.semihosting_options, |event| {
-        sender.send_semihosting_event(event).unwrap()
+        _ = sender.send_semihosting_event(event)
     });
 
     let core_id = request
@@ -116,10 +113,7 @@ pub async fn run_test(
         .await
         .map_err(crate::rpc::functions::convert::rpc_error_anyhow);
 
-    sender
-        .reply::<RunTestEndpoint>(header.seq_no, &resp)
-        .await
-        .unwrap();
+    crate::rpc::functions::reply::<RunTestEndpoint>(&sender, header, &resp).await;
 }
 
 fn run_test_impl(
@@ -148,7 +142,7 @@ fn run_test_impl(
     let expected_outcome = request.test.expected_outcome;
     let mut run_handler =
         RunEventHandler::new(request.test, request.semihosting_options, |event| {
-            sender.send_semihosting_event(event).unwrap()
+            _ = sender.send_semihosting_event(event)
         });
 
     let mut run_loop = RunLoop {

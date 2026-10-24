@@ -133,10 +133,10 @@ where
                 event = self.rx.recv() => {
                     // The task has dropped its sender, and everything it sent is published.
                     let Some(event) = event else { break };
-                    sender
-                        .publish::<T>(VarSeq::Seq2(0), &event)
-                        .await
-                        .unwrap();
+                    if sender.publish::<T>(VarSeq::Seq2(0), &event).await.is_err() {
+                        tracing::debug!("Client is gone, dropping the events of {}", T::PATH);
+                        break;
+                    }
                 }
             }
         }
@@ -426,6 +426,20 @@ async fn cancel_handler(
     ctx.state.token.cancel();
 }
 
+/// Sends the reply of a spawned handler.
+pub(crate) async fn reply<E>(
+    sender: &PostcardSender<WireTxImpl>,
+    header: VarHeader,
+    resp: &E::Response,
+) where
+    E: postcard_rpc::Endpoint,
+    E::Response: Serialize + Schema,
+{
+    if sender.reply::<E>(header.seq_no, resp).await.is_err() {
+        tracing::debug!("Client is gone, dropping the reply of {}", E::PATH);
+    }
+}
+
 pub fn spawn_fn(
     sp: &probe_rs_rpc::TokioSpawner,
     fut: impl Future<Output = ()> + 'static + Send,
@@ -707,5 +721,33 @@ mod tests {
 
         drop(ctx);
         assert_eq!(frames.await.unwrap(), EVENTS);
+    }
+
+    /// The client can go away while a task publishes events. The server must
+    /// not panic.
+    #[tokio::test]
+    async fn run_blocking_survives_a_closed_connection() {
+        let (wire_tx, wire_rx) = channel::<Vec<u8>>(1);
+        drop(wire_rx);
+
+        let mut ctx = RpcSpawnContext {
+            state: ConnectionState::new(),
+            sender: PostcardSender::new(WireTx::new(wire_tx), VarKeyKind::Key4),
+            probe_broker: Arc::new(ProbeBroker::new()),
+            lister: Arc::new(LimitedLister::new(ProbeAccess::All)),
+        };
+        let result = tokio::spawn(async move {
+            ctx.run_blocking::<RttTopic, _, _, _>((), |_, (), sender| {
+                let event = RttEvent::Output {
+                    channel: 0,
+                    bytes: vec![0],
+                };
+                _ = sender.blocking_send(event);
+            })
+            .await
+        })
+        .await;
+
+        assert!(result.is_ok(), "run_blocking panicked");
     }
 }
