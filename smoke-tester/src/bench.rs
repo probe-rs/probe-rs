@@ -134,6 +134,7 @@ impl FlashTimer {
 
     fn phase(&mut self, operation: ProgressOperation) -> &mut Phase {
         let metric = match operation {
+            ProgressOperation::Compare => "flash_compare",
             ProgressOperation::Fill => "flash_fill",
             ProgressOperation::Erase => "flash_erase",
             ProgressOperation::Program => "flash_program",

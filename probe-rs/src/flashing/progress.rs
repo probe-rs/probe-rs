@@ -168,6 +168,9 @@ impl<'a> FlashProgress<'a> {
 /// The operation that is currently in progress.
 #[derive(Clone, Copy, Debug)]
 pub enum ProgressOperation {
+    /// Comparing flash contents with the image, to find the sectors that need no change.
+    Compare,
+
     /// Reading back flash contents to restore erased regions that should be kept unchanged.
     Fill,
 
