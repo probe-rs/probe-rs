@@ -7,7 +7,7 @@ use std::time::Duration;
 use std::{future::Future, ops::DerefMut, path::Path, time::Instant};
 
 use anyhow::Context;
-use libtest_mimic::{Failed, Trial};
+use libtest_mimic::{Completion, Failed, Trial};
 use probe_rs::meta::ElfMetadata;
 use probe_rs::rtt::find_rtt_control_block_and_metadata_in_raw_file;
 use ratatui::crossterm::style::Stylize;
@@ -52,7 +52,7 @@ use probe_rs_rpc::semihosting_options::SemihostingOptions;
 use probe_rs_rpc::stack_trace::StackTrace;
 use probe_rs_rpc::stack_trace::StackTraceFrame;
 use probe_rs_rpc::test::{Test, TestResult};
-use probe_rs_rpc_client::{MonitorEvent, RpcClient, SessionInterface};
+use probe_rs_rpc_client::{ClientError, MonitorEvent, RpcClient, SessionInterface};
 use probe_rs_zephyr::log::{Database as ZephyrLogDatabase, Decoder as ZephyrLogDecoder};
 
 type TargetOutputFiles = std::collections::HashMap<ChannelIdentifier, tokio::fs::File>;
@@ -1119,6 +1119,7 @@ pub async fn test(
             return Ok(());
         }
 
+        let error = Arc::new(std::sync::Mutex::new(None));
         let tests = tests
             .into_iter()
             .map(|test| {
@@ -1129,6 +1130,7 @@ pub async fn test(
                     semihosting_options.clone(),
                     sender.clone(),
                     &token,
+                    &error,
                     test,
                     monitor_options.stack_frame_limit,
                 )
@@ -1136,7 +1138,11 @@ pub async fn test(
             .collect::<Vec<_>>();
 
         tokio::task::spawn_blocking(move || {
-            if libtest_mimic::run(&libtest_args, tests).has_failed() {
+            let conclusion = libtest_mimic::run(&libtest_args, tests);
+            if let Some(error) = error.lock().unwrap().take() {
+                return Err(anyhow::Error::from(error));
+            }
+            if conclusion.has_failed() {
                 anyhow::bail!("Some tests failed");
             }
 
@@ -1187,6 +1193,7 @@ fn create_trial(
     semihosting_options: SemihostingOptions,
     sender: UnboundedSender<MonitorEvent>,
     token: &CancellationToken,
+    error: &Arc<std::sync::Mutex<Option<ClientError>>>,
     test: Test,
     stack_frame_limit: u32,
 ) -> Trial {
@@ -1196,12 +1203,13 @@ fn create_trial(
 
     let session = session.clone();
     let token = token.clone();
+    let error = error.clone();
 
-    Trial::test(name, {
+    Trial::ignorable_test(name, {
         move || {
-            if token.is_cancelled() {
-                eprintln!("Cancelled");
-                std::process::exit(0);
+            // A cancel or an error ends the test run. The tests that did not run are ignored.
+            if token.is_cancelled() || error.lock().unwrap().is_some() {
+                return Ok(Completion::ignored_with("not run"));
             }
 
             let handle = tokio::spawn(async move {
@@ -1211,19 +1219,18 @@ fn create_trial(
                     })
                     .await
                 {
-                    Ok(TestResult::Success) => Ok(()),
-                    Ok(TestResult::Cancelled) => {
-                        eprintln!("Cancelled");
-                        std::process::exit(0);
-                    }
+                    Ok(TestResult::Success) => Ok(Completion::Completed),
+                    Ok(TestResult::Cancelled) => Ok(Completion::ignored_with("cancelled")),
                     Ok(TestResult::Failed(message)) => {
                         display_stack_trace(&session, &path, stack_frame_limit).await?;
 
                         Err(Failed::from(message))
                     }
                     Err(e) => {
-                        eprintln!("Error: {e:?}");
-                        std::process::exit(1);
+                        // The test command returns the error after the test run.
+                        let message = e.to_string();
+                        *error.lock().unwrap() = Some(e);
+                        Err(Failed::from(message))
                     }
                 }
             });
