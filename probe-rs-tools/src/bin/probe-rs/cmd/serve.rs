@@ -199,34 +199,9 @@ impl Cmd {
             .await
             .unwrap();
 
-        let (request_tx, mut request_rx) = tokio::sync::mpsc::channel(64);
-
-        let set = LocalSet::new();
-        let state = Arc::new(ServerState::new(config, request_tx, probe_broker));
-
-        set.spawn_local({
-            let state = state.clone();
-            async move {
-                while let Some((socket, challenge)) = request_rx.recv().await {
-                    // Spawn a new task for each connection
-                    tokio::task::spawn_local(handle_socket(socket, challenge, state.clone()));
-                }
-            }
-        });
-
-        let app = Router::new()
-            .route("/", get(server_info))
-            .route("/worker", any(ws_handler))
-            .with_state(state);
-
         tracing::info!("listening on {}", listener.local_addr().unwrap());
 
-        let (result, _) = tokio::join! {
-            axum::serve(listener, app),
-            set,
-        };
-
-        result.unwrap();
+        serve_websockets(listener, config, probe_broker).await;
 
         Ok(())
     }
@@ -262,6 +237,40 @@ impl Cmd {
             tokio::spawn(handle_unix_rpc(stream, probe_broker.clone()));
         }
     }
+}
+
+/// Serves the status page and the websocket endpoint on `listener`.
+async fn serve_websockets(
+    listener: tokio::net::TcpListener,
+    config: ServerConfig,
+    probe_broker: Arc<ProbeBroker>,
+) {
+    let (request_tx, mut request_rx) = tokio::sync::mpsc::channel(64);
+
+    let set = LocalSet::new();
+    let state = Arc::new(ServerState::new(config, request_tx, probe_broker));
+
+    set.spawn_local({
+        let state = state.clone();
+        async move {
+            while let Some((socket, challenge)) = request_rx.recv().await {
+                // Spawn a new task for each connection
+                tokio::task::spawn_local(handle_socket(socket, challenge, state.clone()));
+            }
+        }
+    });
+
+    let app = Router::new()
+        .route("/", get(server_info))
+        .route("/worker", any(ws_handler))
+        .with_state(state);
+
+    let (result, _) = tokio::join! {
+        axum::serve(listener, app),
+        set,
+    };
+
+    result.unwrap();
 }
 
 async fn ws_handler(ws: WebSocketUpgrade, state: State<Arc<ServerState>>) -> impl IntoResponse {
@@ -408,5 +417,55 @@ async fn handle_unix_rpc(stream: tokio::net::UnixStream, probe_broker: Arc<Probe
         _ = server.run() => tracing::warn!("Server stopped"),
         _ = sender => tracing::warn!("Server sender stopped"),
         _ = receiver => tracing::info!("Client disconnected"),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::time::Duration;
+    use tokio_tungstenite::tungstenite::Message;
+
+    /// The server must end the websocket with a close frame, so that the
+    /// client can tell a refused login from a lost connection.
+    #[tokio::test]
+    async fn a_refused_login_closes_the_websocket() {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        // No users, so every login fails.
+        let server = serve_websockets(
+            listener,
+            ServerConfig::default(),
+            Arc::new(ProbeBroker::new()),
+        );
+
+        let client = async {
+            let (mut ws, _) = tokio_tungstenite::connect_async(format!("ws://{address}/worker"))
+                .await
+                .unwrap();
+            ws.send(Message::Binary(frame(b"wrong").freeze()))
+                .await
+                .unwrap();
+
+            let mut messages = Vec::new();
+            while let Some(message) = ws.next().await {
+                messages.push(format!("{message:?}"));
+            }
+            messages
+        };
+
+        let messages = tokio::select! {
+            _ = server => panic!("the server stopped"),
+            messages = tokio::time::timeout(Duration::from_secs(5), client) => {
+                messages.expect("the websocket stayed open")
+            }
+        };
+
+        assert!(
+            messages
+                .iter()
+                .any(|message| message.starts_with("Ok(Close(")),
+            "no close frame, the client got: {messages:?}"
+        );
     }
 }
