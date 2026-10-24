@@ -28,7 +28,7 @@ use tokio_util::bytes::Bytes;
 
 #[cfg(unix)]
 use std::path::PathBuf;
-use std::{fmt::Write, sync::Arc};
+use std::{fmt::Write, sync::Arc, time::Duration};
 use std::{
     pin::Pin,
     task::{Context, Poll},
@@ -204,7 +204,7 @@ impl Cmd {
 
         tracing::info!("listening on {}", listener.local_addr().unwrap());
 
-        serve_websockets(listener, config, probe_broker).await;
+        serve_websockets(listener, config, probe_broker, CLIENT_TIMEOUT).await;
 
         Ok(())
     }
@@ -247,6 +247,7 @@ async fn serve_websockets(
     listener: tokio::net::TcpListener,
     config: ServerConfig,
     probe_broker: Arc<ProbeBroker>,
+    client_timeout: Duration,
 ) {
     let (request_tx, mut request_rx) = tokio::sync::mpsc::channel(64);
 
@@ -258,7 +259,12 @@ async fn serve_websockets(
         async move {
             while let Some((socket, challenge)) = request_rx.recv().await {
                 // Spawn a new task for each connection
-                tokio::task::spawn_local(handle_socket(socket, challenge, state.clone()));
+                tokio::task::spawn_local(handle_socket(
+                    socket,
+                    challenge,
+                    state.clone(),
+                    client_timeout,
+                ));
             }
         }
     });
@@ -304,32 +310,53 @@ async fn ws_handler(ws: WebSocketUpgrade, state: State<Arc<ServerState>>) -> imp
 
 static SERVER_DEPTH: usize = 16;
 
+/// The server drops a client that does not answer a ping, or does not read a message, in this
+/// time. It pings the client, and checks for an answer, every third of this time.
+const CLIENT_TIMEOUT: Duration = Duration::from_secs(30);
+
 /// Actual websocket state machine (one will be spawned per connection on the local set)
-async fn handle_socket(socket: WebSocket, challenge: String, state: Arc<ServerState>) {
+async fn handle_socket(
+    socket: WebSocket,
+    challenge: String,
+    state: Arc<ServerState>,
+    client_timeout: Duration,
+) {
     let (mut writer, reader) = socket.split();
 
-    serve_socket(&mut writer, reader, challenge, state).await;
-
     // Send a close frame, so that the client can tell a clean exit from a lost connection.
-    _ = writer.close().await;
+    if serve_socket(&mut writer, reader, challenge, state, client_timeout).await {
+        _ = tokio::time::timeout(client_timeout, writer.close()).await;
+    }
 }
 
+/// Returns `false` if the client stopped reading.
 async fn serve_socket(
     writer: &mut SplitSink<WebSocket, ws::Message>,
     reader: SplitStream<WebSocket>,
     challenge: String,
     state: Arc<ServerState>,
-) {
+    client_timeout: Duration,
+) -> bool {
+    // The time of the first ping after the last frame from the client. Any frame is an answer.
+    let unanswered_ping = std::cell::Cell::new(None);
     let mut reader = WebsocketRx::new(reader.map(|message| {
+        unanswered_ping.set(None);
         message.map(|message| match message {
             ws::Message::Binary(binary) => binary,
             _ => Bytes::new(),
         })
     }));
 
-    let Some(Ok(challenge_response)) = reader.next().await else {
-        tracing::warn!("Client disconnected before sending challenge response");
-        return;
+    let challenge_response = match tokio::time::timeout(client_timeout, reader.next()).await {
+        Ok(Some(Ok(challenge_response))) => challenge_response,
+        Ok(_) => {
+            tracing::warn!("Client disconnected before sending challenge response");
+            return true;
+        }
+        Err(_) => {
+            tracing::warn!("Client did not send challenge response in time");
+            return true;
+        }
     };
 
     // TODO: we might want to include the username to avoid hashing a bunch of times
@@ -348,7 +375,7 @@ async fn serve_socket(
 
     let Some(user) = authed_user else {
         tracing::warn!("Client failed to authenticate");
-        return;
+        return true;
     };
 
     tracing::info!("User {} connected", user.name);
@@ -362,31 +389,79 @@ async fn serve_socket(
     // Connect the server's channels to the websocket connection
     let sender = async {
         let mut writer = AxumWebsocketTx::new(writer);
+        let period = client_timeout / 3;
+        let mut ping = tokio::time::interval_at(tokio::time::Instant::now() + period, period);
+        ping.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
         // Send messages from the server to the client.
-        while let Some(msg) = rx.recv().await {
-            if writer.send(msg).await.is_err() {
-                break;
+        loop {
+            let sent = tokio::select! {
+                msg = rx.recv() => {
+                    let Some(msg) = msg else { break };
+                    tokio::time::timeout(client_timeout, writer.send(msg)).await
+                }
+                _ = ping.tick() => {
+                    let ping = writer.writer.send(ws::Message::Ping(Bytes::new()));
+                    let sent = tokio::time::timeout(client_timeout, ping).await;
+                    if matches!(sent, Ok(Ok(()))) && unanswered_ping.get().is_none() {
+                        unanswered_ping.set(Some(tokio::time::Instant::now()));
+                    }
+                    sent
+                }
+            };
+            match sent {
+                Ok(Ok(())) => {}
+                Ok(Err(_)) => break,
+                Err(_) => {
+                    tracing::warn!("Client stopped reading");
+                    return false;
+                }
             }
         }
+        tracing::warn!("Server sender stopped");
+        true
     };
 
     let receiver = async {
+        let mut check = tokio::time::interval(client_timeout / 3);
+
         // Forward messages from the client to the server
-        while let Some(msg) = reader.next().await {
+        loop {
+            // Read first, so that answers that came in while the server was busy count.
+            let msg = tokio::select! {
+                biased;
+
+                msg = reader.next() => msg,
+                _ = check.tick() => {
+                    let sent = unanswered_ping.get();
+                    if sent.is_some_and(|sent| sent.elapsed() >= client_timeout) {
+                        tracing::warn!("Client stopped responding");
+                        break;
+                    }
+                    continue;
+                }
+            };
+            let Some(msg) = msg else {
+                tracing::info!("Client disconnected");
+                break;
+            };
             if tx
                 .send(msg.map_err(|_| WireRxErrorKind::Other))
                 .await
                 .is_err()
             {
+                tracing::warn!("Server stopped");
                 break;
             }
         }
     };
 
     tokio::select! {
-        _ = server.run() => tracing::warn!("Server stopped"),
-        _ = sender => tracing::warn!("Server sender stopped"),
-        _ = receiver => tracing::info!("Client disconnected"),
+        _ = server.run() => {
+            tracing::warn!("Server stopped");
+            true
+        }
+        reads = sender => reads,
+        _ = receiver => true,
     }
 }
 
@@ -441,6 +516,8 @@ mod tests {
     use std::time::Duration;
     use tokio_tungstenite::tungstenite::Message;
 
+    const TIMEOUT: Duration = Duration::from_secs(1);
+
     /// The server must end the websocket with a close frame, so that the
     /// client can tell a refused login from a lost connection.
     #[tokio::test]
@@ -452,6 +529,7 @@ mod tests {
             listener,
             ServerConfig::default(),
             Arc::new(ProbeBroker::new()),
+            TIMEOUT,
         );
 
         let client = async {
@@ -478,5 +556,87 @@ mod tests {
                 .any(|message| matches!(message, Ok(Message::Close(_)))),
             "no close frame, the client got: {messages:?}"
         );
+    }
+
+    type ClientWebsocket = tokio_tungstenite::WebSocketStream<
+        tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>,
+    >;
+
+    const TOKEN: &str = "token";
+
+    /// Runs a server with one user on `listener`.
+    async fn serve(listener: tokio::net::TcpListener) {
+        let config = ServerConfig {
+            users: vec![ServerUser {
+                name: "user".to_owned(),
+                token: TOKEN.to_owned(),
+                access: ProbeAccess::All,
+            }],
+            ..ServerConfig::default()
+        };
+        serve_websockets(listener, config, Arc::new(ProbeBroker::new()), TIMEOUT).await
+    }
+
+    async fn log_in(address: std::net::SocketAddr) -> ClientWebsocket {
+        let (mut ws, response) = tokio_tungstenite::connect_async(format!("ws://{address}/worker"))
+            .await
+            .unwrap();
+        let challenge = response.headers()["Probe-Rs-Challenge"].to_str().unwrap();
+        let mut hasher = Sha512::new();
+        hasher.update(challenge.as_bytes());
+        hasher.update(TOKEN.as_bytes());
+        ws.send(Message::Binary(frame(&hasher.finalize()).freeze()))
+            .await
+            .unwrap();
+
+        // The server only pings a client that logged in.
+        loop {
+            match ws.next().await {
+                Some(Ok(Message::Ping(_))) => return ws,
+                Some(Ok(_)) => {}
+                _ => panic!("the login failed"),
+            }
+        }
+    }
+
+    /// Runs a server, logs in, and runs `client` on the websocket.
+    async fn with_logged_in_client<R>(client: impl AsyncFnOnce(ClientWebsocket) -> R) -> R {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+
+        tokio::select! {
+            _ = serve(listener) => panic!("the server stopped"),
+            result = async { client(log_in(address).await).await } => result,
+        }
+    }
+
+    /// The server must end the connection of a client that stopped
+    /// responding, for example after a power loss. Otherwise its requests run
+    /// on and hold the probes.
+    #[tokio::test]
+    async fn the_server_drops_a_client_that_stopped_responding() {
+        let ended = with_logged_in_client(async |mut ws| {
+            // Stop responding. Reading the websocket would answer the pings of the server.
+            tokio::time::sleep(TIMEOUT * 2).await;
+
+            tokio::time::timeout(Duration::from_secs(5), async {
+                while ws.next().await.is_some() {}
+            })
+            .await
+        })
+        .await;
+
+        assert!(ended.is_ok(), "the server kept the connection open");
+    }
+
+    /// An idle client answers the pings of the server, and stays connected.
+    #[tokio::test]
+    async fn the_server_keeps_an_idle_client() {
+        let ended = with_logged_in_client(async |mut ws| {
+            tokio::time::timeout(TIMEOUT * 2, async { while ws.next().await.is_some() {} }).await
+        })
+        .await;
+
+        assert!(ended.is_err(), "the server dropped an idle client");
     }
 }
