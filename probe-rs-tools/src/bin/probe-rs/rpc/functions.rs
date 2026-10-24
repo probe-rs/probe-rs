@@ -299,6 +299,14 @@ impl SpawnContext for RpcContext {
     }
 }
 
+impl Drop for RpcContext {
+    fn drop(&mut self) {
+        // The connection is gone. Stop its requests, so that they release the session and the
+        // probe lease.
+        self.state.token.cancel();
+    }
+}
+
 impl RpcContext {
     /// Build a context with a custom probe lister, bypassing the
     /// [`ProbeAccess`] filtering applied by [`LimitedLister`]. Used by tests
