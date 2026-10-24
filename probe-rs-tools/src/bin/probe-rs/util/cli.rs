@@ -1156,15 +1156,28 @@ pub async fn test(
     let test = async {
         let tests = if elf_info.version == 0 {
             // In embedded test < 0.7, we have to query the tests from the target via semihosting
-            session
+            sender.send(TestLogEvent::TestStart).unwrap();
+            let result = session
                 .list_tests(
                     boot_info,
                     rtt_handle,
                     semihosting_options.clone(),
                     async |msg| sender.send(TestLogEvent::Monitor(msg)).unwrap(),
                 )
-                .await?
-                .tests
+                .await;
+
+            let (reply, captured) = tokio::sync::oneshot::channel();
+            sender.send(TestLogEvent::TestEnd(reply)).unwrap();
+            let output = captured.await.unwrap_or_default();
+
+            // The output can tell why the list failed.
+            match result {
+                Ok(tests) => tests.tests,
+                Err(e) => {
+                    print!("{output}");
+                    return Err(e.into());
+                }
+            }
         } else {
             // Recent embedded test versions report the tests directly via the elf file
             elf_info.tests
