@@ -40,7 +40,8 @@ use probe_rs_rpc::breakpoints::{
 use probe_rs_rpc::core_ops::{WireCoreMetadata, WireCoreStatus, WireRegisterId, WireSteppingMode};
 use probe_rs_rpc::disassemble::{WireDisassembledInstruction, WireSource};
 use probe_rs_rpc::flash::{
-    DownloadOptions as WireDownloadOptions, ProgressEvent as WireProgressEvent, VerifyResult,
+    BootInfo as WireBootInfo, DownloadOptions as WireDownloadOptions,
+    ProgressEvent as WireProgressEvent, VerifyResult,
 };
 use probe_rs_rpc::info::WireSessionTargetMetadata;
 use probe_rs_rpc::stack_trace::{
@@ -546,8 +547,11 @@ impl RpcBackend {
             .map_err(rpc_err)
     }
 
-    /// Halt if running, enable each requested condition, then resume if the
-    /// core was halted on entry.
+    /// Halt if running, enable each requested condition, then resume if this
+    /// call did the halting.
+    ///
+    /// A core that was already halted holds an image that has not started yet.
+    /// Resuming it would run the old program, which can overwrite that image.
     pub(crate) async fn apply_vector_catch(
         &mut self,
         core_index: usize,
@@ -579,7 +583,7 @@ impl RpcBackend {
                 }
             }
         }
-        if was_halted {
+        if !was_halted {
             self.run(core_index).await?;
         }
         Ok(())
@@ -816,13 +820,14 @@ impl RpcBackend {
         Ok(Self::evaluate_response_body(wire))
     }
 
+    /// Flash `upload` and return how the written image wants to be started.
     pub(crate) async fn flash_binary_resolved(
         &mut self,
         upload: &ResolvedUpload,
         config: &FlashingConfig,
         rtt_client: Option<Key<RttClient>>,
         progress: &mut dyn FnMut(WireProgressEvent),
-    ) -> Result<(), DebuggerError> {
+    ) -> Result<WireBootInfo, DebuggerError> {
         let session = self.session_interface();
 
         let build_result = session
@@ -837,6 +842,7 @@ impl RpcBackend {
             .map_err(|e| DebuggerError::Other(anyhow::anyhow!(e)))?;
 
         let loader_key = build_result.loader;
+        let boot_info = build_result.boot_info;
 
         // Clear the control block of the program that ran before, so that its
         // header does not leak into the first poll cycle. The build above told
@@ -883,7 +889,20 @@ impl RpcBackend {
                 .map_err(|e| DebuggerError::Other(anyhow::anyhow!(e)))?;
         }
 
-        Ok(())
+        Ok(boot_info)
+    }
+
+    /// Start the image described by `boot_info` on `core_index`, leaving the
+    /// core halted.
+    pub(crate) async fn prepare_boot(
+        &self,
+        boot_info: WireBootInfo,
+        core_index: usize,
+    ) -> Result<(), Error> {
+        self.session_interface()
+            .prepare_boot(boot_info, core_index)
+            .await
+            .map_err(rpc_err)
     }
 }
 

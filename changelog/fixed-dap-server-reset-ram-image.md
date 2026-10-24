@@ -1,0 +1,1 @@
+Fixed the DAP server being unable to debug an image that runs from RAM.
