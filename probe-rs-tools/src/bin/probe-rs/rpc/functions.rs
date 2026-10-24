@@ -89,7 +89,7 @@ pub(crate) trait MultiTopicWriter {
     type Sender: Send + 'static;
     type Publisher: MultiTopicPublisher;
 
-    fn create(token: CancellationToken) -> (Self::Sender, Self::Publisher);
+    fn create() -> (Self::Sender, Self::Publisher);
 }
 
 impl<T> MultiTopicWriter for T
@@ -100,9 +100,9 @@ where
     type Sender = Sender<T::Message>;
     type Publisher = TopicPublisher<T>;
 
-    fn create(token: CancellationToken) -> (Self::Sender, Self::Publisher) {
+    fn create() -> (Self::Sender, Self::Publisher) {
         let (tx, rx) = channel::<T::Message>(256);
-        (tx, TopicPublisher { rx, token })
+        (tx, TopicPublisher { rx })
     }
 }
 
@@ -116,7 +116,6 @@ where
     T::Message: Serialize + Sized + Send + 'static,
 {
     rx: Receiver<T::Message>,
-    token: CancellationToken,
 }
 
 impl<T> MultiTopicPublisher for TopicPublisher<T>
@@ -125,19 +124,12 @@ where
     T::Message: Serialize + Sized + Send + 'static,
 {
     async fn publish(mut self, sender: &PostcardSender<WireTxImpl>) {
-        loop {
-            tokio::select! {
-                biased;
-
-                _ = self.token.cancelled() => break,
-                event = self.rx.recv() => {
-                    // The task has dropped its sender, and everything it sent is published.
-                    let Some(event) = event else { break };
-                    if sender.publish::<T>(VarSeq::Seq2(0), &event).await.is_err() {
-                        tracing::debug!("Client is gone, dropping the events of {}", T::PATH);
-                        break;
-                    }
-                }
+        // Run until the task drops its sender, also after a cancel, so that its last events reach
+        // the client.
+        while let Some(event) = self.rx.recv().await {
+            if sender.publish::<T>(VarSeq::Seq2(0), &event).await.is_err() {
+                tracing::debug!("Client is gone, dropping the events of {}", T::PATH);
+                break;
             }
         }
     }
@@ -194,8 +186,7 @@ impl RpcSpawnContext {
         REQ: Send + 'static,
         RESP: Send + 'static,
     {
-        let token = self.cancellation_token();
-        let (sender, publisher) = T::create(token);
+        let (sender, publisher) = T::create();
 
         let ctx = self.clone();
         let blocking = tokio::task::spawn_blocking(move || task(ctx, request, sender));

@@ -22,7 +22,6 @@ use probe_rs_rpc::monitor::{
 use probe_rs_rpc::semihosting_options::SemihostingOptions;
 use probe_rs_rpc::{MonitorEndpoint, RttTopic, SemihostingTopic};
 use tokio::sync::mpsc::{self, error::SendError};
-use tokio_util::sync::CancellationToken;
 
 fn prepare_monitor_mode(
     mode: &MonitorMode,
@@ -77,9 +76,9 @@ impl MultiTopicWriter for MonitorSender {
     type Sender = Self;
     type Publisher = MonitorPublisher;
 
-    fn create(token: CancellationToken) -> (Self::Sender, Self::Publisher) {
-        let (rtt_sender, rtt_publisher) = RttTopic::create(token.clone());
-        let (semihosting_sender, semihosting_publisher) = SemihostingTopic::create(token);
+    fn create() -> (Self::Sender, Self::Publisher) {
+        let (rtt_sender, rtt_publisher) = RttTopic::create();
+        let (semihosting_sender, semihosting_publisher) = SemihostingTopic::create();
 
         (
             Self {
