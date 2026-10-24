@@ -11,7 +11,7 @@ use tokio_tungstenite::tungstenite::Message;
 use tokio_util::bytes::Bytes;
 
 use crate::transport::{
-    Deframer, frame,
+    Closer, Deframer, frame,
     memory::{PostcardReceiver, PostcardSender},
 };
 
@@ -92,6 +92,17 @@ where
             writer: Arc::new(Mutex::new(writer)),
         }
     }
+
+    /// Returns a handle that sends a close frame.
+    pub fn closer(&self) -> Closer {
+        let writer = self.writer.clone();
+        Closer::new(move || {
+            let writer = writer.clone();
+            Box::pin(async move {
+                _ = writer.lock().await.close().await;
+            })
+        })
+    }
 }
 
 impl<S> Drop for WebsocketTx<S>
@@ -103,10 +114,8 @@ where
         let Ok(runtime) = tokio::runtime::Handle::try_current() else {
             return;
         };
-        let writer = self.writer.clone();
-        runtime.spawn(async move {
-            _ = writer.lock().await.close().await;
-        });
+        let closer = self.closer();
+        runtime.spawn(async move { closer.close().await });
     }
 }
 

@@ -459,7 +459,9 @@ async fn run_app<R>(
         )
         .await?;
 
-        return cb(client).await;
+        let result = cb(client.clone()).await;
+        client.close().await;
+        return result;
     }
 
     // Create a local server to run commands against.

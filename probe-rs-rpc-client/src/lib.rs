@@ -81,7 +81,10 @@ use probe_rs_rpc::stack_trace::{
 use probe_rs_rpc::test::{
     ListTestsRequest, RunTestRequest, Test, TestKickoffRequest, TestResult, Tests,
 };
-use probe_rs_rpc::transport::memory::{PostcardReceiver, PostcardSender, WireRx, WireTx};
+use probe_rs_rpc::transport::{
+    Closer,
+    memory::{PostcardReceiver, PostcardSender, WireRx, WireTx},
+};
 use probe_rs_rpc::{
     AttachEndpoint, BootEndpoint, BuildEndpoint, ChipInfoEndpoint, CleanUpRttEndpoint,
     ClearCoreDebugStateEndpoint, ClearRttControlBlockEndpoint, CoreClearHwBpsEndpoint,
@@ -186,6 +189,7 @@ where
     let (tx, rx) = ws_stream.split();
 
     let tx = WebsocketTx::new(tx);
+    let closer = tx.closer();
     tx.send(challenge_response).await.map_err(|err| {
         TransportError::Message(format!("Failed to send challenge response: {err:?}"))
     })?;
@@ -199,6 +203,7 @@ where
             })
         })),
     )
+    .with_closer(closer)
     .ensure_compatible()
     .await
 }
@@ -416,6 +421,7 @@ pub struct RpcClient {
     client: HostClient<WireError>,
     upload_cache: Arc<Mutex<UploadCache>>,
     is_localhost: bool,
+    closer: Option<Closer>,
 }
 
 impl Drop for RpcClient {
@@ -446,7 +452,27 @@ impl RpcClient {
             ),
             upload_cache: Arc::new(Mutex::new(UploadCache::default())),
             is_localhost: false,
+            closer: None,
         }
+    }
+
+    /// Sets the handle that [`RpcClient::close`] uses to close the connection.
+    pub fn with_closer(mut self, closer: Closer) -> Self {
+        self.closer = Some(closer);
+        self
+    }
+
+    /// Closes the connection for all clones of this client, and waits until the close message is sent.
+    pub async fn close(self) {
+        if let Some(closer) = &self.closer
+            && tokio::time::timeout(Duration::from_secs(2), closer.close())
+                .await
+                .is_err()
+        {
+            // A hung server must not stop the command from ending.
+            tracing::debug!("Timed out while closing the connection");
+        }
+        self.client.close();
     }
 
     pub fn is_local_session(&self) -> bool {
@@ -1934,8 +1960,10 @@ mod tests {
         use tokio_util::bytes::Bytes;
 
         let (tx, rx) = client_ws.split();
+        let tx = WebsocketTx::new(tx);
+        let closer = tx.closer();
         RpcClient::new_from_wire(
-            WebsocketTx::new(tx),
+            tx,
             WebsocketRx::new(rx.map(|message| {
                 message.map(|message| match message {
                     Message::Binary(binary) => binary,
@@ -1943,6 +1971,7 @@ mod tests {
                 })
             })),
         )
+        .with_closer(closer)
     }
 
     /// Reads the server side of the websocket until it ends, and checks for a close frame.
@@ -1990,7 +2019,7 @@ mod tests {
             .unwrap();
         client_runtime.block_on(async {
             let client_ws = WebSocketStream::from_raw_socket(client_io, Role::Client, None).await;
-            drop(websocket_client(client_ws));
+            websocket_client(client_ws).close().await;
         });
         drop(client_runtime);
 

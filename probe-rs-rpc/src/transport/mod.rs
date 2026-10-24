@@ -1,3 +1,7 @@
+use std::sync::Arc;
+
+use futures_util::future::BoxFuture;
+
 pub mod memory;
 
 #[cfg(all(feature = "remote", unix))]
@@ -7,6 +11,21 @@ pub mod websocket;
 
 #[cfg(feature = "remote")]
 pub use framing::*;
+
+/// Closes a connection, so that the peer can tell a clean exit from a lost connection.
+#[derive(Clone)]
+pub struct Closer(Arc<dyn Fn() -> BoxFuture<'static, ()> + Send + Sync>);
+
+impl Closer {
+    pub fn new(close: impl Fn() -> BoxFuture<'static, ()> + Send + Sync + 'static) -> Self {
+        Self(Arc::new(close))
+    }
+
+    /// Closes the connection, and waits until the close message is sent.
+    pub async fn close(&self) {
+        (self.0)().await
+    }
+}
 
 #[cfg(feature = "remote")]
 mod framing {
