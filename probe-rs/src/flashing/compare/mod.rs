@@ -8,6 +8,7 @@ mod cmsis_verify;
 mod context;
 mod read_back;
 mod read_flash;
+mod signature;
 
 pub use context::CompareContext;
 
@@ -19,6 +20,7 @@ use std::time::Instant;
 use cmsis_verify::CmsisVerifyCompare;
 use read_back::ReadBackCore;
 use read_flash::ReadFlashCompare;
+use signature::AlgorithmSignatures;
 
 use crate::Session;
 use crate::config::NvmRegion;
@@ -228,6 +230,14 @@ impl Purpose {
         matches!(self, Purpose::Verify { .. })
     }
 
+    /// Returns `true` if the chain uses the signature functions of the flash algorithm.
+    ///
+    /// A verify compares the data, so that it does not depend on the signature function that
+    /// selected the sectors to program.
+    fn uses_signatures(self) -> bool {
+        matches!(self, Purpose::Prune { .. })
+    }
+
     /// Returns the content of the bytes that the image does not cover.
     fn outside(self, erased: u8) -> Outside {
         match self {
@@ -280,6 +290,11 @@ impl<'a> CompareChain<'a> {
         let algorithm = flasher.flash_algorithm();
 
         let mut backends: Vec<Arc<dyn FlashCompare>> = Vec::new();
+        if purpose.uses_signatures()
+            && let Some(backend) = AlgorithmSignatures::new(algorithm)
+        {
+            backends.push(Arc::new(backend));
+        }
         backends.extend(session.target().debug_sequence.flash_compare());
         if algorithm.pc_verify.is_some() {
             backends.push(Arc::new(CmsisVerifyCompare));
