@@ -216,6 +216,7 @@ impl ProgressBars {
     pub fn get_mut(&mut self, operation: Operation) -> &mut ProgressBarGroup {
         self.bars.entry(operation).or_insert_with(|| {
             let message = match operation {
+                Operation::Compare => "Comparing",
                 Operation::Erase => "Erasing",
                 Operation::Fill => "Reading flash",
                 Operation::Program => "Programming",
