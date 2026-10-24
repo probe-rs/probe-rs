@@ -14,7 +14,10 @@ use axum::{
     routing::{any, get},
 };
 use base64::{Engine, engine::general_purpose::STANDARD};
-use futures_util::{Sink, SinkExt, StreamExt};
+use futures_util::{
+    Sink, SinkExt, StreamExt,
+    stream::{SplitSink, SplitStream},
+};
 use postcard_rpc::server::WireRxErrorKind;
 use probe_rs::probe::list::Lister;
 use probe_rs_rpc::transport::{frame, websocket::WebsocketRx};
@@ -303,8 +306,20 @@ static SERVER_DEPTH: usize = 16;
 
 /// Actual websocket state machine (one will be spawned per connection on the local set)
 async fn handle_socket(socket: WebSocket, challenge: String, state: Arc<ServerState>) {
-    let (writer, reader) = socket.split();
+    let (mut writer, reader) = socket.split();
 
+    serve_socket(&mut writer, reader, challenge, state).await;
+
+    // Send a close frame, so that the client can tell a clean exit from a lost connection.
+    _ = writer.close().await;
+}
+
+async fn serve_socket(
+    writer: &mut SplitSink<WebSocket, ws::Message>,
+    reader: SplitStream<WebSocket>,
+    challenge: String,
+    state: Arc<ServerState>,
+) {
     let mut reader = WebsocketRx::new(reader.map(|message| {
         message.map(|message| match message {
             ws::Message::Binary(binary) => binary,
