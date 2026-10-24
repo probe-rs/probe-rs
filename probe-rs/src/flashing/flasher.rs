@@ -6,8 +6,8 @@ use super::{FlashAlgorithm, FlashBuilder, FlashError, FlashPage, FlashProgress};
 use crate::config::NvmRegion;
 use crate::error::Error;
 use crate::flashing::compare::{
-    CmsisVerify, CompareBackend, CompareCost, CompareOutcome, CompareState, Outside,
-    ReadBackAlgorithm, ReadBackCore, build_checks, run_backend, split_by_region,
+    AlgorithmSignatures, CmsisVerify, CompareBackend, CompareCost, CompareOutcome, CompareState,
+    Outside, ReadBackAlgorithm, ReadBackCore, build_checks, run_backend, split_by_region,
 };
 use crate::flashing::encoder::FlashEncoder;
 use crate::flashing::{FlashLayout, FlashSector, ProgressOperation};
@@ -607,6 +607,9 @@ impl Flasher {
     fn compare_chain(&self, session: &Session) -> Vec<CompareBackend> {
         let mut chain = Vec::new();
 
+        if let Some(backend) = AlgorithmSignatures::new(&self.flash_algorithm) {
+            chain.push(CompareBackend::Algorithm(Box::new(backend)));
+        }
         if let Some(backend) = session.target().debug_sequence.flash_compare() {
             chain.push(CompareBackend::Session(backend));
         }
@@ -977,6 +980,11 @@ impl<O: Operation> ActiveFlasher<'_, '_, O> {
         Ok(())
     }
 
+    /// Returns the flash algorithm that this flasher runs.
+    pub(super) fn flash_algorithm(&self) -> &FlashAlgorithm {
+        self.flash_algorithm
+    }
+
     /// Checks if the flash algorithm defines a vendor-specific entry point with the given name.
     pub fn has_vendor_function(&self, function: &str) -> bool {
         self.flash_algorithm.vendor_functions.contains_key(function)
@@ -991,6 +999,16 @@ impl<O: Operation> ActiveFlasher<'_, '_, O> {
         &mut self,
         function: &str,
         inputs: [Option<u64>; 4],
+    ) -> Result<u32, FlashError> {
+        self.call_vendor_function_with_timeout(function, inputs, INIT_TIMEOUT)
+    }
+
+    /// Calls a vendor-specific entry point, and waits at most `timeout` for it to return.
+    pub(super) fn call_vendor_function_with_timeout(
+        &mut self,
+        function: &str,
+        inputs: [Option<u64>; 4],
+        timeout: Duration,
     ) -> Result<u32, FlashError> {
         let algo = &self.flash_algorithm;
 
@@ -1010,7 +1028,7 @@ impl<O: Operation> ActiveFlasher<'_, '_, O> {
                     r3: inputs[3],
                 },
                 false,
-                INIT_TIMEOUT,
+                timeout,
             )
             .map_err(|error| FlashError::VendorFunctionFailed {
                 name: function.to_string(),

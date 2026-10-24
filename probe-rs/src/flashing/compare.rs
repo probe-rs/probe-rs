@@ -4,6 +4,10 @@
 //! fixed order, and gives each backend only the sectors that the backends before it could not
 //! check.
 
+mod signature;
+
+pub(crate) use signature::AlgorithmSignatures;
+
 use std::fmt::Debug;
 use std::ops::Range;
 use std::sync::Arc;
