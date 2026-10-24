@@ -74,6 +74,11 @@ impl Interface {
     fn index(&self) -> u16 {
         *self as u16
     }
+
+    /// The number of the USB interface of the channel.
+    pub fn usb_interface(self) -> u8 {
+        self as u8 - 1
+    }
 }
 
 struct FtdiContext {
@@ -99,6 +104,11 @@ struct FtdiContext {
 
 impl FtdiContext {
     fn sio_write(&mut self, request: u8, value: u16) -> Result<()> {
+        self.sio_write_to(self.interface, request, value)
+    }
+
+    /// Sends a request for `interface`. The request does not need the claim of `interface`.
+    fn sio_write_to(&mut self, interface: Interface, request: u8, value: u16) -> Result<()> {
         self.handle
             .control_out(
                 ControlOut {
@@ -106,7 +116,7 @@ impl FtdiContext {
                     recipient: Recipient::Device,
                     request,
                     value,
-                    index: self.interface.index(),
+                    index: interface.index(),
                     data: &[],
                 },
                 self.usb_write_timeout,
@@ -282,6 +292,7 @@ pub struct Device {
     vendor_id: u16,
     product_id: u16,
     product_string: Option<String>,
+    serial_number: Option<String>,
 }
 
 impl std::fmt::Debug for Device {
@@ -450,6 +461,7 @@ impl Device {
             vendor_id: usb_device.vendor_id(),
             product_id: usb_device.product_id(),
             product_string: usb_device.product_string().map(|s| s.to_string()),
+            serial_number: usb_device.serial_number().map(|s| s.to_string()),
         })
     }
 
@@ -483,6 +495,26 @@ impl Device {
 
     pub fn product_string(&self) -> Option<&str> {
         self.product_string.as_deref()
+    }
+
+    pub fn serial_number(&self) -> Option<&str> {
+        self.serial_number.as_deref()
+    }
+
+    /// The channel that this device uses.
+    pub fn interface(&self) -> Interface {
+        self.context.interface
+    }
+
+    /// Sets the DTR and RTS lines of the UART of `channel`.
+    pub fn set_modem_lines(&mut self, channel: Interface, dtr: bool, rts: bool) -> Result<()> {
+        const SIO_SET_MODEM_CTRL_REQUEST: u8 = 0x01;
+        // The high byte selects the lines to change, the low byte gives their state.
+        const SIO_SET_DTR_RTS_MASK: u16 = 0x0300;
+
+        let value = SIO_SET_DTR_RTS_MASK | u16::from(dtr) | (u16::from(rts) << 1);
+        self.context
+            .sio_write_to(channel, SIO_SET_MODEM_CTRL_REQUEST, value)
     }
 
     pub fn set_pins(&mut self, level: u16, direction: u16) -> Result<()> {

@@ -1,0 +1,1 @@
+FTDI probes can give a UART channel as the serial port to the target, and reset the target through the ESP32 auto-reset circuit on that channel. Set `uart` and `uart_reset` in the `ftdi` driver settings of the probe.

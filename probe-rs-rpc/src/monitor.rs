@@ -76,5 +76,21 @@ pub enum RttEvent {
 
 #[derive(Debug, Serialize, Deserialize, Schema)]
 pub enum SemihostingEvent {
-    Output { stream: String, data: String },
+    Output { stream: String, bytes: Vec<u8> },
 }
+
+/// Data from the serial port to the target.
+#[derive(Debug, Serialize, Deserialize, Schema)]
+pub enum SerialEvent {
+    Output { bytes: Vec<u8> },
+}
+
+/// Writes data to the serial port to the target.
+#[derive(Debug, Serialize, Deserialize, Schema)]
+pub struct SerialWriteRequest {
+    pub sessid: Key<Session>,
+    pub data: Vec<u8>,
+}
+
+/// The number of bytes written.
+pub type SerialWriteResponse = RpcResult<u32>;

@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 use std::time::{Duration, Instant};
 
 use postcard_rpc::{header::VarHeader, server::Sender};
@@ -8,12 +8,14 @@ use probe_rs_rpc::probe::{
     SelectProbeResponse, SelectProbeResult, WireProtocol,
 };
 
+use crate::rpc::SharedTargetSerial;
 use crate::rpc::functions::{RpcContext, RpcSpawnContext, WireTxImpl};
 use crate::rpc::probe_broker::ProbeLease;
 use crate::util::common_options::{
     LoadedProbeOptions, OPEN_RETRY_INTERVAL, OperationError, ProbeOptions,
     probe_may_become_available,
 };
+use crate::util::probe_config::SerialConfig;
 use probe_rs_rpc::{AttachEndpoint, RpcResult};
 
 pub fn list_probes(ctx: &mut RpcContext, _header: VarHeader, _request: ()) -> ListProbesResponse {
@@ -85,24 +87,36 @@ pub async fn attach(
 async fn attach_impl(ctx: RpcSpawnContext, request: AttachRequest) -> RpcResult<AttachResult> {
     let probe_options = ProbeOptions::from(&request);
     let selector = convert::from_wire_debug_probe_selector(request.probe.selector());
+    // The serial settings of this machine apply, if the client asks for the port.
+    let serial_config = request
+        .target_serial
+        .then(|| ctx.probe_broker().probe_configs().resolve(&selector).serial);
     let wait_for_probe = request.wait_for_probe.unwrap_or(Duration::ZERO);
+    // The attempts share the serial port, so that the port opens only once.
+    let target_serial = Arc::new(OnceLock::new());
 
     let attempt = {
         let ctx = ctx.clone();
         let selector = selector.clone();
+        let target_serial = target_serial.clone();
         move || {
             attach_once(
                 ctx.clone(),
                 probe_options.clone(),
                 selector.clone(),
                 request.resume_target,
+                serial_config.as_ref(),
+                &target_serial,
             )
         }
     };
 
     let opened = open_with_retry(&ctx, &selector, wait_for_probe, "attach", attempt).await?;
     let result = match opened.into_opened() {
-        Ok((session, lease)) => AttachResult::Success(ctx.set_session(*session, lease).await),
+        Ok((session, lease)) => {
+            let target_serial = target_serial.get().cloned().flatten();
+            AttachResult::Success(ctx.set_session(*session, target_serial, lease).await)
+        }
         Err(failure) => failure,
     };
     Ok(result)
@@ -228,6 +242,8 @@ fn attach_once(
     probe_options: ProbeOptions,
     selector: DebugProbeSelector,
     resume_target: bool,
+    serial_config: Option<&SerialConfig>,
+    target_serial: &OnceLock<Option<SharedTargetSerial>>,
 ) -> RpcResult<Result<Box<probe_rs::Session>, OpenFailure>> {
     use crate::rpc::functions::convert::lift;
 
@@ -236,10 +252,15 @@ fn attach_once(
     let loaded = probe_options.load(&mut registry)?;
     let target = loaded.get_target_selector()?;
 
-    let probe = match open_probe(&lister, &loaded, &selector) {
+    let mut probe = match open_probe(&lister, &loaded, &selector) {
         Ok(probe) => probe,
         Err(failure) => return Ok(Err(failure)),
     };
+
+    if let Some(config) = serial_config {
+        // Open the serial port before attach, so that it receives the output after a reset.
+        target_serial.get_or_init(|| open_target_serial(&mut probe, config));
+    }
 
     let mut session = loaded.attach_session(probe, target)?;
     if resume_target {
@@ -247,6 +268,21 @@ fn attach_once(
     }
 
     Ok(Ok(Box::new(session)))
+}
+
+/// Takes the serial port to the target and opens it. Errors are not fatal for attach.
+fn open_target_serial(probe: &mut Probe, config: &SerialConfig) -> Option<SharedTargetSerial> {
+    let result = config.target_serial(probe).and_then(|serial| {
+        let Some((mut serial, settings)) = serial else {
+            return Ok(None);
+        };
+        serial.open(&settings)?;
+        Ok(Some(SharedTargetSerial::from(serial)))
+    });
+    result.unwrap_or_else(|error| {
+        tracing::warn!("Failed to open the serial port to the target: {error:#}");
+        None
+    })
 }
 
 #[cfg(test)]
@@ -434,6 +470,7 @@ mod tests {
                 allow_erase_all: false,
                 resume_target: false,
                 wait_for_probe,
+                target_serial: false,
             })
             .await;
 
@@ -550,6 +587,7 @@ mod tests {
             allow_erase_all: false,
             resume_target: false,
             wait_for_probe: Some(Duration::from_secs(600)),
+            target_serial: false,
         };
         let (server, tx, rx) = RpcApp::create_server_with_lister(
             16,
@@ -617,6 +655,7 @@ mod tests {
             allow_erase_all: false,
             resume_target: false,
             wait_for_probe: Some(Duration::from_secs(600)),
+            target_serial: false,
         };
         let attach = tokio::spawn(async move { client.attach_probe(request).await });
         while lister.attempts() == 0 {
@@ -714,6 +753,7 @@ pub(crate) mod convert {
                 // probe that has dropped out of the probe list, and so that the
                 // client can cancel it.
                 attach_timeout: None,
+                target_serial: false,
             }
         }
     }

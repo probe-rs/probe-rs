@@ -4,7 +4,9 @@ use time::UtcOffset;
 
 use crate::cmd::run::{MonitoringOptions, NormalRunOptions};
 use crate::rpc::utils::run_loop::VectorCatchConfig;
-use crate::util::cli::{self, FileMetadata, parse_metadata, rtt_client};
+use crate::util::cli::{
+    self, DecoderSettings, FileMetadata, TargetOutput, parse_metadata, rtt_client,
+};
 use crate::util::common_options::ProbeOptions;
 use probe_rs_rpc::format::FormatOptions;
 use probe_rs_rpc::monitor::MonitorMode;
@@ -39,22 +41,22 @@ impl Cmd {
             None => (FileMetadata::default(), None),
         };
 
-        let session = cli::attach_probe(&client, self.probe_options, elf_meta, true).await?;
+        // Show the output of the serial port to the target.
+        let probe_options = ProbeOptions {
+            target_serial: true,
+            ..self.probe_options
+        };
+        let session = cli::attach_probe(&client, probe_options, elf_meta, true).await?;
 
-        let rtt_client = rtt_client(
-            &session,
-            &file_meta,
-            &self.monitor_options,
-            Some(utc_offset),
-        )
-        .await?;
+        let rtt_client = rtt_client(&session, &file_meta, &self.monitor_options).await?;
+        let decoders = DecoderSettings::new(&file_meta, &self.monitor_options, Some(utc_offset));
 
         cli::monitor(
             &session,
             MonitorMode::AttachToRunning,
             self.path.as_deref(),
             &self.monitor_options,
-            Some(rtt_client),
+            TargetOutput::new(decoders, Some(rtt_client)),
             VectorCatchConfig {
                 catch_hardfault: !self.run_options.no_catch_hardfault,
                 catch_reset: !self.run_options.no_catch_reset,
