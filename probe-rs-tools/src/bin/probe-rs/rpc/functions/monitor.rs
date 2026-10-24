@@ -1,9 +1,11 @@
-use std::time::Duration;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::time::{Duration, Instant};
 
 use crate::rpc::{
-    ObjectStorageSlot,
+    ObjectStorageSlot, SharedTargetSerial,
     functions::{
-        MultiTopicPublisher, MultiTopicWriter, RpcSpawnContext, WireTxImpl, core_ops::convert,
+        MultiTopicPublisher, MultiTopicWriter, RpcContext, RpcSpawnContext, WireTxImpl,
+        core_ops::convert,
     },
     utils::{
         run_loop::{ReturnReason, RunLoop, RunLoopPoller, VectorCatchConfig},
@@ -17,10 +19,10 @@ use probe_rs::{
 };
 use probe_rs_rpc::monitor::{
     ChannelInfo, MonitorExitReason, MonitorMode, MonitorRequest, RttEvent, SemihostingEvent,
-    SemihostingExitError,
+    SemihostingExitError, SerialEvent, SerialWriteRequest, SerialWriteResponse,
 };
 use probe_rs_rpc::semihosting_options::SemihostingOptions;
-use probe_rs_rpc::{MonitorEndpoint, RttTopic, SemihostingTopic};
+use probe_rs_rpc::{MonitorEndpoint, RpcError, RttTopic, SemihostingTopic, SerialTopic};
 use tokio::sync::mpsc::{self, error::SendError};
 
 fn prepare_monitor_mode(
@@ -53,6 +55,7 @@ pub async fn monitor(
 pub(crate) struct MonitorSender {
     rtt: mpsc::Sender<RttEvent>,
     semihosting_output: mpsc::Sender<SemihostingEvent>,
+    serial: mpsc::Sender<SerialEvent>,
 }
 impl MonitorSender {
     pub(crate) fn send_semihosting_event(
@@ -65,11 +68,19 @@ impl MonitorSender {
     pub(crate) fn send_rtt_event(&self, event: RttEvent) -> Result<(), SendError<RttEvent>> {
         self.rtt.blocking_send(event)
     }
+
+    pub(crate) fn send_serial_event(
+        &self,
+        event: SerialEvent,
+    ) -> Result<(), SendError<SerialEvent>> {
+        self.serial.blocking_send(event)
+    }
 }
 
 pub(crate) struct MonitorPublisher {
     rtt: <RttTopic as MultiTopicWriter>::Publisher,
     semihosting_output: <SemihostingTopic as MultiTopicWriter>::Publisher,
+    serial: <SerialTopic as MultiTopicWriter>::Publisher,
 }
 
 impl MultiTopicWriter for MonitorSender {
@@ -79,15 +90,18 @@ impl MultiTopicWriter for MonitorSender {
     fn create() -> (Self::Sender, Self::Publisher) {
         let (rtt_sender, rtt_publisher) = RttTopic::create();
         let (semihosting_sender, semihosting_publisher) = SemihostingTopic::create();
+        let (serial_sender, serial_publisher) = SerialTopic::create();
 
         (
             Self {
                 rtt: rtt_sender,
                 semihosting_output: semihosting_sender,
+                serial: serial_sender,
             },
             MonitorPublisher {
                 rtt: rtt_publisher,
                 semihosting_output: semihosting_publisher,
+                serial: serial_publisher,
             },
         )
     }
@@ -97,7 +111,8 @@ impl MultiTopicPublisher for MonitorPublisher {
     async fn publish(self, sender: &Sender<WireTxImpl>) {
         tokio::join!(
             self.rtt.publish(sender),
-            self.semihosting_output.publish(sender)
+            self.semihosting_output.publish(sender),
+            self.serial.publish(sender)
         );
     }
 }
@@ -124,12 +139,18 @@ fn monitor_impl(
         cancellation_token: ctx.cancellation_token(),
     };
 
+    let target_serial = shared_session.target_serial();
+    if let (MonitorMode::Run(_), Some(serial)) = (&request.mode, &target_serial) {
+        // The port is open from attach. Drop the output from before this boot.
+        discard_serial_input(serial);
+    }
+
     {
         let mut session = shared_session.session_blocking();
         prepare_monitor_mode(&request.mode, &mut session, run_loop.core_id)?;
     }
 
-    let poller = client_key.map(|client| RttPoller {
+    let rtt_poller = client_key.map(|client| RttPoller {
         rtt_client: shared_session.object_storage().cell(client),
         clear_control_block: request.mode.should_clear_rtt_header(),
         sender: |message| {
@@ -139,18 +160,20 @@ fn monitor_impl(
         },
     });
 
-    let exit_reason = run_loop.run_until(
-        &shared_session,
-        VectorCatchConfig {
-            catch_hardfault: request.options.catch_hardfault,
-            catch_reset: request.options.catch_reset,
-            catch_svc: request.options.catch_svc,
-            catch_hlt: request.options.catch_hlt,
-        },
-        poller,
-        None,
-        |halt_reason, core| semihosting_sink.handle_halt(halt_reason, core),
-    )?;
+    let exit_reason = with_serial_forwarding(target_serial.as_ref(), &sender, || {
+        run_loop.run_until(
+            &shared_session,
+            VectorCatchConfig {
+                catch_hardfault: request.options.catch_hardfault,
+                catch_reset: request.options.catch_reset,
+                catch_svc: request.options.catch_svc,
+                catch_hlt: request.options.catch_hlt,
+            },
+            rtt_poller,
+            None,
+            |halt_reason, core| semihosting_sink.handle_halt(halt_reason, core),
+        )
+    })?;
 
     match exit_reason {
         ReturnReason::Predicate(reason) => Ok(reason),
@@ -235,6 +258,91 @@ where
         rtt_client.clean_up(core)?;
         Ok(())
     }
+}
+
+/// How long one read of the serial port to the target waits before the stop flag is checked.
+const SERIAL_READ_TIMEOUT: Duration = Duration::from_millis(10);
+/// After the stop, the data that arrives in this time is still sent.
+const SERIAL_TAIL_TIME: Duration = Duration::from_millis(50);
+
+/// Runs `f` and sends the data from the serial port to the target while `f` runs. The serial port
+/// does not need the session, so a thread reads it next to `f`.
+pub(crate) fn with_serial_forwarding<R>(
+    serial: Option<&SharedTargetSerial>,
+    sender: &MonitorSender,
+    f: impl FnOnce() -> R,
+) -> R {
+    /// Sets the flag when `f` returns or panics, so that the thread stops.
+    struct StopOnDrop<'a>(&'a AtomicBool);
+    impl Drop for StopOnDrop<'_> {
+        fn drop(&mut self) {
+            self.0.store(true, Ordering::Relaxed);
+        }
+    }
+
+    let stop = AtomicBool::new(false);
+    std::thread::scope(|scope| {
+        if let Some(serial) = serial {
+            scope.spawn(|| forward_serial(serial, &stop, sender));
+        }
+        let _stop = StopOnDrop(&stop);
+        f()
+    })
+}
+
+/// Drops the data that the serial port to the target received before the target boots.
+pub(crate) fn discard_serial_input(serial: &SharedTargetSerial) {
+    if let Err(error) = serial.discard_input() {
+        tracing::debug!("Failed to discard the input of the serial port to the target: {error}");
+    }
+}
+
+/// Sends the data from the serial port to the target until `stop` is set, then sends the data
+/// that arrives shortly after.
+fn forward_serial(serial: &SharedTargetSerial, stop: &AtomicBool, sender: &MonitorSender) {
+    let mut buf = [0; 4096];
+    let mut stop_at = None;
+
+    while stop_at.is_none_or(|stop_at| Instant::now() < stop_at) {
+        if stop_at.is_none() && stop.load(Ordering::Relaxed) {
+            // Data can still be on the way, for example the end of a panic message.
+            stop_at = Some(Instant::now() + SERIAL_TAIL_TIME);
+        }
+
+        let len = match serial.read(&mut buf, SERIAL_READ_TIMEOUT) {
+            Ok(len) => len,
+            Err(error) => {
+                tracing::debug!("Failed to read the serial port to the target: {error}");
+                return;
+            }
+        };
+        if len > 0
+            && sender
+                .send_serial_event(SerialEvent::Output {
+                    bytes: buf[..len].to_vec(),
+                })
+                .is_err()
+        {
+            return;
+        }
+    }
+}
+
+/// Writes data to the serial port to the target.
+pub async fn write_serial(
+    ctx: &mut RpcContext,
+    _header: VarHeader,
+    request: SerialWriteRequest,
+) -> SerialWriteResponse {
+    let serial = ctx
+        .target_serial(request.sessid)
+        .ok_or_else(|| RpcError::from("The session has no serial port to the target"))?;
+    // A write can wait for the target, so it must not block the async runtime.
+    let written = tokio::task::spawn_blocking(move || serial.write(&request.data))
+        .await
+        .unwrap()
+        .map_err(|error| RpcError::from(error.to_string()))?;
+    Ok(written as u32)
 }
 
 struct MonitorEventHandler<F: FnMut(SemihostingEvent)> {

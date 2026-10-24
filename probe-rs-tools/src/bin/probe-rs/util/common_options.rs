@@ -198,6 +198,11 @@ pub struct ProbeOptions {
     )]
     #[serde(default)]
     pub attach_timeout: Option<Duration>,
+
+    /// Open the serial port to the target. The commands that show target output set it.
+    #[arg(skip)]
+    #[serde(skip)]
+    pub target_serial: bool,
 }
 
 impl ProbeOptions {
@@ -819,6 +824,7 @@ mod tests {
             connect_under_reset: false,
             allow_erase_all: false,
             attach_timeout,
+            target_serial: false,
         }
     }
 
