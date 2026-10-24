@@ -1920,27 +1920,21 @@ where
 
 #[cfg(all(test, feature = "remote"))]
 mod tests {
-    use super::{without_userinfo, worker_uri};
+    use super::{RpcClient, without_userinfo, worker_uri};
+    use futures_util::StreamExt as _;
+    use std::time::Duration;
+    use tokio::io::DuplexStream;
+    use tokio_tungstenite::{
+        WebSocketStream,
+        tungstenite::{Message, protocol::Role},
+    };
 
-    /// The client must end the websocket with a close frame, so that the
-    /// server can tell a clean exit from a lost connection.
-    #[tokio::test]
-    async fn dropping_the_client_closes_the_websocket() {
-        use futures_util::StreamExt as _;
+    fn websocket_client(client_ws: WebSocketStream<DuplexStream>) -> RpcClient {
         use probe_rs_rpc::transport::websocket::{WebsocketRx, WebsocketTx};
-        use std::time::Duration;
-        use tokio_tungstenite::{
-            WebSocketStream,
-            tungstenite::{Message, protocol::Role},
-        };
         use tokio_util::bytes::Bytes;
 
-        let (client_io, server_io) = tokio::io::duplex(4096);
-        let client_ws = WebSocketStream::from_raw_socket(client_io, Role::Client, None).await;
-        let mut server_ws = WebSocketStream::from_raw_socket(server_io, Role::Server, None).await;
-
         let (tx, rx) = client_ws.split();
-        let client = super::RpcClient::new_from_wire(
+        RpcClient::new_from_wire(
             WebsocketTx::new(tx),
             WebsocketRx::new(rx.map(|message| {
                 message.map(|message| match message {
@@ -1948,9 +1942,11 @@ mod tests {
                     _ => Bytes::new(),
                 })
             })),
-        );
-        drop(client);
+        )
+    }
 
+    /// Reads the server side of the websocket until it ends, and checks for a close frame.
+    async fn assert_close_frame(mut server_ws: WebSocketStream<DuplexStream>) {
         let messages = tokio::time::timeout(Duration::from_secs(5), async {
             let mut messages = Vec::new();
             while let Some(message) = server_ws.next().await {
@@ -1967,6 +1963,45 @@ mod tests {
                 .any(|message| message.starts_with("Ok(Close(")),
             "no close frame, the server got: {messages:?}"
         );
+    }
+
+    /// The client must end the websocket with a close frame, so that the
+    /// server can tell a clean exit from a lost connection.
+    #[tokio::test]
+    async fn dropping_the_client_closes_the_websocket() {
+        let (client_io, server_io) = tokio::io::duplex(4096);
+        let client_ws = WebSocketStream::from_raw_socket(client_io, Role::Client, None).await;
+        let server_ws = WebSocketStream::from_raw_socket(server_io, Role::Server, None).await;
+
+        drop(websocket_client(client_ws));
+
+        assert_close_frame(server_ws).await;
+    }
+
+    /// A CLI command ends its runtime right after it is done with the client.
+    /// The close frame must be sent before that.
+    #[test]
+    fn the_close_frame_is_sent_before_the_runtime_stops() {
+        let (client_io, server_io) = tokio::io::duplex(4096);
+
+        let client_runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+        client_runtime.block_on(async {
+            let client_ws = WebSocketStream::from_raw_socket(client_io, Role::Client, None).await;
+            drop(websocket_client(client_ws));
+        });
+        drop(client_runtime);
+
+        let server_runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+        server_runtime.block_on(async {
+            let server_ws = WebSocketStream::from_raw_socket(server_io, Role::Server, None).await;
+            assert_close_frame(server_ws).await;
+        });
     }
 
     #[test]
