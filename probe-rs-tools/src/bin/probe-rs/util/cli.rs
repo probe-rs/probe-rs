@@ -16,9 +16,10 @@ use ratatui::crossterm::style::Stylize;
 use rustyline_async::{Readline, ReadlineError, ReadlineEvent, SharedWriter};
 use time::UtcOffset;
 use tokio::io::AsyncWriteExt;
+use tokio::runtime::Handle;
 use tokio::sync::futures::Notified;
+use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use tokio::sync::{Mutex, MutexGuard, Notify};
-use tokio::{runtime::Handle, sync::mpsc::UnboundedSender};
 use tokio_util::sync::CancellationToken;
 
 use crate::cmd::run::{EmbeddedTestElfInfo, MonitoringOptions};
@@ -1208,38 +1209,14 @@ pub async fn test(
     };
 
     let log = async {
-        // In capture mode, the output outside of the tests is dropped.
-        let captured = RefCell::new(None::<CapturedOutput>);
-        let write = |message: &str, print: fn(&str)| {
-            if !capture {
-                print(message);
-            } else if let Some(captured) = captured.borrow_mut().as_mut() {
-                captured.push(message);
-            }
-        };
-
-        while let Some(event) = receiver.recv().await {
-            match event {
-                TestLogEvent::Monitor(event) => {
-                    handle_monitor_event(
-                        &mut output,
-                        event,
-                        &mut target_output_files,
-                        &async |message| write(message, |m| print!("{m}")),
-                        &async |message| write(message, |m| eprint!("{m}")),
-                        &monitor_options.rtt_up_channels,
-                    )
-                    .await;
-                }
-                TestLogEvent::StartCapture => {
-                    *captured.borrow_mut() = Some(CapturedOutput::default())
-                }
-                TestLogEvent::EndCapture(reply) => {
-                    let text = captured.take().map(CapturedOutput::into_string);
-                    _ = reply.send(text.unwrap_or_default());
-                }
-            }
-        }
+        log_test_output(
+            &mut receiver,
+            &mut output,
+            &mut target_output_files,
+            &monitor_options.rtt_up_channels,
+            capture,
+        )
+        .await;
         futures_util::future::pending().await
     };
 
@@ -1293,9 +1270,7 @@ fn create_trial(
             }
 
             let handle = tokio::spawn(async move {
-                if capture {
-                    sender.send(TestLogEvent::StartCapture).unwrap();
-                }
+                sender.send(TestLogEvent::TestStart).unwrap();
                 let monitor_sender = sender.clone();
                 let result = session
                     .run_test(test, rtt_client, semihosting_options, async move |msg| {
@@ -1303,12 +1278,9 @@ fn create_trial(
                     })
                     .await;
 
-                let mut output = String::new();
-                if capture {
-                    let (reply, captured) = tokio::sync::oneshot::channel();
-                    sender.send(TestLogEvent::EndCapture(reply)).unwrap();
-                    output = captured.await.unwrap_or_default();
-                }
+                let (reply, captured) = tokio::sync::oneshot::channel();
+                sender.send(TestLogEvent::TestEnd(reply)).unwrap();
+                let mut output = captured.await.unwrap_or_default();
 
                 let reason = match result {
                     Ok(TestResult::Success) => return Ok(Completion::Completed),
@@ -1397,13 +1369,63 @@ async fn format_stack_trace(
     Ok(s)
 }
 
+/// Writes the target output of a test run. In capture mode, collects the output of each test, and
+/// drops the output outside of the tests.
+async fn log_test_output(
+    receiver: &mut UnboundedReceiver<TestLogEvent>,
+    output: &mut TargetOutput,
+    target_output_files: &mut TargetOutputFiles,
+    up_channels: &[u32],
+    capture: bool,
+) {
+    let captured = RefCell::new(None::<CapturedOutput>);
+    let write = |message: &str, print: fn(&str)| {
+        if !capture {
+            print(message);
+        } else if let Some(captured) = captured.borrow_mut().as_mut() {
+            captured.push(message);
+        }
+    };
+
+    while let Some(event) = receiver.recv().await {
+        match event {
+            TestLogEvent::Monitor(event) => {
+                handle_monitor_event(
+                    output,
+                    event,
+                    target_output_files,
+                    &async |message| write(message, |m| print!("{m}")),
+                    &async |message| write(message, |m| eprint!("{m}")),
+                    up_channels,
+                )
+                .await;
+            }
+            TestLogEvent::TestStart if capture => {
+                *captured.borrow_mut() = Some(CapturedOutput::default())
+            }
+            TestLogEvent::TestStart => {}
+            TestLogEvent::TestEnd(reply) => {
+                // The next test resets the target, so the decoders cannot complete this data.
+                output
+                    .flush(
+                        target_output_files,
+                        &async |message| write(message, |m| print!("{m}")),
+                        &async |message| write(message, |m| eprint!("{m}")),
+                    )
+                    .await;
+                let text = captured.take().map(CapturedOutput::into_string);
+                _ = reply.send(text.unwrap_or_default());
+            }
+        }
+    }
+}
+
 /// A message to the log task of the test runner.
 enum TestLogEvent {
     Monitor(MonitorEvent),
-    /// Start to capture the output of a test.
-    StartCapture,
-    /// Stop to capture, and send the captured output.
-    EndCapture(tokio::sync::oneshot::Sender<String>),
+    TestStart,
+    /// Sends the captured output of the test. The output is empty if capture is off.
+    TestEnd(tokio::sync::oneshot::Sender<String>),
 }
 
 /// The output of one test. Keeps the last [`Self::LIMIT`] bytes.
@@ -1610,6 +1632,34 @@ impl TargetOutput {
     fn rtt_handle(&self) -> Option<Key<RttClient>> {
         self.rtt_client.as_ref().map(CliRttClient::handle)
     }
+
+    /// Writes the data that waits in the decoders for more input.
+    async fn flush(
+        &mut self,
+        target_output_files: &mut TargetOutputFiles,
+        shared_writer: &impl AsyncFn(&str),
+        error_writer: &impl AsyncFn(&str),
+    ) {
+        if let Some(client) = &mut self.rtt_client {
+            for processor in &mut client.channel_processors {
+                let output_file =
+                    ChannelIdentifier::Rtt(processor.channel.clone()).find_in(target_output_files);
+                processor.flush(shared_writer, output_file).await;
+            }
+        }
+        for (stream, channel) in &mut self.semihosting_streams {
+            let output_file =
+                ChannelIdentifier::Semihosting(stream.clone()).find_in(target_output_files);
+            if stream == "stderr" {
+                channel.flush(error_writer, output_file).await;
+            } else {
+                channel.flush(shared_writer, output_file).await;
+            }
+        }
+        let output_file =
+            ChannelIdentifier::Unqualified("serial".to_string()).find_in(target_output_files);
+        self.serial.flush(shared_writer, output_file).await;
+    }
 }
 
 impl CliRttClient {
@@ -1762,20 +1812,91 @@ impl Channel {
         copy_to: Option<&mut tokio::fs::File>,
     ) {
         if let Some(data) = self.decoder.process(bytes).ok().flatten() {
-            let data = data.to_string();
-            let message = format!("{}{}", self.printer_prefix, data);
-            shared_writer(&message).await;
-            if let Some(copy_to) = copy_to {
-                // Silently discarding output file errors
-                _ = copy_to.write_all(data.as_bytes()).await;
-            }
+            self.write(&data.to_string(), shared_writer, copy_to).await;
+        }
+    }
+
+    async fn flush(
+        &mut self,
+        shared_writer: &impl AsyncFn(&str),
+        copy_to: Option<&mut tokio::fs::File>,
+    ) {
+        let data = self.decoder.flush();
+        if !data.is_empty() {
+            self.write(&data, shared_writer, copy_to).await;
+        }
+    }
+
+    async fn write(
+        &self,
+        data: &str,
+        shared_writer: &impl AsyncFn(&str),
+        copy_to: Option<&mut tokio::fs::File>,
+    ) {
+        let message = format!("{}{}", self.printer_prefix, data);
+        shared_writer(&message).await;
+        if let Some(copy_to) = copy_to {
+            // Silently discarding output file errors
+            _ = copy_to.write_all(data.as_bytes()).await;
         }
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::FirmwareExited;
+    use super::*;
+
+    /// Sends the semihosting output of each test through the log task. Returns the captured
+    /// output of each test.
+    async fn capture_tests(tests: &[&[u8]]) -> Vec<String> {
+        let (sender, mut receiver) = tokio::sync::mpsc::unbounded_channel();
+        let mut replies = Vec::new();
+        for bytes in tests {
+            sender.send(TestLogEvent::TestStart).unwrap();
+            sender
+                .send(TestLogEvent::Monitor(MonitorEvent::Semihosting(
+                    SemihostingEvent::Output {
+                        stream: "stdout".to_string(),
+                        bytes: bytes.to_vec(),
+                    },
+                )))
+                .unwrap();
+            let (reply, captured) = tokio::sync::oneshot::channel();
+            sender.send(TestLogEvent::TestEnd(reply)).unwrap();
+            replies.push(captured);
+        }
+        drop(sender);
+
+        let decoders = DecoderSettings {
+            log_format: None,
+            show_timestamps: false,
+            show_location: false,
+            timestamp_offset: None,
+            defmt_data: None,
+        };
+        let mut output = TargetOutput::new(decoders, None);
+        log_test_output(
+            &mut receiver,
+            &mut output,
+            &mut TargetOutputFiles::new(),
+            &[],
+            true,
+        )
+        .await;
+
+        let mut captured = Vec::new();
+        for reply in replies {
+            captured.push(reply.await.unwrap());
+        }
+        captured
+    }
+
+    #[tokio::test]
+    async fn incomplete_output_stays_with_its_test() {
+        // A trailing 0xFF can be the start of an esp-println defmt frame.
+        let captured = capture_tests(&[b"output of the first test\n\xFF", b"second\n"]).await;
+        assert_eq!(captured[1], "second\n");
+    }
 
     #[test]
     fn firmware_exit_code() {
