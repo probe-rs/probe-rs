@@ -462,11 +462,7 @@ mod tests {
                 .await
                 .unwrap();
 
-            let mut messages = Vec::new();
-            while let Some(message) = ws.next().await {
-                messages.push(format!("{message:?}"));
-            }
-            messages
+            ws.collect::<Vec<_>>().await
         };
 
         let messages = tokio::select! {
@@ -479,7 +475,7 @@ mod tests {
         assert!(
             messages
                 .iter()
-                .any(|message| message.starts_with("Ok(Close(")),
+                .any(|message| matches!(message, Ok(Message::Close(_)))),
             "no close frame, the client got: {messages:?}"
         );
     }
