@@ -1,0 +1,324 @@
+name: CH57X / CH58X / CH59X Series
+chip_detection:
+- !WchLink
+  # Only used when the probe firmware reports a chip id in its `AttachChip`
+  # response. A reported chip id of 0 matches nothing here, so `--chip` is
+  # required.
+  mask: 0xff000000
+  variants:
+    0x70000000: CH570
+    0x71000000: CH571
+    0x72000000: CH572
+    0x73000000: CH573
+    0x81000000: CH581
+    0x82000000: CH582
+    0x83000000: CH583
+    0x91000000: CH591
+    0x92000000: CH592
+variants:
+- name: CH570
+  cores:
+  - name: main
+    type: riscv
+    core_access_options: !Riscv
+      hart_id: 0
+  memory_map:
+  - !Nvm
+    name: CodeFlash
+    range:
+      start: 0x0
+      end: 0x3c000
+    cores:
+    - main
+  - !Ram
+    name: RAM
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
+  flash_algorithms:
+  - ch570-code-flash
+- name: CH571
+  cores:
+  - name: main
+    type: riscv
+    core_access_options: !Riscv
+      hart_id: 0
+  memory_map:
+  - !Nvm
+    name: CodeFlash
+    range:
+      start: 0x0
+      end: 0x30000
+    cores:
+    - main
+  - !Ram
+    name: RAM
+    range:
+      start: 0x20003800
+      end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - ch5xx-code-flash
+- name: CH572
+  cores:
+  - name: main
+    type: riscv
+    core_access_options: !Riscv
+      hart_id: 0
+  memory_map:
+  - !Nvm
+    name: CodeFlash
+    range:
+      start: 0x0
+      end: 0x3c000
+    cores:
+    - main
+  - !Ram
+    name: RAM
+    range:
+      start: 0x20000000
+      end: 0x20003000
+    cores:
+    - main
+  flash_algorithms:
+  - ch570-code-flash
+- name: CH573
+  cores:
+  - name: main
+    type: riscv
+    core_access_options: !Riscv
+      hart_id: 0
+  memory_map:
+  - !Nvm
+    name: CodeFlash
+    range:
+      start: 0x0
+      end: 0x70000
+    cores:
+    - main
+  - !Ram
+    name: RAM
+    range:
+      start: 0x20003800
+      end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - ch5xx-code-flash
+- name: CH581
+  cores:
+  - name: main
+    type: riscv
+    core_access_options: !Riscv
+      hart_id: 0
+  memory_map:
+  - !Nvm
+    name: CodeFlash
+    range:
+      start: 0x0
+      end: 0x70000
+    cores:
+    - main
+  - !Ram
+    name: RAM
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
+  flash_algorithms:
+  - ch5xx-code-flash
+- name: CH582
+  cores:
+  - name: main
+    type: riscv
+    core_access_options: !Riscv
+      hart_id: 0
+  memory_map:
+  - !Nvm
+    name: CodeFlash
+    range:
+      start: 0x0
+      end: 0x70000
+    cores:
+    - main
+  - !Ram
+    name: RAM
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - ch5xx-code-flash
+- name: CH583
+  cores:
+  - name: main
+    type: riscv
+    core_access_options: !Riscv
+      hart_id: 0
+  memory_map:
+  - !Nvm
+    name: CodeFlash
+    range:
+      start: 0x0
+      end: 0x70000
+    cores:
+    - main
+  - !Ram
+    name: RAM
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - ch5xx-code-flash
+- name: CH584
+  cores:
+  - name: main
+    type: riscv
+    core_access_options: !Riscv
+      hart_id: 0
+  memory_map:
+  - !Nvm
+    name: CodeFlash
+    range:
+      start: 0x0
+      end: 0x70000
+    cores:
+    - main
+  - !Ram
+    name: RAM
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
+  flash_algorithms:
+  - ch5xx-code-flash
+- name: CH585
+  cores:
+  - name: main
+    type: riscv
+    core_access_options: !Riscv
+      hart_id: 0
+  memory_map:
+  # Code flash: 448 KiB, erased in 4 KiB blocks, programmed a dword at a time.
+  # The data flash that follows it (32 KiB at 0x70000) is not mapped: it is
+  # reached through the ISP library and is not readable in the code address
+  # space, so exposing it as a loadable region would be misleading.
+  - !Nvm
+    name: CodeFlash
+    range:
+      start: 0x0
+      end: 0x70000
+    cores:
+    - main
+  # 128 KiB (96 KiB + 32 KiB retention) at 0x20000000.
+  - !Ram
+    name: RAM
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
+  flash_algorithms:
+  - ch5xx-code-flash
+- name: CH591
+  cores:
+  - name: main
+    type: riscv
+    core_access_options: !Riscv
+      hart_id: 0
+  memory_map:
+  - !Nvm
+    name: CodeFlash
+    range:
+      start: 0x0
+      end: 0x30000
+    cores:
+    - main
+  - !Ram
+    name: RAM
+    range:
+      start: 0x20000000
+      end: 0x20006800
+    cores:
+    - main
+  flash_algorithms:
+  - ch5xx-code-flash
+- name: CH592
+  cores:
+  - name: main
+    type: riscv
+    core_access_options: !Riscv
+      hart_id: 0
+  memory_map:
+  - !Nvm
+    name: CodeFlash
+    range:
+      start: 0x0
+      end: 0x70000
+    cores:
+    - main
+  - !Ram
+    name: RAM
+    range:
+      start: 0x20000000
+      end: 0x20006800
+    cores:
+    - main
+  flash_algorithms:
+  - ch5xx-code-flash
+flash_algorithms:
+- name: ch5xx-code-flash
+  description: CH57X/CH58X/CH59X CodeFlash
+  default: true
+  instructions: txUAQAPGFQSTBhAHtwUDAGPLxgCTBgAHYw/WAJMGEAdjHtYAMaiTBhAJYwvWAJMFIAdjFbYAt8UDABmgtwUHADM1tQATRRUAgoC3JQBAAUUjgwWAgoC3JQBAk4VlgIPGtYM39v8PEwcQB3GNNwYDAGNL1wATBwAHY4/mABMHEAdjjeYABaITBxAJY4jmABMGIAdjmcYQN8YDAGN5xRBzcAQwEwZwBZMGgAojjcWCI43VggPG5YMTZgYOI4/FghFGI40FgiOAxQAVRiOABQAjgMUAAQABAH1WI4/F/gOGBQDjTgb+I4AFABVGI4AFACOAxQABAAEAGUYjj8X+A4YFAONOBv4jgAUAFUYjgAUAI4DFAAEAAQATBgACI4/F/g1Gg4YFAOPOBv6TVgUBfRYjj9X+IgV19jcGCACVRgOFBQDjTgX+I4AFACOABQAjgNUAAQABACOP1f4DhQUA404F/gPA5f8DhQUA404F/gPF5f8DhwUA404H/gWJI4AFABnBfRZN/hMGcAWTBoAKI43FgiON1YIDxuWDQYojj8WCI40FgoKANwYHAONrxe4FRYKAQREGxiLEJsJKwDcVAEADRRUEkwUQB7cEAwBjy6UAkwUAB2MPtQCTBRAHYx61ADGokwUQCWMLtQCTBSAHYxW1ALfEAwAZoLcEBwABRAVpIoWXAAAA54Bg5RHlSpTjaZT+AUURoAVFskAiRJJEAklBAYKAhclBESLGNycAQBMHZ4CDRreDEwgQB7cIAwBjTdgAkwcAB2OB9gKTBxAHY5D2AgWggUZlopMHEAlji/YAkwcgB2OV9gC3yAMAGaC3CAcAhUZjcxUZs4eoQGPvtxaz56UAjYtjmgcWc3AEMJMGcAWTB4AKIw3XgiMN94KDRueDk+YGDiMP14KRRiMNB4IjANcAlUYjAAcAIwDXAAEAAQD9ViMP1/6DBgcA484G/oFCIwAHABVDGUiJSNVOIwAHACMAZwABAAEAIw8H/4MGBwDjzgb+IwAHACMABwAjAGcAAQABALODogAjDxf/jUaDBwcA484H/pPXAwH9FiMP9/6iA/X2s4NVQJMGABBj5NMAkwMAEGOFVQSBRzMOVgCzBv4AA882AIPPFgADxCYAg8YGAGIPQgSiD7Pm3wAzZOQBwY4jLdf+kUYDBAcA404E/v0WIwDXAe36kQfj4nf8twcIAIMGBwDjzgb+IwAHACMABwAjAGcAAQABACMPZ/6DBgcA484G/gNA5/+DBgcA484G/gNO5/+DBgcA484G/pN2HgAjAAcAgcb9F8X/MaCekuPmsvCBRhGghUYTBXAFkwWACiMNp4IjDbeCA0Xng0GJIw+ngiMNB4IyREEBNoWCgA==
+  pc_init: 0x0
+  pc_uninit: 0x4a
+  pc_program_page: 0x222
+  pc_erase_sector: 0x56
+  pc_erase_all: 0x1b0
+  data_section_offset: 0x400
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x70000
+    page_size: 0x1000
+    erased_byte_value: 0xff
+    program_page_timeout: 500
+    erase_sector_timeout: 1000
+    sectors:
+    - size: 0x1000
+      address: 0x0
+  cores:
+  - main
+- name: ch570-code-flash
+  description: CH570/CH572 CodeFlash
+  default: true
+  instructions: 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
+  load_address: 0x20000008
+  pc_init: 0x0
+  pc_uninit: 0x18
+  pc_program_page: 0x284
+  pc_erase_sector: 0x24
+  pc_erase_all: 0x25a
+  data_section_offset: 0x548
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x3c000
+    page_size: 0x1000
+    erased_byte_value: 0xff
+    program_page_timeout: 100
+    erase_sector_timeout: 1000
+    sectors:
+    - size: 0x1000
+      address: 0x0
+  cores:
+  - main
