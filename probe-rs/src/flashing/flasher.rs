@@ -535,13 +535,11 @@ impl Flasher {
         sequence: &dyn FlashVerify,
         ignore_filled: bool,
     ) -> Result<Option<bool>, FlashError> {
-        let encoding = self.flash_algorithm.transfer_encoding;
         let core_index = self.core_index;
         let mut core = session.core(core_index).map_err(FlashError::Core)?;
 
-        for region in self.regions.iter_mut() {
-            let flash_encoder = region.data.encoder(encoding, ignore_filled);
-            for page in flash_encoder.pages() {
+        for region in self.regions.iter() {
+            for page in region.data.layout().pages() {
                 let started = Instant::now();
                 let outcome = sequence
                     .verify_range(&mut core, &region.region, page.address(), page.data())
