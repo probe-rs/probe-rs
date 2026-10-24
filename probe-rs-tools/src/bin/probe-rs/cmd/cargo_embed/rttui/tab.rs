@@ -5,6 +5,7 @@ use std::{
 };
 
 use crate::cmd::cargo_embed::rttui::channel::ChannelData;
+use crate::util::style::strip_ansi;
 
 use super::channel::UpChannel;
 
@@ -277,21 +278,4 @@ impl Tab {
             .skip(message_num.saturating_sub(height + self.scroll_offset))
             .take(height)
     }
-}
-
-/// Removes ANSI escape sequences from a string.
-fn strip_ansi(s: impl AsRef<str>) -> String {
-    fn text_block(output: ansi_parser::Output<'_>) -> Option<&str> {
-        match output {
-            ansi_parser::Output::TextBlock(text) => Some(text),
-            _ => None,
-        }
-    }
-
-    // TODO: use a cow: if ansi-parser returns a single string, do not allocate
-    use ansi_parser::AnsiParser;
-    s.as_ref()
-        .ansi_parse()
-        .filter_map(text_block)
-        .collect::<String>()
 }

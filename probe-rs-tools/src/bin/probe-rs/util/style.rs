@@ -12,6 +12,23 @@ pub(crate) fn probe_rs_color_enabled() -> bool {
     )
 }
 
+/// Removes ANSI escape sequences from a string.
+pub(crate) fn strip_ansi(s: impl AsRef<str>) -> String {
+    fn text_block(output: ansi_parser::Output<'_>) -> Option<&str> {
+        match output {
+            ansi_parser::Output::TextBlock(text) => Some(text),
+            _ => None,
+        }
+    }
+
+    // TODO: use a cow: if ansi-parser returns a single string, do not allocate
+    use ansi_parser::AnsiParser;
+    s.as_ref()
+        .ansi_parse()
+        .filter_map(text_block)
+        .collect::<String>()
+}
+
 /// Defines a named style as a `Display` wrapper.
 ///
 /// The style expression lives in one place. By default, each wrapper consults
