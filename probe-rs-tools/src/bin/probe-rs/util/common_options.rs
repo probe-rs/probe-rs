@@ -64,7 +64,9 @@ pub struct BinaryDownloadOptions {
         help_heading = "DOWNLOAD CONFIGURATION"
     )]
     pub flash_layout_output_path: Option<String>,
-    /// Before flashing, read back all the flashed data to skip flashing if the device is up to date.
+    /// Also compare the flash contents by reading them back, to skip the sectors that are up to date.
+    ///
+    /// A compare by signature runs without this flag, if the target supports it.
     #[arg(long, help_heading = "DOWNLOAD CONFIGURATION")]
     pub preverify: bool,
     /// After flashing, read back all the flashed data to verify it has been written correctly.
