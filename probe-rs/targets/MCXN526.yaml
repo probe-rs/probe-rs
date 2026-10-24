@@ -82,6 +82,7 @@ variants:
       end: 0x14018000
     cores:
     - cm33_core0
+    is_alias: true
     access:
       execute: false
   - !Ram
@@ -98,6 +99,7 @@ variants:
       end: 0x30040000
     cores:
     - cm33_core0
+    is_alias: true
     access:
       execute: false
   - !Ram
@@ -116,6 +118,7 @@ variants:
       end: 0x500bb000
     cores:
     - cm33_core0
+    is_alias: true
     access:
       execute: false
   flash_algorithms:
