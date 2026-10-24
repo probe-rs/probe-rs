@@ -1,5 +1,6 @@
 //! CLI-specific building blocks.
 
+use std::collections::HashMap;
 use std::future::pending;
 use std::io::{IsTerminal, Write};
 use std::sync::Arc;
@@ -1452,10 +1453,11 @@ impl DecoderSettings {
     }
 }
 
-/// The decoders of the target output: RTT and the serial port to the target.
+/// The decoders of the target output: RTT, semihosting and the serial port to the target.
 pub struct TargetOutput {
     decoders: DecoderSettings,
     rtt_client: Option<CliRttClient>,
+    semihosting_streams: HashMap<String, Channel>,
     serial: Channel,
 }
 
@@ -1465,7 +1467,14 @@ impl TargetOutput {
             serial: Channel::new("serial".to_string(), decoders.auto_decoder()),
             decoders,
             rtt_client,
+            semihosting_streams: HashMap::new(),
         }
+    }
+
+    fn semihosting_stream(&mut self, stream: &str) -> &mut Channel {
+        self.semihosting_streams
+            .entry(stream.to_string())
+            .or_insert_with(|| Channel::new(stream.to_string(), self.decoders.auto_decoder()))
     }
 
     fn rtt_handle(&self) -> Option<Key<RttClient>> {
@@ -1565,19 +1574,18 @@ async fn handle_monitor_event(
                 )
                 .await;
         }
-        MonitorEvent::Semihosting(SemihostingEvent::Output { stream, data }) => {
-            match stream.as_str() {
-                "stdout" => print!("{data}"),
-                "stderr" => eprint!("{data}"),
-                _ => {}
-            };
+        MonitorEvent::Semihosting(SemihostingEvent::Output { stream, bytes }) => {
+            let output_file =
+                ChannelIdentifier::Semihosting(stream.clone()).find_in(target_output_files);
 
-            if let Some(remote_processor) =
-                ChannelIdentifier::Semihosting(stream).find_in(target_output_files)
-            {
-                // Silently discarding output file errors
-                _ = remote_processor.write_all(data.as_bytes()).await;
-            };
+            let channel = output.semihosting_stream(&stream);
+            if stream == "stderr" {
+                channel
+                    .process(&bytes, &async |message| eprint!("{message}"), output_file)
+                    .await;
+            } else {
+                channel.process(&bytes, shared_writer, output_file).await;
+            }
         }
         MonitorEvent::Serial(SerialEvent::Output { bytes }) => {
             let output_file =
