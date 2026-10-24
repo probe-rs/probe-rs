@@ -1,0 +1,1 @@
+Add debugging and CodeFlash programming support for WCH CH570/CH572, CH571/CH573, CH58x (CH581, CH582, CH583, CH584, CH585), and CH591/CH592 series via WCH-Link, under `CH57X_CH58X_CH59X_Series.yaml`.
