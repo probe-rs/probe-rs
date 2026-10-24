@@ -591,6 +591,53 @@ mod tests {
 
         assert!(stopped, "the cancel did not stop the first request");
     }
+
+    /// The server must stop the requests of a client that is gone. A request
+    /// that keeps going holds the probe lease.
+    #[tokio::test]
+    async fn a_waiting_attach_stops_when_the_client_disconnects() {
+        let lister = Arc::new(BusyLister::new(usize::MAX));
+        let broker = Arc::new(ProbeBroker::new());
+        let (server, tx, rx) = RpcApp::create_server_with_lister(
+            16,
+            lister.clone() as Arc<dyn ProbeLister + Send + Sync>,
+            broker.clone(),
+        );
+        let server = tokio::spawn(server.run());
+        let client = RpcClient::new_local_from_wire(tx, rx);
+
+        let request = AttachRequest {
+            chip: Some(TEST_CHIP_NAME.to_owned()),
+            protocol: None,
+            probe: convert::to_wire_debug_probe_entry(ProbeListItem::accessible(
+                lister.info.clone(),
+            )),
+            speed: None,
+            connect_under_reset: false,
+            allow_erase_all: false,
+            resume_target: false,
+            wait_for_probe: Some(Duration::from_secs(600)),
+        };
+        let attach = tokio::spawn(async move { client.attach_probe(request).await });
+        while lister.attempts() == 0 {
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+
+        // Drop the client.
+        attach.abort();
+        _ = attach.await;
+        tokio::time::timeout(Duration::from_secs(5), server)
+            .await
+            .expect("the server did not stop")
+            .unwrap();
+
+        let selector = DebugProbeSelector::from(&lister.info);
+        let lease = tokio::time::timeout(Duration::from_secs(5), broker.acquire(selector)).await;
+        assert!(
+            lease.is_ok(),
+            "the request of the gone client still holds the probe lease"
+        );
+    }
 }
 
 pub(crate) mod convert {
