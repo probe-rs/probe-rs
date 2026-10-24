@@ -68,7 +68,7 @@ parking_lot = "0.13.0"
 zerocopy = { version = "0.8.0", features = ["derive"] }
 cobs = "0.5"
 crc32fast = "1.5"
-md-5 = "0.10"
+md5 = { package = "md-5", version = "0.10" }
 
 # optional
 
