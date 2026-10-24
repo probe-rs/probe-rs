@@ -180,14 +180,6 @@ pub enum FlashError {
     /// Flash content verification failed.
     #[error("Flash content verification failed.")]
     Verify,
-    /// Failed to read flash size.
-    #[deprecated = "Vendor function calls return `VendorFunctionFailed`."]
-    #[error("Failed to read flash size.")]
-    FlashSizeFailed {
-        /// The source error of this error.
-        #[source]
-        source: Box<dyn std::error::Error + 'static + Send + Sync>,
-    },
     // TODO: 1 Add source of target definition
     // TODO: 2 Do this at target load time.
     /// The given chip has no RAM defined.
