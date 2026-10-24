@@ -4,6 +4,7 @@ use std::{
     collections::VecDeque,
     fmt,
     io::{self, Read, Write},
+    path::Path,
     sync::{
         Arc,
         atomic::{AtomicBool, AtomicU64, Ordering},
@@ -110,10 +111,35 @@ const DISCARD_TIMEOUT: Duration = Duration::from_millis(500);
 /// The receive buffer keeps at most this many bytes. Older bytes are dropped.
 const RX_BUFFER_LIMIT: usize = 1024 * 1024;
 
+/// Selects a serial port of the host.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PortSelector {
+    /// The one USB serial port that the filter selects.
+    Usb(UsbSerialFilter),
+    /// The port with this OS name, for example `COM3`, `/dev/ttyAMA0` or a link in
+    /// `/dev/serial/by-id`. It does not have to be a USB port.
+    Name(String),
+}
+
+impl From<UsbSerialFilter> for PortSelector {
+    fn from(filter: UsbSerialFilter) -> Self {
+        Self::Usb(filter)
+    }
+}
+
+impl fmt::Display for PortSelector {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Usb(filter) => filter.fmt(f),
+            Self::Name(name) => f.write_str(name),
+        }
+    }
+}
+
 /// A target serial port that the host OS gives, for example a USB CDC-ACM port or a USB-UART
 /// bridge.
 pub struct HostSerialPort {
-    filter: UsbSerialFilter,
+    selector: PortSelector,
     default_settings: SerialSettings,
     open: Option<OpenPort>,
 }
@@ -136,10 +162,10 @@ struct Shared {
 }
 
 impl HostSerialPort {
-    /// Creates a handle to the port that `filter` selects. The port is not open yet.
-    pub fn new(filter: UsbSerialFilter, default_settings: SerialSettings) -> Self {
+    /// Creates a handle to the port that `selector` selects. The port is not open yet.
+    pub fn new(selector: impl Into<PortSelector>, default_settings: SerialSettings) -> Self {
         Self {
-            filter,
+            selector: selector.into(),
             default_settings,
             open: None,
         }
@@ -158,7 +184,7 @@ impl HostSerialPort {
 impl fmt::Debug for HostSerialPort {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("HostSerialPort")
-            .field("filter", &self.filter)
+            .field("selector", &self.selector)
             .field("open", &self.open.is_some())
             .finish()
     }
@@ -173,10 +199,10 @@ impl TargetSerial for HostSerialPort {
         self.close();
 
         // The port can appear later, for example when the OS loads its driver.
-        let ports = match open_port(&self.filter, settings) {
+        let ports = match open_port(&self.selector, settings) {
             Ok(ports) => Some(ports),
-            Err(TargetSerialError::NotFound(filter)) => {
-                tracing::info!("Waiting for target serial port {filter}");
+            Err(TargetSerialError::NotFound(port)) => {
+                tracing::info!("Waiting for target serial port {port}");
                 None
             }
             Err(error) => return Err(error),
@@ -194,9 +220,9 @@ impl TargetSerial for HostSerialPort {
             .name("target-serial".to_string())
             .spawn({
                 let shared = shared.clone();
-                let filter = self.filter.clone();
+                let selector = self.selector.clone();
                 let settings = settings.clone();
-                move || read_loop(reader_port, &shared, &filter, &settings)
+                move || read_loop(reader_port, &shared, &selector, &settings)
             })?;
 
         self.open = Some(OpenPort {
@@ -293,14 +319,27 @@ type PortPair = (Box<dyn SerialPort>, Box<dyn SerialPort>);
 
 /// Opens the port and returns a handle to read and a handle to write.
 fn open_port(
-    filter: &UsbSerialFilter,
+    selector: &PortSelector,
     settings: &SerialSettings,
 ) -> Result<PortPair, TargetSerialError> {
-    let ports = usb_serial_ports().map_err(io::Error::from)?;
-    let port = select_port(ports, filter)?;
-    tracing::debug!("Opening target serial port {}", port.port_name);
+    let port_name = match selector {
+        PortSelector::Usb(filter) => {
+            let ports = usb_serial_ports().map_err(io::Error::from)?;
+            select_port(ports, filter)?.port_name
+        }
+        PortSelector::Name(name) => {
+            // The OS errors for a missing port are different, so look for the port first. The
+            // list does not contain links.
+            let ports = serialport::available_ports().map_err(io::Error::from)?;
+            if !ports.iter().any(|port| port.port_name == *name) && !Path::new(name).exists() {
+                return Err(TargetSerialError::NotFound(name.clone()));
+            }
+            name.clone()
+        }
+    };
+    tracing::debug!("Opening target serial port {port_name}");
 
-    let mut serial = serialport::new(&port.port_name, settings.baud)
+    let mut serial = serialport::new(&port_name, settings.baud)
         .timeout(READ_TIMEOUT)
         .open()
         .map_err(io::Error::from)?;
@@ -329,7 +368,7 @@ fn open_port(
 fn read_loop(
     mut port: Option<Box<dyn SerialPort>>,
     shared: &Shared,
-    filter: &UsbSerialFilter,
+    selector: &PortSelector,
     settings: &SerialSettings,
 ) {
     let mut buf = [0; 4096];
@@ -337,10 +376,10 @@ fn read_loop(
 
     while !shared.stop.load(Ordering::Relaxed) {
         let Some(reader) = port.as_mut() else {
-            let Some((reader, writer)) = wait_for_port(shared, filter, settings) else {
+            let Some((reader, writer)) = wait_for_port(shared, selector, settings) else {
                 return;
             };
-            tracing::info!("Opened target serial port {filter}");
+            tracing::info!("Opened target serial port {selector}");
             port = Some(reader);
             *shared.writer.lock() = Some(writer);
             continue;
@@ -361,7 +400,7 @@ fn read_loop(
                 if excess > 0 && !overflowed {
                     overflowed = true;
                     tracing::warn!(
-                        "The receive buffer of target serial port {filter} is full. The oldest data is dropped."
+                        "The receive buffer of target serial port {selector} is full. The oldest data is dropped."
                     );
                 }
                 rx.drain(..excess);
@@ -372,7 +411,7 @@ fn read_loop(
             Err(error) => Some(error.to_string()),
         };
         if let Some(reason) = lost {
-            tracing::warn!("Lost target serial port {filter}: {reason}");
+            tracing::warn!("Lost target serial port {selector}: {reason}");
             *shared.writer.lock() = None;
             port = None;
         }
@@ -382,7 +421,7 @@ fn read_loop(
 /// Opens the port when it appears. Returns `None` if the handle stops first.
 fn wait_for_port(
     shared: &Shared,
-    filter: &UsbSerialFilter,
+    selector: &PortSelector,
     settings: &SerialSettings,
 ) -> Option<PortPair> {
     loop {
@@ -393,7 +432,7 @@ fn wait_for_port(
             }
             std::thread::sleep(READ_TIMEOUT);
         }
-        if let Ok(ports) = open_port(filter, settings) {
+        if let Ok(ports) = open_port(selector, settings) {
             return Some(ports);
         }
     }
