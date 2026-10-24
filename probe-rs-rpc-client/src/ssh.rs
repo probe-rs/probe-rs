@@ -93,7 +93,7 @@ pub async fn connect(
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .kill_on_drop(true);
-    ignore_ctrl_c(&mut command);
+    ignore_stop_signals(&mut command);
     let mut child = command.spawn().map_err(ClientError::SshSpawn)?;
 
     let stdout = child.stdout.take().expect("stdout is piped");
@@ -143,23 +143,28 @@ pub async fn connect(
     Ok(client)
 }
 
-/// Keep the Ctrl+C of the terminal away from ssh. probe-rs handles Ctrl+C, and
-/// needs the connection to cancel the command on the server.
-fn ignore_ctrl_c(command: &mut Command) {
+/// Keep the stop signals of the terminal and of a process supervisor away from
+/// ssh. probe-rs handles them, and needs the connection to cancel the command
+/// on the server.
+fn ignore_stop_signals(command: &mut Command) {
     #[cfg(unix)]
-    // SAFETY: `signal` is async-signal-safe. ssh keeps a SIGINT that it
-    // inherits as ignored, and can still read a password from the terminal.
-    // A separate process group would stop ssh when it reads the terminal.
+    // SAFETY: `signal` is async-signal-safe. ssh keeps a SIGINT and a SIGTERM
+    // that it inherits as ignored, and can still read a password from the
+    // terminal. A separate process group would stop ssh when it reads the
+    // terminal.
     unsafe {
         command.pre_exec(|| {
             libc::signal(libc::SIGINT, libc::SIG_IGN);
+            libc::signal(libc::SIGTERM, libc::SIG_IGN);
             Ok(())
         });
     }
 
     #[cfg(windows)]
     {
-        // A new process group starts with Ctrl+C disabled.
+        // A new process group starts with Ctrl+C disabled, and does not get the
+        // Ctrl+Break that a supervisor sends to the group of probe-rs. A Ctrl+Break
+        // from the keyboard still reaches ssh.
         const CREATE_NEW_PROCESS_GROUP: u32 = 0x0000_0200;
         command.creation_flags(CREATE_NEW_PROCESS_GROUP);
     }
