@@ -357,7 +357,9 @@ pub(crate) fn cortex_m_core_start(core: &mut dyn ArmMemoryInterface) -> Result<(
 }
 
 /// ResetCatchClear for Cortex-M devices
-fn cortex_m_reset_catch_clear(core: &mut dyn ArmMemoryInterface) -> Result<(), ArmError> {
+pub(crate) fn cortex_m_reset_catch_clear(
+    core: &mut dyn ArmMemoryInterface,
+) -> Result<(), ArmError> {
     use crate::architecture::arm::core::armv7m::Demcr;
 
     // Clear reset catch bit
