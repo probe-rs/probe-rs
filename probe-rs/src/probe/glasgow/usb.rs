@@ -11,7 +11,7 @@ use nusb::{
 };
 
 use crate::probe::{
-    DebugProbeError, DebugProbeSelector, ProbeCreationError,
+    DebugProbeError, DebugProbeSelector, ProbeCreationError, UsbSelector,
     glasgow::mux::{DiscoveryError, hexdump},
 };
 
@@ -27,6 +27,9 @@ pub struct GlasgowUsbDevice {
 
 impl GlasgowUsbDevice {
     pub fn new_from_selector(selector: &DebugProbeSelector) -> Result<Self, ProbeCreationError> {
+        let DebugProbeSelector::Usb(selector) = selector else {
+            Err(ProbeCreationError::NotFound)?
+        };
         if selector.vendor_id != VID_QIHW && selector.product_id != PID_GLASGOW {
             Err(ProbeCreationError::NotFound)?
         }
@@ -44,7 +47,7 @@ impl GlasgowUsbDevice {
             .parse()
             .map_err(|_| DiscoveryError::InvalidFormat)?;
 
-        let selector = DebugProbeSelector {
+        let selector = UsbSelector {
             serial_number: Some(serial.to_owned()),
             ..selector.clone()
         };

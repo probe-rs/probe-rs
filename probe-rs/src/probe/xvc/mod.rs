@@ -34,8 +34,9 @@ use crate::{
     },
     probe::{
         BitbangJtag, BitbangSwd, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector,
-        IoSequenceItem, JtagChain, JtagChainAccess, JtagChainState, ProbeFactory, SwdProbe,
-        SwdSettings, TapState, WireProtocol, list::ProbeListItem, swd::output_levels,
+        IoSequenceItem, JtagChain, JtagChainAccess, JtagChainState, ProbeFactory, ProbeTransport,
+        SwdProbe, SwdSettings, TapState, UsbProbeInfo, WireProtocol, list::ProbeListItem,
+        swd::output_levels,
     },
 };
 
@@ -77,7 +78,7 @@ impl ProbeFactory for XvcFactory {
     fn list_probes_filtered(&self, selector: Option<&DebugProbeSelector>) -> Vec<ProbeListItem> {
         // Surface exactly the requested probe when the selector explicitly
         // targets an XVC endpoint (placeholder VID/PID plus a server address).
-        if let Some(selector) = selector
+        if let Some(DebugProbeSelector::Usb(selector)) = selector
             && selector.vendor_id == XVC_VID
             && selector.product_id == XVC_PID
             && let Some(address) = selector.serial_number.clone()
@@ -85,13 +86,15 @@ impl ProbeFactory for XvcFactory {
         {
             return vec![ProbeListItem::accessible(DebugProbeInfo {
                 identifier: "XVC".to_string(),
-                vendor_id: XVC_VID,
-                product_id: XVC_PID,
-                serial_number: Some(address),
+                transport: ProbeTransport::Usb(UsbProbeInfo {
+                    vendor_id: XVC_VID,
+                    product_id: XVC_PID,
+                    serial_number: Some(address),
+                    is_hid_interface: false,
+                    interface: None,
+                    usb_port: None,
+                }),
                 probe_factory: &Self,
-                is_hid_interface: false,
-                interface: None,
-                usb_location: None,
             })];
         }
 

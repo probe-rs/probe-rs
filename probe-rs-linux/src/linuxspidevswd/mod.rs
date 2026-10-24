@@ -91,14 +91,14 @@ impl ProbeFactory for LinuxSpidevSwdFactory {
         let Some(selector) = selector else {
             return self.list_probes();
         };
-
-        if selector
-            .serial_number
-            .as_deref()
-            .is_some_and(|serial| is_valid_spidev_path(Path::new(serial)))
+        if let DebugProbeSelector::Usb(usb) = selector
+            && usb
+                .serial_number
+                .as_deref()
+                .is_some_and(|serial| is_valid_spidev_path(Path::new(serial)))
         {
             return vec![ProbeListItem::accessible(probe_info_for_path(Path::new(
-                selector.serial_number.as_deref().unwrap(),
+                usb.serial_number.as_deref().unwrap(),
             )))];
         }
 
@@ -484,6 +484,11 @@ fn batch_error(
 }
 
 fn find_matching_device(selector: &DebugProbeSelector) -> Result<PathBuf, DebugProbeError> {
+    let DebugProbeSelector::Usb(selector) = selector else {
+        return Err(DebugProbeError::ProbeCouldNotBeCreated(
+            ProbeCreationError::NotFound,
+        ));
+    };
     let Some(serial_number) = selector.serial_number.as_deref() else {
         return Err(DebugProbeError::ProbeCouldNotBeCreated(
             ProbeCreationError::NotFound,
@@ -703,6 +708,7 @@ fn is_line_reset_pattern(bits: &BitSequence) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use probe_rs::probe::ProbeTransport;
 
     use std::collections::VecDeque;
     use std::sync::{Arc, Mutex};
@@ -714,6 +720,7 @@ mod tests {
         let info = probe_info_for_path(Path::new("/dev/spidev_swd0"));
 
         assert_eq!(info.identifier, LINUX_SPIDEV_SWD_IDENTIFIER);
+        let ProbeTransport::Usb(info) = &info.transport;
         assert_eq!(info.serial_number.as_deref(), Some("/dev/spidev_swd0"));
         assert_eq!(info.interface, None);
     }
@@ -748,10 +755,8 @@ mod tests {
         let probes = LinuxSpidevSwdFactory.list_probes_filtered(Some(&selector));
 
         assert_eq!(probes.len(), 1);
-        assert_eq!(
-            probes[0].info.serial_number.as_deref(),
-            Some("/dev/spidev0.0")
-        );
+        let ProbeTransport::Usb(info) = &probes[0].info.transport;
+        assert_eq!(info.serial_number.as_deref(), Some("/dev/spidev0.0"));
     }
 
     /// The bytes that a target returns for a write with `ack`, in wire order.

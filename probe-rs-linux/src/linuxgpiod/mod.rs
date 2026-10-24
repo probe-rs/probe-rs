@@ -192,6 +192,11 @@ impl fmt::Display for LinuxGpiodFactory {
 
 impl ProbeFactory for LinuxGpiodFactory {
     fn open(&self, selector: &DebugProbeSelector) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
+        let DebugProbeSelector::Usb(selector) = selector else {
+            return Err(DebugProbeError::ProbeCouldNotBeCreated(
+                ProbeCreationError::NotFound,
+            ));
+        };
         // We're never a USB device; let other factories handle non-zero VID/PID.
         if selector.vendor_id != 0 || selector.product_id != 0 {
             return Err(DebugProbeError::ProbeCouldNotBeCreated(
@@ -224,7 +229,7 @@ impl ProbeFactory for LinuxGpiodFactory {
     fn list_probes_filtered(&self, selector: Option<&DebugProbeSelector>) -> Vec<ProbeListItem> {
         // Synthesise an entry for any well-formed gpiod selector — the CLI
         // resolves `--probe` via this method before calling open().
-        let Some(selector) = selector else {
+        let Some(DebugProbeSelector::Usb(selector)) = selector else {
             return Vec::new();
         };
         if selector.vendor_id != 0 || selector.product_id != 0 {
@@ -251,6 +256,7 @@ impl ProbeFactory for LinuxGpiodFactory {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use probe_rs::probe::ProbeTransport;
 
     fn sel(s: &str) -> DebugProbeSelector {
         s.parse().unwrap()
@@ -291,8 +297,9 @@ mod tests {
         let s = sel(&format!("0:0:{serial}"));
         let entries = LinuxGpiodFactory.list_probes_filtered(Some(&s));
         assert_eq!(entries.len(), 1);
-        assert_eq!(entries[0].info.vendor_id, 0);
-        assert_eq!(entries[0].info.product_id, 0);
-        assert_eq!(entries[0].info.serial_number.as_deref(), Some(serial));
+        let ProbeTransport::Usb(info) = &entries[0].info.transport;
+        assert_eq!(info.vendor_id, 0);
+        assert_eq!(info.product_id, 0);
+        assert_eq!(info.serial_number.as_deref(), Some(serial));
     }
 }

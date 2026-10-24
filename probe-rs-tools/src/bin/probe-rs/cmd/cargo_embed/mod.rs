@@ -5,7 +5,7 @@ use crate::cmd::gdb_server::{GdbInstanceConfiguration, GdbSessionContext};
 use anyhow::{Context, Result, anyhow};
 use colored::Colorize;
 use probe_rs::config::Registry;
-use probe_rs::probe::DebugProbeSelector;
+use probe_rs::probe::{DebugProbeSelector, UsbSelector};
 use probe_rs::rtt::find_rtt_control_block_in_raw_file;
 use probe_rs_rpc::core_ops::WireCoreStatus;
 use probe_rs_rpc::flash::BootInfo;
@@ -226,13 +226,13 @@ async fn run_embed(
         Some(selector)
     } else {
         match (config.probe.usb_vid.as_ref(), config.probe.usb_pid.as_ref()) {
-            (Some(vid), Some(pid)) => Some(DebugProbeSelector {
+            (Some(vid), Some(pid)) => Some(DebugProbeSelector::Usb(UsbSelector {
                 vendor_id: u16::from_str_radix(vid, 16)?,
                 product_id: u16::from_str_radix(pid, 16)?,
                 serial_number: config.probe.serial.clone(),
                 interface: config.probe.interface,
-                usb_location: None,
-            }),
+                usb_port: None,
+            })),
             (vid, pid) => {
                 if vid.is_some() {
                     tracing::warn!("USB VID ignored, because PID is not specified.");

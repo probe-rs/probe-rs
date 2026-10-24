@@ -8,6 +8,7 @@ use clap_complete::{
     shells::{Bash, Fish, PowerShell, Zsh},
 };
 use probe_rs::config::Registry;
+use probe_rs::probe::ProbeTransport;
 use probe_rs::probe::list::Lister;
 
 use crate::Cli;
@@ -153,12 +154,13 @@ pub fn list_probes(lister: &Lister, starts_with: &str) -> Result<String> {
     let probes = lister.list_all();
     for probe in probes {
         if probe.identifier.starts_with(starts_with) {
+            let ProbeTransport::Usb(usb) = &probe.transport;
             writeln!(
                 &mut output,
                 "{vid:04x}\\:{pid:04x}{sn}B[{id}B]",
-                vid = probe.vendor_id,
-                pid = probe.product_id,
-                sn = probe
+                vid = usb.vendor_id,
+                pid = usb.product_id,
+                sn = usb
                     .serial_number
                     .clone()
                     .map_or("".to_owned(), |v| format!("\\:{v}")),

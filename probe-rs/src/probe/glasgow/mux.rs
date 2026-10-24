@@ -1,6 +1,8 @@
 use std::{cell::RefCell, collections::BTreeMap, io};
 
-use crate::probe::{DebugProbeError, DebugProbeSelector, ProbeCreationError, ProbeError};
+use crate::probe::{
+    DebugProbeError, DebugProbeSelector, ProbeCreationError, ProbeError, UsbSelector,
+};
 
 use super::{net::GlasgowNetDevice, proto::Target, usb::GlasgowUsbDevice};
 
@@ -93,7 +95,11 @@ impl GlasgowDevice {
     }
 
     pub fn new_from_selector(selector: &DebugProbeSelector) -> Result<Self, DebugProbeError> {
-        let Some(ref serial) = selector.serial_number else {
+        let DebugProbeSelector::Usb(UsbSelector {
+            serial_number: Some(serial),
+            ..
+        }) = selector
+        else {
             return Err(ProbeCreationError::NotFound.into());
         };
 
