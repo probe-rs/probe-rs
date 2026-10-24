@@ -77,14 +77,36 @@ where
 }
 
 // Sends length-prefixed binary messages to a websocket stream
-pub struct WebsocketTx<S> {
+pub struct WebsocketTx<S>
+where
+    S: Sink<Message> + Send + Unpin + 'static,
+{
     writer: Arc<Mutex<S>>,
 }
-impl<S> WebsocketTx<S> {
+impl<S> WebsocketTx<S>
+where
+    S: Sink<Message> + Send + Unpin + 'static,
+{
     pub fn new(writer: S) -> Self {
         Self {
             writer: Arc::new(Mutex::new(writer)),
         }
+    }
+}
+
+impl<S> Drop for WebsocketTx<S>
+where
+    S: Sink<Message> + Send + Unpin + 'static,
+{
+    fn drop(&mut self) {
+        // Send a close frame, so that the peer can tell a clean exit from a lost connection.
+        let Ok(runtime) = tokio::runtime::Handle::try_current() else {
+            return;
+        };
+        let writer = self.writer.clone();
+        runtime.spawn(async move {
+            _ = writer.lock().await.close().await;
+        });
     }
 }
 
