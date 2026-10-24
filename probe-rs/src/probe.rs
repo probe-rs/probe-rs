@@ -17,6 +17,7 @@ mod selector;
 pub mod sifliuart;
 pub mod stlink;
 pub mod swd;
+pub mod target_serial;
 pub mod ti_icdi;
 pub mod wlink;
 pub mod xvc;
@@ -42,6 +43,7 @@ use serde::{Deserialize, Serialize};
 use std::any::Any;
 use std::fmt;
 use std::sync::{Arc, LazyLock};
+use target_serial::TargetSerial;
 
 pub use bits::BitSequence;
 pub use jtag::chain::ChainParams;
@@ -711,6 +713,13 @@ impl Probe {
         self.inner.get_swo_interface_mut()
     }
 
+    /// Takes the serial port to the target, if the probe has one.
+    ///
+    /// Call this before attach. The port is not open yet.
+    pub fn target_serial(&mut self) -> Option<Box<dyn TargetSerial>> {
+        self.inner.target_serial()
+    }
+
     /// Try reading the target voltage of via the connected voltage pin.
     ///
     /// This does not work on all probes.
@@ -897,6 +906,13 @@ pub trait DebugProbe: Any + Send + fmt::Debug {
     ///
     /// This is not available on all debug probes.
     fn get_swo_interface_mut(&mut self) -> Option<&mut dyn SwoAccess> {
+        None
+    }
+
+    /// Creates a handle to the serial port to the target, if the probe has one.
+    ///
+    /// The handle is not open, and it does not depend on the probe.
+    fn target_serial(&mut self) -> Option<Box<dyn TargetSerial>> {
         None
     }
 

@@ -21,6 +21,9 @@ pub struct SessionEntry {
     pub _lease: probe_broker::ProbeLease,
 }
 
+/// A serial port to the target that more than one task uses.
+pub type SharedTargetSerial = Arc<dyn probe_rs::probe::target_serial::TargetSerial>;
+
 impl Deref for SessionEntry {
     type Target = probe_rs::Session;
 
@@ -119,6 +122,9 @@ pub struct ConnectionState {
     /// keyed by session. Populated by the rich stack-trace endpoint and consumed
     /// by the server-side scopes/variables endpoints.
     debug_states: Arc<Mutex<HashMap<Key<Session>, crate::rpc::debug_state::ServerDebugState>>>,
+    /// The serial ports to the target, keyed by session. They are not in the session, so that
+    /// their users do not wait for the session lock.
+    target_serials: Arc<parking_lot::Mutex<HashMap<Key<Session>, SharedTargetSerial>>>,
     token: CancellationToken,
 }
 
@@ -128,6 +134,7 @@ impl ConnectionState {
             object_storage: Arc::new(Mutex::new(ObjectStorage::new())),
             registry: Arc::new(Mutex::new(Registry::from_builtin_families())),
             debug_states: Arc::new(Mutex::new(HashMap::new())),
+            target_serials: Arc::new(parking_lot::Mutex::new(HashMap::new())),
             token: CancellationToken::new(),
         }
     }
@@ -157,17 +164,28 @@ impl ConnectionState {
     pub async fn set_session(
         &self,
         session: probe_rs::Session,
+        target_serial: Option<SharedTargetSerial>,
         lease: probe_broker::ProbeLease,
     ) -> Key<Session> {
-        self.object_storage.lock().await.store_object(SessionEntry {
+        let sid = self.object_storage.lock().await.store_object(SessionEntry {
             session,
             _lease: lease,
-        })
+        });
+        if let Some(target_serial) = target_serial {
+            self.target_serials.lock().insert(sid, target_serial);
+        }
+        sid
+    }
+
+    /// Returns the serial port to the target of a session.
+    pub fn target_serial(&self, sid: Key<Session>) -> Option<SharedTargetSerial> {
+        self.target_serials.lock().get(&sid).cloned()
     }
 
     pub fn shared_session(&self, sid: Key<Session>) -> SessionState<'_> {
         SessionState {
             object_storage: self.object_storage.as_ref(),
+            target_serials: self.target_serials.as_ref(),
             session: sid,
         }
     }
@@ -177,6 +195,7 @@ impl ConnectionState {
 #[derive(Clone)]
 pub struct SessionState<'a> {
     object_storage: &'a Mutex<ObjectStorage>,
+    target_serials: &'a parking_lot::Mutex<HashMap<Key<Session>, SharedTargetSerial>>,
     session: Key<Session>,
 }
 
@@ -193,5 +212,10 @@ impl SessionState<'_> {
         tokio::sync::OwnedMutexGuard::map(guard, |e: &mut (dyn Any + Send)| {
             &mut e.downcast_mut::<SessionEntry>().unwrap().session
         })
+    }
+
+    /// Returns the serial port to the target.
+    pub fn target_serial(&self) -> Option<SharedTargetSerial> {
+        self.target_serials.lock().get(&self.session).cloned()
     }
 }

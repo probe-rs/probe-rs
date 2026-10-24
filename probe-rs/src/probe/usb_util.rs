@@ -142,7 +142,7 @@ impl InterfaceExt for Interface {
 }
 
 /// A USB serial port.
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub(crate) struct UsbSerialPort {
     /// The OS name of the port, for example `COM3` or `/dev/ttyACM0`.
     pub port_name: String,
@@ -191,11 +191,14 @@ pub(crate) fn usb_serial_ports() -> Result<Vec<UsbSerialPort>, serialport::Error
 }
 
 /// Selects USB serial ports. A `None` field matches all ports.
-#[derive(Debug, Default, Clone, Copy)]
-pub(crate) struct UsbSerialFilter<'a> {
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
+pub struct UsbSerialFilter {
+    /// The USB vendor ID.
     pub vendor_id: Option<u16>,
+    /// The USB product ID.
     pub product_id: Option<u16>,
-    pub serial_number: Option<&'a str>,
+    /// The USB serial number.
+    pub serial_number: Option<String>,
     /// The number of the CDC communication interface.
     ///
     /// On macOS, the CDC data interface (this number + 1) also matches, because macOS reports the
@@ -203,9 +206,23 @@ pub(crate) struct UsbSerialFilter<'a> {
     pub interface: Option<u8>,
 }
 
-impl UsbSerialFilter<'_> {
+impl std::fmt::Display for UsbSerialFilter {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let id = |id: Option<u16>| id.map_or("*".to_string(), |id| format!("{id:04x}"));
+        write!(f, "{}:{}", id(self.vendor_id), id(self.product_id))?;
+        if let Some(serial_number) = &self.serial_number {
+            write!(f, ":{serial_number}")?;
+        }
+        if let Some(interface) = self.interface {
+            write!(f, " interface {interface}")?;
+        }
+        Ok(())
+    }
+}
+
+impl UsbSerialFilter {
     /// Returns `true` if `port` matches all fields of the filter.
-    pub fn matches(&self, port: &UsbSerialPort) -> bool {
+    pub(crate) fn matches(&self, port: &UsbSerialPort) -> bool {
         let info = &port.info;
 
         if self.vendor_id.is_some_and(|vid| vid != info.vid) {
@@ -216,6 +233,7 @@ impl UsbSerialFilter<'_> {
         }
         if self
             .serial_number
+            .as_deref()
             .is_some_and(|sn| info.serial_number.as_deref() != Some(sn))
         {
             return false;
@@ -277,7 +295,7 @@ mod tests {
     #[test]
     fn filter_checks_serial_number() {
         let filter = UsbSerialFilter {
-            serial_number: Some("ABC"),
+            serial_number: Some("ABC".to_string()),
             ..Default::default()
         };
         assert!(filter.matches(&port("COM3", Some("ABC"), None)));
