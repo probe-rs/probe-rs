@@ -11,7 +11,7 @@ use crate::flashing::compare::{
     tolerates_errors,
 };
 use crate::flashing::encoder::FlashEncoder;
-use crate::flashing::{FlashLayout, FlashSector, ProgressOperation};
+use crate::flashing::{FlashLayout, FlashSector, ProgressOperation, SectorCheck};
 use crate::memory::MemoryInterface;
 use crate::rtt::{Rtt, RttTarget, ScanRegion};
 use crate::{Core, InstructionSet, RegisterValue, core::CoreRegisters, session::Session};
@@ -1476,6 +1476,26 @@ impl ActiveFlasher<'_, '_, Verify> {
         )?;
 
         Ok(result == 0)
+    }
+
+    /// Compares `checks` with the signature function of the flash algorithm.
+    ///
+    /// Returns the name of the hash and one result for each check, or `None` if the algorithm
+    /// has no known signature function.
+    ///
+    /// Do not use, only exposed with `pub` visibility for target-gen.
+    pub fn compare_with_signatures(
+        &mut self,
+        checks: &[SectorCheck<'_>],
+    ) -> Result<Option<(&'static str, Vec<CompareOutcome>)>, FlashError> {
+        let Some(backend) = AlgorithmSignatures::new(self.flash_algorithm) else {
+            return Ok(None);
+        };
+
+        let mut out = vec![CompareOutcome::Unsupported; checks.len()];
+        backend.compare_checks(self, checks, &mut out)?;
+
+        Ok(Some((backend.hash_name(), out)))
     }
 
     /// Returns `true` if CMSIS `Verify` finds `data` at `address`.
