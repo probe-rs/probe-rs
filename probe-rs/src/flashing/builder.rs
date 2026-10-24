@@ -139,6 +139,11 @@ impl FlashLayout {
         &self.data_blocks
     }
 
+    /// Returns `true` if the layout has nothing to erase or program.
+    pub(crate) fn is_empty(&self) -> bool {
+        self.sectors.is_empty() && self.pages.is_empty()
+    }
+
     /// Removes the work that compare results make unnecessary.
     ///
     /// `outcomes` holds one result for each sector, in the order of [`Self::sectors`].
@@ -205,23 +210,25 @@ impl FlashLayout {
         self.data_blocks = std::mem::take(&mut self.data_blocks)
             .into_iter()
             .flat_map(|block| {
-                let mut pieces = vec![block.address..block.address + block.size];
-                for range in &matched {
-                    pieces = pieces
-                        .into_iter()
-                        .flat_map(|piece| {
-                            [
-                                piece.start..piece.end.min(range.start),
-                                piece.start.max(range.end)..piece.end,
-                            ]
-                        })
-                        .filter(|piece| !piece.is_empty())
-                        .collect();
-                }
-                pieces.into_iter().map(|piece| FlashDataBlockSpan {
-                    address: piece.start,
-                    size: piece.end - piece.start,
-                })
+                matched
+                    .iter()
+                    .fold(
+                        vec![(block.address, block.address + block.size)],
+                        |pieces, cut| {
+                            pieces
+                                .into_iter()
+                                .flat_map(|(start, end)| {
+                                    [(start, end.min(cut.start)), (start.max(cut.end), end)]
+                                })
+                                .filter(|(start, end)| start < end)
+                                .collect()
+                        },
+                    )
+                    .into_iter()
+                    .map(|(start, end)| FlashDataBlockSpan {
+                        address: start,
+                        size: end - start,
+                    })
             })
             .collect();
 
