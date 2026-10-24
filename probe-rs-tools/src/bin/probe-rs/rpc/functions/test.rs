@@ -34,9 +34,7 @@ pub async fn list_tests(
         .await
         .map_err(crate::rpc::functions::convert::rpc_error_anyhow);
 
-    _ = sender
-        .reply::<ListTestsEndpoint>(header.seq_no, &resp)
-        .await;
+    crate::rpc::functions::reply::<ListTestsEndpoint>(&sender, header, &resp).await;
 }
 
 fn list_tests_impl(
@@ -115,7 +113,7 @@ pub async fn run_test(
         .await
         .map_err(crate::rpc::functions::convert::rpc_error_anyhow);
 
-    _ = sender.reply::<RunTestEndpoint>(header.seq_no, &resp).await;
+    crate::rpc::functions::reply::<RunTestEndpoint>(&sender, header, &resp).await;
 }
 
 fn run_test_impl(

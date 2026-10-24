@@ -49,9 +49,7 @@ pub async fn reset_target(
 ) {
     let resp = reset_target_impl(ctx, request).await;
 
-    _ = sender
-        .reply::<ResetTargetEndpoint>(header.seq_no, &resp)
-        .await;
+    crate::rpc::functions::reply::<ResetTargetEndpoint>(&sender, header, &resp).await;
 }
 
 async fn reset_target_impl(

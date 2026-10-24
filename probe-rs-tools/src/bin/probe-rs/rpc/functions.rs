@@ -134,6 +134,7 @@ where
                     // The task has dropped its sender, and everything it sent is published.
                     let Some(event) = event else { break };
                     if sender.publish::<T>(VarSeq::Seq2(0), &event).await.is_err() {
+                        tracing::debug!("Client is gone, dropping the events of {}", T::PATH);
                         break;
                     }
                 }
@@ -423,6 +424,20 @@ async fn cancel_handler(
     _sender: &PostcardSender<WireTxImpl>,
 ) {
     ctx.state.token.cancel();
+}
+
+/// Sends the reply of a spawned handler.
+pub(crate) async fn reply<E>(
+    sender: &PostcardSender<WireTxImpl>,
+    header: VarHeader,
+    resp: &E::Response,
+) where
+    E: postcard_rpc::Endpoint,
+    E::Response: Serialize + Schema,
+{
+    if sender.reply::<E>(header.seq_no, resp).await.is_err() {
+        tracing::debug!("Client is gone, dropping the reply of {}", E::PATH);
+    }
 }
 
 pub fn spawn_fn(

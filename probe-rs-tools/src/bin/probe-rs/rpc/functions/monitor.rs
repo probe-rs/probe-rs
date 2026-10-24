@@ -48,7 +48,7 @@ pub async fn monitor(
         .await
         .map_err(crate::rpc::functions::convert::rpc_error_anyhow);
 
-    _ = sender.reply::<MonitorEndpoint>(header.seq_no, &resp).await;
+    crate::rpc::functions::reply::<MonitorEndpoint>(&sender, header, &resp).await;
 }
 
 pub(crate) struct MonitorSender {

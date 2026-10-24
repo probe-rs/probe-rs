@@ -79,7 +79,7 @@ pub async fn attach(
 ) {
     let resp = attach_impl(ctx, request).await;
 
-    _ = sender.reply::<AttachEndpoint>(header.seq_no, &resp).await;
+    crate::rpc::functions::reply::<AttachEndpoint>(&sender, header, &resp).await;
 }
 
 async fn attach_impl(ctx: RpcSpawnContext, request: AttachRequest) -> RpcResult<AttachResult> {
