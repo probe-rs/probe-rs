@@ -10,7 +10,7 @@ use crate::flashing::compare::{
     Outside, ReadBackAlgorithm, ReadBackCore, build_checks, run_backend, split_by_region,
 };
 use crate::flashing::encoder::FlashEncoder;
-use crate::flashing::{FlashLayout, FlashSector, ProgressOperation};
+use crate::flashing::{FlashLayout, FlashSector, ProgressOperation, SectorCheck};
 use crate::memory::MemoryInterface;
 use crate::rtt::{Rtt, RttTarget, ScanRegion};
 use crate::{Core, InstructionSet, RegisterValue, core::CoreRegisters, session::Session};
@@ -1436,6 +1436,26 @@ impl<O: Operation> ActiveFlasher<'_, '_, O> {
 }
 
 impl ActiveFlasher<'_, '_, Verify> {
+    /// Compares `checks` with the signature function of the flash algorithm.
+    ///
+    /// Returns the name of the hash, and one result for each check. Returns `None` if the
+    /// algorithm has no signature function with a known hash.
+    ///
+    /// Do not use, only exposed with `pub` visibility for target-gen.
+    pub fn compare_with_signatures(
+        &mut self,
+        checks: &[SectorCheck<'_>],
+    ) -> Result<Option<(&'static str, Vec<CompareOutcome>)>, FlashError> {
+        let Some(backend) = AlgorithmSignatures::new(self.flash_algorithm) else {
+            return Ok(None);
+        };
+
+        let mut out = vec![CompareOutcome::Unsupported; checks.len()];
+        backend.compare_checks(self, checks, &mut out)?;
+
+        Ok(Some((backend.hash_name(), out)))
+    }
+
     /// Checks the flash at `address` with the CMSIS `Verify` function of the algorithm.
     ///
     /// Returns `Ok(false)` if the flash does not hold `data`.

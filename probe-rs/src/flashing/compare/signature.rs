@@ -145,6 +145,36 @@ impl AlgorithmSignatures {
         })
     }
 
+    /// Returns the name of the hash that the signature function computes.
+    pub(crate) fn hash_name(&self) -> &'static str {
+        self.hash.name
+    }
+
+    /// Sets `out[i]` to the result for `checks[i]`.
+    pub(crate) fn compare_checks(
+        &self,
+        active: &mut ActiveFlasher<'_, '_, Verify>,
+        checks: &[SectorCheck<'_>],
+        out: &mut [CompareOutcome],
+    ) -> Result<(), FlashError> {
+        let entries = self.entries(checks);
+        let results = self.sign(active, &entries)?;
+
+        for (idx, out) in out.iter_mut().enumerate() {
+            let mut of_check = entries
+                .iter()
+                .zip(&results)
+                .filter(|(entry, _)| entry.check == idx)
+                .peekable();
+            if of_check.peek().is_none() {
+                continue;
+            }
+            *out = check_outcome(of_check);
+        }
+
+        Ok(())
+    }
+
     /// Builds the entries for the checks. A check that cannot be signed gets no entry.
     fn entries(&self, checks: &[SectorCheck<'_>]) -> Vec<Entry> {
         let mut entries = Vec::new();
@@ -283,22 +313,7 @@ impl AlgorithmCompare for AlgorithmSignatures {
         checks: &[SectorCheck<'_>],
         out: &mut [CompareOutcome],
     ) -> Result<(), FlashError> {
-        let entries = self.entries(checks);
-        let results = self.sign(active, &entries)?;
-
-        for (idx, out) in out.iter_mut().enumerate() {
-            let mut of_check = entries
-                .iter()
-                .zip(&results)
-                .filter(|(entry, _)| entry.check == idx)
-                .peekable();
-            if of_check.peek().is_none() {
-                continue;
-            }
-            *out = check_outcome(of_check);
-        }
-
-        Ok(())
+        self.compare_checks(active, checks, out)
     }
 }
 
