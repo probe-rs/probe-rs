@@ -40,7 +40,7 @@ use probe_rs_rpc::breakpoints::{
 use probe_rs_rpc::core_ops::{WireCoreMetadata, WireCoreStatus, WireRegisterId, WireSteppingMode};
 use probe_rs_rpc::disassemble::{WireDisassembledInstruction, WireSource};
 use probe_rs_rpc::flash::{
-    DownloadOptions as WireDownloadOptions, ProgressEvent as WireProgressEvent, VerifyResult,
+    DownloadOptions as WireDownloadOptions, ProgressEvent as WireProgressEvent,
 };
 use probe_rs_rpc::info::WireSessionTargetMetadata;
 use probe_rs_rpc::stack_trace::{
@@ -849,39 +849,23 @@ impl RpcBackend {
                 .map_err(|e| DebuggerError::Other(anyhow::anyhow!(e)))?;
         }
 
-        let run_flash = if config.verify_before_flashing {
-            match session
-                .verify(loader_key, async |event| {
-                    progress(event);
-                })
-                .await
-                .map_err(|e| DebuggerError::Other(anyhow::anyhow!(e)))?
-            {
-                VerifyResult::Ok => false,
-                VerifyResult::Mismatch => true,
-            }
-        } else {
-            true
+        let options = WireDownloadOptions {
+            keep_unwritten_bytes: config.restore_unwritten_bytes,
+            do_chip_erase: config.full_chip_erase,
+            skip_erase: false,
+            preverify: config.verify_before_flashing,
+            verify: config.verify_after_flashing,
+            disable_double_buffering: false,
+            preferred_algos: Vec::new(),
+            ram_chunk_size: None,
         };
 
-        if run_flash {
-            let options = WireDownloadOptions {
-                keep_unwritten_bytes: config.restore_unwritten_bytes,
-                do_chip_erase: config.full_chip_erase,
-                skip_erase: false,
-                verify: config.verify_after_flashing,
-                disable_double_buffering: false,
-                preferred_algos: Vec::new(),
-                ram_chunk_size: None,
-            };
-
-            session
-                .flash(options, loader_key, async |event| {
-                    progress(event);
-                })
-                .await
-                .map_err(|e| DebuggerError::Other(anyhow::anyhow!(e)))?;
-        }
+        session
+            .flash(options, loader_key, async |event| {
+                progress(event);
+            })
+            .await
+            .map_err(|e| DebuggerError::Other(anyhow::anyhow!(e)))?;
 
         Ok(())
     }
