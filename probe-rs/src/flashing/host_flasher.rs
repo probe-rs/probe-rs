@@ -10,8 +10,13 @@ use probe_rs_target::{FlashProperties, NvmRegion, RawFlashAlgorithm, SectorDescr
 
 use super::builder::FlashBuilder;
 use super::{FlashError, FlashLayout, FlashProgress};
+use crate::flashing::compare::{
+    CompareCost, CompareOutcome, CompareState, Outside, ReadBackCore, build_checks, run_backend,
+    split_by_region,
+};
 use crate::flashing::flasher::FlashData;
 use crate::flashing::host_sequence::DebugFlashSequence;
+use crate::flashing::progress::ProgressOperation;
 use crate::memory::MemoryInterface;
 use crate::session::Session;
 
@@ -283,11 +288,10 @@ impl HostSideFlasher {
                         progress.page_programmed(page.size() as u64, std::time::Duration::ZERO);
                     }
                     progress.finished_programming();
+                }
 
-                    // Verify if requested
-                    if verify && !this.verify_layout(session, layout)? {
-                        return Err(FlashError::Verify);
-                    }
+                if verify && !this.verify_regions(session, progress)? {
+                    return Err(FlashError::Verify);
                 }
             } else {
                 // Process each region with the per-page loop.
@@ -333,11 +337,10 @@ impl HostSideFlasher {
                         t = Instant::now();
                     }
                     progress.finished_programming();
+                }
 
-                    // Verify if requested
-                    if verify && !this.verify_layout(session, layout)? {
-                        return Err(FlashError::Verify);
-                    }
+                if verify && !this.verify_regions(session, progress)? {
+                    return Err(FlashError::Verify);
                 }
             }
 
@@ -351,42 +354,104 @@ impl HostSideFlasher {
     pub(super) fn verify(
         &mut self,
         session: &mut Session,
-        _progress: &mut FlashProgress<'_>,
+        progress: &mut FlashProgress<'_>,
         _ignore_filled: bool,
     ) -> Result<bool, FlashError> {
         tracing::debug!("Host-side: Starting verify procedure");
         self.run_with_flash(session, |this, session| {
-            for r in &this.regions {
-                if !this.verify_layout(session, r.flash_layout())? {
-                    return Ok(false);
-                }
-            }
-
-            Ok(true)
+            this.verify_regions(session, progress)
         })
     }
 
-    fn verify_layout(
+    /// Checks each sector of each region. The fill bytes of a page must hold the page data.
+    fn verify_regions(
         &self,
         session: &mut Session,
-        layout: &FlashLayout,
+        progress: &mut FlashProgress<'_>,
     ) -> Result<bool, FlashError> {
-        for page in layout.pages() {
-            let verified = self
-                .flash_sequence
-                .verify(session, page.address(), page.data())
-                .map_err(FlashError::Core)?;
+        progress.started_verifying();
 
-            if !verified {
-                tracing::error!(
-                    "Host-side: Verification failed at address 0x{:08X}",
-                    page.address()
-                );
-                return Ok(false);
-            }
+        let result = self
+            .compare(
+                session,
+                progress,
+                ProgressOperation::Verify,
+                Outside::Any,
+                false,
+                true,
+            )
+            .map(|outcomes| {
+                outcomes
+                    .iter()
+                    .flatten()
+                    .all(|outcome| *outcome == CompareOutcome::Match)
+            });
+
+        match result.is_ok() {
+            true => progress.finished_verifying(),
+            false => progress.failed_verifying(),
         }
 
-        Ok(true)
+        result
+    }
+
+    /// Compares each sector of each region with its expected content.
+    ///
+    /// Returns one result for each sector, for each region. A sector that no backend can
+    /// check is a mismatch. A costly backend runs only if `allow_costly` is `true`.
+    pub(super) fn compare(
+        &self,
+        session: &mut Session,
+        progress: &mut FlashProgress<'_>,
+        operation: ProgressOperation,
+        outside: Outside,
+        ignore_fills: bool,
+        allow_costly: bool,
+    ) -> Result<Vec<Vec<CompareOutcome>>, FlashError> {
+        let regions = self
+            .regions
+            .iter()
+            .map(|region| region.region.clone())
+            .collect::<Vec<_>>();
+        let checks = build_checks(
+            &self
+                .regions
+                .iter()
+                .map(|region| region.flash_layout())
+                .collect::<Vec<_>>(),
+            outside,
+            ignore_fills,
+        );
+        let mut state = CompareState::new(checks.len());
+
+        let mut chain = session
+            .target()
+            .debug_sequence
+            .flash_compare()
+            .into_iter()
+            .collect::<Vec<_>>();
+        chain.push(Arc::new(ReadBackCore));
+
+        for backend in chain {
+            if backend.cost() == CompareCost::Costly && !allow_costly {
+                continue;
+            }
+            run_backend(
+                &regions,
+                &checks,
+                &mut state,
+                backend.cost(),
+                progress,
+                operation,
+                |region, batch, out| {
+                    backend
+                        .compare(session, self.core_index, region, batch, out)
+                        .map_err(FlashError::Core)
+                },
+            )?;
+        }
+
+        Ok(split_by_region(&checks, state.finish(), regions.len()))
     }
 }
 

@@ -11,8 +11,7 @@ use std::time::Instant;
 
 use crate::config::NvmRegion;
 use crate::flashing::{
-    ActiveFlasher, FlashError, FlashLayout, FlashProgress, FlashVerify, ProgressOperation, Verify,
-    VerifyOutcome,
+    ActiveFlasher, FlashError, FlashLayout, FlashProgress, ProgressOperation, Verify,
 };
 use crate::memory::MemoryInterface;
 use crate::{Error, Session};
@@ -191,8 +190,8 @@ impl CompareState {
     }
 }
 
-/// Compares the read-back flash contents with the check.
-fn compare_read_back<E>(
+/// Compares flash contents that `read` reads back with the check.
+pub(crate) fn compare_read_back<E>(
     check: &SectorCheck<'_>,
     mut read: impl FnMut(u64, &mut [u8]) -> Result<(), E>,
 ) -> Result<CompareOutcome, E> {
@@ -324,51 +323,6 @@ impl AlgorithmCompare for CmsisVerify {
     }
 }
 
-/// Uses a [`FlashVerify`] implementation as a compare backend.
-#[derive(Debug)]
-pub(crate) struct FlashVerifyCompare(pub(crate) Arc<dyn FlashVerify>);
-
-impl FlashCompare for FlashVerifyCompare {
-    fn cost(&self) -> CompareCost {
-        CompareCost::Cheap
-    }
-
-    fn compare(
-        &self,
-        session: &mut Session,
-        core_index: usize,
-        region: &NvmRegion,
-        checks: &[SectorCheck<'_>],
-        out: &mut [CompareOutcome],
-    ) -> Result<(), Error> {
-        let mut core = session.core(core_index)?;
-        for (check, out) in checks.iter().zip(out.iter_mut()) {
-            let content = check.sector_content();
-            let ranges = match &content {
-                Some(content) => vec![(check.sector.start, content.as_slice())],
-                None => check.expected.clone(),
-            };
-
-            *out = CompareOutcome::Match;
-            for (address, data) in ranges {
-                match self.0.verify_range(&mut core, region, address, data)? {
-                    VerifyOutcome::Match => {}
-                    VerifyOutcome::Mismatch => {
-                        *out = CompareOutcome::Mismatch;
-                        break;
-                    }
-                    VerifyOutcome::Unsupported => {
-                        *out = CompareOutcome::Unsupported;
-                        break;
-                    }
-                }
-            }
-        }
-
-        Ok(())
-    }
-}
-
 /// A compare backend in the chain of a flasher.
 pub(crate) enum CompareBackend {
     /// A backend that needs a session only.
@@ -377,14 +331,59 @@ pub(crate) enum CompareBackend {
     Algorithm(Box<dyn AlgorithmCompare>),
 }
 
+/// One check, with the index of its region and the progress size of its sector.
+pub(crate) type IndexedCheck<'a> = (usize, SectorCheck<'a>, u64);
+
+/// Builds the checks for the sectors of each layout.
+///
+/// The progress size of a sector is the size of its pages.
+pub(crate) fn build_checks<'a>(
+    layouts: &[&'a FlashLayout],
+    outside: Outside,
+    ignore_fills: bool,
+) -> Vec<IndexedCheck<'a>> {
+    let mut checks = Vec::new();
+    for (region_index, layout) in layouts.iter().enumerate() {
+        for check in sector_checks(layout, outside, ignore_fills) {
+            let progress_size = layout
+                .pages()
+                .iter()
+                .filter_map(|page| {
+                    let start = page.address().max(check.sector.start);
+                    let end = (page.address() + page.size() as u64).min(check.sector.end);
+                    (start < end).then_some(end - start)
+                })
+                .sum::<u64>();
+            checks.push((region_index, check, progress_size));
+        }
+    }
+    checks
+}
+
+/// Groups the results of `checks` by region.
+pub(crate) fn split_by_region(
+    checks: &[IndexedCheck<'_>],
+    outcomes: Vec<CompareOutcome>,
+    region_count: usize,
+) -> Vec<Vec<CompareOutcome>> {
+    let mut per_region = vec![Vec::new(); region_count];
+    for ((region_index, check, _), outcome) in checks.iter().zip(outcomes) {
+        if outcome != CompareOutcome::Match {
+            tracing::debug!("Sector {:#010x?}: {outcome:?}", check.sector);
+        }
+        per_region[*region_index].push(outcome);
+    }
+    per_region
+}
+
 /// Runs one backend on the checks that have no result yet.
 ///
 /// `checks` holds the region index, the check, and the progress size of each sector. A cheap
 /// backend gets all sectors of a region in one call. A costly backend gets one sector in each
 /// call, so that the progress moves while it runs.
 pub(crate) fn run_backend(
-    layouts: &[(NvmRegion, FlashLayout)],
-    checks: &[(usize, SectorCheck<'_>, u64)],
+    regions: &[NvmRegion],
+    checks: &[IndexedCheck<'_>],
     state: &mut CompareState,
     cost: CompareCost,
     progress: &mut FlashProgress<'_>,
@@ -393,7 +392,7 @@ pub(crate) fn run_backend(
 ) -> Result<(), FlashError> {
     let pending = state.pending();
 
-    for (region_index, (region, _)) in layouts.iter().enumerate() {
+    for (region_index, region) in regions.iter().enumerate() {
         let indices = pending
             .iter()
             .copied()
@@ -503,6 +502,12 @@ mod tests {
         assert_eq!(checks.len(), 4);
         assert!(checks[0].expected.is_empty());
         assert_eq!(checks[3].expected, vec![(0x6000, data.as_slice())]);
+
+        let progress_sizes = build_checks(&[&layout], Outside::Any, true)
+            .into_iter()
+            .map(|(_, _, size)| size)
+            .collect::<Vec<_>>();
+        assert_eq!(progress_sizes, vec![0x2000; 4]);
     }
 
     #[test]

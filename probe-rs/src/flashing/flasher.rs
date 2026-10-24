@@ -6,8 +6,8 @@ use super::{FlashAlgorithm, FlashBuilder, FlashError, FlashPage, FlashProgress};
 use crate::config::NvmRegion;
 use crate::error::Error;
 use crate::flashing::compare::{
-    CmsisVerify, CompareBackend, CompareCost, CompareOutcome, CompareState, FlashVerifyCompare,
-    Outside, ReadBackAlgorithm, ReadBackCore, run_backend, sector_checks,
+    CmsisVerify, CompareBackend, CompareCost, CompareOutcome, CompareState, Outside,
+    ReadBackAlgorithm, ReadBackCore, build_checks, run_backend, split_by_region,
 };
 use crate::flashing::encoder::FlashEncoder;
 use crate::flashing::{FlashLayout, FlashSector, ProgressOperation};
@@ -555,10 +555,8 @@ impl Flasher {
     fn compare_chain(&self, session: &Session) -> Vec<CompareBackend> {
         let mut chain = Vec::new();
 
-        if let Some(sequence) = session.target().debug_sequence.flash_verify_sequence() {
-            chain.push(CompareBackend::Session(Arc::new(FlashVerifyCompare(
-                sequence,
-            ))));
+        if let Some(backend) = session.target().debug_sequence.flash_compare() {
+            chain.push(CompareBackend::Session(backend));
         }
         if self.flash_algorithm.pc_verify.is_some() {
             chain.push(CompareBackend::Algorithm(Box::new(CmsisVerify)));
@@ -593,18 +591,15 @@ impl Flasher {
             .map(|region| (region.region.clone(), region.data.layout().clone()))
             .collect::<Vec<_>>();
 
-        let mut checks = Vec::new();
-        for (region_index, (_, layout)) in layouts.iter().enumerate() {
-            for check in sector_checks(layout, outside, ignore_fills) {
-                let progress_size = layout
-                    .pages()
-                    .iter()
-                    .filter(|page| check.sector.contains(&page.address()))
-                    .map(|page| page.size() as u64)
-                    .sum::<u64>();
-                checks.push((region_index, check, progress_size));
-            }
-        }
+        let regions = layouts
+            .iter()
+            .map(|(region, _)| region.clone())
+            .collect::<Vec<_>>();
+        let checks = build_checks(
+            &layouts.iter().map(|(_, layout)| layout).collect::<Vec<_>>(),
+            outside,
+            ignore_fills,
+        );
 
         let mut state = CompareState::new(checks.len());
 
@@ -617,7 +612,7 @@ impl Flasher {
                         continue;
                     }
                     run_backend(
-                        &layouts,
+                        &regions,
                         &checks,
                         &mut state,
                         backend.cost(),
@@ -647,7 +642,7 @@ impl Flasher {
                     let (mut active, _) = self.init::<Verify>(session, &mut algo_progress, None)?;
                     for backend in group {
                         run_backend(
-                            &layouts,
+                            &regions,
                             &checks,
                             &mut state,
                             backend.cost(),
@@ -661,16 +656,7 @@ impl Flasher {
             }
         }
 
-        let outcomes = state.finish();
-        let mut per_region = vec![Vec::new(); layouts.len()];
-        for ((region_index, check, _), outcome) in checks.iter().zip(outcomes) {
-            if outcome != CompareOutcome::Match {
-                tracing::debug!("Sector {:#010x?}: {outcome:?}", check.sector);
-            }
-            per_region[*region_index].push(outcome);
-        }
-
-        Ok(per_region)
+        Ok(split_by_region(&checks, state.finish(), regions.len()))
     }
 
     /// Perform an erase of all sectors given in `flash_layout`.

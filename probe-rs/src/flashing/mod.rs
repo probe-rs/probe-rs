@@ -56,11 +56,11 @@ mod loader;
 mod progress;
 #[cfg(feature = "builtin-formats")]
 mod vector_table;
-pub mod verify_sequence;
 
 use builder::*;
 
 pub use builder::{FlashDataBlockSpan, FlashFill, FlashLayout, FlashPage, FlashSector};
+pub(crate) use compare::compare_read_back;
 pub use compare::{CompareCost, CompareOutcome, FlashCompare, Outside, SectorCheck};
 pub use download::*;
 pub use erase::*;
@@ -73,4 +73,3 @@ pub use host_flasher::HostSideFlasher;
 pub use host_sequence::DebugFlashSequence;
 pub use loader::*;
 pub use progress::*;
-pub use verify_sequence::{FlashVerify, VerifyOutcome};
