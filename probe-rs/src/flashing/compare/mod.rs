@@ -7,11 +7,13 @@ mod cmsis_verify;
 mod context;
 mod read_back;
 mod read_flash;
+mod signature;
 
 pub(crate) use cmsis_verify::CmsisVerifyCompare;
 pub use context::CompareContext;
 pub(crate) use read_back::ReadBackCore;
 pub(crate) use read_flash::ReadFlashCompare;
+pub(crate) use signature::AlgorithmSignatures;
 
 use std::fmt::Debug;
 use std::ops::Range;
