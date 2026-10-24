@@ -9,6 +9,7 @@ pub struct DownloadOptions {
     pub keep_unwritten_bytes: bool,
     pub do_chip_erase: bool,
     pub skip_erase: bool,
+    pub preverify: bool,
     pub verify: bool,
     pub disable_double_buffering: bool,
     pub preferred_algos: Vec<String>,
