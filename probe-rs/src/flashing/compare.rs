@@ -3,6 +3,10 @@
 //! The flasher runs its backends in order. Each backend gets the sectors that no earlier
 //! backend could check.
 
+mod signature;
+
+pub(crate) use signature::AlgorithmSignatures;
+
 use std::fmt::Debug;
 use std::ops::Range;
 use std::sync::Arc;
