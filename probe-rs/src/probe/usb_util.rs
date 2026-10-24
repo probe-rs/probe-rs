@@ -159,7 +159,39 @@ impl UsbSerialPort {
         if cfg!(target_os = "macos") && self.info.interface.is_none() {
             return interface_from_port_name(&self.port_name);
         }
+        if let Some((_, interface)) = self.ftdi_channel() {
+            return Some(interface);
+        }
         self.info.interface
+    }
+
+    /// Returns the USB serial number of the device.
+    pub fn serial_number(&self) -> Option<&str> {
+        if let Some((serial_number, _)) = self.ftdi_channel() {
+            return Some(serial_number);
+        }
+        self.info.serial_number.as_deref()
+    }
+
+    /// The FTDI driver on Windows does not report the interface. It adds the channel letter to
+    /// the serial number, for example `FT1234B` for channel B of `FT1234`. Returns the serial
+    /// number without the letter, and the interface number of the channel.
+    fn ftdi_channel(&self) -> Option<(&str, u8)> {
+        const FTDI_VID: u16 = 0x0403;
+
+        if self.info.vid != FTDI_VID || self.info.interface.is_some() {
+            return None;
+        }
+        let serial_number = self.info.serial_number.as_deref()?;
+        let (base, letter) = serial_number.split_at(serial_number.len().checked_sub(1)?);
+        let interface = match letter {
+            "A" => 0,
+            "B" => 1,
+            "C" => 2,
+            "D" => 3,
+            _ => return None,
+        };
+        Some((base, interface))
     }
 }
 
@@ -234,16 +266,19 @@ impl UsbSerialFilter {
         if self
             .serial_number
             .as_deref()
-            .is_some_and(|sn| info.serial_number.as_deref() != Some(sn))
+            .is_some_and(|sn| port.serial_number() != Some(sn))
         {
             return false;
         }
-        if let Some(interface) = self.interface {
-            let port_interface = port.interface();
+        // A port without an interface number matches every interface. The other fields select
+        // it, for example on a device without a serial number behind the FTDI driver on Windows.
+        if let Some(interface) = self.interface
+            && let Some(port_interface) = port.interface()
+        {
             let data_interface = interface
                 .checked_add(1)
                 .filter(|_| cfg!(target_os = "macos"));
-            if port_interface != Some(interface) && port_interface != data_interface {
+            if port_interface != interface && Some(port_interface) != data_interface {
                 return false;
             }
         }
@@ -301,6 +336,38 @@ mod tests {
         assert!(filter.matches(&port("COM3", Some("ABC"), None)));
         assert!(!filter.matches(&port("COM3", Some("XYZ"), None)));
         assert!(!filter.matches(&port("COM3", None, None)));
+    }
+
+    #[test]
+    fn port_without_interface_matches_every_interface() {
+        let filter = UsbSerialFilter {
+            interface: Some(1),
+            ..Default::default()
+        };
+        assert!(filter.matches(&port("/dev/ttyX", None, None)));
+    }
+
+    #[test]
+    fn ftdi_channel_comes_from_the_serial_number() {
+        let ftdi = |serial_number: &str| UsbSerialPort {
+            port_name: "COMX".to_string(),
+            info: UsbPortInfo {
+                vid: 0x0403,
+                pid: 0x6010,
+                serial_number: Some(serial_number.to_string()),
+                manufacturer: None,
+                product: None,
+                interface: None,
+            },
+        };
+        let filter = UsbSerialFilter {
+            serial_number: Some("FT1234".to_string()),
+            interface: Some(1),
+            ..Default::default()
+        };
+        assert!(filter.matches(&ftdi("FT1234B")));
+        assert!(!filter.matches(&ftdi("FT1234A")));
+        assert!(!filter.matches(&ftdi("FT9999B")));
     }
 
     #[test]
