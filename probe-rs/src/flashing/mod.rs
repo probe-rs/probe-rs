@@ -56,7 +56,6 @@ mod loader;
 mod progress;
 #[cfg(feature = "builtin-formats")]
 mod vector_table;
-pub mod verify_sequence;
 
 use builder::*;
 
@@ -73,4 +72,3 @@ pub use host_flasher::HostSideFlasher;
 pub use host_sequence::DebugFlashSequence;
 pub use loader::*;
 pub use progress::*;
-pub use verify_sequence::{FlashVerify, VerifyOutcome};
