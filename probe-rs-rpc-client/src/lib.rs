@@ -1922,6 +1922,53 @@ where
 mod tests {
     use super::{without_userinfo, worker_uri};
 
+    /// The client must end the websocket with a close frame, so that the
+    /// server can tell a clean exit from a lost connection.
+    #[tokio::test]
+    async fn dropping_the_client_closes_the_websocket() {
+        use futures_util::StreamExt as _;
+        use probe_rs_rpc::transport::websocket::{WebsocketRx, WebsocketTx};
+        use std::time::Duration;
+        use tokio_tungstenite::{
+            WebSocketStream,
+            tungstenite::{Message, protocol::Role},
+        };
+        use tokio_util::bytes::Bytes;
+
+        let (client_io, server_io) = tokio::io::duplex(4096);
+        let client_ws = WebSocketStream::from_raw_socket(client_io, Role::Client, None).await;
+        let mut server_ws = WebSocketStream::from_raw_socket(server_io, Role::Server, None).await;
+
+        let (tx, rx) = client_ws.split();
+        let client = super::RpcClient::new_from_wire(
+            WebsocketTx::new(tx),
+            WebsocketRx::new(rx.map(|message| {
+                message.map(|message| match message {
+                    Message::Binary(binary) => binary,
+                    _ => Bytes::new(),
+                })
+            })),
+        );
+        drop(client);
+
+        let messages = tokio::time::timeout(Duration::from_secs(5), async {
+            let mut messages = Vec::new();
+            while let Some(message) = server_ws.next().await {
+                messages.push(format!("{message:?}"));
+            }
+            messages
+        })
+        .await
+        .expect("the websocket stayed open");
+
+        assert!(
+            messages
+                .iter()
+                .any(|message| message.starts_with("Ok(Close(")),
+            "no close frame, the server got: {messages:?}"
+        );
+    }
+
     #[test]
     fn a_websocket_path_comes_before_the_worker_endpoint() {
         for (connection_string, uri) in [
