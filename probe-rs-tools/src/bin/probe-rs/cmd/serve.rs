@@ -15,7 +15,7 @@ use axum::{
 };
 use base64::{Engine, engine::general_purpose::STANDARD};
 use futures_util::{
-    Sink, SinkExt, StreamExt,
+    SinkExt, StreamExt,
     stream::{SplitSink, SplitStream},
 };
 use postcard_rpc::server::WireRxErrorKind;
@@ -29,50 +29,12 @@ use tokio_util::bytes::Bytes;
 #[cfg(unix)]
 use std::path::PathBuf;
 use std::{fmt::Write, sync::Arc, time::Duration};
-use std::{
-    pin::Pin,
-    task::{Context, Poll},
-};
 
 use crate::{
     rpc::functions::{ProbeAccess, RpcApp},
     rpc::probe_broker::ProbeBroker,
     util::{probe_config::ProbeConfigs, pwr},
 };
-
-// Sends length-prefixed binary messages to a websocket stream
-pub struct AxumWebsocketTx<S> {
-    writer: S,
-}
-impl<S> AxumWebsocketTx<S> {
-    pub fn new(writer: S) -> Self {
-        Self { writer }
-    }
-}
-
-impl<S> Sink<Vec<u8>> for AxumWebsocketTx<S>
-where
-    S: Sink<ws::Message> + Unpin,
-{
-    type Error = S::Error;
-
-    fn poll_ready(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        self.writer.poll_ready_unpin(cx)
-    }
-
-    fn start_send(mut self: Pin<&mut Self>, msg: Vec<u8>) -> Result<(), Self::Error> {
-        self.writer
-            .start_send_unpin(ws::Message::Binary(frame(&msg).freeze()))
-    }
-
-    fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        self.writer.poll_flush_unpin(cx)
-    }
-
-    fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        self.writer.poll_close_unpin(cx)
-    }
-}
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -204,7 +166,14 @@ impl Cmd {
 
         tracing::info!("listening on {}", listener.local_addr().unwrap());
 
-        serve_websockets(listener, config, probe_broker, CLIENT_TIMEOUT).await;
+        serve_websockets(
+            listener,
+            config,
+            probe_broker,
+            CLIENT_TIMEOUT,
+            REPLY_PIECE_LEN,
+        )
+        .await;
 
         Ok(())
     }
@@ -248,7 +217,11 @@ async fn serve_websockets(
     config: ServerConfig,
     probe_broker: Arc<ProbeBroker>,
     client_timeout: Duration,
+    reply_piece_len: usize,
 ) {
+    // An empty piece does not shorten the reply, so the sender would never finish it.
+    assert!(reply_piece_len > 0);
+
     let (request_tx, mut request_rx) = tokio::sync::mpsc::channel(64);
 
     let set = LocalSet::new();
@@ -264,6 +237,7 @@ async fn serve_websockets(
                     challenge,
                     state.clone(),
                     client_timeout,
+                    reply_piece_len,
                 ));
             }
         }
@@ -314,17 +288,31 @@ static SERVER_DEPTH: usize = 16;
 /// time. It pings the client, and checks for an answer, every third of this time.
 const CLIENT_TIMEOUT: Duration = Duration::from_secs(30);
 
+/// The server sends a reply in websocket messages of at most this size, so that it can send pings
+/// between them.
+const REPLY_PIECE_LEN: usize = 1 << 20;
+
 /// Actual websocket state machine (one will be spawned per connection on the local set)
 async fn handle_socket(
     socket: WebSocket,
     challenge: String,
     state: Arc<ServerState>,
     client_timeout: Duration,
+    reply_piece_len: usize,
 ) {
     let (mut writer, reader) = socket.split();
 
     // Send a close frame, so that the client can tell a clean exit from a lost connection.
-    if serve_socket(&mut writer, reader, challenge, state, client_timeout).await {
+    if serve_socket(
+        &mut writer,
+        reader,
+        challenge,
+        state,
+        client_timeout,
+        reply_piece_len,
+    )
+    .await
+    {
         _ = tokio::time::timeout(client_timeout, writer.close()).await;
     }
 }
@@ -336,6 +324,7 @@ async fn serve_socket(
     challenge: String,
     state: Arc<ServerState>,
     client_timeout: Duration,
+    reply_piece_len: usize,
 ) -> bool {
     // The time of the first ping after the last frame from the client. Any frame is an answer.
     let unanswered_ping = std::cell::Cell::new(None);
@@ -388,28 +377,34 @@ async fn serve_socket(
 
     // Connect the server's channels to the websocket connection
     let sender = async {
-        let mut writer = AxumWebsocketTx::new(writer);
         let period = client_timeout / 3;
         let mut ping = tokio::time::interval_at(tokio::time::Instant::now() + period, period);
         ping.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+        // The part of the current reply that the client did not get yet.
+        let mut reply = Bytes::new();
         // Send messages from the server to the client.
         loop {
-            let sent = tokio::select! {
+            let message = tokio::select! {
+                biased;
+
+                _ = ping.tick() => ws::Message::Ping(Bytes::new()),
+                _ = async {}, if !reply.is_empty() => {
+                    let len = reply.len().min(reply_piece_len);
+                    ws::Message::Binary(reply.split_to(len))
+                }
                 msg = rx.recv() => {
                     let Some(msg) = msg else { break };
-                    tokio::time::timeout(client_timeout, writer.send(msg)).await
-                }
-                _ = ping.tick() => {
-                    let ping = writer.writer.send(ws::Message::Ping(Bytes::new()));
-                    let sent = tokio::time::timeout(client_timeout, ping).await;
-                    if matches!(sent, Ok(Ok(()))) && unanswered_ping.get().is_none() {
-                        unanswered_ping.set(Some(tokio::time::Instant::now()));
-                    }
-                    sent
+                    reply = frame(&msg).freeze();
+                    continue;
                 }
             };
-            match sent {
-                Ok(Ok(())) => {}
+            let is_ping = matches!(message, ws::Message::Ping(_));
+            match tokio::time::timeout(client_timeout, writer.send(message)).await {
+                Ok(Ok(())) => {
+                    if is_ping && unanswered_ping.get().is_none() {
+                        unanswered_ping.set(Some(tokio::time::Instant::now()));
+                    }
+                }
                 Ok(Err(_)) => break,
                 Err(_) => {
                     tracing::warn!("Client stopped reading");
@@ -517,6 +512,8 @@ mod tests {
     use tokio_tungstenite::tungstenite::Message;
 
     const TIMEOUT: Duration = Duration::from_secs(1);
+    // Smaller than the reply to `ListChipFamiliesEndpoint`.
+    const PIECE_LEN: usize = 1024;
 
     /// The server must end the websocket with a close frame, so that the
     /// client can tell a refused login from a lost connection.
@@ -530,6 +527,7 @@ mod tests {
             ServerConfig::default(),
             Arc::new(ProbeBroker::new()),
             TIMEOUT,
+            PIECE_LEN,
         );
 
         let client = async {
@@ -574,7 +572,14 @@ mod tests {
             }],
             ..ServerConfig::default()
         };
-        serve_websockets(listener, config, Arc::new(ProbeBroker::new()), TIMEOUT).await
+        serve_websockets(
+            listener,
+            config,
+            Arc::new(ProbeBroker::new()),
+            TIMEOUT,
+            PIECE_LEN,
+        )
+        .await
     }
 
     async fn log_in(address: std::net::SocketAddr) -> ClientWebsocket {
@@ -713,5 +718,43 @@ mod tests {
             gap > Duration::from_millis(10),
             "two pings came {gap:?} apart"
         );
+    }
+
+    /// The server must send a large reply in pieces, so that it can send pings between them.
+    #[tokio::test]
+    async fn the_server_sends_a_large_reply_in_pieces() {
+        use postcard_rpc::{
+            Endpoint,
+            header::{VarHeader, VarKey, VarSeq},
+        };
+        use probe_rs_rpc::{ListChipFamiliesEndpoint, transport::Deframer};
+
+        let pieces = with_logged_in_client(async |mut ws| {
+            let request = VarHeader {
+                key: VarKey::Key8(ListChipFamiliesEndpoint::REQ_KEY),
+                seq_no: VarSeq::Seq4(0),
+            };
+            ws.send(Message::Binary(frame(&request.write_to_vec()).freeze()))
+                .await
+                .unwrap();
+
+            let mut deframer = Deframer::default();
+            let mut pieces = 0;
+            // The pings keep the connection open, so a reply that is cut off never ends the loop.
+            tokio::time::timeout(Duration::from_secs(5), async {
+                while deframer.next_message().is_none() {
+                    if let Message::Binary(piece) = ws.next().await.unwrap().unwrap() {
+                        deframer.push(&piece);
+                        pieces += 1;
+                    }
+                }
+            })
+            .await
+            .expect("the reply did not come");
+            pieces
+        })
+        .await;
+
+        assert!(pieces > 1, "the reply came in {pieces} piece");
     }
 }
