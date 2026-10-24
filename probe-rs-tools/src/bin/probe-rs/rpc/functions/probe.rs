@@ -533,6 +533,64 @@ mod tests {
             "expected a lost connection, got {error}"
         );
     }
+
+    /// Ctrl+C sends one cancel. It must also stop a request that started
+    /// before the latest request.
+    #[tokio::test]
+    async fn a_cancel_stops_an_earlier_request() {
+        let lister = Arc::new(BusyLister::new(usize::MAX));
+        let request = AttachRequest {
+            chip: Some(TEST_CHIP_NAME.to_owned()),
+            protocol: None,
+            probe: convert::to_wire_debug_probe_entry(ProbeListItem::accessible(
+                lister.info.clone(),
+            )),
+            speed: None,
+            connect_under_reset: false,
+            allow_erase_all: false,
+            resume_target: false,
+            wait_for_probe: Some(Duration::from_secs(600)),
+        };
+        let (server, tx, rx) = RpcApp::create_server_with_lister(
+            16,
+            lister.clone() as Arc<dyn ProbeLister + Send + Sync>,
+            Arc::new(ProbeBroker::new()),
+        );
+        let server = tokio::spawn(server.run());
+        let client = RpcClient::new_local_from_wire(tx, rx);
+
+        let mut first = tokio::spawn({
+            let client = client.clone();
+            let request = request.clone();
+            async move { client.attach_probe(request).await }
+        });
+        while lister.attempts() == 0 {
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+
+        // The second request waits for the lease that the first one holds.
+        let second = tokio::spawn({
+            let client = client.clone();
+            async move { client.attach_probe(request).await }
+        });
+        tokio::time::sleep(Duration::from_millis(200)).await;
+
+        client
+            .publish::<probe_rs_rpc::CancelTopic>(&())
+            .await
+            .unwrap();
+
+        let stopped = tokio::time::timeout(Duration::from_secs(5), &mut first)
+            .await
+            .is_ok();
+
+        first.abort();
+        second.abort();
+        drop(client);
+        _ = server.await;
+
+        assert!(stopped, "the cancel did not stop the first request");
+    }
 }
 
 pub(crate) mod convert {

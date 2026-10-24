@@ -290,7 +290,6 @@ impl SpawnContext for RpcContext {
     type SpawnCtxt = RpcSpawnContext;
 
     fn spawn_ctxt(&mut self) -> Self::SpawnCtxt {
-        self.state.token = CancellationToken::new();
         RpcSpawnContext {
             state: self.state.clone(),
             sender: self.sender.clone().unwrap(),
@@ -414,7 +413,8 @@ async fn cancel_handler(
     _msg: (),
     _sender: &PostcardSender<WireTxImpl>,
 ) {
-    ctx.state.token.cancel();
+    // Stop all running requests. Requests that start later get a new token.
+    std::mem::take(&mut ctx.state.token).cancel();
 }
 
 /// Sends the reply of a spawned handler.
