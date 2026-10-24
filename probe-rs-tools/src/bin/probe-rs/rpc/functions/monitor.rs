@@ -48,10 +48,7 @@ pub async fn monitor(
         .await
         .map_err(crate::rpc::functions::convert::rpc_error_anyhow);
 
-    sender
-        .reply::<MonitorEndpoint>(header.seq_no, &resp)
-        .await
-        .unwrap();
+    _ = sender.reply::<MonitorEndpoint>(header.seq_no, &resp).await;
 }
 
 pub(crate) struct MonitorSender {
@@ -115,7 +112,7 @@ fn monitor_impl(
 
     let mut semihosting_sink =
         MonitorEventHandler::new(request.options.semihosting_options, |event| {
-            sender.send_semihosting_event(event).unwrap()
+            _ = sender.send_semihosting_event(event)
         });
 
     let client_key = request.options.rtt_client;

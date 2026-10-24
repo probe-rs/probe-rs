@@ -133,10 +133,9 @@ where
                 event = self.rx.recv() => {
                     // The task has dropped its sender, and everything it sent is published.
                     let Some(event) = event else { break };
-                    sender
-                        .publish::<T>(VarSeq::Seq2(0), &event)
-                        .await
-                        .unwrap();
+                    if sender.publish::<T>(VarSeq::Seq2(0), &event).await.is_err() {
+                        break;
+                    }
                 }
             }
         }

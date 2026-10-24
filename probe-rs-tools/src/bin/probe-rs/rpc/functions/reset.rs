@@ -49,10 +49,9 @@ pub async fn reset_target(
 ) {
     let resp = reset_target_impl(ctx, request).await;
 
-    sender
+    _ = sender
         .reply::<ResetTargetEndpoint>(header.seq_no, &resp)
-        .await
-        .unwrap();
+        .await;
 }
 
 async fn reset_target_impl(
