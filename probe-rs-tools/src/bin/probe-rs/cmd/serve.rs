@@ -14,7 +14,10 @@ use axum::{
     routing::{any, get},
 };
 use base64::{Engine, engine::general_purpose::STANDARD};
-use futures_util::{Sink, SinkExt, StreamExt};
+use futures_util::{
+    Sink, SinkExt, StreamExt,
+    stream::{SplitSink, SplitStream},
+};
 use postcard_rpc::server::WireRxErrorKind;
 use probe_rs::probe::list::Lister;
 use probe_rs_rpc::transport::{frame, websocket::WebsocketRx};
@@ -199,34 +202,9 @@ impl Cmd {
             .await
             .unwrap();
 
-        let (request_tx, mut request_rx) = tokio::sync::mpsc::channel(64);
-
-        let set = LocalSet::new();
-        let state = Arc::new(ServerState::new(config, request_tx, probe_broker));
-
-        set.spawn_local({
-            let state = state.clone();
-            async move {
-                while let Some((socket, challenge)) = request_rx.recv().await {
-                    // Spawn a new task for each connection
-                    tokio::task::spawn_local(handle_socket(socket, challenge, state.clone()));
-                }
-            }
-        });
-
-        let app = Router::new()
-            .route("/", get(server_info))
-            .route("/worker", any(ws_handler))
-            .with_state(state);
-
         tracing::info!("listening on {}", listener.local_addr().unwrap());
 
-        let (result, _) = tokio::join! {
-            axum::serve(listener, app),
-            set,
-        };
-
-        result.unwrap();
+        serve_websockets(listener, config, probe_broker).await;
 
         Ok(())
     }
@@ -264,6 +242,40 @@ impl Cmd {
     }
 }
 
+/// Serves the status page and the websocket endpoint on `listener`.
+async fn serve_websockets(
+    listener: tokio::net::TcpListener,
+    config: ServerConfig,
+    probe_broker: Arc<ProbeBroker>,
+) {
+    let (request_tx, mut request_rx) = tokio::sync::mpsc::channel(64);
+
+    let set = LocalSet::new();
+    let state = Arc::new(ServerState::new(config, request_tx, probe_broker));
+
+    set.spawn_local({
+        let state = state.clone();
+        async move {
+            while let Some((socket, challenge)) = request_rx.recv().await {
+                // Spawn a new task for each connection
+                tokio::task::spawn_local(handle_socket(socket, challenge, state.clone()));
+            }
+        }
+    });
+
+    let app = Router::new()
+        .route("/", get(server_info))
+        .route("/worker", any(ws_handler))
+        .with_state(state);
+
+    let (result, _) = tokio::join! {
+        axum::serve(listener, app),
+        set,
+    };
+
+    result.unwrap();
+}
+
 async fn ws_handler(ws: WebSocketUpgrade, state: State<Arc<ServerState>>) -> impl IntoResponse {
     // Generate a random challenge that the client needs to hash together with their token.
     // We don't need a cryptographically secure random number here, just something to make
@@ -294,8 +306,20 @@ static SERVER_DEPTH: usize = 16;
 
 /// Actual websocket state machine (one will be spawned per connection on the local set)
 async fn handle_socket(socket: WebSocket, challenge: String, state: Arc<ServerState>) {
-    let (writer, reader) = socket.split();
+    let (mut writer, reader) = socket.split();
 
+    serve_socket(&mut writer, reader, challenge, state).await;
+
+    // Send a close frame, so that the client can tell a clean exit from a lost connection.
+    _ = writer.close().await;
+}
+
+async fn serve_socket(
+    writer: &mut SplitSink<WebSocket, ws::Message>,
+    reader: SplitStream<WebSocket>,
+    challenge: String,
+    state: Arc<ServerState>,
+) {
     let mut reader = WebsocketRx::new(reader.map(|message| {
         message.map(|message| match message {
             ws::Message::Binary(binary) => binary,
@@ -408,5 +432,51 @@ async fn handle_unix_rpc(stream: tokio::net::UnixStream, probe_broker: Arc<Probe
         _ = server.run() => tracing::warn!("Server stopped"),
         _ = sender => tracing::warn!("Server sender stopped"),
         _ = receiver => tracing::info!("Client disconnected"),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::time::Duration;
+    use tokio_tungstenite::tungstenite::Message;
+
+    /// The server must end the websocket with a close frame, so that the
+    /// client can tell a refused login from a lost connection.
+    #[tokio::test]
+    async fn a_refused_login_closes_the_websocket() {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        // No users, so every login fails.
+        let server = serve_websockets(
+            listener,
+            ServerConfig::default(),
+            Arc::new(ProbeBroker::new()),
+        );
+
+        let client = async {
+            let (mut ws, _) = tokio_tungstenite::connect_async(format!("ws://{address}/worker"))
+                .await
+                .unwrap();
+            ws.send(Message::Binary(frame(b"wrong").freeze()))
+                .await
+                .unwrap();
+
+            ws.collect::<Vec<_>>().await
+        };
+
+        let messages = tokio::select! {
+            _ = server => panic!("the server stopped"),
+            messages = tokio::time::timeout(Duration::from_secs(5), client) => {
+                messages.expect("the websocket stayed open")
+            }
+        };
+
+        assert!(
+            messages
+                .iter()
+                .any(|message| matches!(message, Ok(Message::Close(_)))),
+            "no close frame, the client got: {messages:?}"
+        );
     }
 }

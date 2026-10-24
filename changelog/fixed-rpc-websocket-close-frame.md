@@ -1,1 +1,1 @@
-The remote client now closes the websocket with a close frame.
+The remote client and the server now close the websocket with a close frame.
