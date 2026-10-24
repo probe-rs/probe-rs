@@ -513,7 +513,7 @@ async fn handle_unix_rpc(stream: tokio::net::UnixStream, probe_broker: Arc<Probe
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::time::Duration;
+    use std::time::{Duration, Instant};
     use tokio_tungstenite::tungstenite::Message;
 
     const TIMEOUT: Duration = Duration::from_secs(1);
@@ -638,5 +638,80 @@ mod tests {
         .await;
 
         assert!(ended.is_err(), "the server dropped an idle client");
+    }
+
+    /// Runs a server, and blocks its thread for `stall` right after its second ping. A client on
+    /// another thread answers this ping after `pong_delay`, and the other pings at once. Returns
+    /// when the pings after the first arrived, and if the server ended the connection.
+    async fn stall_the_server(stall: Duration, pong_delay: Duration) -> (Vec<Instant>, bool) {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let (pinged_tx, pinged_rx) = tokio::sync::oneshot::channel();
+
+        let client = std::thread::spawn(move || {
+            let runtime = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .unwrap();
+            runtime.block_on(async {
+                let mut ws = log_in(address).await;
+                let mut pings = vec![];
+                let mut pinged_tx = Some(pinged_tx);
+                let ended = tokio::time::timeout(stall + TIMEOUT, async {
+                    while let Some(Ok(message)) = ws.next().await {
+                        if let Message::Ping(_) = message {
+                            if pings.is_empty() {
+                                _ = pinged_tx.take().unwrap().send(());
+                                // The client answers when it reads or writes again.
+                                tokio::time::sleep(pong_delay).await;
+                            }
+                            pings.push(Instant::now());
+                        }
+                    }
+                })
+                .await;
+                (pings, ended.is_ok())
+            })
+        });
+
+        let stall_server = async {
+            pinged_rx.await.unwrap();
+            std::thread::sleep(stall);
+            tokio::task::spawn_blocking(move || client.join().unwrap())
+                .await
+                .unwrap()
+        };
+
+        tokio::select! {
+            _ = serve(listener) => panic!("the server stopped"),
+            result = stall_server => result,
+        }
+    }
+
+    /// A long blocking call stops the server thread. The server must not drop a client that
+    /// answered a ping in this time.
+    #[tokio::test]
+    async fn the_server_keeps_a_client_after_a_stall() {
+        let (_, ended) = stall_the_server(TIMEOUT * 2, TIMEOUT / 5).await;
+
+        assert!(
+            !ended,
+            "the server dropped a client that answered the pings"
+        );
+    }
+
+    /// The server must not send the pings that it missed in a stall back to back.
+    #[tokio::test]
+    async fn the_server_sends_no_burst_of_pings_after_a_stall() {
+        let (pings, ended) = stall_the_server(TIMEOUT * 5 / 6, Duration::ZERO).await;
+
+        assert!(!ended, "the server dropped the client");
+        assert!(pings.len() >= 2, "only {} pings came", pings.len());
+        // A burst sends the pings microseconds apart.
+        let gap = pings.windows(2).map(|w| w[1] - w[0]).min().unwrap();
+        assert!(
+            gap > Duration::from_millis(10),
+            "two pings came {gap:?} apart"
+        );
     }
 }
