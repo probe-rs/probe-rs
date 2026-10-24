@@ -7,16 +7,15 @@ mod cmsis_verify;
 mod context;
 mod read_back;
 mod read_flash;
-mod sequence;
 
 pub(crate) use cmsis_verify::CmsisVerifyCompare;
 pub use context::CompareContext;
 pub(crate) use read_back::ReadBackCore;
 pub(crate) use read_flash::ReadFlashCompare;
-pub(crate) use sequence::FlashVerifyCompare;
 
 use std::fmt::Debug;
 use std::ops::Range;
+use std::sync::Arc;
 use std::time::Instant;
 
 use crate::config::NvmRegion;
@@ -64,7 +63,7 @@ impl<'a> SectorCheck<'a> {
         Some(content)
     }
 
-    /// Returns the content to check, with adjacent ranges joined, so that it compresses better.
+    /// Returns the content to check, with adjacent ranges joined.
     pub(crate) fn contiguous_ranges(&self) -> Vec<(u64, Vec<u8>)> {
         if let Some(content) = self.sector_content() {
             return vec![(self.sector.start, content)];
@@ -229,6 +228,26 @@ fn sector_checks(
             progress_size,
         }
     })
+}
+
+/// Runs each backend of `chain` on each region.
+///
+/// Returns one result for each sector, for each region.
+pub(crate) fn run_chain(
+    chain: &[Arc<dyn FlashCompare>],
+    mut regions: Vec<RegionCompare<'_>>,
+    mut context: CompareContext<'_>,
+    progress: &mut FlashProgress<'_>,
+    operation: ProgressOperation,
+) -> Result<Vec<Vec<CompareOutcome>>, FlashError> {
+    for backend in chain {
+        for region in &mut regions {
+            region.run(backend.as_ref(), &mut context, progress, operation)?;
+        }
+    }
+    context.finish()?;
+
+    Ok(regions.into_iter().map(RegionCompare::finish).collect())
 }
 
 /// The checks of one region, while the backends run.
