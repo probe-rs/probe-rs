@@ -72,6 +72,15 @@ pub enum FlashError {
         /// The name of the routine that was called.
         name: String,
     },
+    /// Calling a vendor function of the flash algorithm failed.
+    #[error("The call to the '{name}' vendor-specific function failed.")]
+    VendorFunctionFailed {
+        /// The name of the vendor function.
+        name: String,
+        /// The source error of this error.
+        #[source]
+        source: Box<dyn std::error::Error + 'static + Send + Sync>,
+    },
     /// Calling the given routine returned the given error code.
     #[error(
         "The execution of '{name}' failed with code {error_code}. This might indicate a problem with the flash algorithm."
@@ -171,13 +180,6 @@ pub enum FlashError {
     /// Flash content verification failed.
     #[error("Flash content verification failed.")]
     Verify,
-    /// Failed to read flash size.
-    #[error("Failed to read flash size.")]
-    FlashSizeFailed {
-        /// The source error of this error.
-        #[source]
-        source: Box<dyn std::error::Error + 'static + Send + Sync>,
-    },
     // TODO: 1 Add source of target definition
     // TODO: 2 Do this at target load time.
     /// The given chip has no RAM defined.
