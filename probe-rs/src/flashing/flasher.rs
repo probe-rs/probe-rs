@@ -1436,6 +1436,25 @@ impl ActiveFlasher<'_, '_, Verify> {
         Ok(result == 0)
     }
 
+    /// Compares `checks` with the signature function of the flash algorithm.
+    ///
+    /// Sets the result of each check, and returns the name of the hash. Returns `None` if the
+    /// algorithm has no known signature function.
+    ///
+    /// Do not use, only exposed with `pub` visibility for target-gen.
+    pub fn compare_with_signatures(
+        &mut self,
+        checks: &mut [SectorCheck<'_>],
+    ) -> Result<Option<&'static str>, FlashError> {
+        let Some(backend) = AlgorithmSignatures::new(self.flash_algorithm) else {
+            return Ok(None);
+        };
+
+        backend.compare_checks(self, checks)?;
+
+        Ok(Some(backend.hash_name()))
+    }
+
     /// Returns `true` if CMSIS `Verify` finds `data` at `address`.
     pub(super) fn cmsis_verify(&mut self, address: u64, data: &[u8]) -> Result<bool, FlashError> {
         let algo = self.flash_algorithm;

@@ -146,6 +146,36 @@ impl AlgorithmSignatures {
         })
     }
 
+    /// Returns the name of the hash that the signature function computes.
+    pub(crate) fn hash_name(&self) -> &'static str {
+        self.hash.name
+    }
+
+    /// Sets the result of each check that the signature function can sign.
+    pub(crate) fn compare_checks(
+        &self,
+        active: &mut ActiveFlasher<'_, '_, Verify>,
+        checks: &mut [SectorCheck<'_>],
+    ) -> Result<(), FlashError> {
+        let erased = active.flash_algorithm().flash_properties.erased_byte_value;
+        let entries = self.entries(checks, erased);
+        let results = self.sign(active, &entries)?;
+
+        for (idx, check) in checks.iter_mut().enumerate() {
+            let mut of_check = entries
+                .iter()
+                .zip(&results)
+                .filter(|(entry, _)| entry.check == idx)
+                .peekable();
+            if of_check.peek().is_none() {
+                continue;
+            }
+            check.outcome = check_outcome(of_check);
+        }
+
+        Ok(())
+    }
+
     /// Builds the entries for the checks. A check that cannot be signed gets no entry.
     fn entries(&self, checks: &[SectorCheck<'_>], erased: u8) -> Vec<Entry> {
         let mut entries = Vec::new();
@@ -284,23 +314,7 @@ impl FlashCompare for AlgorithmSignatures {
         checks: &mut [SectorCheck<'_>],
     ) -> Result<(), FlashError> {
         let mut active = context.algorithm()?;
-        let erased = active.flash_algorithm().flash_properties.erased_byte_value;
-        let entries = self.entries(checks, erased);
-        let results = self.sign(&mut active, &entries)?;
-
-        for (idx, check) in checks.iter_mut().enumerate() {
-            let mut of_check = entries
-                .iter()
-                .zip(&results)
-                .filter(|(entry, _)| entry.check == idx)
-                .peekable();
-            if of_check.peek().is_none() {
-                continue;
-            }
-            check.outcome = check_outcome(of_check);
-        }
-
-        Ok(())
+        self.compare_checks(&mut active, checks)
     }
 }
 
