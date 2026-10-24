@@ -768,7 +768,7 @@ pub async fn monitor(
     let terminate = async {
         let signal = terminate_signal().await;
         eprintln!("Received {signal}, exiting");
-        session.client().publish::<CancelTopic>(&()).await.unwrap();
+        send_cancel(session).await;
         pending().await
     };
 
@@ -923,7 +923,7 @@ pub async fn monitor(
                 DisplayMode::Exited => break,
             }
         }
-        session.client().publish::<CancelTopic>(&()).await.unwrap();
+        send_cancel(session).await;
         pending().await
     };
 
@@ -1174,7 +1174,7 @@ pub async fn test(
 
     let result = with_ctrl_c(test_and_log, async {
         token.cancel();
-        session.client().publish::<CancelTopic>(&()).await.unwrap();
+        send_cancel(session).await;
     })
     .await;
 
@@ -1294,6 +1294,14 @@ pub(crate) fn format_stack_frame(frame: &StackTraceFrame) -> String {
         .unwrap();
     }
     s
+}
+
+/// Asks the server to stop the running command. If the connection is gone, the command ends with
+/// that error, so a failed send is not an error here.
+async fn send_cancel(session: &SessionInterface) {
+    if let Err(error) = session.client().publish::<CancelTopic>(&()).await {
+        tracing::debug!("Failed to send the cancel: {error}");
+    }
 }
 
 /// Waits for SIGTERM (Unix) or Ctrl+Break (Windows), as sent by process supervisors.
