@@ -66,7 +66,9 @@ impl DapRpcConnection {
 
     /// Close the RPC connection and wait for a local in-process server to exit.
     pub(crate) async fn close(mut self) {
-        self.client.take();
+        if let Some(client) = self.client.take() {
+            client.close().await;
+        }
         if let Some(handle) = self.local_server.take() {
             let _ = handle.await;
         }

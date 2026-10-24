@@ -81,7 +81,10 @@ use probe_rs_rpc::stack_trace::{
 use probe_rs_rpc::test::{
     ListTestsRequest, RunTestRequest, Test, TestKickoffRequest, TestResult, Tests,
 };
-use probe_rs_rpc::transport::memory::{PostcardReceiver, PostcardSender, WireRx, WireTx};
+use probe_rs_rpc::transport::{
+    Closer,
+    memory::{PostcardReceiver, PostcardSender, WireRx, WireTx},
+};
 use probe_rs_rpc::{
     AttachEndpoint, BootEndpoint, BuildEndpoint, ChipInfoEndpoint, CleanUpRttEndpoint,
     ClearCoreDebugStateEndpoint, ClearRttControlBlockEndpoint, CoreClearHwBpsEndpoint,
@@ -186,6 +189,7 @@ where
     let (tx, rx) = ws_stream.split();
 
     let tx = WebsocketTx::new(tx);
+    let closer = tx.closer();
     tx.send(challenge_response).await.map_err(|err| {
         TransportError::Message(format!("Failed to send challenge response: {err:?}"))
     })?;
@@ -199,6 +203,7 @@ where
             })
         })),
     )
+    .with_closer(closer)
     .ensure_compatible()
     .await
 }
@@ -416,6 +421,7 @@ pub struct RpcClient {
     client: HostClient<WireError>,
     upload_cache: Arc<Mutex<UploadCache>>,
     is_localhost: bool,
+    closer: Option<Closer>,
 }
 
 impl Drop for RpcClient {
@@ -446,7 +452,27 @@ impl RpcClient {
             ),
             upload_cache: Arc::new(Mutex::new(UploadCache::default())),
             is_localhost: false,
+            closer: None,
         }
+    }
+
+    /// Sets the handle that [`RpcClient::close`] uses to close the connection.
+    pub fn with_closer(mut self, closer: Closer) -> Self {
+        self.closer = Some(closer);
+        self
+    }
+
+    /// Closes the connection for all clones of this client, and waits until the close message is sent.
+    pub async fn close(self) {
+        if let Some(closer) = &self.closer
+            && tokio::time::timeout(Duration::from_secs(2), closer.close())
+                .await
+                .is_err()
+        {
+            // A hung server must not stop the command from ending.
+            tracing::debug!("Timed out while closing the connection");
+        }
+        self.client.close();
     }
 
     pub fn is_local_session(&self) -> bool {
@@ -1920,37 +1946,36 @@ where
 
 #[cfg(all(test, feature = "remote"))]
 mod tests {
-    use super::{without_userinfo, worker_uri};
+    use super::{RpcClient, without_userinfo, worker_uri};
+    use futures_util::StreamExt as _;
+    use std::time::Duration;
+    use tokio::io::DuplexStream;
+    use tokio_tungstenite::{
+        WebSocketStream,
+        tungstenite::{Message, protocol::Role},
+    };
 
-    /// The client must end the websocket with a close frame, so that the
-    /// server can tell a clean exit from a lost connection.
-    #[tokio::test]
-    async fn dropping_the_client_closes_the_websocket() {
-        use futures_util::StreamExt as _;
+    fn websocket_client(client_ws: WebSocketStream<DuplexStream>) -> RpcClient {
         use probe_rs_rpc::transport::websocket::{WebsocketRx, WebsocketTx};
-        use std::time::Duration;
-        use tokio_tungstenite::{
-            WebSocketStream,
-            tungstenite::{Message, protocol::Role},
-        };
         use tokio_util::bytes::Bytes;
 
-        let (client_io, server_io) = tokio::io::duplex(4096);
-        let client_ws = WebSocketStream::from_raw_socket(client_io, Role::Client, None).await;
-        let mut server_ws = WebSocketStream::from_raw_socket(server_io, Role::Server, None).await;
-
         let (tx, rx) = client_ws.split();
-        let client = super::RpcClient::new_from_wire(
-            WebsocketTx::new(tx),
+        let tx = WebsocketTx::new(tx);
+        let closer = tx.closer();
+        RpcClient::new_from_wire(
+            tx,
             WebsocketRx::new(rx.map(|message| {
                 message.map(|message| match message {
                     Message::Binary(binary) => binary,
                     _ => Bytes::new(),
                 })
             })),
-        );
-        drop(client);
+        )
+        .with_closer(closer)
+    }
 
+    /// Reads the server side of the websocket until it ends, and checks for a close frame.
+    async fn assert_close_frame(mut server_ws: WebSocketStream<DuplexStream>) {
         let messages = tokio::time::timeout(Duration::from_secs(5), async {
             let mut messages = Vec::new();
             while let Some(message) = server_ws.next().await {
@@ -1967,6 +1992,45 @@ mod tests {
                 .any(|message| message.starts_with("Ok(Close(")),
             "no close frame, the server got: {messages:?}"
         );
+    }
+
+    /// The client must end the websocket with a close frame, so that the
+    /// server can tell a clean exit from a lost connection.
+    #[tokio::test]
+    async fn dropping_the_client_closes_the_websocket() {
+        let (client_io, server_io) = tokio::io::duplex(4096);
+        let client_ws = WebSocketStream::from_raw_socket(client_io, Role::Client, None).await;
+        let server_ws = WebSocketStream::from_raw_socket(server_io, Role::Server, None).await;
+
+        drop(websocket_client(client_ws));
+
+        assert_close_frame(server_ws).await;
+    }
+
+    /// A CLI command ends its runtime right after it is done with the client.
+    /// The close frame must be sent before that.
+    #[test]
+    fn the_close_frame_is_sent_before_the_runtime_stops() {
+        let (client_io, server_io) = tokio::io::duplex(4096);
+
+        let client_runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+        client_runtime.block_on(async {
+            let client_ws = WebSocketStream::from_raw_socket(client_io, Role::Client, None).await;
+            websocket_client(client_ws).close().await;
+        });
+        drop(client_runtime);
+
+        let server_runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+        server_runtime.block_on(async {
+            let server_ws = WebSocketStream::from_raw_socket(server_io, Role::Server, None).await;
+            assert_close_frame(server_ws).await;
+        });
     }
 
     #[test]

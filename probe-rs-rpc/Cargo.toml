@@ -19,7 +19,7 @@ shared-version = false
 [features]
 default = []
 clap = ["dep:clap", "dep:parse_int"]
-remote = ["dep:tokio-tungstenite", "dep:futures-util"]
+remote = ["dep:tokio-tungstenite"]
 
 [dependencies]
 serde = { workspace = true }
@@ -36,7 +36,7 @@ parse_int = { version = "0.9", optional = true }
 tokio-tungstenite = { version = "0.30", features = [
     "rustls-tls-webpki-roots",
 ], optional = true }
-futures-util = { version = "0.3", optional = true }
+futures-util = "0.3"
 
 [lints]
 workspace = true
