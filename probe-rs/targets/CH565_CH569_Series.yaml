@@ -1,0 +1,112 @@
+name: CH565 / CH569 Series
+# The WCH-Link firmware reports family byte 0x03 (CH56X) and a chip id of
+# 0x69000000 / 0x65000000 when it fills the field. A reported chip id of 0
+# matches nothing here, so `--chip` is required on firmware that leaves it blank.
+chip_detection:
+- !WchLink
+  mask: 0xff000000
+  variants:
+    0x65000000: CH565
+    0x69000000: CH569
+variants:
+- name: CH565
+  cores:
+  - name: main
+    type: riscv
+    core_access_options: !Riscv
+      hart_id: 0
+  memory_map:
+  # CodeFlash is 448 KiB at 0. DataFlash (32 KiB at 0x70000), the 24 KiB
+  # bootloader and the 8 KiB info block are not mapped: they are not part of
+  # the user image, and the data region is not programmed by this algorithm.
+  - !Nvm
+    name: CodeFlash
+    range:
+      start: 0x0
+      end: 0x70000
+    cores:
+    - main
+  # RAMS is 16 KiB at 0x20000000. The flash algorithm does not fit there
+  # together with its page buffers, so it is loaded into RAMX instead.
+  # RAMX is 32/64/96 KiB depending on the USER_MEM config word; the lower
+  # 32 KiB is present in every configuration (CH569DS1 table 2-3).
+  - !Ram
+    name: RAMS
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
+  - !Ram
+    name: RAMX
+    range:
+      start: 0x20020000
+      end: 0x20028000
+    cores:
+    - main
+  flash_algorithms:
+  - ch569-code-flash
+- name: CH569
+  cores:
+  - name: main
+    type: riscv
+    core_access_options: !Riscv
+      hart_id: 0
+  memory_map:
+  - !Nvm
+    name: CodeFlash
+    range:
+      start: 0x0
+      end: 0x70000
+    cores:
+    - main
+  - !Ram
+    name: RAMS
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
+  - !Ram
+    name: RAMX
+    range:
+      start: 0x20020000
+      end: 0x20028000
+    cores:
+    - main
+  flash_algorithms:
+  - ch569-code-flash
+flash_algorithms:
+- name: ch569-code-flash
+  description: CH565/CH569 CodeFlash
+  default: true
+  instructions: AREGziLMJspKyE7GNwUCIANFZUgFSRXBgUTBaQlEEwWADaaFlwAAAOeAoDUZ5RPVFAHOlON1pP4BSUqF8kBiRNJEQkmySQVhgoC3BQIgg8VlSInJ/XXpjRMFAAIXAwAAZwAjMgVFgoC3BQIgg8ZlSInGtxYAQCONBgCFRn0WEUcjg9VIY3jmAEGBEzV1ABNFFQCCgJcAAADngOA9twYCIAPHZkiFRmMKBxhjgQUWE1cFAZlHY+PnGDcHBwAJj2NutxYz56UADYtjGQcWQREixjcXAECDR0cAwYtjngcUM4ilALcHCABj6AcVgUJzcAQwtxYAQBMIcAWTB4AKI4AGASOA9gCDRkcAnUOT5sYIGUgjAtcAiUgVQyMNBwAjDXcAIwwHAYMGpwHjzgb+M46iACMNBwAjDQcAIw13ACMMFwGNR4MGpwHjzgb+k1YOAf0XIwzXACIO9fczjlVAkwYAEGNk3gATDgAQY4dVBAFPsw5WALOG7gGDxzYAg88WAAPEJgCDxgYA4gdCBKIPs+bfAMGP3Y5Uy4NGpwGT5gYBkUcDBKcB404E/v0XIw3XAO37EQ/jYM/9twYIAIMHpwHjzgf+Iw0HACMNBwAjDXcAIwxnAIMHpwHjzgf+A0CHAYMHpwHjzgf+g06HAYMHpwHjzgf+k/ceACMNBwCBx/0W1f4BqPKS4+qy8IFGIaCBRjWghUY3FQBAkwVwBRMGgAojALUAIwDFAANFRwATdTUHEwUFCCMCpwAyREEBNoWCgLcGAiADx2ZIhUZtz/3JE1cFAZlHY+jnDjcHBwAJj2Njtw4T9zUAee8BSLcXAECdSK1CEUOzA6gAI40HACONFwEjjFcADUeDhqcB484G/pPWAwF9FyOM1wCiA3X3g4anAePOBv4DwIcBg4anAePOBv6zgwVBkwYAEGPk0wCTAwAQA8CHAWOGBQcBTrMGDgFj7dUGM4fVQGNvZwaylgOHpwHjTgf+A8CHAQOHpwHjTgf+A8CHAQOHpwHjTgf+A8CHAQOHpwHjTgf+A8CHAdhLEQ6TXocBE18HAZNfhwAjgOYAo4D2ASOB5gGjgdYB429++IOGpwHjzgb+HpgjjQcA42u48oFGNoWCgDaFLoaXAAAA54DAEpFFAUU6hpcAAADngOARtwUCIAPFZUgJyQFFNxYAQCMNBgAjgwVIgoAFRYKAk9YFARlHBUZjZNcOtxYAQAPHRgBBi2nvc3AEMBMGcAUTB4AKI4DGACOA5gADxkYAE2bGCC1HI4LGAGMA5QIjjQYAHUYZRyONxgAjjOYAA4amAeNOBv4jjQYAHUYjjQYAI43GACOMpgANRQOGpgHjTgb+E9YFAX0VI4zGAKIFdfU3BQgAnUUVRwOGpgHjTgb+I40GACONBgAjjbYAI4zmAAOGpgHjTgb+A8CGAQOGpgHjTgb+A8aGAYOHpgHjzgf+BYojjQYAGcJ9FV39NxUAQJMFcAUTB4AKIwC1ACMA5QADxUYAE3U1BxMFBQgjgqYAMoWCgAAAAACXAAAA54DA/wAA
+  # The ELF is linked at 0x20020008. probe-rs prepends an 8-byte RISC-V header
+  # and subtracts it from this address, so the code lands back at 0x20020008.
+  # `target-gen elf --update` keeps the load address already in the file, so
+  # this value is the linked address and has to be set by hand.
+  # `pc_read` is `ReadFlash`: a halted debug read of CodeFlash returns the
+  # placeholder `11 bf f9 f7`, so verify goes through command `0x0b`.
+  load_address: 0x20020008
+  pc_init: 0x68
+  pc_uninit: 0x360
+  pc_program_page: 0x9c
+  pc_erase_sector: 0x4a
+  pc_erase_all: 0x0
+  pc_read: 0x23e
+  data_section_offset: 0x480
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x70000
+    # One `ProgramPage` call. The erase block is the 4 KiB sector below,
+    # command `0x20`; a full erase uses `0xD8` in 64 KiB steps.
+    page_size: 0x100
+    erased_byte_value: 0xff
+    program_page_timeout: 500
+    erase_sector_timeout: 1000
+    sectors:
+    - size: 0x1000
+      address: 0x0
+  cores:
+  - main

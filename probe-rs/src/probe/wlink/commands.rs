@@ -91,6 +91,12 @@ impl WchLinkCommandResponse for u8 {
     }
 }
 
+impl WchLinkCommandResponse for Vec<u8> {
+    fn from_payload(bytes: &[u8]) -> Result<Self, WchLinkError> {
+        Ok(bytes.to_vec())
+    }
+}
+
 /// Get current probe info, version, etc
 #[derive(Debug)]
 pub struct GetProbeInfo;
@@ -156,6 +162,21 @@ impl WchLinkCommand for AttachChip {
 
     fn payload(&self) -> Vec<u8> {
         vec![0x02]
+    }
+}
+
+/// CH565/CH569 post-attach setup. wlink sends `81 0d 01 04` for the CH56X
+/// family right after attach. Without it, accessing the flash window fails
+/// with an abstract command exception, so the device cannot be flashed.
+#[derive(Debug)]
+pub struct EnableCh56xFlash;
+
+impl WchLinkCommand for EnableCh56xFlash {
+    const COMMAND_ID: CommandId = CommandId::Control;
+    type Response = Vec<u8>;
+
+    fn payload(&self) -> Vec<u8> {
+        vec![0x04]
     }
 }
 

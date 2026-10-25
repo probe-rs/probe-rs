@@ -368,6 +368,14 @@ impl DebugProbe for WchLink {
             self.device.send_command(commands::UnprotectFlash)?;
         }
 
+        // wlink sends `81 0d 01 04` for the CH56X family right after attach.
+        // Without it, accesses to the flash window fail with an abstract
+        // command exception and no flashing is possible.
+        if self.chip_family == RiscvChip::CH56X {
+            let resp = self.device.send_command(commands::EnableCh56xFlash)?;
+            tracing::debug!("CH56X flash setup (0x0d/0x04) response: {resp:02x?}");
+        }
+
         Ok(())
     }
 
