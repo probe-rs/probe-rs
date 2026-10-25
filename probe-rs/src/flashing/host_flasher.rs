@@ -490,6 +490,7 @@ impl HostSideFlasher {
                 continue;
             }
             run_backend(
+                &backend,
                 &regions,
                 &checks,
                 &mut state,

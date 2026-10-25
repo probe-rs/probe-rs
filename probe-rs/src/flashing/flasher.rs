@@ -664,6 +664,7 @@ impl Flasher {
                         continue;
                     }
                     run_backend(
+                        backend,
                         &regions,
                         &checks,
                         &mut state,
@@ -694,6 +695,7 @@ impl Flasher {
                     let (mut active, _) = self.init::<Verify>(session, &mut algo_progress, None)?;
                     for backend in group {
                         run_backend(
+                            backend,
                             &regions,
                             &checks,
                             &mut state,

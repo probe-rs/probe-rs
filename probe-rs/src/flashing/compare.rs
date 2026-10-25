@@ -367,10 +367,7 @@ pub(crate) fn split_by_region(
     region_count: usize,
 ) -> Vec<Vec<CompareOutcome>> {
     let mut per_region = vec![Vec::new(); region_count];
-    for ((region_index, check, _), outcome) in checks.iter().zip(outcomes) {
-        if outcome != CompareOutcome::Match {
-            tracing::debug!("Sector {:#010x?}: {outcome:?}", check.sector);
-        }
+    for ((region_index, _, _), outcome) in checks.iter().zip(outcomes) {
         per_region[*region_index].push(outcome);
     }
     per_region
@@ -378,10 +375,12 @@ pub(crate) fn split_by_region(
 
 /// Runs one backend on the checks that have no result yet.
 ///
-/// `checks` holds the region index, the check, and the progress size of each sector. A cheap
-/// backend gets all sectors of a region in one call. A costly backend gets one sector in each
-/// call, so that the progress moves while it runs.
+/// `backend` names the backend in the log. `checks` holds the region index, the check, and the
+/// progress size of each sector. A cheap backend gets all sectors of a region in one call. A
+/// costly backend gets one sector in each call, so that the progress moves while it runs.
+#[expect(clippy::too_many_arguments)]
 pub(crate) fn run_backend(
+    backend: &dyn Debug,
     regions: &[NvmRegion],
     checks: &[IndexedCheck<'_>],
     state: &mut CompareState,
@@ -413,6 +412,10 @@ pub(crate) fn run_backend(
 
             run(region, &batch, &mut out)?;
             state.apply(batch_indices, &out);
+
+            for (check, outcome) in batch.iter().zip(&out) {
+                tracing::debug!("{backend:?}: sector {:#010x?}: {outcome:?}", check.sector);
+            }
 
             let done = batch_indices
                 .iter()

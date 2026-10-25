@@ -159,6 +159,7 @@ impl FlashLayout {
             .iter()
             .map(|sector| sector.address..sector.address + sector.size)
             .collect::<Vec<_>>();
+        log_prune(&ranges, outcomes);
         let outcome_at = |address: u64| {
             ranges
                 .iter()
@@ -269,6 +270,27 @@ impl FlashLayout {
         }
 
         pieces
+    }
+}
+
+/// Logs the action for each run of adjacent sectors with the same compare result.
+fn log_prune(ranges: &[Range<u64>], outcomes: &[CompareOutcome]) {
+    let mut start = 0;
+    for end in 1..=ranges.len() {
+        if end < ranges.len()
+            && outcomes[end] == outcomes[start]
+            && ranges[end].start == ranges[end - 1].end
+        {
+            continue;
+        }
+        let range = ranges[start].start..ranges[end - 1].end;
+        let action = match outcomes[start] {
+            CompareOutcome::Match => "skip, the flash matches the image",
+            CompareOutcome::Empty => "program, the flash is erased",
+            CompareOutcome::Mismatch | CompareOutcome::Unsupported => "erase and program",
+        };
+        tracing::info!("Sectors {range:#010x?}: {action}");
+        start = end;
     }
 }
 

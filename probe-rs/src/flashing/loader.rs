@@ -936,7 +936,11 @@ impl FlashLoader {
             return Ok(());
         }
 
-        if !options.do_chip_erase && !options.skip_erase {
+        if options.do_chip_erase {
+            tracing::info!("Chip erase: no compare, flashing all sectors");
+        } else if options.skip_erase {
+            tracing::info!("Erase skipped: no compare, programming all pages");
+        } else {
             self.compare_and_prune(&mut algos, session, &mut options)?;
         }
 
@@ -1242,6 +1246,13 @@ impl FlashLoader {
             .iter()
             .map(|flasher| flasher.can_compare(session, options.preverify))
             .collect::<Vec<_>>();
+
+        for (flasher, _) in algos.iter().zip(&compared).filter(|(_, c)| !**c) {
+            tracing::info!(
+                "{}: no compare method, flashing all sectors",
+                flasher.algorithm_name()
+            );
+        }
 
         for (flasher, _) in algos.iter_mut().zip(&compared).filter(|(_, c)| **c) {
             let size = flasher.compute_verify_size();
