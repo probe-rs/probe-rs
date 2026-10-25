@@ -53,7 +53,7 @@ pub struct DebugInfo {
 }
 
 impl DebugInfo {
-    /// Read debug info directly from a ELF file.
+    /// Read debug info directly from an ELF file.
     pub fn from_file<P: AsRef<Path>>(path: P) -> Result<DebugInfo, DebugError> {
         let data = std::fs::read(path.as_ref())?;
 

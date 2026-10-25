@@ -410,7 +410,8 @@ impl ProtocolHandler {
     }
 
     /// Put a bit on TDI and possibly read one from TDO.
-    /// to receive the bytes from this operations call [`ProtocolHandler::flush`]
+    ///
+    /// To receive the bytes from these operations, call [`ProtocolHandler::flush`].
     ///
     /// Note that if the internal buffer is exceeded bytes will be automatically flushed to usb device
     pub fn shift_bit(&mut self, tms: bool, tdi: bool, cap: bool) -> Result<(), DebugProbeError> {

@@ -43,7 +43,7 @@ impl BulkWriteExt for Endpoint<Bulk, Out> {
             // Request cancellation...
             self.cancel_all();
 
-            // ...and then immediately drain the completion. Whether the the response is the
+            // ...and then immediately drain the completion. Whether the response is the
             // result of the original write, the cancellation, or a timeout of the cancellation, we
             // drop it and return a timeout.
             let _ = self.wait_next_complete(Duration::from_millis(100));
@@ -77,7 +77,7 @@ impl BulkReadExt for Endpoint<Bulk, In> {
             // Request cancellation...
             self.cancel_all();
 
-            // ...and then immediately drain the completion. Whether the the response is the
+            // ...and then immediately drain the completion. Whether the response is the
             // result of the original read, the cancellation, or a timeout of the cancellation, we
             // drop it and return a timeout.
             let _ = self.wait_next_complete(Duration::from_millis(100));

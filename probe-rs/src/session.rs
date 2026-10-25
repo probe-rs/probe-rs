@@ -1174,7 +1174,7 @@ fn get_target_from_selector(
 }
 
 /// The `Permissions` struct represents what a [Session] is allowed to do with a target.
-/// Some operations can be irreversible, so need to be explicitly allowed by the user.
+/// Some operations can be irreversible, so they need to be explicitly allowed by the user.
 ///
 /// # Example
 ///

@@ -740,7 +740,7 @@ impl JLink {
         self.require_interface_selected(Interface::Jtag)?;
 
         let mut has_status_byte = false;
-        // There's 3 commands for doing a JTAG transfer. The older 2 are obsolete with hardware
+        // There are 3 commands for doing a JTAG transfer. The older 2 are obsolete with hardware
         // version 5 and above, which adds the 3rd command. Unfortunately we cannot reliably use the
         // HW version to determine this since some embedded J-Link probes have a HW version of
         // 1.0.0, but still support SWD, so we use the `SELECT_IF` capability instead.

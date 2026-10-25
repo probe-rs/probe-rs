@@ -61,7 +61,7 @@ impl SteppingMode {
         for _ in 0..10 {
             let post_step_target = match self {
                 SteppingMode::StepInstruction => {
-                    // First deal with the the fast/easy case.
+                    // First deal with the fast/easy case.
                     program_counter = core.step()?.pc;
                     core_status = core.status()?;
                     return Ok((core_status, program_counter));

@@ -26,7 +26,7 @@ impl ScanChainElement {
 /// Configuration for JTAG tunneling.
 ///
 /// This JTAG tunnel wraps JTAG IR and DR accesses as DR access to a specific instruction. For
-/// example, this can be used to access a Risc-V core in an FPGA using the same JTAG cable that
+/// example, this can be used to access a RISC-V core in an FPGA using the same JTAG cable that
 /// configures the FPGA.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct RiscvJtagTunnel {
@@ -55,7 +55,7 @@ pub struct Jtag {
     #[serde(default)]
     pub force_scan_chain: bool,
 
-    /// Describes JTAG tunnel for Risc-V
+    /// Describes JTAG tunnel for RISC-V.
     #[serde(default)]
     pub riscv_tunnel: Option<RiscvJtagTunnel>,
 }
@@ -236,7 +236,7 @@ pub struct ArmCoreAccessOptions {
     pub jtag_tap: Option<usize>,
 }
 
-/// The data required to access a Risc-V core
+/// The data required to access a RISC-V core.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RiscvCoreAccessOptions {
     /// The hart id

@@ -1009,10 +1009,10 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
         }
     }
 
-    /// Perform a SWD line reset or enter the JTAG Run-Test-Idle state, and then try to connect to a debug port.
+    /// Perform an SWD line reset or enter the JTAG Run-Test-Idle state, and then try to connect to a debug port.
     ///
     /// This is executed as part of the standard `debug_port_setup` sequence,
-    /// and when switching between debug ports in a SWD multi-drop configuration.
+    /// and when switching between debug ports in an SWD multi-drop configuration.
     ///
     /// If the `dp` parameter is `DpAddress::Default`, a read of the DPIDR register will be
     /// performed after the line reset.
@@ -1285,7 +1285,7 @@ pub trait DebugEraseSequence: Send + Sync {
     }
 }
 
-/// Perform a SWD line reset (SWDIO high for 50 clock cycles)
+/// Perform an SWD line reset (SWDIO high for 50 clock cycles)
 ///
 /// After the line reset, SWDIO will be kept low for `swdio_low_cycles` cycles.
 fn swd_line_reset(interface: &mut dyn DebugPortWire, swdio_low_cycles: u8) -> Result<(), ArmError> {
