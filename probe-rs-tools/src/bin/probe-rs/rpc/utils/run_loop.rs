@@ -72,12 +72,19 @@ impl RunLoop {
             catch_hlt,
         } = vector_catch;
 
+        let catches = [
+            (catch_hardfault, VectorCatchCondition::HardFault),
+            (catch_reset, VectorCatchCondition::CoreReset),
+            (catch_svc, VectorCatchCondition::Svc),
+            (catch_hlt, VectorCatchCondition::Hlt),
+        ];
+        let needs_vector_catch = catches.iter().any(|(enabled, _)| *enabled);
+
         // Prepare run loop
         {
             let mut session = shared_session.session_blocking();
             let mut core = session.core(self.core_id)?;
             let memory_port = poller.memory_port(&core);
-            let needs_vector_catch = catch_hardfault || catch_reset || catch_svc || catch_hlt;
 
             if needs_vector_catch {
                 if !core.core_halted()? {
@@ -98,13 +105,6 @@ impl RunLoop {
                         core.step()?;
                     }
                 }
-
-                let catches = [
-                    (catch_hardfault, VectorCatchCondition::HardFault),
-                    (catch_reset, VectorCatchCondition::CoreReset),
-                    (catch_svc, VectorCatchCondition::Svc),
-                    (catch_hlt, VectorCatchCondition::Hlt),
-                ];
 
                 for (enabled, condition) in catches {
                     let result = if enabled {
@@ -140,17 +140,43 @@ impl RunLoop {
         // Clean up run loop
         let mut session = shared_session.session_blocking();
         // Always clean up after RTT but don't overwrite the original result.
-        let mut core = session.core(self.core_id)?;
-        let poller_exit_result = match poller.memory_port(&core) {
-            Some(index) => {
-                drop(core);
-                session
-                    .memory_access_port(index)
-                    .map_err(Into::into)
-                    .and_then(|mut port| poller.exit(&mut port))
+        let poller_exit_result = {
+            let mut core = session.core(self.core_id)?;
+            match poller.memory_port(&core) {
+                Some(index) => {
+                    drop(core);
+                    session
+                        .memory_access_port(index)
+                        .map_err(Into::into)
+                        .and_then(|mut port| poller.exit(&mut port))
+                }
+                None => poller.exit(&mut core),
             }
-            None => poller.exit(&mut core),
         };
+
+        // Disarm the catches enabled above. They live in debug registers that only a power-on
+        // reset clears, so left armed they would halt the core on the next reset.
+        if needs_vector_catch {
+            match session.core(self.core_id) {
+                Ok(mut core) => {
+                    for (enabled, condition) in catches {
+                        if !enabled {
+                            continue;
+                        }
+                        match core.disable_vector_catch(condition) {
+                            Ok(_) | Err(Error::NotImplemented(_)) => {}
+                            Err(e) => tracing::error!(
+                                "Failed to clear vector catch {:?}: {:?}",
+                                condition,
+                                e
+                            ),
+                        }
+                    }
+                }
+                Err(e) => tracing::error!("Failed to clear vector catches: {:?}", e),
+            }
+        }
+
         if result.is_ok() {
             // If the result is Ok, we return the potential error during cleanup.
             poller_exit_result?;
