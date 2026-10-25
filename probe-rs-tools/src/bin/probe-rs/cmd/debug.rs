@@ -35,6 +35,7 @@ use crate::util::common_options::BinaryDownloadOptions;
 use crate::util::rtt::RttConfig;
 use crate::util::style::{Prompt, probe_rs_color_enabled};
 use crate::{CoreOptions, util::common_options::ProbeOptions};
+use probe_rs_rpc::flash::BootInfo;
 use probe_rs_rpc::format::FormatOptions;
 use probe_rs_rpc_client::RpcClient;
 
@@ -208,12 +209,13 @@ pub struct Cmd {
 
 impl Cmd {
     pub async fn run(self, client: RpcClient, utc_offset: UtcOffset) -> anyhow::Result<()> {
-        let preattached_session = if self.launch {
+        // The DAP server needs `boot_info` to decide how to start image
+        let (preattached_session, boot_info) = if self.launch {
             if let Some(path) = &self.binary {
                 let (_file_meta, elf_meta) = parse_metadata(path).await?;
                 let session =
                     cli::attach_probe(&client, self.common.clone(), elf_meta, false).await?;
-                cli::flash(
+                let boot_info = cli::flash(
                     &session,
                     path,
                     FormatOptions::default(),
@@ -222,9 +224,9 @@ impl Cmd {
                     None,
                 )
                 .await?;
-                Some(session)
+                (Some(session), boot_info)
             } else {
-                None
+                (None, BootInfo::Other)
             }
         } else {
             // The DAP "attach" request cannot ask for a probe. The core stays halted, like in
@@ -234,7 +236,10 @@ impl Cmd {
             } else {
                 Default::default()
             };
-            Some(cli::attach_probe(&client, self.common.clone(), elf_meta, false).await?)
+            (
+                Some(cli::attach_probe(&client, self.common.clone(), elf_meta, false).await?),
+                BootInfo::Other,
+            )
         };
 
         let (req_sender, req_receiver) = mpsc::channel(100);
@@ -356,6 +361,7 @@ impl Cmd {
         let server = async move {
             let mut debugger = Debugger::new(utc_offset, None)?;
             debugger.preattached_session = preattached_session;
+            debugger.boot_info = boot_info;
             debugger
                 .debug_session_rpc(&client, debug_adapter)
                 .await
