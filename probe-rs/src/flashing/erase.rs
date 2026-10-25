@@ -57,6 +57,7 @@ pub fn erase_all(
         let core = target.core_index_by_name(core_name).unwrap();
         let algo = match FlashLoader::get_flash_algorithm_for_region(
             &region,
+            &region.range,
             target,
             core_name,
             &[],
@@ -243,8 +244,13 @@ pub fn erase(
             .first()
             .ok_or_else(|| FlashError::NoNvmCoreAccess(region.clone()))?;
 
-        let algo =
-            FlashLoader::get_flash_algorithm_for_region(region, session.target(), core_name, &[])?;
+        let algo = FlashLoader::get_flash_algorithm_for_region(
+            region,
+            &region.range,
+            session.target(),
+            core_name,
+            &[],
+        )?;
 
         let entry = algos
             .entry((algo.name.clone(), core_name.clone()))
@@ -426,8 +432,13 @@ pub fn run_blank_check(
             .first()
             .ok_or_else(|| FlashError::NoNvmCoreAccess(region.clone()))?;
 
-        let algo =
-            FlashLoader::get_flash_algorithm_for_region(region, session.target(), core_name, &[])?;
+        let algo = FlashLoader::get_flash_algorithm_for_region(
+            region,
+            &region.range,
+            session.target(),
+            core_name,
+            &[],
+        )?;
 
         let entry = algos
             .entry((algo.name.clone(), core_name.clone()))
