@@ -1,6 +1,6 @@
 # Target attachment flow
 
-Overview over the steps which happen when
+Overview of the steps which happen when
 attaching to an ARM target.
 
 ```mermaid

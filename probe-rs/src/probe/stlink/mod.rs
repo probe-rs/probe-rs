@@ -667,7 +667,7 @@ impl<D: StLinkUsb> StLink<D> {
     /// ST-Links, we can only use AP 0. If an AP other than 0 is used on these
     /// probes, an error is returned.
     fn select_ap(&mut self, ap: u8) -> Result<(), DebugProbeError> {
-        // Check if we can use APs other an AP 0.
+        // Check if we can use APs other than AP 0.
         // Older versions of the ST-Link software don't support this.
         if self.hw_version < 3 && self.jtag_version < Self::MIN_JTAG_VERSION_MULTI_AP {
             if ap != 0 {

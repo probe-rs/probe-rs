@@ -4,7 +4,7 @@ use crate::MemoryInterface;
 
 /// A mock memory implementation that can be used for testing
 ///
-/// It implements the `MemoryInterface` trait and allows to add ranges of bytes that can be read back.
+/// It implements the `MemoryInterface` trait and allows the caller to add ranges of bytes that can be read back.
 #[derive(Debug, Default)]
 pub struct MockMemory {
     /// Sorted list of ranges

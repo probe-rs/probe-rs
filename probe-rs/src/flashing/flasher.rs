@@ -159,7 +159,7 @@ impl LoadedRegion {
 
 /// A structure to control the flash of an attached microchip.
 ///
-/// Once constructed it can be used to program date to the flash.
+/// Once constructed it can be used to program data to the flash.
 pub struct Flasher {
     pub(super) core_index: usize,
     pub(super) flash_algorithm: FlashAlgorithm,

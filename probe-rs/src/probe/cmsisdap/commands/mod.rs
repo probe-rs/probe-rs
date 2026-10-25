@@ -665,7 +665,7 @@ pub(crate) fn may_be_out_of_step(error: &CmsisDapError) -> bool {
 
 /// Whether an error says the probe answered with something that was not a reply to what was asked.
 ///
-/// A timeout or a USB failure says the probe is gone or silent, which asking again does not fix.
+/// A timeout or a USB failure says the probe is gone or silent, and asking again does not fix that.
 /// These say a reply arrived and made no sense as an answer to the question, which is what a
 /// backlog from an earlier session looks like.
 pub(crate) fn reply_is_not_ours(error: &CmsisDapError) -> bool {

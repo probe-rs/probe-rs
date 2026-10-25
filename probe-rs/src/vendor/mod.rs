@@ -57,7 +57,7 @@ pub trait Vendor: Send + Sync + std::fmt::Display {
         Ok(None)
     }
 
-    /// Tries to identify an RISC-V chip. Returns `Some(target name)` on success.
+    /// Tries to identify a RISC-V chip. Returns `Some(target name)` on success.
     fn try_detect_riscv_chip(
         &self,
         _registry: &Registry,
