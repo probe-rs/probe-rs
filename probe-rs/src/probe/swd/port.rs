@@ -545,8 +545,7 @@ fn remap_results(
 
     let mut logical_results = Results::with_capacity(logical.len() + pins_handles.len());
     for handle_id in pins_handles {
-        let handle = Handle::from_parts(handle_id.clone(), Box::new(|result| result));
-        if let Ok(result) = expanded_results.take(handle) {
+        if let Some(result) = expanded_results.take_id(handle_id) {
             logical_results.push(handle_id, result);
         }
     }
@@ -562,15 +561,10 @@ fn remap_results(
 
     for (index, handle_id) in read_handles.iter().enumerate() {
         if let Some(handle_id) = handle_id {
-            let handle = Handle::from_parts(
-                handle_id.clone(),
-                Box::new(|result| match result {
-                    CommandResult::U32(value) => value,
-                    _ => panic!("unexpected CommandResult variant for an SWD read"),
-                }),
-            );
-            if let Ok(value) = expanded_results.take(handle) {
-                expanded_read_values[index] = Some(value);
+            match expanded_results.take_id(handle_id) {
+                Some(CommandResult::U32(value)) => expanded_read_values[index] = Some(value),
+                Some(_) => panic!("unexpected CommandResult variant for an SWD read"),
+                None => {}
             }
         }
     }
