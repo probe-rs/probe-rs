@@ -16,7 +16,8 @@ use crate::{
         memory::ArmMemoryInterface,
         sequences::{ArmDebugSequence, DebugFlashSequence},
     },
-    config::MemoryApExt,
+    config::{MemoryApExt, NvmRegion},
+    flashing::{CompareCost, CompareOutcome, FlashCompare, SectorCheck, compare_read_back},
 };
 
 const FMC_BASE: u64 = 0x5200_2000;
@@ -217,6 +218,10 @@ impl ArmDebugSequence for Gd32H7Sequence {
     fn debug_flash_sequence(&self) -> Option<Arc<dyn DebugFlashSequence>> {
         Some(Arc::new(Gd32H7FlashSequence))
     }
+
+    fn flash_compare(&self) -> Option<Arc<dyn FlashCompare>> {
+        Some(Arc::new(Gd32H7ReadBack))
+    }
 }
 
 /// Decode the ITCM/DTCM allocation fields in FMC_OBSTAT1_EFT.
@@ -363,6 +368,34 @@ impl Gd32H7FlashSequence {
     }
 }
 
+/// Compares flash by reading it back through the memory AP of the default core.
+#[derive(Debug)]
+struct Gd32H7ReadBack;
+
+impl FlashCompare for Gd32H7ReadBack {
+    fn cost(&self) -> CompareCost {
+        CompareCost::Costly
+    }
+
+    fn compare(
+        &self,
+        session: &mut Session,
+        _core_index: usize,
+        _region: &NvmRegion,
+        checks: &[SectorCheck<'_>],
+        out: &mut [CompareOutcome],
+    ) -> Result<(), Error> {
+        let mut memory = Gd32H7FlashSequence::memory(session)?;
+        for (check, out) in checks.iter().zip(out.iter_mut()) {
+            *out = compare_read_back(check, |address, data| {
+                memory.read(address, data).map_err(Error::from)
+            })?;
+        }
+
+        Ok(())
+    }
+}
+
 impl DebugFlashSequence for Gd32H7FlashSequence {
     fn prepare_flash(&self, session: &mut Session) -> Result<(), Error> {
         {
@@ -414,15 +447,6 @@ impl DebugFlashSequence for Gd32H7FlashSequence {
         }
         memory.flush()?;
         Self::finish_operation(&mut *memory)
-    }
-
-    fn verify(&self, session: &mut Session, address: u64, data: &[u8]) -> Result<bool, Error> {
-        Self::check_page(address, data)?;
-
-        let mut memory = Self::memory(session)?;
-        let mut actual = vec![0u8; data.len()];
-        memory.read(address, &mut actual)?;
-        Ok(actual == data)
     }
 
     fn finish_flash(&self, session: &mut Session) -> Result<(), Error> {

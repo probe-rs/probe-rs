@@ -123,11 +123,19 @@ pub struct DownloadOptions<'p> {
     /// If this flag is set to true, probe-rs will try to use the chips built in method to do a full chip erase if one is available.
     /// This is often faster than erasing a lot of single sectors.
     /// So if you do not need the old contents of the flash, this is a good option.
+    ///
+    /// A chip erase disables the compare, so all sectors are programmed.
     pub do_chip_erase: bool,
     /// If the chip was pre-erased with external erasers, this flag can set to true to skip erasing
     /// It may be useful for mass production.
+    ///
+    /// This disables the compare, so all sectors are programmed.
     pub skip_erase: bool,
-    /// Before flashing, read back the flash contents to skip up-to-date regions.
+    /// Also compare with the methods that move the flash contents over the debug link.
+    ///
+    /// Before flashing, probe-rs compares each erase sector with the image, and skips the
+    /// sectors that hold the image already. Without this option, only the methods that
+    /// compare signatures run, and a sector that they cannot check is flashed.
     pub preverify: bool,
     /// After flashing, read back all the flashed data to verify it has been written correctly.
     pub verify: bool,

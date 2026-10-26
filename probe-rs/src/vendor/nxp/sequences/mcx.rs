@@ -377,16 +377,16 @@ impl MCX {
 }
 
 impl ArmDebugSequence for MCX {
-    /// Verify flash with the FMU's MISR instead of reading the image back.
+    /// Compare flash with the FMU's MISR instead of reading the image back.
     ///
     /// Restricted to `VARIANT_FMU_MISR`, the parts whose reference manual places the FMU
     /// register block at 0x4009_5000 and documents the Read into MISR command. Launching a
     /// flash command at an address that has not been confirmed would write to whatever else
     /// lives there, so every other MCX part keeps reading the image back until its own
     /// manual has been checked.
-    fn flash_verify_sequence(&self) -> Option<Arc<dyn crate::flashing::FlashVerify>> {
+    fn flash_compare(&self) -> Option<Arc<dyn crate::flashing::FlashCompare>> {
         if self.is_variant(Self::VARIANT_FMU_MISR) {
-            Some(Arc::new(super::mcx_verify::McxMisrVerify))
+            Some(Arc::new(super::mcx_verify::McxMisrCompare))
         } else {
             None
         }
