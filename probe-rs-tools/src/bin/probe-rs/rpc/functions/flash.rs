@@ -25,7 +25,7 @@ fn flash_request_download_options(request: &FlashRequest) -> flashing::DownloadO
     options.keep_unwritten_bytes = request.options.keep_unwritten_bytes;
     options.do_chip_erase = request.options.do_chip_erase;
     options.skip_erase = request.options.skip_erase;
-    options.preverify = false;
+    options.preverify = request.options.preverify;
     options.verify = request.options.verify;
     options.disable_double_buffering = request.options.disable_double_buffering;
     options.preferred_algos = request.options.preferred_algos.clone();
@@ -346,6 +346,7 @@ pub(crate) mod convert {
 
     pub(crate) fn to_wire_operation(operation: flashing::ProgressOperation) -> Operation {
         match operation {
+            flashing::ProgressOperation::Compare => Operation::Compare,
             flashing::ProgressOperation::Fill => Operation::Fill,
             flashing::ProgressOperation::Erase => Operation::Erase,
             flashing::ProgressOperation::Program => Operation::Program,
