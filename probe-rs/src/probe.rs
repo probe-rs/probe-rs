@@ -727,9 +727,9 @@ impl Probe {
         self.inner.get_target_voltage()
     }
 
-    /// Try to convert the probe into a concrete probe type.
-    pub fn try_into<P: DebugProbe>(&mut self) -> Option<&mut P> {
-        (self.inner.as_mut() as &mut dyn Any).downcast_mut::<P>()
+    /// Returns the probe driver. Downcast it through [`Any`] to use a specific driver's own API.
+    pub fn driver_mut(&mut self) -> &mut dyn DebugProbe {
+        self.inner.as_mut()
     }
 }
 

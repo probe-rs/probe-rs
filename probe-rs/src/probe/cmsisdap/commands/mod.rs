@@ -100,6 +100,12 @@ pub enum SendError {
     /// Command ID in response ({0:#02x}) does not match sent command ID ({1} - {_1.id():#02x}).
     CommandIdMismatch(u8, Command),
 
+    /// CMSIS-DAP vendor command ID {0:#04x} is outside the range 0x80 through 0xFE.
+    InvalidVendorCommandId(u8),
+
+    /// Vendor command payload has {actual} bytes, but the packet holds at most {maximum}.
+    VendorPayloadTooLarge { actual: usize, maximum: usize },
+
     /// String in response is not valid UTF-8.
     ///
     /// Strings are required to be UTF-8 encoded by the
@@ -613,6 +619,8 @@ pub enum CommandId {
 pub enum Command {
     /// A command that CMSIS-DAP defines.
     Standard(CommandId),
+    /// A vendor command.
+    Vendor(u8),
 }
 
 impl Command {
@@ -620,6 +628,7 @@ impl Command {
     pub fn id(self) -> u8 {
         match self {
             Command::Standard(command) => command as u8,
+            Command::Vendor(id) => id,
         }
     }
 }
@@ -628,6 +637,7 @@ impl std::fmt::Display for Command {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Command::Standard(command) => write!(f, "{command:?}"),
+            Command::Vendor(id) => write!(f, "Vendor {id:#04x}"),
         }
     }
 }
@@ -643,6 +653,38 @@ pub(crate) trait Request {
 
     /// Parse the response to this request from received bytes.
     fn parse_response(&self, buffer: &[u8]) -> Result<Self::Response, SendError>;
+}
+
+/// Sends an opaque CMSIS-DAP vendor command.
+pub(super) struct VendorCommandRequest<'a> {
+    pub(super) command_id: u8,
+    pub(super) payload: &'a [u8],
+}
+
+impl Request for VendorCommandRequest<'_> {
+    fn command(&self) -> Command {
+        Command::Vendor(self.command_id)
+    }
+
+    type Response = Vec<u8>;
+
+    fn to_bytes(&self, buffer: &mut [u8]) -> Result<usize, SendError> {
+        if !(0x80..=0xFE).contains(&self.command_id) {
+            return Err(SendError::InvalidVendorCommandId(self.command_id));
+        }
+        if self.payload.len() > buffer.len() {
+            return Err(SendError::VendorPayloadTooLarge {
+                actual: self.payload.len(),
+                maximum: buffer.len(),
+            });
+        }
+        buffer[..self.payload.len()].copy_from_slice(self.payload);
+        Ok(self.payload.len())
+    }
+
+    fn parse_response(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
+        Ok(buffer.to_vec())
+    }
 }
 
 /// Send a request and take its reply. After a failure that can leave a reply behind, bring the
