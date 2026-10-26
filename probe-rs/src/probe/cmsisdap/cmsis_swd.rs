@@ -673,8 +673,11 @@ impl SwdProbe for CmsisDap {
     /// outstanding requests.
     ///
     /// Once a sticky flag is set the DP answers FAULT to every AP access (ADIv5 §B4.2.4), so AP
-    /// accesses sent after a failing one never reach the target. DP writes take effect regardless:
-    /// a packet with one waits for every earlier reply, as do sequence, idle and pins operations.
+    /// accesses sent after one that faulted never reach the target. A WAIT the probe gave up on,
+    /// or a missing ACK, sets no sticky flag: the accesses queued behind it still run, and are
+    /// reported as not run, as they already were behind a failing chunk of one block run. DP
+    /// writes take effect regardless: a packet with one waits for every earlier reply, as do
+    /// sequence, idle and pins operations.
     fn run_batch(
         &mut self,
         batch: &SwdBatch,
@@ -842,44 +845,72 @@ mod tests {
         assert_eq!(packet_count.unwrap(), 4);
     }
 
+    /// How `counting_probe` fails a read.
+    #[derive(Clone, Copy)]
+    enum Fail {
+        /// Every read from this one on answers FAULT, as a DP with a sticky flag set does.
+        FaultFrom(u32),
+        /// This read answers WAIT once, as when the probe runs out of retries, and the next try
+        /// succeeds.
+        WaitAt(u32),
+    }
+
     /// A probe with 64 byte packets and four buffers that answers transfers with OK, each read
-    /// with the next number.
-    fn counting_probe()
-    -> std::sync::Arc<std::sync::Mutex<crate::probe::cmsisdap::commands::fake::FakeProbe>> {
+    /// with the next number, unless `fail` says otherwise.
+    fn counting_probe(
+        fail: Option<Fail>,
+    ) -> std::sync::Arc<std::sync::Mutex<crate::probe::cmsisdap::commands::fake::FakeProbe>> {
         use crate::probe::cmsisdap::commands::{
             CommandId,
             fake::{FakeProbe, Reply, standard_reply},
         };
         let mut next = 0u32;
+        let mut waited = false;
         FakeProbe::shared(64, move |command| {
-            let mut words = |count: usize, reply: &mut Vec<u8>| {
-                for _ in 0..count {
-                    reply.extend(next.to_le_bytes());
-                    next += 1;
+            // Answers one read with the next number, or fails it.
+            let mut read = |reply: &mut Vec<u8>| {
+                match fail {
+                    Some(Fail::FaultFrom(from)) if next >= from => return Err(Ack::Fault),
+                    Some(Fail::WaitAt(at)) if next == at && !waited => {
+                        waited = true;
+                        return Err(Ack::Wait);
+                    }
+                    _ => {}
                 }
+                reply.extend(next.to_le_bytes());
+                next += 1;
+                Ok(())
             };
             if command[0] == CommandId::Transfer as u8 {
                 let count = command[2] as usize;
-                let mut reads = 0;
+                let mut reply = vec![command[0], 0, Ack::Ok as u8];
                 let mut position = 3;
                 for _ in 0..count {
                     let request = command[position];
                     position += 1;
-                    if request & 0x02 != 0 {
-                        reads += 1;
-                    } else {
+                    if request & 0x02 == 0 {
                         position += 4;
+                    } else if let Err(ack) = read(&mut reply) {
+                        reply[2] = ack as u8;
+                        break;
                     }
+                    reply[1] += 1;
                 }
-                let mut reply = vec![command[0], count as u8, Ack::Ok as u8];
-                words(reads, &mut reply);
                 Reply::Now(reply)
             } else if command[0] == CommandId::TransferBlock as u8 {
                 let count = u16::from_le_bytes([command[2], command[3]]);
-                let mut reply = vec![command[0], command[2], command[3], Ack::Ok as u8];
-                if command[4] & 0x02 != 0 {
-                    words(count as usize, &mut reply);
+                let mut reply = vec![command[0], 0, 0, Ack::Ok as u8];
+                let mut done = 0u16;
+                for _ in 0..count {
+                    if command[4] & 0x02 != 0
+                        && let Err(ack) = read(&mut reply)
+                    {
+                        reply[3] = ack as u8;
+                        break;
+                    }
+                    done += 1;
                 }
+                reply[1..3].copy_from_slice(&done.to_le_bytes());
                 Reply::Now(reply)
             } else {
                 standard_reply(command, 64, 4)
@@ -891,7 +922,7 @@ mod tests {
     fn a_batch_keeps_requests_in_flight_across_packets_but_not_past_a_dp_write() {
         use crate::probe::cmsisdap::commands::{CmsisDapDevice, CommandId};
 
-        let probe = counting_probe();
+        let probe = counting_probe(None);
         let mut dap = CmsisDap::new_from_device(CmsisDapDevice::Fake(probe.clone())).unwrap();
         let opened = probe.lock().unwrap().sent.len();
 
@@ -911,17 +942,84 @@ mod tests {
             assert_eq!(results.take(read).ok(), Some(expected as u32));
         }
 
-        let probe = probe.lock().unwrap();
+        // Read before asserting: a failed assertion with the lock held poisons it, and the drop of
+        // `dap` then panics on it, which aborts the test binary.
+        let (most_owed, owed_at_dp_write, owes_nothing) = {
+            let probe = probe.lock().unwrap();
+            let transfer = CommandId::Transfer as u8;
+            let dp_write = probe.sent[opened..]
+                .iter()
+                .position(|command| command[0] == transfer && command[3] == 0x08)
+                .map(|index| probe.owed_at_write[opened + index]);
+            (probe.most_owed, dp_write, probe.owes_nothing())
+        };
         // One buffer short of the probe's four, across DAP_Transfer and DAP_TransferBlock.
-        assert_eq!(probe.most_owed, 3);
+        assert_eq!(most_owed, 3);
         // The packet with the DP write went out once every earlier reply had been taken.
-        let transfer = CommandId::Transfer as u8;
-        let dp_write = probe.sent[opened..]
-            .iter()
-            .position(|command| command[0] == transfer && command[3] == 0x08)
-            .unwrap();
-        assert_eq!(probe.owed_at_write[opened + dp_write], 0);
-        assert!(probe.owes_nothing());
+        assert_eq!(owed_at_dp_write, Some(0));
+        assert!(owes_nothing);
+    }
+
+    /// Runs two pages of a memory read, each a TAR write and two block packets of DRW reads, on a
+    /// probe that fails the second block of the first page as `fail` says. By then the second
+    /// page's TAR write and first block are queued. Returns the failure the batch reports.
+    fn fail_the_first_page(fail: impl FnOnce(u32) -> Fail) -> BatchError<DebugProbeError> {
+        use crate::probe::cmsisdap::commands::CmsisDapDevice;
+
+        let words = block_words_per_packet(64);
+        let probe = counting_probe(Some(fail(words as u32 + 5)));
+        let mut dap = CmsisDap::new_from_device(CmsisDapDevice::Fake(probe.clone())).unwrap();
+
+        let mut batch = SwdBatch::new();
+        let mut reads = Vec::new();
+        for page in 0..2u32 {
+            batch.write(Port::Ap, 0x4, page * 1024);
+            reads.extend((0..2 * words).map(|_| batch.read(Port::Ap, 0xC)));
+        }
+        let error = dap.run_batch(&batch).unwrap_err();
+
+        // Read n is operation n + 1, so the failing block holds operations words + 1 to 2 words.
+        assert!(
+            (words + 1..=2 * words).contains(&error.fault_operation),
+            "{}",
+            error.fault_operation
+        );
+        let mut results = error.results;
+        for (word, read) in reads.into_iter().enumerate() {
+            let expected = (word < words).then_some(word as u32);
+            assert_eq!(results.take(read).ok(), expected, "read {word}");
+        }
+        // Read before asserting: a failed assertion with the lock held poisons it, and the drop
+        // of `dap` then panics on it, which aborts the test binary.
+        let second_tar = [0x05, 0, 1, 0x05, 0x00, 0x04, 0x00, 0x00];
+        let (queued, owes_nothing) = {
+            let probe = probe.lock().unwrap();
+            let queued = probe.sent.iter().any(|command| command[..] == second_tar);
+            (queued, probe.owes_nothing())
+        };
+        assert!(queued, "the second page was not queued");
+        assert!(owes_nothing);
+        error.error
+    }
+
+    #[test]
+    fn the_first_fault_is_reported_when_the_queued_page_faults_too() {
+        let error = fail_the_first_page(Fail::FaultFrom);
+        assert!(matches!(
+            error,
+            BatchError::Specific(DebugProbeError::SwdTransfer(
+                SwdTransferError::FaultResponse
+            ))
+        ));
+    }
+
+    #[test]
+    fn a_page_queued_behind_a_wait_runs_but_is_not_captured() {
+        let error = fail_the_first_page(Fail::WaitAt);
+        assert!(matches!(
+            error,
+            BatchError::Specific(DebugProbeError::SwdTransfer(SwdTransferError::WaitResponse))
+        ));
     }
 
     #[test]
