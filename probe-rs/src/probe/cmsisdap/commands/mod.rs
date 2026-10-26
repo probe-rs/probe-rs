@@ -37,9 +37,9 @@ const RESYNC_TIMEOUT: Duration = Duration::from_millis(50);
 
 #[derive(Debug, thiserror::Error, docsplay::Display)]
 pub enum CmsisDapError {
-    /// Error handling CMSIS-DAP command {command_id:?}.
+    /// Error handling CMSIS-DAP command {command_id}.
     Send {
-        command_id: CommandId,
+        command_id: Command,
         source: SendError,
     },
 
@@ -97,8 +97,8 @@ pub enum SendError {
     /// Connecting to target failed, received: {0:x}
     ConnectResponseError(u8),
 
-    /// Command ID in response ({0:#02x}) does not match sent command ID ({1:?} - {*_1 as u8:#02x}).
-    CommandIdMismatch(u8, CommandId),
+    /// Command ID in response ({0:#02x}) does not match sent command ID ({1} - {_1.id():#02x}).
+    CommandIdMismatch(u8, Command),
 
     /// String in response is not valid UTF-8.
     ///
@@ -608,8 +608,32 @@ pub enum CommandId {
     UartTransfer = 0x21,
 }
 
+/// The command a request sends.
+#[derive(Debug, Clone, Copy)]
+pub enum Command {
+    /// A command that CMSIS-DAP defines.
+    Standard(CommandId),
+}
+
+impl Command {
+    /// The command ID, the first byte of the request and of its reply.
+    pub fn id(self) -> u8 {
+        match self {
+            Command::Standard(command) => command as u8,
+        }
+    }
+}
+
+impl std::fmt::Display for Command {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Command::Standard(command) => write!(f, "{command:?}"),
+        }
+    }
+}
+
 pub(crate) trait Request {
-    const COMMAND_ID: CommandId;
+    fn command(&self) -> Command;
 
     type Response;
 
@@ -642,7 +666,7 @@ pub(crate) fn send_command_once<Req: Request>(
     request: &Req,
 ) -> Result<Req::Response, CmsisDapError> {
     send_command_inner(device, request).map_err(|e| CmsisDapError::Send {
-        command_id: Req::COMMAND_ID,
+        command_id: request.command(),
         source: e,
     })
 }
@@ -707,7 +731,7 @@ pub(crate) fn send_request<Req: Request>(
 ) -> Result<(), CmsisDapError> {
     let mut buffer = vec![0; packet_buffer_len(device)];
     send_request_inner(device, request, &mut buffer).map_err(|e| CmsisDapError::Send {
-        command_id: Req::COMMAND_ID,
+        command_id: request.command(),
         source: e,
     })
 }
@@ -719,7 +743,7 @@ pub(crate) fn receive_response<Req: Request>(
 ) -> Result<Req::Response, CmsisDapError> {
     let mut buffer = vec![0; packet_buffer_len(device)];
     receive_response_inner(device, request, &mut buffer).map_err(|e| CmsisDapError::Send {
-        command_id: Req::COMMAND_ID,
+        command_id: request.command(),
         source: e,
     })
 }
@@ -748,7 +772,7 @@ fn send_request_inner<Req: Request>(
     buffer: &mut [u8],
 ) -> Result<(), SendError> {
     // Leave byte 0 as the HID report, and write the command and request to the buffer.
-    buffer[1] = Req::COMMAND_ID as u8;
+    buffer[1] = request.command().id();
     #[cfg_attr(not(feature = "cmsisdap_v1"), allow(unused_mut))]
     let mut size = request.to_bytes(&mut buffer[2..])? + 2;
 
@@ -780,12 +804,12 @@ fn receive_response_inner<Req: Request>(
         return Err(SendError::NotEnoughData);
     }
 
-    if response_data[0] == Req::COMMAND_ID as u8 {
+    if response_data[0] == request.command().id() {
         request.parse_response(&response_data[1..])
     } else {
         Err(SendError::CommandIdMismatch(
             response_data[0],
-            Req::COMMAND_ID,
+            request.command(),
         ))
     }
 }

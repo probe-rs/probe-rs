@@ -1,10 +1,12 @@
-use super::super::{CommandId, Request, SendError, Status};
+use super::super::{Command, CommandId, Request, SendError, Status};
 
 #[derive(Debug)]
 pub struct ResetRequest;
 
 impl Request for ResetRequest {
-    const COMMAND_ID: CommandId = CommandId::ResetTarget;
+    fn command(&self) -> Command {
+        Command::Standard(CommandId::ResetTarget)
+    }
 
     type Response = ResetResponse;
 

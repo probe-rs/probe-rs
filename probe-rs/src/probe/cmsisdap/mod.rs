@@ -1237,7 +1237,7 @@ mod tests {
     };
 
     use super::commands::{
-        self, CmsisDapDevice, CmsisDapError, CommandId, DEFAULT_USB_TIMEOUT, SendError,
+        self, CmsisDapDevice, CmsisDapError, Command, CommandId, DEFAULT_USB_TIMEOUT, SendError,
         fake::{FakeProbe, Reply, standard_reply},
         ignore_unknown_command,
     };
@@ -1246,7 +1246,7 @@ mod tests {
 
     fn failed(source: SendError) -> Result<HostStatusResponse, CmsisDapError> {
         Err(CmsisDapError::Send {
-            command_id: CommandId::HostStatus,
+            command_id: Command::Standard(CommandId::HostStatus),
             source,
         })
     }
@@ -1257,18 +1257,21 @@ mod tests {
         assert!(
             ignore_unknown_command(failed(SendError::CommandIdMismatch(
                 0xFF,
-                CommandId::HostStatus
+                Command::Standard(CommandId::HostStatus)
             )))
             .is_ok()
         );
         assert!(
-            ignore_unknown_command(failed(SendError::CommandIdMismatch(0xFF, CommandId::Info)))
-                .is_ok()
+            ignore_unknown_command(failed(SendError::CommandIdMismatch(
+                0xFF,
+                Command::Standard(CommandId::Info)
+            )))
+            .is_ok()
         );
         assert!(
             ignore_unknown_command(failed(SendError::CommandIdMismatch(
                 0x00,
-                CommandId::HostStatus
+                Command::Standard(CommandId::HostStatus)
             )))
             .is_err()
         );

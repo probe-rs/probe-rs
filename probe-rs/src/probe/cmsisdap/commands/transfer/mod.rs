@@ -3,7 +3,7 @@ pub mod write_abort;
 
 use std::iter;
 
-use super::{CommandId, Request, SendError};
+use super::{Command, CommandId, Request, SendError};
 use crate::architecture::arm::RegisterAddress;
 use scroll::{LE, Pread, Pwrite};
 
@@ -259,7 +259,9 @@ impl TransferRequest {
 }
 
 impl Request for TransferRequest {
-    const COMMAND_ID: CommandId = CommandId::Transfer;
+    fn command(&self) -> Command {
+        Command::Standard(CommandId::Transfer)
+    }
 
     type Response = TransferResponse;
 
@@ -368,7 +370,9 @@ pub struct TransferBlockRequest {
 }
 
 impl Request for TransferBlockRequest {
-    const COMMAND_ID: CommandId = CommandId::TransferBlock;
+    fn command(&self) -> Command {
+        Command::Standard(CommandId::TransferBlock)
+    }
 
     type Response = TransferBlockResponse;
 
@@ -516,7 +520,9 @@ pub struct TransferBlockResponse {
 pub struct TransferAbortRequest;
 
 impl Request for TransferAbortRequest {
-    const COMMAND_ID: CommandId = CommandId::TransferAbort;
+    fn command(&self) -> Command {
+        Command::Standard(CommandId::TransferAbort)
+    }
 
     type Response = ();
 

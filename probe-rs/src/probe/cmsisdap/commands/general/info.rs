@@ -1,5 +1,5 @@
 #![allow(dead_code)]
-use super::super::{CommandId, Request, SendError};
+use super::super::{Command, CommandId, Request, SendError};
 
 use scroll::{LE, Pread};
 
@@ -9,7 +9,9 @@ macro_rules! info_command {
         pub struct $name {}
 
         impl Request for $name {
-            const COMMAND_ID: CommandId = CommandId::Info;
+            fn command(&self) -> Command {
+                Command::Standard(CommandId::Info)
+            }
 
             type Response = $response_type;
 
@@ -47,7 +49,9 @@ info_command!(0xF0, CapabilitiesCommand, Capabilities);
 pub struct TestDomainTimeCommand {}
 
 impl Request for TestDomainTimeCommand {
-    const COMMAND_ID: CommandId = CommandId::Info;
+    fn command(&self) -> Command {
+        Command::Standard(CommandId::Info)
+    }
 
     type Response = u32;
 

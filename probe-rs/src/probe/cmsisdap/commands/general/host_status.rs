@@ -1,4 +1,4 @@
-use super::super::{CommandId, Request, SendError};
+use super::super::{Command, CommandId, Request, SendError};
 
 #[derive(Clone, Copy, Debug)]
 pub struct HostStatusRequest {
@@ -23,7 +23,9 @@ impl HostStatusRequest {
 }
 
 impl Request for HostStatusRequest {
-    const COMMAND_ID: CommandId = CommandId::HostStatus;
+    fn command(&self) -> Command {
+        Command::Standard(CommandId::HostStatus)
+    }
 
     type Response = HostStatusResponse;
 

@@ -1,5 +1,5 @@
 /// Implementation of the DAP_JTAG_CONFIGURE command
-use super::super::{CmsisDapError, CommandId, Request, SendError, Status};
+use super::super::{CmsisDapError, Command, CommandId, Request, SendError, Status};
 
 #[derive(Clone, Debug)]
 pub struct ConfigureRequest {
@@ -19,7 +19,9 @@ impl ConfigureRequest {
 }
 
 impl Request for ConfigureRequest {
-    const COMMAND_ID: CommandId = CommandId::JtagConfigure;
+    fn command(&self) -> Command {
+        Command::Standard(CommandId::JtagConfigure)
+    }
 
     type Response = ConfigureResponse;
 

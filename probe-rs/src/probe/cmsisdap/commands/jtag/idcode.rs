@@ -1,5 +1,5 @@
 /// Implementation of the DAP_JTAG_IDCODE command
-use super::super::{CommandId, Request, SendError, Status};
+use super::super::{Command, CommandId, Request, SendError, Status};
 #[derive(Clone, Copy, Debug)]
 pub struct IdCodeRequest {
     index: u8,
@@ -13,7 +13,9 @@ impl IdCodeRequest {
 }
 
 impl Request for IdCodeRequest {
-    const COMMAND_ID: CommandId = CommandId::JtagIdcode;
+    fn command(&self) -> Command {
+        Command::Standard(CommandId::JtagIdcode)
+    }
 
     type Response = IDCODEResponse;
 
