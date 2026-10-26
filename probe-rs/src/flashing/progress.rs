@@ -124,11 +124,6 @@ impl<'a> FlashProgress<'a> {
         self.progressed(ProgressOperation::Program, size, time);
     }
 
-    /// Signal that the page filling procedure has made progress.
-    pub(super) fn page_verified(&mut self, size: u64, time: Duration) {
-        self.progressed(ProgressOperation::Verify, size, time);
-    }
-
     /// Signal that the erasing procedure failed.
     pub(super) fn failed_erasing(&mut self) {
         self.failed(ProgressOperation::Erase);
@@ -173,6 +168,9 @@ impl<'a> FlashProgress<'a> {
 /// The operation that is currently in progress.
 #[derive(Clone, Copy, Debug)]
 pub enum ProgressOperation {
+    /// Comparing flash contents with the image, to find the sectors that need no change.
+    Compare,
+
     /// Reading back flash contents to restore erased regions that should be kept unchanged.
     Fill,
 

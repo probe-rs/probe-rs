@@ -56,6 +56,20 @@ trait FlasherOps {
         progress: &mut FlashProgress<'_>,
         ignore_filled: bool,
     ) -> Result<bool, FlashError>;
+    /// Returns `true` if a compare can skip sectors of this flasher.
+    ///
+    /// A costly compare backend counts only if `allow_costly` is `true`.
+    fn can_compare(&self, session: &Session, allow_costly: bool) -> bool;
+    /// Compares the flash with the image, and removes the sectors that need no change.
+    fn compare_and_prune(
+        &mut self,
+        session: &mut Session,
+        progress: &mut FlashProgress<'_>,
+        keep_unwritten_bytes: bool,
+        allow_costly: bool,
+    ) -> Result<(), FlashError>;
+    /// Returns `true` if the flasher has nothing to erase or program.
+    fn is_empty(&self) -> bool;
 }
 
 impl FlasherOps for Flasher {
@@ -123,10 +137,10 @@ impl FlasherOps for Flasher {
         (phase_layout, fill_size, erase_size, program_size)
     }
     fn compute_verify_size(&mut self) -> u64 {
-        let encoding = self.flash_algorithm.transfer_encoding;
         self.regions
-            .iter_mut()
-            .map(|r| r.data.program_size_estimate(encoding, true))
+            .iter()
+            .flat_map(|r| r.flash_layout().pages())
+            .map(|p| p.size() as u64)
             .sum()
     }
     fn verify(
@@ -136,6 +150,23 @@ impl FlasherOps for Flasher {
         ignore_filled: bool,
     ) -> Result<bool, FlashError> {
         Flasher::verify(self, session, progress, ignore_filled)
+    }
+    fn can_compare(&self, session: &Session, allow_costly: bool) -> bool {
+        Flasher::can_compare(self, session, allow_costly)
+    }
+    fn compare_and_prune(
+        &mut self,
+        session: &mut Session,
+        progress: &mut FlashProgress<'_>,
+        keep_unwritten_bytes: bool,
+        allow_costly: bool,
+    ) -> Result<(), FlashError> {
+        Flasher::compare_and_prune(self, session, progress, keep_unwritten_bytes, allow_costly)
+    }
+    fn is_empty(&self) -> bool {
+        self.regions
+            .iter()
+            .all(|region| region.flash_layout().is_empty())
     }
 }
 
@@ -217,6 +248,29 @@ impl FlasherOps for HostSideFlasher {
         ignore_filled: bool,
     ) -> Result<bool, FlashError> {
         HostSideFlasher::verify(self, session, progress, ignore_filled)
+    }
+    fn can_compare(&self, session: &Session, allow_costly: bool) -> bool {
+        HostSideFlasher::can_compare(self, session, allow_costly)
+    }
+    fn compare_and_prune(
+        &mut self,
+        session: &mut Session,
+        progress: &mut FlashProgress<'_>,
+        keep_unwritten_bytes: bool,
+        allow_costly: bool,
+    ) -> Result<(), FlashError> {
+        HostSideFlasher::compare_and_prune(
+            self,
+            session,
+            progress,
+            keep_unwritten_bytes,
+            allow_costly,
+        )
+    }
+    fn is_empty(&self) -> bool {
+        self.regions
+            .iter()
+            .all(|region| region.flash_layout().is_empty())
     }
 }
 
@@ -882,6 +936,14 @@ impl FlashLoader {
             return Ok(());
         }
 
+        if options.do_chip_erase {
+            tracing::info!("Chip erase: no compare, flashing all sectors");
+        } else if options.skip_erase {
+            tracing::info!("Erase skipped: no compare, programming all pages");
+        } else {
+            self.compare_and_prune(&mut algos, session, &mut options)?;
+        }
+
         self.initialize(&mut algos, session, &mut options)?;
 
         let mut do_chip_erase = options.do_chip_erase;
@@ -1172,6 +1234,47 @@ impl FlashLoader {
         Ok(algos)
     }
 
+    /// Compares the flash with the image, and removes the flashers and sectors that need no
+    /// change.
+    fn compare_and_prune(
+        &self,
+        algos: &mut Vec<Box<dyn FlasherOps>>,
+        session: &mut Session,
+        options: &mut DownloadOptions,
+    ) -> Result<(), FlashError> {
+        let compared = algos
+            .iter()
+            .map(|flasher| flasher.can_compare(session, options.preverify))
+            .collect::<Vec<_>>();
+
+        for (flasher, _) in algos.iter().zip(&compared).filter(|(_, c)| !**c) {
+            tracing::info!(
+                "{}: no compare method, flashing all sectors",
+                flasher.algorithm_name()
+            );
+        }
+
+        for (flasher, _) in algos.iter_mut().zip(&compared).filter(|(_, c)| **c) {
+            let size = flasher.compute_verify_size();
+            options
+                .progress
+                .add_progress_bar(ProgressOperation::Compare, Some(size));
+        }
+
+        for (flasher, _) in algos.iter_mut().zip(&compared).filter(|(_, c)| **c) {
+            flasher.compare_and_prune(
+                session,
+                &mut options.progress,
+                options.keep_unwritten_bytes,
+                options.preverify,
+            )?;
+        }
+
+        algos.retain(|flasher| !flasher.is_empty());
+
+        Ok(())
+    }
+
     fn initialize(
         &self,
         algos: &mut [Box<dyn FlasherOps>],
@@ -1217,9 +1320,10 @@ impl FlashLoader {
                 .progress
                 .add_progress_bar(ProgressOperation::Program, Some(program_size));
             if options.verify {
+                let verify_size = flasher.compute_verify_size();
                 options
                     .progress
-                    .add_progress_bar(ProgressOperation::Verify, Some(program_size));
+                    .add_progress_bar(ProgressOperation::Verify, Some(verify_size));
             }
 
             phases.push(phase_layout);
