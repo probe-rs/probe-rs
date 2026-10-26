@@ -138,6 +138,36 @@ impl FlashLayout {
     pub fn data_blocks(&self) -> &[FlashDataBlockSpan] {
         &self.data_blocks
     }
+
+    /// Returns the parts of a page that hold image data, as `(address, data)` pairs.
+    pub(crate) fn page_data_without_fills(&self, page_index: usize) -> Vec<(u64, &[u8])> {
+        let page = &self.pages[page_index];
+
+        let mut fills = self
+            .fills
+            .iter()
+            .filter(|fill| fill.page_index == page_index)
+            .collect::<Vec<_>>();
+        fills.sort_by_key(|fill| fill.address);
+
+        let mut pieces = Vec::new();
+        let mut offset = 0;
+        for fill in fills {
+            let fill_offset = (fill.address - page.address) as usize;
+            if fill_offset > offset {
+                pieces.push((
+                    page.address + offset as u64,
+                    &page.data[offset..fill_offset],
+                ));
+            }
+            offset = fill_offset + fill.size as usize;
+        }
+        if offset < page.data.len() {
+            pieces.push((page.address + offset as u64, &page.data[offset..]));
+        }
+
+        pieces
+    }
 }
 
 /// A block of data that is to be written to flash.
@@ -559,6 +589,23 @@ mod tests {
                 }],
             }
         )
+    }
+
+    #[test]
+    fn page_data_without_fills() {
+        let (region, flash_algorithm) = assemble_demo_flash1();
+        let mut flash_builder = FlashBuilder::new();
+        flash_builder.add_data(0x10, &[1, 2]).unwrap();
+        flash_builder.add_data(0x20, &[3]).unwrap();
+        let flash_layout = flash_builder
+            .build_sectors_and_pages(&region, &flash_algorithm, true)
+            .unwrap();
+
+        assert_eq!(
+            flash_layout.page_data_without_fills(0),
+            vec![(0x10, &[1, 2][..]), (0x20, &[3][..])]
+        );
+        assert!(flash_layout.page_data_without_fills(1).is_empty());
     }
 
     #[test]
