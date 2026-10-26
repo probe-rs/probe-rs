@@ -1,4 +1,4 @@
-use super::super::{Command, CommandId, Request, SendError, Status};
+use super::super::{CommandId, Request, SendError, Status};
 
 /// The DAP_TransferConfigure Command sets parameters for DAP_Transfer and DAP_TransferBlock.
 #[derive(Debug, Copy, Clone)]
@@ -12,8 +12,8 @@ pub struct ConfigureRequest {
 }
 
 impl Request for ConfigureRequest {
-    fn command(&self) -> Command {
-        Command::Standard(CommandId::TransferConfigure)
+    fn command(&self) -> CommandId {
+        CommandId::TransferConfigure
     }
 
     type Response = ConfigureResponse;

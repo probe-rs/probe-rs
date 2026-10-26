@@ -1,11 +1,11 @@
-use super::super::{Command, CommandId, Request, SendError, Status};
+use super::super::{CommandId, Request, SendError, Status};
 
 #[derive(Clone, Copy, Debug)]
 pub struct DisconnectRequest;
 
 impl Request for DisconnectRequest {
-    fn command(&self) -> Command {
-        Command::Standard(CommandId::Disconnect)
+    fn command(&self) -> CommandId {
+        CommandId::Disconnect
     }
 
     type Response = DisconnectResponse;

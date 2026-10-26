@@ -1,4 +1,4 @@
-use super::super::{Command, CommandId, Request, SendError};
+use super::super::{CommandId, Request, SendError};
 use crate::architecture::arm::Pins;
 
 pub struct SWJPinsRequest {
@@ -111,8 +111,8 @@ impl SWJPinsRequestBuilder {
 }
 
 impl Request for SWJPinsRequest {
-    fn command(&self) -> Command {
-        Command::Standard(CommandId::SwjPins)
+    fn command(&self) -> CommandId {
+        CommandId::SwjPins
     }
 
     type Response = SWJPinsResponse;

@@ -5,6 +5,8 @@ mod commands;
 mod tcp;
 mod tools;
 
+pub use commands::VendorCommandId;
+
 use crate::{
     CoreStatus,
     architecture::{
@@ -888,10 +890,8 @@ impl CmsisDap {
 
     /// Send a vendor command and return its response payload.
     ///
-    /// The command ID and payload are defined by the probe firmware. CMSIS-DAP takes command IDs
-    /// from `0x80` through `0xFE`: the vendor range up to `0x9F`, and the extended vendor range
-    /// that DAPLink defines above it. The response excludes the command ID and may include packet
-    /// padding.
+    /// The command ID and payload are defined by the probe firmware. The response excludes the
+    /// command ID and may include packet padding.
     ///
     /// The payload must fit in one packet, leaving one byte for the command ID. Callers must
     /// interpret the response using the vendor's protocol, including any status bytes. A probe
@@ -899,7 +899,7 @@ impl CmsisDap {
     /// [`DebugProbeError::CommandNotSupportedByProbe`].
     pub fn send_vendor_command(
         &mut self,
-        command_id: u8,
+        command_id: VendorCommandId,
         payload: &[u8],
     ) -> Result<Vec<u8>, DebugProbeError> {
         commands::send_command(
@@ -1275,17 +1275,21 @@ mod tests {
     };
 
     use super::commands::{
-        self, CmsisDapDevice, CmsisDapError, Command, CommandId, DEFAULT_USB_TIMEOUT, SendError,
+        self, CmsisDapDevice, CmsisDapError, CommandId, DEFAULT_USB_TIMEOUT, SendError,
         fake::{FakeProbe, Reply, standard_reply},
         ignore_unknown_command,
     };
     use super::commands::{Request, general::info::PacketSizeCommand};
-    use super::{CapabilitiesCommand, CmsisDap, HostStatusResponse, PacketCountCommand};
+    use super::{
+        CapabilitiesCommand, CmsisDap, HostStatusResponse, PacketCountCommand, VendorCommandId,
+    };
     use crate::probe::DebugProbeError;
+
+    const VENDOR_COMMAND: VendorCommandId = VendorCommandId::new(0x8F).unwrap();
 
     fn failed(source: SendError) -> Result<HostStatusResponse, CmsisDapError> {
         Err(CmsisDapError::Send {
-            command_id: Command::Standard(CommandId::HostStatus),
+            command_id: CommandId::HostStatus,
             source,
         })
     }
@@ -1296,21 +1300,18 @@ mod tests {
         assert!(
             ignore_unknown_command(failed(SendError::CommandIdMismatch(
                 0xFF,
-                Command::Standard(CommandId::HostStatus)
+                CommandId::HostStatus
             )))
             .is_ok()
         );
         assert!(
-            ignore_unknown_command(failed(SendError::CommandIdMismatch(
-                0xFF,
-                Command::Standard(CommandId::Info)
-            )))
-            .is_ok()
+            ignore_unknown_command(failed(SendError::CommandIdMismatch(0xFF, CommandId::Info)))
+                .is_ok()
         );
         assert!(
             ignore_unknown_command(failed(SendError::CommandIdMismatch(
                 0x00,
-                Command::Standard(CommandId::HostStatus)
+                CommandId::HostStatus
             )))
             .is_err()
         );
@@ -1325,7 +1326,9 @@ mod tests {
         });
         let mut dap = CmsisDap::new_from_device(CmsisDapDevice::Fake(probe.clone())).unwrap();
 
-        let response = dap.send_vendor_command(0x8F, &[0x12, 0x34]).unwrap();
+        let response = dap
+            .send_vendor_command(VENDOR_COMMAND, &[0x12, 0x34])
+            .unwrap();
 
         assert_eq!(response, [0xA5, 0, 0]);
         assert_eq!(
@@ -1335,36 +1338,22 @@ mod tests {
     }
 
     #[test]
-    fn only_vendor_command_ids_are_sent() {
-        let probe = FakeProbe::shared(64, |command| match command {
-            [id @ 0x80..=0xFE, ..] => Reply::Now(vec![*id]),
-            _ => standard_reply(command, 64, 4),
-        });
-        let mut dap = CmsisDap::new_from_device(CmsisDapDevice::Fake(probe.clone())).unwrap();
-
-        for command_id in [0x80, 0xFE] {
-            dap.send_vendor_command(command_id, &[]).unwrap();
-        }
-        let sent = probe.lock().unwrap().sent.len();
-        for command_id in [0x7F, 0xFF] {
-            assert!(dap.send_vendor_command(command_id, &[]).is_err());
-        }
-        assert_eq!(probe.lock().unwrap().sent.len(), sent);
-    }
-
-    #[test]
     fn a_vendor_payload_fills_at_most_one_packet() {
         let probe = FakeProbe::shared(64, |command| match command {
-            [0x80, ..] => Reply::Now(vec![0x80]),
+            [0x8F, ..] => Reply::Now(vec![0x8F]),
             _ => standard_reply(command, 64, 4),
         });
         let mut dap = CmsisDap::new_from_device(CmsisDapDevice::Fake(probe.clone())).unwrap();
         let sent = probe.lock().unwrap().sent.len();
 
-        assert!(dap.send_vendor_command(0x80, &[0x55; 64]).is_err());
+        assert!(
+            dap.send_vendor_command(VENDOR_COMMAND, &[0x55; 64])
+                .is_err()
+        );
         assert_eq!(probe.lock().unwrap().sent.len(), sent);
 
-        dap.send_vendor_command(0x80, &[0x55; 63]).unwrap();
+        dap.send_vendor_command(VENDOR_COMMAND, &[0x55; 63])
+            .unwrap();
         assert_eq!(probe.lock().unwrap().sent.last().unwrap().len(), 64);
     }
 
@@ -1375,7 +1364,7 @@ mod tests {
         let mut dap = CmsisDap::new_from_device(CmsisDapDevice::Fake(probe)).unwrap();
 
         assert!(matches!(
-            dap.send_vendor_command(0x8F, &[]),
+            dap.send_vendor_command(VENDOR_COMMAND, &[]),
             Err(DebugProbeError::CommandNotSupportedByProbe { .. })
         ));
     }

@@ -1,11 +1,11 @@
-use super::super::{Command, CommandId, Request, SendError, Status};
+use super::super::{CommandId, Request, SendError, Status};
 
 #[derive(Debug, Copy, Clone)]
 pub struct ConfigureRequest;
 
 impl Request for ConfigureRequest {
-    fn command(&self) -> Command {
-        Command::Standard(CommandId::SwdConfigure)
+    fn command(&self) -> CommandId {
+        CommandId::SwdConfigure
     }
 
     type Response = ConfigureResponse;

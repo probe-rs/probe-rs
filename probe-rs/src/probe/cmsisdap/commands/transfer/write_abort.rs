@@ -1,4 +1,4 @@
-use super::super::{Command, CommandId, Request, SendError, Status};
+use super::super::{CommandId, Request, SendError, Status};
 
 /// The DAP_WriteABORT Command writes the ABORT register of the debug port.
 ///
@@ -12,8 +12,8 @@ pub struct WriteAbortRequest {
 }
 
 impl Request for WriteAbortRequest {
-    fn command(&self) -> Command {
-        Command::Standard(CommandId::WriteAbort)
+    fn command(&self) -> CommandId {
+        CommandId::WriteAbort
     }
 
     type Response = WriteAbortResponse;

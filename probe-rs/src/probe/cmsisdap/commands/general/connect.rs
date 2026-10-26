@@ -1,4 +1,4 @@
-use super::super::{Command, CommandId, Request, SendError};
+use super::super::{CommandId, Request, SendError};
 
 #[derive(Clone, Copy, Debug)]
 pub enum ConnectRequest {
@@ -8,8 +8,8 @@ pub enum ConnectRequest {
 }
 
 impl Request for ConnectRequest {
-    fn command(&self) -> Command {
-        Command::Standard(CommandId::Connect)
+    fn command(&self) -> CommandId {
+        CommandId::Connect
     }
 
     type Response = ConnectResponse;

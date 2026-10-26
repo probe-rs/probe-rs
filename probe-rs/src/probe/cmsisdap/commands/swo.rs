@@ -1,6 +1,6 @@
 use scroll::{LE, Pread};
 
-use super::{Command, CommandId, Request, SendError, Status};
+use super::{CommandId, Request, SendError, Status};
 
 #[repr(u8)]
 #[expect(unused)]
@@ -12,8 +12,8 @@ pub enum TransportRequest {
 }
 
 impl Request for TransportRequest {
-    fn command(&self) -> Command {
-        Command::Standard(CommandId::SwoTransport)
+    fn command(&self) -> CommandId {
+        CommandId::SwoTransport
     }
 
     type Response = TransportResponse;
@@ -45,8 +45,8 @@ pub enum ModeRequest {
 }
 
 impl Request for ModeRequest {
-    fn command(&self) -> Command {
-        Command::Standard(CommandId::SwoMode)
+    fn command(&self) -> CommandId {
+        CommandId::SwoMode
     }
 
     type Response = ModeResponse;
@@ -74,8 +74,8 @@ pub struct BaudrateRequest {
 }
 
 impl Request for BaudrateRequest {
-    fn command(&self) -> Command {
-        Command::Standard(CommandId::SwoBaudrate)
+    fn command(&self) -> CommandId {
+        CommandId::SwoBaudrate
     }
 
     type Response = u32;
@@ -110,8 +110,8 @@ pub enum ControlRequest {
 }
 
 impl Request for ControlRequest {
-    fn command(&self) -> Command {
-        Command::Standard(CommandId::SwoControl)
+    fn command(&self) -> CommandId {
+        CommandId::SwoControl
     }
 
     type Response = ControlResponse;
@@ -137,8 +137,8 @@ pub struct ControlResponse {
 pub struct StatusRequest;
 
 impl Request for StatusRequest {
-    fn command(&self) -> Command {
-        Command::Standard(CommandId::SwoStatus)
+    fn command(&self) -> CommandId {
+        CommandId::SwoStatus
     }
 
     type Response = StatusResponse;
@@ -192,8 +192,8 @@ pub struct ExtendedStatusRequest {
 }
 
 impl Request for ExtendedStatusRequest {
-    fn command(&self) -> Command {
-        Command::Standard(CommandId::SwoExtendedStatus)
+    fn command(&self) -> CommandId {
+        CommandId::SwoExtendedStatus
     }
 
     type Response = ExtendedStatusResponse;
@@ -250,8 +250,8 @@ pub struct DataRequest {
 }
 
 impl Request for DataRequest {
-    fn command(&self) -> Command {
-        Command::Standard(CommandId::SwoData)
+    fn command(&self) -> CommandId {
+        CommandId::SwoData
     }
 
     type Response = DataResponse;

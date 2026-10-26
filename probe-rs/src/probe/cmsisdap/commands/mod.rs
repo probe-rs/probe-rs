@@ -39,7 +39,7 @@ const RESYNC_TIMEOUT: Duration = Duration::from_millis(50);
 pub enum CmsisDapError {
     /// Error handling CMSIS-DAP command {command_id}.
     Send {
-        command_id: Command,
+        command_id: CommandId,
         source: SendError,
     },
 
@@ -98,10 +98,7 @@ pub enum SendError {
     ConnectResponseError(u8),
 
     /// Command ID in response ({0:#02x}) does not match sent command ID ({1} - {_1.id():#02x}).
-    CommandIdMismatch(u8, Command),
-
-    /// CMSIS-DAP vendor command ID {0:#04x} is outside the range 0x80 through 0xFE.
-    InvalidVendorCommandId(u8),
+    CommandIdMismatch(u8, CommandId),
 
     /// Vendor command payload has {actual} bytes, but the packet holds at most {maximum}.
     VendorPayloadTooLarge { actual: usize, maximum: usize },
@@ -579,71 +576,116 @@ impl Status {
 #[derive(Debug, Clone, Copy)]
 #[expect(unused)]
 pub enum CommandId {
-    Info = 0x00,
-    HostStatus = 0x01,
-    Connect = 0x02,
-    Disconnect = 0x03,
-    WriteAbort = 0x08,
-    Delay = 0x09,
-    ResetTarget = 0x0A,
-    SwjPins = 0x10,
-    SwjClock = 0x11,
-    SwjSequence = 0x12,
-    SwdConfigure = 0x13,
-    SwdSequence = 0x1D,
-    SwoTransport = 0x17,
-    SwoMode = 0x18,
-    SwoBaudrate = 0x19,
-    SwoControl = 0x1A,
-    SwoStatus = 0x1B,
-    SwoExtendedStatus = 0x1E,
-    SwoData = 0x1C,
-    JtagSequence = 0x14,
-    JtagConfigure = 0x15,
-    JtagIdcode = 0x16,
-    TransferConfigure = 0x04,
-    Transfer = 0x05,
-    TransferBlock = 0x06,
-    TransferAbort = 0x07,
-    ExecuteCommands = 0x7F,
-    QueueCommands = 0x7E,
-    UartTransport = 0x1F,
-    UartConfigure = 0x20,
-    UartControl = 0x22,
-    UartStatus = 0x23,
-    UartTransfer = 0x21,
+    Info,
+    HostStatus,
+    Connect,
+    Disconnect,
+    WriteAbort,
+    Delay,
+    ResetTarget,
+    SwjPins,
+    SwjClock,
+    SwjSequence,
+    SwdConfigure,
+    SwdSequence,
+    SwoTransport,
+    SwoMode,
+    SwoBaudrate,
+    SwoControl,
+    SwoStatus,
+    SwoExtendedStatus,
+    SwoData,
+    JtagSequence,
+    JtagConfigure,
+    JtagIdcode,
+    TransferConfigure,
+    Transfer,
+    TransferBlock,
+    TransferAbort,
+    ExecuteCommands,
+    QueueCommands,
+    UartTransport,
+    UartConfigure,
+    UartControl,
+    UartStatus,
+    UartTransfer,
+    Vendor(VendorCommandId),
 }
 
-/// The command a request sends.
-#[derive(Debug, Clone, Copy)]
-pub enum Command {
-    /// A command that CMSIS-DAP defines.
-    Standard(CommandId),
-    /// A vendor command.
-    Vendor(u8),
-}
-
-impl Command {
+impl CommandId {
     /// The command ID, the first byte of the request and of its reply.
     pub fn id(self) -> u8 {
         match self {
-            Command::Standard(command) => command as u8,
-            Command::Vendor(id) => id,
+            CommandId::Info => 0x00,
+            CommandId::HostStatus => 0x01,
+            CommandId::Connect => 0x02,
+            CommandId::Disconnect => 0x03,
+            CommandId::WriteAbort => 0x08,
+            CommandId::Delay => 0x09,
+            CommandId::ResetTarget => 0x0A,
+            CommandId::SwjPins => 0x10,
+            CommandId::SwjClock => 0x11,
+            CommandId::SwjSequence => 0x12,
+            CommandId::SwdConfigure => 0x13,
+            CommandId::SwdSequence => 0x1D,
+            CommandId::SwoTransport => 0x17,
+            CommandId::SwoMode => 0x18,
+            CommandId::SwoBaudrate => 0x19,
+            CommandId::SwoControl => 0x1A,
+            CommandId::SwoStatus => 0x1B,
+            CommandId::SwoExtendedStatus => 0x1E,
+            CommandId::SwoData => 0x1C,
+            CommandId::JtagSequence => 0x14,
+            CommandId::JtagConfigure => 0x15,
+            CommandId::JtagIdcode => 0x16,
+            CommandId::TransferConfigure => 0x04,
+            CommandId::Transfer => 0x05,
+            CommandId::TransferBlock => 0x06,
+            CommandId::TransferAbort => 0x07,
+            CommandId::ExecuteCommands => 0x7F,
+            CommandId::QueueCommands => 0x7E,
+            CommandId::UartTransport => 0x1F,
+            CommandId::UartConfigure => 0x20,
+            CommandId::UartControl => 0x22,
+            CommandId::UartStatus => 0x23,
+            CommandId::UartTransfer => 0x21,
+            CommandId::Vendor(VendorCommandId(id)) => id,
         }
     }
 }
 
-impl std::fmt::Display for Command {
+impl std::fmt::Display for CommandId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Command::Standard(command) => write!(f, "{command:?}"),
-            Command::Vendor(id) => write!(f, "Vendor {id:#04x}"),
+            CommandId::Vendor(VendorCommandId(id)) => write!(f, "Vendor {id:#04x}"),
+            command => write!(f, "{command:?}"),
         }
+    }
+}
+
+/// A CMSIS-DAP vendor command ID, from `0x80` through `0xFE`: the vendor range up to `0x9F`, and
+/// the extended vendor range that DAPLink defines above it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct VendorCommandId(u8);
+
+impl VendorCommandId {
+    /// Returns `None` if `id` is outside the vendor range.
+    pub const fn new(id: u8) -> Option<Self> {
+        if matches!(id, 0x80..=0xFE) {
+            Some(Self(id))
+        } else {
+            None
+        }
+    }
+
+    /// The command ID, the first byte of the command and of its reply.
+    pub const fn get(self) -> u8 {
+        self.0
     }
 }
 
 pub(crate) trait Request {
-    fn command(&self) -> Command;
+    fn command(&self) -> CommandId;
 
     type Response;
 
@@ -657,21 +699,18 @@ pub(crate) trait Request {
 
 /// Sends an opaque CMSIS-DAP vendor command.
 pub(super) struct VendorCommandRequest<'a> {
-    pub(super) command_id: u8,
+    pub(super) command_id: VendorCommandId,
     pub(super) payload: &'a [u8],
 }
 
 impl Request for VendorCommandRequest<'_> {
-    fn command(&self) -> Command {
-        Command::Vendor(self.command_id)
+    fn command(&self) -> CommandId {
+        CommandId::Vendor(self.command_id)
     }
 
     type Response = Vec<u8>;
 
     fn to_bytes(&self, buffer: &mut [u8]) -> Result<usize, SendError> {
-        if !(0x80..=0xFE).contains(&self.command_id) {
-            return Err(SendError::InvalidVendorCommandId(self.command_id));
-        }
         if self.payload.len() > buffer.len() {
             return Err(SendError::VendorPayloadTooLarge {
                 actual: self.payload.len(),

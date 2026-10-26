@@ -1,5 +1,5 @@
 /// Implementation of the DAP_JTAG_SEQUENCE command
-use super::super::{CmsisDapError, Command, CommandId, Request, SendError, Status};
+use super::super::{CmsisDapError, CommandId, Request, SendError, Status};
 
 use bitvec::prelude::*;
 
@@ -101,8 +101,8 @@ impl SequenceRequest {
 }
 
 impl Request for SequenceRequest {
-    fn command(&self) -> Command {
-        Command::Standard(CommandId::JtagSequence)
+    fn command(&self) -> CommandId {
+        CommandId::JtagSequence
     }
 
     type Response = SequenceResponse;

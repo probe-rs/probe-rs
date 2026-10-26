@@ -1,4 +1,4 @@
-use super::super::{Command, CommandId, Request, SendError, Status};
+use super::super::{CommandId, Request, SendError, Status};
 
 #[derive(Debug, Copy, Clone)]
 pub struct SWJClockRequest {
@@ -7,8 +7,8 @@ pub struct SWJClockRequest {
 }
 
 impl Request for SWJClockRequest {
-    fn command(&self) -> Command {
-        Command::Standard(CommandId::SwjClock)
+    fn command(&self) -> CommandId {
+        CommandId::SwjClock
     }
 
     type Response = SWJClockResponse;
