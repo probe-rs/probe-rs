@@ -258,6 +258,11 @@ impl Results {
         self.0.retain(|k, _| k.should_capture());
     }
 
+    /// Takes the result stored under `id`, unconverted.
+    pub(crate) fn take_id(&mut self, id: &HandleId) -> Option<CommandResult> {
+        self.0.remove(id)
+    }
+
     /// Takes a result from the set.
     pub fn take<T>(&mut self, handle: Handle<T>) -> Result<T, Handle<T>> {
         let Handle { id, convert } = handle;
