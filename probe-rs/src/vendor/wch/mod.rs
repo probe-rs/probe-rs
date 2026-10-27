@@ -1,5 +1,7 @@
 //! WCH vendor support.
 
+use std::any::Any;
+
 use probe_rs_target::{
     Chip,
     chip_detection::{ChipDetectionMethod, ObCodeRamSplit},
@@ -26,7 +28,7 @@ impl Vendor for Wch {
         registry: &Registry,
         probe: &mut Probe,
     ) -> Result<Option<String>, Error> {
-        let Some(wlink) = probe.try_into::<WchLink>() else {
+        let Some(wlink) = (probe.driver_mut() as &mut dyn Any).downcast_mut::<WchLink>() else {
             return Ok(None);
         };
         let chip_id = wlink.chip_id();

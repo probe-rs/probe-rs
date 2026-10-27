@@ -23,7 +23,9 @@ impl HostStatusRequest {
 }
 
 impl Request for HostStatusRequest {
-    const COMMAND_ID: CommandId = CommandId::HostStatus;
+    fn command(&self) -> CommandId {
+        CommandId::HostStatus
+    }
 
     type Response = HostStatusResponse;
 

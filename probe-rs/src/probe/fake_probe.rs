@@ -762,6 +762,10 @@ impl SwdSequence for FakeArmInterface {
 }
 
 impl ArmDebugInterface for FakeArmInterface {
+    fn driver_mut(&mut self) -> Option<&mut dyn DebugProbe> {
+        Some(self.probe.as_mut())
+    }
+
     fn memory_interface(
         &mut self,
         access_port_address: &FullyQualifiedApAddress,
@@ -994,5 +998,16 @@ mod test {
         probe
             .attach("nrf51822_xxAC", Permissions::default())
             .unwrap();
+    }
+
+    #[test]
+    fn a_session_lends_its_probe() {
+        let mut session = FakeProbe::with_mocked_core()
+            .into_probe()
+            .attach("nrf51822_xxAC", Permissions::default())
+            .unwrap();
+
+        let probe: &mut dyn std::any::Any = session.driver_mut().unwrap();
+        assert!(probe.downcast_mut::<FakeProbe>().is_some());
     }
 }

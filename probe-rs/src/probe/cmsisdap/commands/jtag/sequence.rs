@@ -101,7 +101,9 @@ impl SequenceRequest {
 }
 
 impl Request for SequenceRequest {
-    const COMMAND_ID: CommandId = CommandId::JtagSequence;
+    fn command(&self) -> CommandId {
+        CommandId::JtagSequence
+    }
 
     type Response = SequenceResponse;
 

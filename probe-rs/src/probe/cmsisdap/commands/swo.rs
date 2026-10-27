@@ -12,7 +12,9 @@ pub enum TransportRequest {
 }
 
 impl Request for TransportRequest {
-    const COMMAND_ID: CommandId = CommandId::SwoTransport;
+    fn command(&self) -> CommandId {
+        CommandId::SwoTransport
+    }
 
     type Response = TransportResponse;
 
@@ -43,7 +45,9 @@ pub enum ModeRequest {
 }
 
 impl Request for ModeRequest {
-    const COMMAND_ID: CommandId = CommandId::SwoMode;
+    fn command(&self) -> CommandId {
+        CommandId::SwoMode
+    }
 
     type Response = ModeResponse;
 
@@ -70,7 +74,9 @@ pub struct BaudrateRequest {
 }
 
 impl Request for BaudrateRequest {
-    const COMMAND_ID: CommandId = CommandId::SwoBaudrate;
+    fn command(&self) -> CommandId {
+        CommandId::SwoBaudrate
+    }
 
     type Response = u32;
 
@@ -104,7 +110,9 @@ pub enum ControlRequest {
 }
 
 impl Request for ControlRequest {
-    const COMMAND_ID: CommandId = CommandId::SwoControl;
+    fn command(&self) -> CommandId {
+        CommandId::SwoControl
+    }
 
     type Response = ControlResponse;
 
@@ -129,7 +137,9 @@ pub struct ControlResponse {
 pub struct StatusRequest;
 
 impl Request for StatusRequest {
-    const COMMAND_ID: CommandId = CommandId::SwoStatus;
+    fn command(&self) -> CommandId {
+        CommandId::SwoStatus
+    }
 
     type Response = StatusResponse;
 
@@ -182,7 +192,9 @@ pub struct ExtendedStatusRequest {
 }
 
 impl Request for ExtendedStatusRequest {
-    const COMMAND_ID: CommandId = CommandId::SwoExtendedStatus;
+    fn command(&self) -> CommandId {
+        CommandId::SwoExtendedStatus
+    }
 
     type Response = ExtendedStatusResponse;
 
@@ -238,7 +250,9 @@ pub struct DataRequest {
 }
 
 impl Request for DataRequest {
-    const COMMAND_ID: CommandId = CommandId::SwoData;
+    fn command(&self) -> CommandId {
+        CommandId::SwoData
+    }
 
     type Response = DataResponse;
 
