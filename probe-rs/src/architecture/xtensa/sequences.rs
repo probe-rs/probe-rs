@@ -76,11 +76,12 @@ pub trait XtensaDebugSequence: Send + Sync + Debug {
         None
     }
 
-    /// Return the fast flash verification implementation if one exists.
+    /// Return the flash compare method of this target, if it has one.
     ///
-    /// Override this for a target whose flash controller can compute a signature over a
-    /// range of flash. The default returns `None`.
-    fn flash_verify_sequence(&self) -> Option<Arc<dyn crate::flashing::FlashVerify>> {
+    /// The flash loader uses it to compare flash sectors with the image. A flash controller
+    /// that can sign a range of flash lets the loader do this without a read-back. See
+    /// [`FlashCompare`](crate::flashing::FlashCompare) for the rules.
+    fn flash_compare(&self) -> Option<Arc<dyn crate::flashing::FlashCompare>> {
         None
     }
 }

@@ -21,7 +21,8 @@ use crate::architecture::arm::memory::ArmMemoryInterface;
 use crate::architecture::arm::sequences::{ArmDebugSequence, cortex_m_core_start};
 use crate::architecture::arm::traits::DebugPortWire;
 use crate::architecture::arm::{ArmError, FullyQualifiedApAddress};
-use crate::flashing::DebugFlashSequence;
+use crate::config::NvmRegion;
+use crate::flashing::{CompareCost, CompareOutcome, DebugFlashSequence, FlashCompare, SectorCheck};
 use crate::probe::DebugProbeError;
 use probe_rs_target::CoreType;
 
@@ -188,6 +189,10 @@ impl ArmDebugSequence for CC23xxCC27xx {
         Some(Arc::new(CC23xxCC27xxFlashSequence::new_with_flag(
             Arc::clone(&self.saci_flash_mode),
         )))
+    }
+
+    fn flash_compare(&self) -> Option<Arc<dyn FlashCompare>> {
+        Some(Arc::new(SaciCompare))
     }
 
     /// Connect without a reset, so a running application keeps running.
@@ -375,6 +380,112 @@ impl Default for CC23xxCC27xxFlashSequence {
     }
 }
 
+/// Compares flash with the CRC checks of the SACI ROM.
+#[derive(Debug)]
+pub struct SaciCompare;
+
+impl FlashCompare for SaciCompare {
+    fn cost(&self) -> CompareCost {
+        CompareCost::Cheap
+    }
+
+    fn compare(
+        &self,
+        session: &mut Session,
+        _core_index: usize,
+        _region: &NvmRegion,
+        checks: &[SectorCheck<'_>],
+        out: &mut [CompareOutcome],
+    ) -> Result<(), crate::Error> {
+        let interface = session.get_arm_interface()?;
+        for (check, out) in checks.iter().zip(out.iter_mut()) {
+            let content = check.sector_content();
+            let ranges = match &content {
+                Some(content) => vec![(check.sector.start, content.as_slice())],
+                None => check.expected.clone(),
+            };
+
+            *out = CompareOutcome::Match;
+            for (address, data) in ranges {
+                if !saci_verify(interface, address, data)? {
+                    *out = CompareOutcome::Mismatch;
+                    break;
+                }
+            }
+        }
+
+        Ok(())
+    }
+}
+
+/// Checks `data` at `address` with a SACI verify command.
+fn saci_verify(
+    interface: &mut dyn ArmDebugInterface,
+    address: u64,
+    data: &[u8],
+) -> Result<bool, crate::Error> {
+    tracing::debug!(
+        "CC23xx/CC27xx: Verifying {} bytes at 0x{:08X}",
+        data.len(),
+        address
+    );
+
+    if address >= SCFG_START {
+        // FLASH_VERIFY_SCFG_SECTOR (0x1B): [header(check_exp_crc=1), expCrc32]
+        //
+        // The ROM verifies CRC over only the first 0xE4 (228) bytes of SCFG,
+        // matching the range covered by Scfg::update_crcs and OpenOCD's
+        // SCFG_CONTENT_SIZE constant. The trailing key-ring slots are excluded.
+        const SCFG_CRC_BYTE_COUNT: usize = 0xE4;
+        let crc_data = &data[..data.len().min(SCFG_CRC_BYTE_COUNT)];
+        let expected_crc = saci::crc32_iso_hdlc(crc_data);
+        let header = saci::make_header(saci::cmd::FLASH_VERIFY_SCFG_SECTOR, 0x0001);
+        let words = [header, expected_crc];
+        saci::send_words(interface, &words, Duration::from_millis(100))?;
+        let response = saci::read_response(interface, Duration::from_secs(10))?;
+        let result = SaciResult::from(((response >> 16) & 0xFF) as u8);
+        match result {
+            SaciResult::Success => Ok(true),
+            SaciResult::Crc32Mismatch => Ok(false),
+            _ => Err(
+                ArmError::Other(format!("SACI FLASH_VERIFY_SCFG_SECTOR failed: {result:?}")).into(),
+            ),
+        }
+    } else if address >= CCFG_START {
+        // FLASH_VERIFY_CCFG_SECTOR (0x11): check_exp_crcs=0, skip_user_rec=1.
+        // Lets the ROM verify its own embedded CRCs rather than requiring the
+        // host to supply external CRC values.
+        let header = saci::make_header(saci::cmd::FLASH_VERIFY_CCFG_SECTOR, 0x0002);
+        let words = [header, 0u32, 0u32, 0u32, 0u32];
+        saci::send_words(interface, &words, Duration::from_millis(100))?;
+        let response = saci::read_response(interface, Duration::from_secs(10))?;
+        let result = SaciResult::from(((response >> 16) & 0xFF) as u8);
+        match result {
+            SaciResult::Success => Ok(true),
+            SaciResult::Crc32Mismatch | SaciResult::BlankCheckFailed => Ok(false),
+            _ => Err(
+                ArmError::Other(format!("SACI FLASH_VERIFY_CCFG_SECTOR failed: {result:?}")).into(),
+            ),
+        }
+    } else {
+        // FLASH_VERIFY_MAIN_SECTORS (0x10): [header, firstSectorAddr, byteCount, expCrc32]
+        let expected_crc = saci::crc32_iso_hdlc(data);
+        let header = saci::make_header(saci::cmd::FLASH_VERIFY_MAIN_SECTORS, 0);
+        let words = [header, address as u32, data.len() as u32, expected_crc];
+        saci::send_words(interface, &words, Duration::from_millis(100))?;
+        let response = saci::read_response(interface, Duration::from_secs(10))?;
+        let result = SaciResult::from(((response >> 16) & 0xFF) as u8);
+        match result {
+            SaciResult::Success => Ok(true),
+            SaciResult::Crc32Mismatch => Ok(false),
+            _ => Err(
+                ArmError::Other(format!("SACI FLASH_VERIFY_MAIN_SECTORS failed: {result:?}"))
+                    .into(),
+            ),
+        }
+    }
+}
+
 impl DebugFlashSequence for CC23xxCC27xxFlashSequence {
     fn prepare_flash(&self, session: &mut Session) -> Result<(), crate::Error> {
         let interface = session.get_arm_interface()?;
@@ -429,78 +540,6 @@ impl DebugFlashSequence for CC23xxCC27xxFlashSequence {
             self.program_main(interface, address, data)?;
         }
         Ok(())
-    }
-
-    fn verify(
-        &self,
-        session: &mut Session,
-        address: u64,
-        data: &[u8],
-    ) -> Result<bool, crate::Error> {
-        tracing::debug!(
-            "CC23xx/CC27xx: Verifying {} bytes at 0x{:08X}",
-            data.len(),
-            address
-        );
-
-        let interface = session.get_arm_interface()?;
-
-        if address >= SCFG_START {
-            // FLASH_VERIFY_SCFG_SECTOR (0x1B): [header(check_exp_crc=1), expCrc32]
-            //
-            // The ROM verifies CRC over only the first 0xE4 (228) bytes of SCFG,
-            // matching the range covered by Scfg::update_crcs and OpenOCD's
-            // SCFG_CONTENT_SIZE constant. The trailing key-ring slots are excluded.
-            const SCFG_CRC_BYTE_COUNT: usize = 0xE4;
-            let crc_data = &data[..data.len().min(SCFG_CRC_BYTE_COUNT)];
-            let expected_crc = saci::crc32_iso_hdlc(crc_data);
-            let header = saci::make_header(saci::cmd::FLASH_VERIFY_SCFG_SECTOR, 0x0001);
-            let words = [header, expected_crc];
-            saci::send_words(interface, &words, Duration::from_millis(100))?;
-            let response = saci::read_response(interface, Duration::from_secs(10))?;
-            let result = SaciResult::from(((response >> 16) & 0xFF) as u8);
-            match result {
-                SaciResult::Success => Ok(true),
-                SaciResult::Crc32Mismatch => Ok(false),
-                _ => Err(ArmError::Other(format!(
-                    "SACI FLASH_VERIFY_SCFG_SECTOR failed: {result:?}"
-                ))
-                .into()),
-            }
-        } else if address >= CCFG_START {
-            // FLASH_VERIFY_CCFG_SECTOR (0x11): check_exp_crcs=0, skip_user_rec=1.
-            // Lets the ROM verify its own embedded CRCs rather than requiring the
-            // host to supply external CRC values.
-            let header = saci::make_header(saci::cmd::FLASH_VERIFY_CCFG_SECTOR, 0x0002);
-            let words = [header, 0u32, 0u32, 0u32, 0u32];
-            saci::send_words(interface, &words, Duration::from_millis(100))?;
-            let response = saci::read_response(interface, Duration::from_secs(10))?;
-            let result = SaciResult::from(((response >> 16) & 0xFF) as u8);
-            match result {
-                SaciResult::Success => Ok(true),
-                SaciResult::Crc32Mismatch | SaciResult::BlankCheckFailed => Ok(false),
-                _ => Err(ArmError::Other(format!(
-                    "SACI FLASH_VERIFY_CCFG_SECTOR failed: {result:?}"
-                ))
-                .into()),
-            }
-        } else {
-            // FLASH_VERIFY_MAIN_SECTORS (0x10): [header, firstSectorAddr, byteCount, expCrc32]
-            let expected_crc = saci::crc32_iso_hdlc(data);
-            let header = saci::make_header(saci::cmd::FLASH_VERIFY_MAIN_SECTORS, 0);
-            let words = [header, address as u32, data.len() as u32, expected_crc];
-            saci::send_words(interface, &words, Duration::from_millis(100))?;
-            let response = saci::read_response(interface, Duration::from_secs(10))?;
-            let result = SaciResult::from(((response >> 16) & 0xFF) as u8);
-            match result {
-                SaciResult::Success => Ok(true),
-                SaciResult::Crc32Mismatch => Ok(false),
-                _ => Err(ArmError::Other(format!(
-                    "SACI FLASH_VERIFY_MAIN_SECTORS failed: {result:?}"
-                ))
-                .into()),
-            }
-        }
     }
 
     fn supports_sector_erase(&self) -> bool {
