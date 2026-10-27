@@ -2,6 +2,8 @@
 //!
 //! The information is passed as a stream of messages to the provided emitter.
 
+use std::any::Any;
+
 use anyhow::anyhow;
 use jep106::JEP106Code;
 use postcard_rpc::header::{VarHeader, VarSeq};
@@ -558,8 +560,8 @@ async fn try_read_riscv_info(
 
         // WCH-Link probes don't expose a real JTAG IDCODE; report the chip
         // family and ID from the probe's AttachChip response instead.
-        if let Some(wch_info) = probe
-            .try_into::<WchLink>()
+        if let Some(wch_info) = (probe.driver_mut() as &mut dyn Any)
+            .downcast_mut::<WchLink>()
             .map(|wlink| (wlink.chip_family(), wlink.chip_id()))
         {
             let (family, chip_id) = wch_info;

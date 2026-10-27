@@ -117,6 +117,14 @@ pub trait ArmDebugInterface: DapAccess + SwdSequence + SwoAccess + Send {
     fn set_wire_speed(&mut self, _speed_khz: u32) -> Result<u32, ArmError> {
         Err(ArmError::NotImplemented("set_wire_speed"))
     }
+
+    /// Returns the probe driver, for its own API.
+    ///
+    /// An interface that queues accesses across calls must send them before lending the driver,
+    /// so that the probe sees everything the interface did before.
+    fn driver_mut(&mut self) -> Option<&mut dyn DebugProbe> {
+        None
+    }
 }
 
 /// Read chip information from the ROM tables
@@ -872,6 +880,10 @@ impl ArmCommunicationInterface {
 }
 
 impl ArmDebugInterface for ArmCommunicationInterface {
+    fn driver_mut(&mut self) -> Option<&mut dyn DebugProbe> {
+        Some(self.transport().probe())
+    }
+
     fn reinitialize(&mut self) -> Result<(), ArmError> {
         let current_dp = self.current_dp;
 

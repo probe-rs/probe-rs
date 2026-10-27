@@ -4,7 +4,9 @@ use super::super::{CommandId, Request, SendError, Status};
 pub struct ResetRequest;
 
 impl Request for ResetRequest {
-    const COMMAND_ID: CommandId = CommandId::ResetTarget;
+    fn command(&self) -> CommandId {
+        CommandId::ResetTarget
+    }
 
     type Response = ResetResponse;
 

@@ -14,7 +14,7 @@ use crate::architecture::arm::{
 };
 use crate::probe::ti_icdi::IcdiProbe;
 use crate::probe::ti_icdi::gdb_interface::GdbRemoteInterface;
-use crate::probe::{BitSequence, DebugProbeError, Probe};
+use crate::probe::{BitSequence, DebugProbe, DebugProbeError, Probe};
 use zerocopy::IntoBytes;
 
 /// AHB3 MEM-AP IDR used to satisfy [`MemoryAp::new`] for a probe that has no DAP.
@@ -144,6 +144,10 @@ impl SwoAccess for IcdiArmDebug {
 }
 
 impl ArmDebugInterface for IcdiArmDebug {
+    fn driver_mut(&mut self) -> Option<&mut dyn DebugProbe> {
+        Some(self.probe.as_mut())
+    }
+
     fn reinitialize(&mut self) -> Result<(), ArmError> {
         Ok(())
     }

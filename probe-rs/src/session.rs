@@ -25,7 +25,7 @@ use crate::{
     core::{Architecture, CombinedCoreState},
     memory_port::MemoryAccessPort,
     probe::{
-        AttachMethod, DebugProbeError, Probe, ProbeCreationError, WireProtocol,
+        AttachMethod, DebugProbe, DebugProbeError, Probe, ProbeCreationError, WireProtocol,
         fake_probe::FakeProbe, list::Lister,
     },
 };
@@ -974,6 +974,20 @@ impl Session {
     /// Get the target description of the connected target.
     pub fn target(&self) -> &Target {
         &self.target
+    }
+
+    /// Returns the probe driver. Downcast it through [`Any`](std::any::Any) to use a specific
+    /// driver's own API.
+    ///
+    /// Commands sent through it reach the probe after everything the session did before.
+    /// Commands that reset or reconfigure the debug interface can invalidate the session's
+    /// cached state. Reattach before further target access after such a command.
+    pub fn driver_mut(&mut self) -> Option<&mut dyn DebugProbe> {
+        match &mut self.interfaces {
+            ArchitectureInterface::Arm(interface)
+            | ArchitectureInterface::ArmWithRiscv { arm: interface, .. } => interface.driver_mut(),
+            ArchitectureInterface::Jtag(probe, _) => Some(probe.driver_mut()),
+        }
     }
 
     /// Configure the target and probe for serial wire view (SWV) tracing.

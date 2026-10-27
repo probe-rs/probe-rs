@@ -5,6 +5,8 @@ mod commands;
 mod tcp;
 mod tools;
 
+pub use commands::VendorCommandId;
+
 use crate::{
     CoreStatus,
     architecture::{
@@ -29,7 +31,7 @@ use crate::{
         cmsisdap::{
             arm::CmsisDapTransport,
             commands::{
-                CmsisDapError, RequestError,
+                CmsisDapError, RequestError, SendError,
                 general::info::{
                     CapabilitiesCommand, PacketCountCommand, SWOTraceBufferSizeCommand,
                 },
@@ -144,6 +146,9 @@ fn tcp_address(selector: &DebugProbeSelector) -> Option<&str> {
 }
 
 /// A CMSIS-DAP probe.
+///
+/// Reach one by downcasting [`Probe::driver_mut`](crate::probe::Probe::driver_mut) on an opened
+/// probe, or [`Session::driver_mut`](crate::Session::driver_mut) on an attached one.
 pub struct CmsisDap {
     device: CmsisDapDevice,
     _hw_version: u8,
@@ -882,6 +887,39 @@ impl CmsisDap {
 
         Ok(())
     }
+
+    /// Send a vendor command and return its response payload.
+    ///
+    /// The command ID and payload are defined by the probe firmware. The response excludes the
+    /// command ID and may include packet padding.
+    ///
+    /// The payload must fit in one packet, leaving one byte for the command ID. Callers must
+    /// interpret the response using the vendor's protocol, including any status bytes. A probe
+    /// that rejects the command with `ID_DAP_Invalid` returns
+    /// [`DebugProbeError::CommandNotSupportedByProbe`].
+    pub fn send_vendor_command(
+        &mut self,
+        command_id: VendorCommandId,
+        payload: &[u8],
+    ) -> Result<Vec<u8>, DebugProbeError> {
+        commands::send_command(
+            &mut self.device,
+            &commands::VendorCommandRequest {
+                command_id,
+                payload,
+            },
+        )
+        .map_err(|error| match error {
+            // Firmware answers a command ID it has no handler for with `ID_DAP_Invalid` alone.
+            CmsisDapError::Send {
+                source: SendError::CommandIdMismatch(0xFF, _),
+                ..
+            } => DebugProbeError::CommandNotSupportedByProbe {
+                command_name: "vendor command",
+            },
+            error => error.into(),
+        })
+    }
 }
 
 impl DebugProbe for CmsisDap {
@@ -1242,7 +1280,12 @@ mod tests {
         ignore_unknown_command,
     };
     use super::commands::{Request, general::info::PacketSizeCommand};
-    use super::{CapabilitiesCommand, CmsisDap, HostStatusResponse, PacketCountCommand};
+    use super::{
+        CapabilitiesCommand, CmsisDap, HostStatusResponse, PacketCountCommand, VendorCommandId,
+    };
+    use crate::probe::DebugProbeError;
+
+    const VENDOR_COMMAND: VendorCommandId = VendorCommandId::new(0x8F).unwrap();
 
     fn failed(source: SendError) -> Result<HostStatusResponse, CmsisDapError> {
         Err(CmsisDapError::Send {
@@ -1273,6 +1316,78 @@ mod tests {
             .is_err()
         );
         assert!(ignore_unknown_command(failed(SendError::Timeout)).is_err());
+    }
+
+    #[test]
+    fn vendor_command_sends_opaque_payload_and_returns_reply_bytes() {
+        let probe = FakeProbe::shared(64, |command| match command {
+            [0x8F, 0x12, 0x34, ..] => Reply::Now(vec![0x8F, 0xA5, 0, 0]),
+            command => standard_reply(command, 64, 4),
+        });
+        let mut dap = CmsisDap::new_from_device(CmsisDapDevice::Fake(probe.clone())).unwrap();
+
+        let response = dap
+            .send_vendor_command(VENDOR_COMMAND, &[0x12, 0x34])
+            .unwrap();
+
+        assert_eq!(response, [0xA5, 0, 0]);
+        assert_eq!(
+            probe.lock().unwrap().sent.last().unwrap(),
+            &[0x8F, 0x12, 0x34]
+        );
+    }
+
+    #[test]
+    fn a_vendor_payload_fills_at_most_one_packet() {
+        let probe = FakeProbe::shared(64, |command| match command {
+            [0x8F, ..] => Reply::Now(vec![0x8F]),
+            _ => standard_reply(command, 64, 4),
+        });
+        let mut dap = CmsisDap::new_from_device(CmsisDapDevice::Fake(probe.clone())).unwrap();
+        let sent = probe.lock().unwrap().sent.len();
+
+        assert!(
+            dap.send_vendor_command(VENDOR_COMMAND, &[0x55; 64])
+                .is_err()
+        );
+        assert_eq!(probe.lock().unwrap().sent.len(), sent);
+
+        dap.send_vendor_command(VENDOR_COMMAND, &[0x55; 63])
+            .unwrap();
+        assert_eq!(probe.lock().unwrap().sent.last().unwrap().len(), 64);
+    }
+
+    #[test]
+    fn a_vendor_command_the_firmware_rejects_is_unsupported() {
+        // The probe answers every command it does not know with `ID_DAP_Invalid`.
+        let probe = FakeProbe::shared(64, |command| standard_reply(command, 64, 4));
+        let mut dap = CmsisDap::new_from_device(CmsisDapDevice::Fake(probe)).unwrap();
+
+        assert!(matches!(
+            dap.send_vendor_command(VENDOR_COMMAND, &[]),
+            Err(DebugProbeError::CommandNotSupportedByProbe { .. })
+        ));
+    }
+
+    #[test]
+    fn an_arm_interface_lends_its_cmsis_dap_probe() {
+        use crate::architecture::arm::sequences::DefaultArmSequence;
+        use crate::probe::Probe;
+        use std::any::Any;
+
+        let probe = FakeProbe::shared(64, |command| match command {
+            [0x02, ..] => Reply::Now(vec![0x02, 1]),
+            [id @ (0x04 | 0x11 | 0x12 | 0x13), ..] => Reply::Now(vec![*id, 0]),
+            _ => standard_reply(command, 64, 4),
+        });
+        let mut probe = Probe::new(CmsisDap::new_from_device(CmsisDapDevice::Fake(probe)).unwrap());
+        probe.attach_to_unspecified().unwrap();
+        let mut interface = probe
+            .try_into_arm_debug_interface(DefaultArmSequence::create())
+            .unwrap_or_else(|_| panic!("no ARM interface"));
+
+        let probe: &mut dyn Any = interface.driver_mut().unwrap();
+        assert!(probe.downcast_mut::<CmsisDap>().is_some());
     }
 
     #[test]

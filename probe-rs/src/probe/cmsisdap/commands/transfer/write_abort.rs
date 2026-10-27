@@ -12,7 +12,9 @@ pub struct WriteAbortRequest {
 }
 
 impl Request for WriteAbortRequest {
-    const COMMAND_ID: CommandId = CommandId::WriteAbort;
+    fn command(&self) -> CommandId {
+        CommandId::WriteAbort
+    }
 
     type Response = WriteAbortResponse;
 

@@ -37,7 +37,7 @@ const RESYNC_TIMEOUT: Duration = Duration::from_millis(50);
 
 #[derive(Debug, thiserror::Error, docsplay::Display)]
 pub enum CmsisDapError {
-    /// Error handling CMSIS-DAP command {command_id:?}.
+    /// Error handling CMSIS-DAP command {command_id}.
     Send {
         command_id: CommandId,
         source: SendError,
@@ -97,8 +97,11 @@ pub enum SendError {
     /// Connecting to target failed, received: {0:x}
     ConnectResponseError(u8),
 
-    /// Command ID in response ({0:#02x}) does not match sent command ID ({1:?} - {*_1 as u8:#02x}).
+    /// Command ID in response ({0:#02x}) does not match sent command ID ({1} - {_1.id():#02x}).
     CommandIdMismatch(u8, CommandId),
+
+    /// Vendor command payload has {actual} bytes, but the packet holds at most {maximum}.
+    VendorPayloadTooLarge { actual: usize, maximum: usize },
 
     /// String in response is not valid UTF-8.
     ///
@@ -573,43 +576,116 @@ impl Status {
 #[derive(Debug, Clone, Copy)]
 #[expect(unused)]
 pub enum CommandId {
-    Info = 0x00,
-    HostStatus = 0x01,
-    Connect = 0x02,
-    Disconnect = 0x03,
-    WriteAbort = 0x08,
-    Delay = 0x09,
-    ResetTarget = 0x0A,
-    SwjPins = 0x10,
-    SwjClock = 0x11,
-    SwjSequence = 0x12,
-    SwdConfigure = 0x13,
-    SwdSequence = 0x1D,
-    SwoTransport = 0x17,
-    SwoMode = 0x18,
-    SwoBaudrate = 0x19,
-    SwoControl = 0x1A,
-    SwoStatus = 0x1B,
-    SwoExtendedStatus = 0x1E,
-    SwoData = 0x1C,
-    JtagSequence = 0x14,
-    JtagConfigure = 0x15,
-    JtagIdcode = 0x16,
-    TransferConfigure = 0x04,
-    Transfer = 0x05,
-    TransferBlock = 0x06,
-    TransferAbort = 0x07,
-    ExecuteCommands = 0x7F,
-    QueueCommands = 0x7E,
-    UartTransport = 0x1F,
-    UartConfigure = 0x20,
-    UartControl = 0x22,
-    UartStatus = 0x23,
-    UartTransfer = 0x21,
+    Info,
+    HostStatus,
+    Connect,
+    Disconnect,
+    WriteAbort,
+    Delay,
+    ResetTarget,
+    SwjPins,
+    SwjClock,
+    SwjSequence,
+    SwdConfigure,
+    SwdSequence,
+    SwoTransport,
+    SwoMode,
+    SwoBaudrate,
+    SwoControl,
+    SwoStatus,
+    SwoExtendedStatus,
+    SwoData,
+    JtagSequence,
+    JtagConfigure,
+    JtagIdcode,
+    TransferConfigure,
+    Transfer,
+    TransferBlock,
+    TransferAbort,
+    ExecuteCommands,
+    QueueCommands,
+    UartTransport,
+    UartConfigure,
+    UartControl,
+    UartStatus,
+    UartTransfer,
+    Vendor(VendorCommandId),
+}
+
+impl CommandId {
+    /// The command ID, the first byte of the request and of its reply.
+    pub fn id(self) -> u8 {
+        match self {
+            CommandId::Info => 0x00,
+            CommandId::HostStatus => 0x01,
+            CommandId::Connect => 0x02,
+            CommandId::Disconnect => 0x03,
+            CommandId::WriteAbort => 0x08,
+            CommandId::Delay => 0x09,
+            CommandId::ResetTarget => 0x0A,
+            CommandId::SwjPins => 0x10,
+            CommandId::SwjClock => 0x11,
+            CommandId::SwjSequence => 0x12,
+            CommandId::SwdConfigure => 0x13,
+            CommandId::SwdSequence => 0x1D,
+            CommandId::SwoTransport => 0x17,
+            CommandId::SwoMode => 0x18,
+            CommandId::SwoBaudrate => 0x19,
+            CommandId::SwoControl => 0x1A,
+            CommandId::SwoStatus => 0x1B,
+            CommandId::SwoExtendedStatus => 0x1E,
+            CommandId::SwoData => 0x1C,
+            CommandId::JtagSequence => 0x14,
+            CommandId::JtagConfigure => 0x15,
+            CommandId::JtagIdcode => 0x16,
+            CommandId::TransferConfigure => 0x04,
+            CommandId::Transfer => 0x05,
+            CommandId::TransferBlock => 0x06,
+            CommandId::TransferAbort => 0x07,
+            CommandId::ExecuteCommands => 0x7F,
+            CommandId::QueueCommands => 0x7E,
+            CommandId::UartTransport => 0x1F,
+            CommandId::UartConfigure => 0x20,
+            CommandId::UartControl => 0x22,
+            CommandId::UartStatus => 0x23,
+            CommandId::UartTransfer => 0x21,
+            CommandId::Vendor(VendorCommandId(id)) => id,
+        }
+    }
+}
+
+impl std::fmt::Display for CommandId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            CommandId::Vendor(VendorCommandId(id)) => write!(f, "Vendor {id:#04x}"),
+            command => write!(f, "{command:?}"),
+        }
+    }
+}
+
+/// A CMSIS-DAP vendor command ID, from `0x80` through `0xFE`: the vendor range up to `0x9F`, and
+/// the extended vendor range that DAPLink defines above it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct VendorCommandId(u8);
+
+impl VendorCommandId {
+    /// Returns `None` if `id` is outside the vendor range.
+    pub const fn new(id: u8) -> Option<Self> {
+        if matches!(id, 0x80..=0xFE) {
+            Some(Self(id))
+        } else {
+            None
+        }
+    }
+
+    /// The command ID, the first byte of the command and of its reply.
+    pub const fn get(self) -> u8 {
+        self.0
+    }
 }
 
 pub(crate) trait Request {
-    const COMMAND_ID: CommandId;
+    fn command(&self) -> CommandId;
 
     type Response;
 
@@ -619,6 +695,35 @@ pub(crate) trait Request {
 
     /// Parse the response to this request from received bytes.
     fn parse_response(&self, buffer: &[u8]) -> Result<Self::Response, SendError>;
+}
+
+/// Sends an opaque CMSIS-DAP vendor command.
+pub(super) struct VendorCommandRequest<'a> {
+    pub(super) command_id: VendorCommandId,
+    pub(super) payload: &'a [u8],
+}
+
+impl Request for VendorCommandRequest<'_> {
+    fn command(&self) -> CommandId {
+        CommandId::Vendor(self.command_id)
+    }
+
+    type Response = Vec<u8>;
+
+    fn to_bytes(&self, buffer: &mut [u8]) -> Result<usize, SendError> {
+        if self.payload.len() > buffer.len() {
+            return Err(SendError::VendorPayloadTooLarge {
+                actual: self.payload.len(),
+                maximum: buffer.len(),
+            });
+        }
+        buffer[..self.payload.len()].copy_from_slice(self.payload);
+        Ok(self.payload.len())
+    }
+
+    fn parse_response(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
+        Ok(buffer.to_vec())
+    }
 }
 
 /// Send a request and take its reply. After a failure that can leave a reply behind, bring the
@@ -642,7 +747,7 @@ pub(crate) fn send_command_once<Req: Request>(
     request: &Req,
 ) -> Result<Req::Response, CmsisDapError> {
     send_command_inner(device, request).map_err(|e| CmsisDapError::Send {
-        command_id: Req::COMMAND_ID,
+        command_id: request.command(),
         source: e,
     })
 }
@@ -707,7 +812,7 @@ pub(crate) fn send_request<Req: Request>(
 ) -> Result<(), CmsisDapError> {
     let mut buffer = vec![0; packet_buffer_len(device)];
     send_request_inner(device, request, &mut buffer).map_err(|e| CmsisDapError::Send {
-        command_id: Req::COMMAND_ID,
+        command_id: request.command(),
         source: e,
     })
 }
@@ -719,7 +824,7 @@ pub(crate) fn receive_response<Req: Request>(
 ) -> Result<Req::Response, CmsisDapError> {
     let mut buffer = vec![0; packet_buffer_len(device)];
     receive_response_inner(device, request, &mut buffer).map_err(|e| CmsisDapError::Send {
-        command_id: Req::COMMAND_ID,
+        command_id: request.command(),
         source: e,
     })
 }
@@ -748,7 +853,7 @@ fn send_request_inner<Req: Request>(
     buffer: &mut [u8],
 ) -> Result<(), SendError> {
     // Leave byte 0 as the HID report, and write the command and request to the buffer.
-    buffer[1] = Req::COMMAND_ID as u8;
+    buffer[1] = request.command().id();
     #[cfg_attr(not(feature = "cmsisdap_v1"), allow(unused_mut))]
     let mut size = request.to_bytes(&mut buffer[2..])? + 2;
 
@@ -780,12 +885,12 @@ fn receive_response_inner<Req: Request>(
         return Err(SendError::NotEnoughData);
     }
 
-    if response_data[0] == Req::COMMAND_ID as u8 {
+    if response_data[0] == request.command().id() {
         request.parse_response(&response_data[1..])
     } else {
         Err(SendError::CommandIdMismatch(
             response_data[0],
-            Req::COMMAND_ID,
+            request.command(),
         ))
     }
 }

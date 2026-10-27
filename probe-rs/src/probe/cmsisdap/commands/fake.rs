@@ -59,7 +59,7 @@ impl FakeProbe {
 
     pub(crate) fn write(&mut self, command: &[u8]) {
         self.sent.push(command.to_vec());
-        let abort = command.first() == Some(&(CommandId::TransferAbort as u8));
+        let abort = command.first() == Some(&CommandId::TransferAbort.id());
         if abort && self.abort_interrupts {
             self.ready.extend(self.late.drain(..));
             self.ready.extend(self.held.drain(..));
@@ -88,7 +88,7 @@ impl FakeProbe {
 
     /// How many `DAP_TransferAbort` commands were written.
     pub(crate) fn aborts(&self) -> usize {
-        let abort = CommandId::TransferAbort as u8;
+        let abort = CommandId::TransferAbort.id();
         self.sent
             .iter()
             .filter(|command| command[0] == abort)
