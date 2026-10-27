@@ -217,15 +217,19 @@ impl PendingBatch {
     }
 }
 
+/// A `DAP_TransferBlock` packet: one chunk of a repeated access.
+struct PendingBlock<'a> {
+    /// The batch index of the chunk's first operation.
+    chunk_start: usize,
+    chunk: &'a [(HandleId, SwdOp)],
+    request: TransferBlockRequest,
+    direction: Direction,
+}
+
 /// A transfer request sent and not yet answered, and what its reply maps back to.
 enum InFlight<'a> {
     Transfer(PendingBatch),
-    Block {
-        chunk_start: usize,
-        chunk: &'a [(HandleId, SwdOp)],
-        request: TransferBlockRequest,
-        direction: Direction,
-    },
+    Block(PendingBlock<'a>),
 }
 
 impl InFlight<'_> {
@@ -233,15 +237,9 @@ impl InFlight<'_> {
     fn first_operation(&self) -> usize {
         match self {
             InFlight::Transfer(packet) => packet.transfers[0].batch_index,
-            InFlight::Block { chunk_start, .. } => *chunk_start,
+            InFlight::Block(block) => block.chunk_start,
         }
     }
-}
-
-/// The reply to an [`InFlight`] request.
-enum Reply {
-    Transfer(TransferResponse),
-    Block(TransferBlockResponse),
 }
 
 /// Transfer requests outstanding at the probe, oldest first, and what has come back so far.
@@ -264,6 +262,12 @@ impl Pipeline<'_> {
             capture: true,
             results,
         }
+    }
+
+    /// Record a failure. Only the first is kept, and no reply after it is the caller's.
+    fn fail(&mut self, failure: (BatchError<DebugProbeError>, usize)) {
+        self.failure.get_or_insert(failure);
+        self.capture = false;
     }
 }
 
@@ -434,7 +438,7 @@ impl CmsisDap {
 
         let sent = match &command {
             InFlight::Transfer(packet) => commands::send_request(&mut self.device, &packet.request),
-            InFlight::Block { request, .. } => commands::send_request(&mut self.device, request),
+            InFlight::Block(block) => commands::send_request(&mut self.device, &block.request),
         };
         match sent {
             Ok(()) => pipeline.in_flight.push_back(command),
@@ -479,12 +483,12 @@ impl CmsisDap {
                 ),
             };
             request.dap_index = self.jtag_state.chain_params.index as u8;
-            let command = InFlight::Block {
+            let command = InFlight::Block(PendingBlock {
                 chunk_start: run_start + chunk_index * words_per_packet,
                 chunk,
                 request,
                 direction,
-            };
+            });
             self.pipeline_send(pipeline, command);
         }
     }
@@ -496,92 +500,86 @@ impl CmsisDap {
         };
 
         let received = match &command {
-            InFlight::Transfer(packet) => {
-                commands::receive_response(&mut self.device, &packet.request).map(Reply::Transfer)
-            }
-            InFlight::Block { request, .. } => {
-                commands::receive_response(&mut self.device, request).map(Reply::Block)
-            }
+            InFlight::Transfer(packet) => self.take_transfer_reply(pipeline, packet),
+            InFlight::Block(block) => self.take_block_reply(pipeline, block),
         };
-        let reply = match received {
-            Ok(reply) => reply,
-            Err(error) => {
-                // A late reply arrives ahead of the replies still in flight, so reading on would
-                // give each request the reply of the one before it.
-                if commands::may_be_out_of_step(&error) || !pipeline.in_flight.is_empty() {
-                    self.device.resynchronise();
-                }
-                pipeline.in_flight.clear();
-                pipeline.capture = false;
-                pipeline.failure.get_or_insert((
-                    BatchError::Probe(DebugProbeError::from(error)),
-                    command.first_operation(),
-                ));
-                return;
+        if let Err(error) = received {
+            // A late reply arrives ahead of the replies still in flight, so reading on would
+            // give each request the reply of the one before it.
+            if commands::may_be_out_of_step(&error) || !pipeline.in_flight.is_empty() {
+                self.device.resynchronise();
             }
-        };
+            pipeline.in_flight.clear();
+            pipeline.fail((
+                BatchError::Probe(DebugProbeError::from(error)),
+                command.first_operation(),
+            ));
+        }
+    }
 
-        let classified = match (&command, &reply) {
-            (InFlight::Transfer(packet), Reply::Transfer(response)) => {
-                Self::classify_transfer_response(response, &packet.transfers)
-            }
-            (
-                InFlight::Block {
-                    chunk, chunk_start, ..
-                },
-                Reply::Block(response),
-            ) => Self::classify_block_response(response, chunk.len(), *chunk_start),
-            _ => unreachable!("a reply is parsed as the command that asked for it"),
-        };
-        if let Err(problem) = classified {
-            // A failed command ends the batch: later replies are discarded.
-            pipeline.failure.get_or_insert(problem);
-            pipeline.capture = false;
-            return;
+    /// Take a `DAP_Transfer` reply and keep the values it read.
+    ///
+    /// Returns an error only when no reply could be read. A reply that reports a failure is
+    /// recorded in `pipeline`.
+    fn take_transfer_reply(
+        &mut self,
+        pipeline: &mut Pipeline<'_>,
+        packet: &PendingBatch,
+    ) -> Result<(), commands::CmsisDapError> {
+        let response = commands::receive_response(&mut self.device, &packet.request)?;
+        if let Err(failure) = Self::classify_transfer_response(&response, &packet.transfers) {
+            pipeline.fail(failure);
+            return Ok(());
         }
         if !pipeline.capture {
-            return;
+            return Ok(());
         }
 
-        match (&command, &reply) {
-            (InFlight::Transfer(packet), Reply::Transfer(response)) => {
-                for (transfer, response_transfer) in
-                    packet.transfers.iter().zip(response.transfers.iter())
-                {
-                    if transfer.direction != Direction::Read || !transfer.id.should_capture() {
-                        continue;
-                    }
-                    let Some(data) = response_transfer.data else {
-                        pipeline.failure.get_or_insert((
-                            BatchError::Probe(DebugProbeError::Other(
-                                "CMSIS-DAP read did not return any data".to_string(),
-                            )),
-                            transfer.batch_index,
-                        ));
-                        pipeline.capture = false;
-                        return;
-                    };
-                    pipeline
-                        .results
-                        .push(&transfer.id, CommandResult::U32(data));
-                }
+        for (transfer, response_transfer) in packet.transfers.iter().zip(response.transfers.iter())
+        {
+            if transfer.direction != Direction::Read || !transfer.id.should_capture() {
+                continue;
             }
-            (
-                InFlight::Block {
-                    chunk, direction, ..
-                },
-                Reply::Block(response),
-            ) => {
-                if *direction == Direction::Read {
-                    for ((id, _), value) in chunk.iter().zip(response.transfer_data.iter()) {
-                        if id.should_capture() {
-                            pipeline.results.push(id, CommandResult::U32(*value));
-                        }
-                    }
-                }
-            }
-            _ => unreachable!("a reply is parsed as the command that asked for it"),
+            let Some(data) = response_transfer.data else {
+                pipeline.fail((
+                    BatchError::Probe(DebugProbeError::Other(
+                        "CMSIS-DAP read did not return any data".to_string(),
+                    )),
+                    transfer.batch_index,
+                ));
+                return Ok(());
+            };
+            pipeline
+                .results
+                .push(&transfer.id, CommandResult::U32(data));
         }
+        Ok(())
+    }
+
+    /// Take a `DAP_TransferBlock` reply and keep the values it read, as
+    /// [`Self::take_transfer_reply`] does.
+    fn take_block_reply(
+        &mut self,
+        pipeline: &mut Pipeline<'_>,
+        block: &PendingBlock<'_>,
+    ) -> Result<(), commands::CmsisDapError> {
+        let response = commands::receive_response(&mut self.device, &block.request)?;
+        if let Err(failure) =
+            Self::classify_block_response(&response, block.chunk.len(), block.chunk_start)
+        {
+            pipeline.fail(failure);
+            return Ok(());
+        }
+        if !pipeline.capture || block.direction != Direction::Read {
+            return Ok(());
+        }
+
+        for ((id, _), value) in block.chunk.iter().zip(response.transfer_data.iter()) {
+            if id.should_capture() {
+                pipeline.results.push(id, CommandResult::U32(*value));
+            }
+        }
+        Ok(())
     }
 
     /// Take every outstanding reply.
