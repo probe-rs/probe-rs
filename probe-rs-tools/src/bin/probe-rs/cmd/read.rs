@@ -7,7 +7,7 @@ use probe_rs_rpc_client::{CoreInterface, RpcClient};
 use crate::CoreOptions;
 use crate::util::cli;
 use crate::util::common_options::{ProbeOptions, ReadWriteBitWidth, ReadWriteOptions};
-use std::io::Write;
+use std::io::{BufWriter, Write};
 use std::path::PathBuf;
 
 #[derive(clap::ValueEnum, Clone, Copy)]
@@ -236,8 +236,9 @@ impl Cmd {
         width: ReadWriteBitWidth,
         format: OutputFormat,
     ) -> anyhow::Result<()> {
-        let mut file = std::fs::File::create(path)?;
+        let mut file = BufWriter::new(std::fs::File::create(path)?);
         format.write(&mut file, address, width, data)?;
+        file.flush()?;
         Ok(())
     }
 
@@ -247,7 +248,7 @@ impl Cmd {
         width: ReadWriteBitWidth,
         format: OutputFormat,
     ) -> anyhow::Result<()> {
-        let mut stdout = std::io::stdout();
+        let mut stdout = std::io::stdout().lock();
         format.write(&mut stdout, address, width, data)?;
         Ok(())
     }
