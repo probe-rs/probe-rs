@@ -43,6 +43,7 @@
 //! ```
 
 mod builder;
+mod compare;
 mod download;
 mod encoder;
 mod erase;
@@ -60,6 +61,7 @@ pub mod verify_sequence;
 use builder::*;
 
 pub use builder::{FlashDataBlockSpan, FlashFill, FlashLayout, FlashPage, FlashSector};
+pub use compare::{CompareCost, CompareOutcome, FlashCompare, Outside, SectorCheck};
 pub use download::*;
 pub use erase::*;
 pub use error::*;
