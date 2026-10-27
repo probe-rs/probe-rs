@@ -33,6 +33,9 @@ pub enum ChipDetectionMethod {
 
     /// WCH-Link probe-firmware-based chip detection.
     WchLink(WchLinkDetection),
+
+    /// NXP MCXA SYSCON identification registers.
+    NxpMcxa(NxpMcxaDetection),
 }
 
 impl ChipDetectionMethod {
@@ -275,4 +278,22 @@ pub struct ObCodeRamSplit {
     #[serde(serialize_with = "hex_keys_indexmap")]
     #[serde(deserialize_with = "maps_duplicate_key_is_error::deserialize")]
     pub variants: IndexMap<u8, String>,
+}
+
+/// NXP MCXA chip detection using the SYSCON JTAG_ID and DEVICE_TYPE registers.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct NxpMcxaDetection {
+    /// Address of SYSCON.JTAG_ID. DEVICE_TYPE is the following 32-bit register.
+    #[serde(serialize_with = "hex_u_int")]
+    pub register_address: u32,
+
+    /// Expected JTAG_ID, excluding its revision field (bits 31:28).
+    #[serde(serialize_with = "hex_u_int")]
+    pub jtag_id: u32,
+
+    /// DEVICE_TYPE.DEVICE_TYPE_NUM (bits 15:0) => Target name.
+    #[serde(serialize_with = "hex_keys_indexmap")]
+    #[serde(deserialize_with = "maps_duplicate_key_is_error::deserialize")]
+    pub variants: IndexMap<u16, String>,
 }

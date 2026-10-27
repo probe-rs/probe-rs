@@ -2,6 +2,21 @@ name: MCXA2
 manufacturer:
   id: 0x15
   cc: 0x0
+chip_detection:
+# MCXAP144M240F61RM 14.5.1.30-31: SYSCON.JTAG_ID and DEVICE_TYPE.
+# Historical MCXA165/166 and MCXA275/276 IDs are not established by this manual.
+- !NxpMcxa
+  register_address: 0x40091ff0
+  jtag_id: 0x0726802b
+  variants:
+    0x2175: MCXA175
+    0x2176: MCXA176
+    0x2185: MCXA185
+    0x2186: MCXA186
+    0x2255: MCXA255
+    0x2256: MCXA256
+    0x2265: MCXA265
+    0x2266: MCXA266
 variants:
 - name: MCXA165
   cores:

@@ -2,6 +2,23 @@ name: MCXA5
 manufacturer:
   id: 0x15
   cc: 0x0
+chip_detection:
+# MCXAP172M240F70RM 22.5.1.29-30: SYSCON.JTAG_ID and DEVICE_TYPE.
+- !NxpMcxa
+  register_address: 0x400917f0
+  jtag_id: 0x0726a02b
+  variants:
+    0x2286: MCXA286
+    0x2287: MCXA287
+    0x2456: MCXA456
+    0x2457: MCXA457
+    0x2536: MCXA536
+    0x2537: MCXA537
+    0x2556: MCXA556
+    0x2557: MCXA557
+    0x2566: MCXA566
+    0x2567: MCXA567
+    0x2577: MCXA577
 variants:
 - name: MCXA286
   cores:
