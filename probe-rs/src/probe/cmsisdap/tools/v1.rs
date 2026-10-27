@@ -122,10 +122,12 @@ pub(super) fn open_device(
                 device_info.product_id(),
                 device_info.release_number(),
             )?;
+            let report_size = descriptor_report_size(&device)
+                .map_or_else(|| hid_report_size(device_info), usize::from);
             Ok((
                 CmsisDapDevice::V1 {
                     handle: device,
-                    report_size: hid_report_size(device_info),
+                    report_size,
                     usb_timeout: DEFAULT_USB_TIMEOUT,
                 },
                 Some(s),
@@ -140,7 +142,65 @@ pub(super) fn open_device(
     }
 }
 
-/// Manual override of HID report size
+/// The size of the output report in the HID interface's report descriptor.
+///
+/// Every write has to be exactly this size. On Linux a shorter one reaches the probe as it is,
+/// and a probe whose reports span several USB packets gathers several writes into one report.
+///
+/// Returns `None` if the descriptor cannot be read, or [`output_report_size`] finds no size in it.
+fn descriptor_report_size(device: &hidapi::HidDevice) -> Option<u16> {
+    let mut descriptor = [0; hidapi::MAX_REPORT_DESCRIPTOR_SIZE];
+    let len = device.get_report_descriptor(&mut descriptor).ok()?;
+    let size = output_report_size(&descriptor[..len]);
+    tracing::debug!("HID report size from the report descriptor: {size:?}");
+    size
+}
+
+/// The size in bytes of the output report a HID report descriptor describes: the Report Size
+/// times the Report Count of every Output item, added up.
+///
+/// Returns `None` for a descriptor with report IDs or long items, which CMSIS-DAP does not use,
+/// and for one that is malformed or gives a size no DAP packet can have.
+fn output_report_size(descriptor: &[u8]) -> Option<u16> {
+    // Item tags and types: the prefix without its size bits (HID 1.11, 6.2.2).
+    const OUTPUT: u8 = 0x90;
+    const REPORT_SIZE: u8 = 0x74;
+    const REPORT_ID: u8 = 0x84;
+    const REPORT_COUNT: u8 = 0x94;
+    const PUSH: u8 = 0xA4;
+    const POP: u8 = 0xB4;
+    const LONG_ITEM: u8 = 0xFE;
+
+    let (mut report_size, mut report_count) = (0u32, 0u32);
+    let mut pushed = Vec::new();
+    let mut bits = 0u32;
+    let mut items = descriptor;
+    while let Some((&prefix, rest)) = items.split_first() {
+        if prefix == LONG_ITEM {
+            return None;
+        }
+        let (data, rest) = rest.split_at_checked([0, 1, 2, 4][usize::from(prefix & 0x03)])?;
+        let mut bytes = [0; 4];
+        bytes[..data.len()].copy_from_slice(data);
+        let value = u32::from_le_bytes(bytes);
+        match prefix & !0x03 {
+            REPORT_SIZE => report_size = value,
+            REPORT_COUNT => report_count = value,
+            REPORT_ID => return None,
+            PUSH => pushed.push((report_size, report_count)),
+            POP => (report_size, report_count) = pushed.pop()?,
+            OUTPUT => bits = bits.checked_add(report_size.checked_mul(report_count)?)?,
+            _ => {}
+        }
+        items = rest;
+    }
+
+    u16::try_from(bits.div_ceil(8))
+        .ok()
+        .filter(|&size| size > 0)
+}
+
+/// Manual override of HID report size, for when the report descriptor gives none.
 ///
 /// This is only needed for devices which:
 ///
@@ -168,4 +228,66 @@ fn hid_report_size(device: &hidapi::DeviceInfo) -> usize {
     // Devices are queried at startup for their packet size so it can usually be increased quickly
     // if needed; only some devices are annoying to query the packet size so are worth an override.
     64
+}
+
+#[cfg(test)]
+mod tests {
+    use super::output_report_size;
+
+    /// A vendor-defined descriptor in the shape of TinyUSB's `TUD_HID_REPORT_DESC_GENERIC_INOUT`,
+    /// with `items` inside its application collection.
+    fn generic(items: &[&[u8]]) -> Vec<u8> {
+        let mut descriptor = vec![0x06, 0x00, 0xff, 0x09, 0x01, 0xa1, 0x01];
+        descriptor.extend(items.concat());
+        descriptor.push(0xc0);
+        descriptor
+    }
+
+    const IN_64: &[u8] = &[
+        0x09, 0x02, 0x15, 0x00, 0x26, 0xff, 0x00, 0x75, 0x08, 0x95, 0x40, 0x81, 0x02,
+    ];
+    const OUT_64: &[u8] = &[
+        0x09, 0x03, 0x15, 0x00, 0x26, 0xff, 0x00, 0x75, 0x08, 0x95, 0x40, 0x91, 0x02,
+    ];
+    /// The Report Count of 512 takes a two-byte item.
+    const OUT_512: &[u8] = &[
+        0x09, 0x03, 0x15, 0x00, 0x26, 0xff, 0x00, 0x75, 0x08, 0x96, 0x00, 0x02, 0x91, 0x02,
+    ];
+    const REPORT_ID_1: &[u8] = &[0x85, 0x01];
+    /// Output after a Pop uses the Report Count from before the Push.
+    const PUSH_POP: &[u8] = &[
+        0x75, 0x08, 0x95, 0x40, 0xa4, 0x96, 0x00, 0x02, 0x09, 0x02, 0x81, 0x02, 0xb4, 0x09, 0x03,
+        0x91, 0x02,
+    ];
+    const LONG_ITEM: &[u8] = &[0xfe, 0x01, 0x10, 0x00];
+    /// One byte more than a DAP packet can hold.
+    const OUT_HUGE: &[u8] = &[0x75, 0x08, 0x97, 0x00, 0x00, 0x01, 0x00, 0x91, 0x02];
+    /// An Output item of nearly 2^64 bits.
+    const OUT_MUL_OVERFLOW: &[u8] = &[
+        0x77, 0xff, 0xff, 0xff, 0xff, 0x97, 0xff, 0xff, 0xff, 0xff, 0x91, 0x02,
+    ];
+    /// Two Output items of nearly 2^32 bits each.
+    const OUT_ADD_OVERFLOW: &[u8] = &[0x76, 0xff, 0xff, 0x96, 0xff, 0xff, 0x91, 0x02, 0x91, 0x02];
+
+    #[test]
+    fn output_report_size_of_descriptors() {
+        // Ends inside the Output item, which is missing its data byte.
+        let truncated = generic(&[IN_64, OUT_64]);
+        let truncated = truncated[..truncated.len() - 2].to_vec();
+        let cases: &[(&str, Vec<u8>, Option<u16>)] = &[
+            ("64-byte reports", generic(&[IN_64, OUT_64]), Some(64)),
+            ("bigger output", generic(&[IN_64, OUT_512]), Some(512)),
+            ("report ID", generic(&[REPORT_ID_1, IN_64, OUT_64]), None),
+            ("no output report", generic(&[IN_64]), None),
+            ("truncated item", truncated, None),
+            ("push and pop", generic(&[PUSH_POP]), Some(64)),
+            ("long item", generic(&[LONG_ITEM, IN_64, OUT_64]), None),
+            ("too big for a packet", generic(&[OUT_HUGE]), None),
+            ("product overflow", generic(&[OUT_MUL_OVERFLOW]), None),
+            ("sum overflow", generic(&[OUT_ADD_OVERFLOW]), None),
+        ];
+        for (name, descriptor, expected) in cases {
+            assert_eq!(output_report_size(descriptor), *expected, "{name}");
+        }
+    }
 }
