@@ -50,6 +50,30 @@ fn flash_dry_run_t32cz20_bootloader() {
         .expect("Failed to flash in dry run mode.");
 }
 
+/// The T32CZ20's NVM range covers the MFG token pages (0x100F_E000..0x1010_0000).
+#[test]
+fn flash_dry_run_t32cz20_mfg_tokens() {
+    let probe = Probe::from_specific_probe(Box::new(FakeProbe::with_mocked_core()));
+
+    let mut session = probe
+        .attach("T32CZ20", Permissions::default())
+        .expect("Failed to attach with 'fake' probe.");
+
+    let mut flasher = session.target().flash_loader();
+
+    flasher
+        .add_data(0x100F_E000, &[0x1, 0x2, 0x3, 0x4])
+        .expect("Failed to add flash");
+
+    let mut flash_options = DownloadOptions::new();
+
+    flash_options.dry_run = true;
+
+    flasher
+        .commit(&mut session, flash_options)
+        .expect("Failed to flash in dry run mode.");
+}
+
 /// A chip where the flash algorithm's range could be less than the NVM range.
 #[test]
 fn flash_dry_run_mimxrt1010() {

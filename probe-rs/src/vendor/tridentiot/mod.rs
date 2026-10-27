@@ -83,6 +83,7 @@ fn detect_rt584(interface: &mut dyn ArmDebugInterface) -> Result<Option<&'static
 
     Ok(match chip_info >> 16 {
         0x0584 => Some("T32CZ20"),
+        0x3584 => Some("T32CM21"),
         _ => None,
     })
 }
