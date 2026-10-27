@@ -408,7 +408,13 @@ fn component_tree_to_termtree(node: &ComponentTreeNode) -> Tree<String> {
 
 fn format_debug_port_info_node(node: &DebugPortInfoNode) -> String {
     fn format_jep(jep: JEP106Code) -> String {
-        format!("Designer: {}", jep.get().unwrap_or("<unknown>"))
+        match jep.get() {
+            Some(name) => format!("Designer: {name}"),
+            None => format!(
+                "Designer: <unknown> (cc: {:#04x}, id: {:#04x})",
+                jep.cc, jep.id
+            ),
+        }
     }
 
     let mut output = String::new();
