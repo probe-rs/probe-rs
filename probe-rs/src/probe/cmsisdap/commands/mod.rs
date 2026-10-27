@@ -264,9 +264,17 @@ impl CmsisDapDevice {
                     n => Ok(n),
                 }
             }
+            // A reply that fills the packet ends on a full USB packet with no short one after it,
+            // so a read posted for more than the packet size waits for data that never comes.
             CmsisDapDevice::V2 {
-                in_ep, usb_timeout, ..
-            } => Ok(in_ep.read_bulk(buf, *usb_timeout)?),
+                in_ep,
+                usb_timeout,
+                max_packet_size,
+                ..
+            } => {
+                let len = buf.len().min(*max_packet_size);
+                Ok(in_ep.read_bulk(&mut buf[..len], *usb_timeout)?)
+            }
             CmsisDapDevice::Tcp {
                 device, timeout, ..
             } => Ok(device.read(buf, *timeout)?),
