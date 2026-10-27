@@ -1425,8 +1425,9 @@ impl HardwareVersion {
 
     /// The major version.
     fn major(&self) -> u8 {
-        // Decimal coded Decimal, cool cool
-        (self.0 / 10000) as u8
+        // Decimal coded Decimal, cool cool. The hardware type sits above this field, so it
+        // has to be divided out before the cast, which would otherwise truncate.
+        ((self.0 / 10000) % 100) as u8
     }
 
     /// The minor version.
@@ -1784,5 +1785,15 @@ mod test {
     fn jlink_pid_segger_driver() {
         // J-Link device using the legacy Segger driver.
         assert!(super::is_jlink_product_id(0x1059));
+    }
+
+    #[test]
+    fn a_version_above_the_hardware_type_field_is_not_truncated() {
+        // A J-Link Ultra reports 7040000, which SEGGER's own tools show as V4.00.
+        let version = super::HardwareVersion::from_u32(7_040_000);
+        assert_eq!(
+            (version.major(), version.minor(), version.revision()),
+            (4, 0, 0)
+        );
     }
 }
