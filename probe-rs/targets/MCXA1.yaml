@@ -2,6 +2,28 @@ name: MCXA1
 manufacturer:
   id: 0x15
   cc: 0x0
+chip_detection:
+# MCXAP64M96FS3RM 14.5.1.30-31 and MCXAP100M96FS6RM 14.5.1.31-32.
+- !NxpMcxa
+  register_address: 0x40091ff0
+  jtag_id: 0x0726602b
+  variants:
+    0x2132: MCXA132
+    0x2133: MCXA133
+    0x2142: MCXA142
+    0x2143: MCXA143
+    0x2152: MCXA152
+    0x2153: MCXA153
+- !NxpMcxa
+  register_address: 0x40091ff0
+  jtag_id: 0x0726702b
+  variants:
+    0x2144: MCXA144
+    0x2145: MCXA145
+    0x2146: MCXA146
+    0x2154: MCXA154
+    0x2155: MCXA155
+    0x2156: MCXA156
 variants:
 - name: MCXA132
   package_variants:
