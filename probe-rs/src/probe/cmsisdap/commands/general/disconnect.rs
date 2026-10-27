@@ -4,7 +4,9 @@ use super::super::{CommandId, Request, SendError, Status};
 pub struct DisconnectRequest;
 
 impl Request for DisconnectRequest {
-    const COMMAND_ID: CommandId = CommandId::Disconnect;
+    fn command(&self) -> CommandId {
+        CommandId::Disconnect
+    }
 
     type Response = DisconnectResponse;
 

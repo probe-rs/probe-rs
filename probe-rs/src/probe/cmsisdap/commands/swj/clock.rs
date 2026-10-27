@@ -7,7 +7,9 @@ pub struct SWJClockRequest {
 }
 
 impl Request for SWJClockRequest {
-    const COMMAND_ID: CommandId = CommandId::SwjClock;
+    fn command(&self) -> CommandId {
+        CommandId::SwjClock
+    }
 
     type Response = SWJClockResponse;
 

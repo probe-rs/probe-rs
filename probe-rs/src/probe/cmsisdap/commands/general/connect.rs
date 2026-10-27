@@ -8,7 +8,9 @@ pub enum ConnectRequest {
 }
 
 impl Request for ConnectRequest {
-    const COMMAND_ID: CommandId = CommandId::Connect;
+    fn command(&self) -> CommandId {
+        CommandId::Connect
+    }
 
     type Response = ConnectResponse;
 

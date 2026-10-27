@@ -111,7 +111,9 @@ impl SWJPinsRequestBuilder {
 }
 
 impl Request for SWJPinsRequest {
-    const COMMAND_ID: CommandId = CommandId::SwjPins;
+    fn command(&self) -> CommandId {
+        CommandId::SwjPins
+    }
 
     type Response = SWJPinsResponse;
 

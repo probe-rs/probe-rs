@@ -20,7 +20,7 @@ use crate::architecture::arm::{
 use crate::probe::blackmagic::{
     Accelerators, Align, BlackMagicProbe, ProtocolVersion, RemoteCommand,
 };
-use crate::probe::{ArmError, BitSequence, DebugProbeError, Probe};
+use crate::probe::{ArmError, BitSequence, DebugProbe, DebugProbeError, Probe};
 use std::collections::BTreeSet;
 use std::collections::hash_map;
 use std::{collections::HashMap, sync::Arc, time::Duration};
@@ -208,6 +208,10 @@ impl BlackMagicProbeArmDebug {
 }
 
 impl ArmDebugInterface for BlackMagicProbeArmDebug {
+    fn driver_mut(&mut self) -> Option<&mut dyn DebugProbe> {
+        Some(self.probe.as_mut())
+    }
+
     fn access_ports(
         &mut self,
         dp: DpAddress,

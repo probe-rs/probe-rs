@@ -806,7 +806,7 @@ mod tests {
 
         let mut blocks = 0;
         let probe = FakeProbe::shared(64, move |command| {
-            if command[0] != CommandId::TransferBlock as u8 {
+            if command[0] != CommandId::TransferBlock.id() {
                 return standard_reply(command, 64, 4);
             }
             let count = u16::from_le_bytes([command[2], command[3]]);
@@ -862,7 +862,7 @@ mod tests {
                     next += 1;
                 }
             };
-            if command[0] == CommandId::Transfer as u8 {
+            if command[0] == CommandId::Transfer.id() {
                 let count = command[2] as usize;
                 let mut reads = 0;
                 let mut position = 3;
@@ -878,7 +878,7 @@ mod tests {
                 let mut reply = vec![command[0], count as u8, Ack::Ok as u8];
                 words(reads, &mut reply);
                 Reply::Now(reply)
-            } else if command[0] == CommandId::TransferBlock as u8 {
+            } else if command[0] == CommandId::TransferBlock.id() {
                 blocks += 1;
                 if Some(blocks) == failing_block {
                     return Reply::Now(vec![command[0], 0, 0, Ack::Wait as u8]);
@@ -923,7 +923,7 @@ mod tests {
         // `dap` then panics on it, which aborts the test binary.
         let (most_owed, owed_at_dp_write, owes_nothing) = {
             let probe = probe.lock().unwrap();
-            let transfer = CommandId::Transfer as u8;
+            let transfer = CommandId::Transfer.id();
             let dp_write = probe.sent[opened..]
                 .iter()
                 .position(|command| command[0] == transfer && command[3] == 0x08)
@@ -972,7 +972,7 @@ mod tests {
         // of `dap` then panics on it, which aborts the test binary.
         let (second_tar_sent, owes_nothing) = {
             let probe = probe.lock().unwrap();
-            let transfer = CommandId::Transfer as u8;
+            let transfer = CommandId::Transfer.id();
             let second_tar = probe
                 .sent
                 .iter()

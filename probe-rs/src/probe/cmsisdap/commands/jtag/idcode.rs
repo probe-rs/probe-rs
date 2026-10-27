@@ -13,7 +13,9 @@ impl IdCodeRequest {
 }
 
 impl Request for IdCodeRequest {
-    const COMMAND_ID: CommandId = CommandId::JtagIdcode;
+    fn command(&self) -> CommandId {
+        CommandId::JtagIdcode
+    }
 
     type Response = IDCODEResponse;
 

@@ -1418,6 +1418,10 @@ impl DapAccess for StlinkArmDebug {
 }
 
 impl ArmDebugInterface for StlinkArmDebug {
+    fn driver_mut(&mut self) -> Option<&mut dyn DebugProbe> {
+        Some(self.probe.as_mut())
+    }
+
     fn memory_interface(
         &mut self,
         access_port: &FullyQualifiedApAddress,

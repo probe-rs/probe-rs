@@ -11,7 +11,7 @@ use crate::architecture::arm::{
     ArmDebugInterface, ArmError, DapAccess, FullyQualifiedApAddress, SwoAccess, SwoConfig,
 };
 use crate::probe::sifliuart::{SifliUart, SifliUartCommand, SifliUartResponse};
-use crate::probe::{BitSequence, DebugProbeError, Probe};
+use crate::probe::{BitSequence, DebugProbe, DebugProbeError, Probe};
 use std::cmp::{max, min};
 use std::collections::BTreeSet;
 use std::sync::Arc;
@@ -151,6 +151,10 @@ impl ArmMemoryInterface for SifliUartMemoryInterface<'_> {
 }
 
 impl ArmDebugInterface for SifliUartArmDebug {
+    fn driver_mut(&mut self) -> Option<&mut dyn DebugProbe> {
+        Some(self.probe.as_mut())
+    }
+
     fn reinitialize(&mut self) -> Result<(), ArmError> {
         Ok(())
     }
