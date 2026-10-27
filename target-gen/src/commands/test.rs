@@ -9,8 +9,8 @@ use probe_rs::{
     MemoryInterface, Permissions, Session, SessionConfig,
     config::Registry,
     flashing::{
-        DownloadOptions, FlashLoader, FlashProgress, ProgressEvent, ProgressOperation, erase,
-        erase_all, run_blank_check,
+        CompareOutcome, DownloadOptions, FlashLoader, FlashProgress, Outside, ProgressEvent,
+        ProgressOperation, SectorCheck, erase, erase_all, run_blank_check,
     },
     probe::{DebugProbeSelector, WireProtocol, list::Lister},
 };
@@ -150,6 +150,7 @@ pub fn cmd_test(
     let start_address = flash_properties.address_range.start;
     let end_address = flash_properties.address_range.end;
     let data_size = flash_properties.page_size;
+    let erased = flash_properties.erased_byte_value;
     let sector_size = flash_properties.sectors[0].size;
 
     let test_start_sector_address = test_start_sector_address.unwrap_or(start_address);
@@ -182,15 +183,54 @@ pub fn cmd_test(
         true,
     )?;
 
+    let data = (0..data_size).map(|n| (n % 256) as u8).collect::<Vec<_>>();
+    let sector = test_start_sector_address..test_start_sector_address + sector_size;
+    // The written data can run into the next sector. Check the part in the first one.
+    let in_sector = data.len().min(sector_size as usize - 1);
+    let image = [(test_start_sector_address + 1, &data[..in_sector])];
+
+    let signatures = run_signature_check(
+        &mut session,
+        algo_index,
+        &sector,
+        &image,
+        erased,
+        CompareOutcome::Empty,
+    )?;
+    if signatures {
+        println!("{test}: Signature of an erased sector OK");
+    }
+
     println!("{test}: Writing two pages ...");
 
     let mut loader = session.target().flash_loader();
     loader.read_rtt_output(true);
-    let data = (0..data_size).map(|n| (n % 256) as u8).collect::<Vec<_>>();
     loader.add_data(test_start_sector_address + 1, &data)?;
     run_flash_download(&mut session, &mut loader, true)?;
 
     println!("{test}: Write done");
+
+    if signatures {
+        run_signature_check(
+            &mut session,
+            algo_index,
+            &sector,
+            &image,
+            erased,
+            CompareOutcome::Match,
+        )?;
+        let mut changed = data[..in_sector].to_vec();
+        changed[0] ^= 0xFF;
+        run_signature_check(
+            &mut session,
+            algo_index,
+            &sector,
+            &[(test_start_sector_address + 1, changed.as_slice())],
+            erased,
+            CompareOutcome::Mismatch,
+        )?;
+        println!("{test}: Signatures of a written sector OK");
+    }
 
     let mut readback = vec![0; data_size as usize];
 
@@ -396,6 +436,65 @@ pub fn run_read_flash(
         active.read_flash(address, data)
     })?;
     Ok(())
+}
+
+/// Compares one sector with the signature function of the flash algorithm.
+///
+/// Returns `false` if the algorithm has no signature function with a known hash. An erased
+/// sector can also give a mismatch: a signature function does not have to detect erased
+/// flash.
+fn run_signature_check(
+    session: &mut Session,
+    algo_index: usize,
+    sector: &std::ops::Range<u64>,
+    image: &[(u64, &[u8])],
+    erased: u8,
+    expected: CompareOutcome,
+) -> Result<bool> {
+    let mut progress = progress_callbacks();
+
+    let raw_flash_algorithm = &session.target().flash_algorithms[algo_index];
+    let mut flasher = Flasher::new(session.target(), 0, raw_flash_algorithm)?.with_rtt();
+
+    let check = SectorCheck {
+        sector: sector.clone(),
+        expected: image.to_vec(),
+        outside: Outside::Erased(erased),
+    };
+
+    let started = Instant::now();
+    let result = flasher.run_verify(session, &mut progress, |active, _region| {
+        active.compare_with_signatures(std::slice::from_ref(&check))
+    })?;
+
+    let Some((hash, outcomes)) = result else {
+        return Ok(false);
+    };
+
+    println!(
+        "{}: Signature ({hash}) of {:#010x?}: {:?} in {:?}",
+        "Test".green(),
+        sector,
+        outcomes[0],
+        started.elapsed()
+    );
+
+    match (expected, outcomes[0]) {
+        (expected, outcome) if expected == outcome => {}
+        (CompareOutcome::Empty, CompareOutcome::Mismatch) => {
+            println!(
+                "{}: The signature function does not detect erased flash.",
+                "Warning".yellow()
+            );
+        }
+        (expected, outcome) => {
+            return Err(anyhow!(
+                "Signature check of {sector:#010x?} gave {outcome:?}, expected {expected:?}"
+            ));
+        }
+    }
+
+    Ok(true)
 }
 
 fn generate_debug_info(target_artifact: &Path) -> Result<()> {

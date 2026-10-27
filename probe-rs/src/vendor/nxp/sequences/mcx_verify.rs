@@ -1,4 +1,4 @@
-//! Fast flash verification for NXP MCX parts, using the FMU's MISR.
+//! Fast flash compare for NXP MCX parts, using the FMU's MISR.
 //!
 //! The flash module can compute a signature over a range of flash itself (the Read into
 //! MISR command), so an image can be checked without reading it back over the debug link.
@@ -10,8 +10,8 @@ use std::ops::Range;
 use std::time::{Duration, Instant};
 
 use crate::config::{MemoryRange, NvmRegion};
-use crate::flashing::{FlashVerify, VerifyOutcome};
-use crate::{Core, Error, MemoryInterface};
+use crate::flashing::{CompareCost, CompareOutcome, FlashCompare, SectorCheck};
+use crate::{Core, Error, MemoryInterface, Session};
 
 /// Flash Memory Module register block.
 const FMU_BASE: u64 = 0x4009_5000;
@@ -81,49 +81,24 @@ fn signs(region: &NvmRegion) -> bool {
     PROGRAM_FLASH.contains_range(&region.range)
 }
 
-/// Verification backed by the FMU's Read into MISR command.
+/// Compare backed by the FMU's Read into MISR command.
 #[derive(Debug)]
-pub struct McxMisrVerify;
+pub struct McxMisrCompare;
 
-impl FlashVerify for McxMisrVerify {
-    fn verify_range(
-        &self,
-        core: &mut Core<'_>,
-        region: &NvmRegion,
-        address: u64,
-        data: &[u8],
-    ) -> Result<VerifyOutcome, Error> {
-        if !signs(region) {
-            return Ok(VerifyOutcome::Unsupported);
-        }
-
-        // The command starts on a page and ends on the last phrase of a page, so a range
-        // that is not a whole number of pages cannot be signed. The caller reads those back.
-        if !address.is_multiple_of(PAGE) || !(data.len() as u64).is_multiple_of(PAGE) {
-            return Ok(VerifyOutcome::Unsupported);
-        }
-        if data.is_empty() {
-            return Ok(VerifyOutcome::Match);
-        }
-
-        // The FMC can swap the two halves of flash, which the boot ROM turns on to boot a
-        // second image. That swap sits between the bus and the flash, so it moved the image
-        // we just programmed, but the FMU signs the arrays directly and would not see it.
-        // The signature would describe the wrong pages, so leave this to the caller.
-        if core.read_word_32(REMAP)? & REMAP_LIM != 0 {
-            tracing::debug!("FMC is remapping flash; the FMU signature would not describe it");
-            return Ok(VerifyOutcome::Unsupported);
-        }
-
+impl McxMisrCompare {
+    /// Signs `len` bytes of flash at `address`.
+    ///
+    /// Returns `None` when the FMU does not sign the range.
+    fn sign(core: &mut Core<'_>, address: u64, len: usize) -> Result<Option<u128>, Error> {
         let status = core.read_word_32(FSTAT)?;
         if status & CCIF == 0 {
             // Something else is driving the flash controller; do not interfere with it.
-            return Ok(VerifyOutcome::Unsupported);
+            return Ok(None);
         }
         // Clear stale error flags, which would otherwise block the command.
         core.write_word_32(FSTAT, ACCERR | PVIOL | CMDABT)?;
 
-        let end_phrase = address + data.len() as u64 - PHRASE;
+        let end_phrase = address + len as u64 - PHRASE;
         core.write_word_32(FCCOB, CMD_RDMISR)?;
         core.write_word_32(FCCOB + 0x08, address as u32)?;
         core.write_word_32(FCCOB + 0x0C, end_phrase as u32)?;
@@ -151,7 +126,7 @@ impl FlashVerify for McxMisrVerify {
         if status & (ACCERR | PVIOL | CMDABT | FAIL) != 0 {
             tracing::debug!("RDMISR rejected {address:#010x}, FSTAT={status:#010x}");
             core.write_word_32(FSTAT, ACCERR | PVIOL | CMDABT)?;
-            return Ok(VerifyOutcome::Unsupported);
+            return Ok(None);
         }
 
         let mut signature = 0u128;
@@ -159,11 +134,76 @@ impl FlashVerify for McxMisrVerify {
             signature |= u128::from(core.read_word_32(FCCOB + 0x10 + word * 4)?) << (32 * word);
         }
 
-        Ok(if signature == misr(0, data) {
-            VerifyOutcome::Match
-        } else {
-            VerifyOutcome::Mismatch
-        })
+        Ok(Some(signature))
+    }
+
+    /// Compares the flash with one check.
+    fn compare_check(
+        core: &mut Core<'_>,
+        check: &SectorCheck<'_>,
+    ) -> Result<CompareOutcome, Error> {
+        let content = check.sector_content();
+        let ranges = match &content {
+            Some(content) => vec![(check.sector.start, content.as_slice())],
+            None => check.expected.clone(),
+        };
+
+        for (address, data) in ranges {
+            // The command starts on a page and ends on the last phrase of a page, so a range
+            // that is not a whole number of pages cannot be signed.
+            if !address.is_multiple_of(PAGE) || !(data.len() as u64).is_multiple_of(PAGE) {
+                return Ok(CompareOutcome::Unsupported);
+            }
+            if data.is_empty() {
+                continue;
+            }
+
+            match Self::sign(core, address, data.len())? {
+                None => return Ok(CompareOutcome::Unsupported),
+                Some(signature) if signature != misr(0, data) => {
+                    return Ok(CompareOutcome::Mismatch);
+                }
+                Some(_) => {}
+            }
+        }
+
+        Ok(CompareOutcome::Match)
+    }
+}
+
+impl FlashCompare for McxMisrCompare {
+    fn cost(&self) -> CompareCost {
+        CompareCost::Cheap
+    }
+
+    fn compare(
+        &self,
+        session: &mut Session,
+        core_index: usize,
+        region: &NvmRegion,
+        checks: &[SectorCheck<'_>],
+        out: &mut [CompareOutcome],
+    ) -> Result<(), Error> {
+        if !signs(region) {
+            return Ok(());
+        }
+
+        let mut core = session.core(core_index)?;
+
+        // The FMC can swap the two halves of flash, which the boot ROM turns on to boot a
+        // second image. That swap sits between the bus and the flash, so it moved the image
+        // we just programmed, but the FMU signs the arrays directly and would not see it.
+        // The signature would describe the wrong pages, so leave this to the next backend.
+        if core.read_word_32(REMAP)? & REMAP_LIM != 0 {
+            tracing::debug!("FMC is remapping flash; the FMU signature would not describe it");
+            return Ok(());
+        }
+
+        for (check, out) in checks.iter().zip(out.iter_mut()) {
+            *out = Self::compare_check(&mut core, check)?;
+        }
+
+        Ok(())
     }
 }
 
