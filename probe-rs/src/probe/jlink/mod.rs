@@ -193,7 +193,7 @@ impl ProbeFactory for JLinkFactory {
             swd_settings: SwdSettings::default(),
             jtag_state: JtagChainState::default(),
             reset_line: ResetLine::default(),
-            force_legacy_jtag_command: selector.product_id == 0x0101,
+            force_legacy_jtag_command: false,
 
             jtag_tms_bits: vec![],
             jtag_tdi_bits: vec![],
@@ -207,6 +207,11 @@ impl ProbeFactory for JLinkFactory {
         };
         this.fill_capabilities()?;
         this.fill_interfaces()?;
+
+        // 0x0101 is the default product ID of every J-Link in SEGGER's old USB format, so only the
+        // firmware string tells the probe of probe-rs/probe-rs#4066 apart from the rest.
+        this.force_legacy_jtag_command =
+            selector.product_id == 0x0101 && is_lite_firmware(&this.read_firmware_version()?);
 
         this.supported_protocols = if this.caps.contains(Capability::SelectIf) {
             this.interfaces
@@ -1468,6 +1473,14 @@ impl fmt::Display for HardwareType {
             HardwareType::JLinkPro => "J-Link Pro",
         })
     }
+}
+
+/// Whether the firmware string names a J-Link Lite.
+///
+/// Only a J-Link ARM Lite V8 is known to need `HW_JTAG2`. The match takes any Lite, in any case,
+/// so that no untested variant changes command.
+fn is_lite_firmware(firmware_version: &str) -> bool {
+    firmware_version.to_ascii_lowercase().contains("lite")
 }
 
 const VID_SEGGER: u16 = 0x1366;
