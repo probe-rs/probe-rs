@@ -27,6 +27,9 @@ variants:
   flash_algorithms:
   - cc13x2-cc26x2-flash
   jtag:
+    # The device starts in two-pin cJTAG, so a four-wire scan before the debug sequence
+    # switches it over reads no TAP. The sequence declares the chain itself.
+    force_scan_chain: true
     # At boot, only the ICEPICK is visible on the scan chain. The chain
     # will be updated by the sequence when the CPU core debug is enabled.
     scan_chain:
@@ -56,6 +59,7 @@ variants:
   flash_algorithms:
   - cc13x2-cc26x2-flash
   jtag:
+    force_scan_chain: true
     scan_chain:
     - name: core0
       ir_len: 4
@@ -85,6 +89,7 @@ variants:
   flash_algorithms:
   - cc13x2-cc26x2-flash
   jtag:
+    force_scan_chain: true
     scan_chain:
     - name: core0
       ir_len: 4
@@ -114,6 +119,7 @@ variants:
   flash_algorithms:
   - cc13x2-cc26x2-flash
   jtag:
+    force_scan_chain: true
     scan_chain:
     - name: core0
       ir_len: 4
@@ -143,6 +149,7 @@ variants:
   flash_algorithms:
   - cc13x2-cc26x2-flash
   jtag:
+    force_scan_chain: true
     scan_chain:
     - name: core0
       ir_len: 4
@@ -172,6 +179,7 @@ variants:
   flash_algorithms:
   - cc13x2-cc26x2-flash
   jtag:
+    force_scan_chain: true
     scan_chain:
     - name: core0
       ir_len: 4
@@ -201,6 +209,7 @@ variants:
   flash_algorithms:
   - cc13x2-cc26x2-flash
   jtag:
+    force_scan_chain: true
     scan_chain:
     - name: core0
       ir_len: 4
@@ -237,6 +246,7 @@ variants:
   - cc13x4-cc26x4-flash
   - cc13x4-cc26x4-flash-ccfg
   jtag:
+    force_scan_chain: true
     scan_chain:
     - name: core0
       ir_len: 4
@@ -273,6 +283,7 @@ variants:
   - cc13x4-cc26x4-flash
   - cc13x4-cc26x4-flash-ccfg
   jtag:
+    force_scan_chain: true
     scan_chain:
     - name: core0
       ir_len: 4
@@ -309,6 +320,7 @@ variants:
   - cc13x4-cc26x4-flash
   - cc13x4-cc26x4-flash-ccfg
   jtag:
+    force_scan_chain: true
     scan_chain:
     - name: core0
       ir_len: 4
@@ -345,6 +357,7 @@ variants:
   - cc13x4-cc26x4-flash
   - cc13x4-cc26x4-flash-ccfg
   jtag:
+    force_scan_chain: true
     scan_chain:
     - name: core0
       ir_len: 4
@@ -381,6 +394,7 @@ variants:
   - cc13x4-cc26x4-flash
   - cc13x4-cc26x4-flash-ccfg
   jtag:
+    force_scan_chain: true
     scan_chain:
     - name: core0
       ir_len: 4
