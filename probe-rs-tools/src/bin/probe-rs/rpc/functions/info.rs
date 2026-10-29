@@ -82,7 +82,7 @@ pub async fn target_metadata(
 /// Deduplicated absolute flash sectors for GDB memory-map XML.
 ///
 /// Sectors are clipped to the target's NVM regions: a flash algorithm's address range may cover
-/// more than the flash, e.g. RAM in between, and GDB ignores a memory map with overlapping regions.
+/// more than the flash the target has, and GDB ignores a memory map with overlapping regions.
 fn wire_flash_sectors(target: &probe_rs::Target) -> Vec<WireFlashSector> {
     use probe_rs::config::MemoryRegion;
     use std::collections::BTreeMap;
@@ -93,24 +93,17 @@ fn wire_flash_sectors(target: &probe_rs::Target) -> Vec<WireFlashSector> {
         let start = algo.flash_properties.address_range.start;
         let end = algo.flash_properties.address_range.end;
 
-        let mut windows = target
+        let windows = target
             .memory_map
             .iter()
             .filter_map(|region| match region {
-                MemoryRegion::Nvm(nvm) if !nvm.is_alias => {
+                MemoryRegion::Nvm(nvm) => {
                     let window = nvm.range.start.max(start)..nvm.range.end.min(end);
                     (window.start < window.end).then_some(window)
                 }
                 _ => None,
             })
             .collect::<Vec<_>>();
-        if windows.is_empty() {
-            let end = target
-                .memory_region_by_address(start)
-                .map(|region| region.address_range().end)
-                .unwrap_or(end);
-            windows.push(start..end);
-        }
 
         let mut sectors = algo.flash_properties.sectors.clone();
         sectors.sort_by_key(|s| s.address);
@@ -1254,10 +1247,9 @@ mod tests {
 
     #[test]
     fn flash_sectors_clipped_to_nvm() {
-        // The flash algorithm covers 0x1000_0000..0x7000_0000, RAM included.
         assert_eq!(
             flash_sectors("SF32LB52"),
-            [(0x1200_0000, 0x0DFF_FFFF, 0x1_0000)]
+            [(0x1200_0000, 0x0E00_0000, 0x1_0000)]
         );
     }
 }
