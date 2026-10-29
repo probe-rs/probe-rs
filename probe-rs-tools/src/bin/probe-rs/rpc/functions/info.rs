@@ -1195,7 +1195,8 @@ pub(crate) mod convert {
 
 #[cfg(test)]
 mod tests {
-    use super::{JEP_ST, JEP_TENSILICA, JtagTapInfo, TapKind};
+    use super::{JEP_ST, JEP_TENSILICA, JtagTapInfo, TapKind, wire_flash_sectors};
+    use probe_rs::config::Registry;
 
     fn kind(ir_len: u8, idcode: Option<u32>) -> TapKind {
         TapKind::classify(&JtagTapInfo { idcode, ir_len })
@@ -1222,5 +1223,33 @@ mod tests {
         // Xilinx Zynq-7000 PL
         assert_eq!(kind(6, Some(0x0372_7093)), TapKind::Unsupported);
         assert_eq!(kind(8, None), TapKind::Unsupported);
+    }
+
+    fn flash_sectors(target: &str) -> Vec<(u64, u64, u64)> {
+        let registry = Registry::from_builtin_families();
+        let target = registry.get_target_by_name(target).unwrap();
+        wire_flash_sectors(&target)
+            .iter()
+            .map(|s| (s.start, s.length, s.blocksize))
+            .collect()
+    }
+
+    #[test]
+    fn flash_sectors_follow_nvm() {
+        assert_eq!(
+            flash_sectors("nRF52840_xxAA"),
+            [
+                (0x0000_0000, 0x0010_0000, 0x1000),
+                (0x1000_1000, 0x0000_1000, 0x1000)
+            ]
+        );
+    }
+
+    #[test]
+    fn flash_sectors_clipped_to_nvm() {
+        assert_eq!(
+            flash_sectors("SF32LB52"),
+            [(0x1200_0000, 0x0E00_0000, 0x1_0000)]
+        );
     }
 }
