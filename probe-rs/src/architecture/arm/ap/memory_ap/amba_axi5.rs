@@ -24,8 +24,9 @@ impl AmbaAxi5 {
         probe: &mut P,
         address: FullyQualifiedApAddress,
     ) -> Result<Self, ArmError> {
-        let csw = probe.read_raw_ap_register(&address, CSW::ADDRESS)?;
+        // CFG shares a register bank with the IDR read just before, so read it first.
         let cfg = probe.read_raw_ap_register(&address, CFG::ADDRESS)?;
+        let csw = probe.read_raw_ap_register(&address, CSW::ADDRESS)?;
         let (csw, cfg) = (csw.try_into()?, cfg.try_into()?);
 
         let me = Self { address, csw, cfg };
