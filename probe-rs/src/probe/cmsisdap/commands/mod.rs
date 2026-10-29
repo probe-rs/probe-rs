@@ -9,6 +9,7 @@ pub mod transfer;
 
 use crate::probe::cmsisdap::commands::general::info::{PacketCountCommand, PacketSizeCommand};
 use crate::probe::cmsisdap::tcp::TcpDevice;
+use crate::probe::cmsisdap::udp::UdpDevice;
 use crate::probe::usb_util::{BulkReadExt, BulkWriteExt};
 use crate::probe::{ProbeError, WireProtocol};
 use nusb::{
@@ -66,6 +67,9 @@ pub enum CmsisDapError {
 
     /// Could not connect to the probe over TCP.
     TcpConnect(#[source] std::io::Error),
+
+    /// Could not open a socket to the probe over UDP.
+    UdpConnect(#[source] std::io::Error),
 
     /// Invalid IDCODE detected.
     InvalidIdCode,
@@ -221,6 +225,13 @@ pub enum CmsisDapDevice {
         timeout: Duration,
     },
 
+    /// CMSIS-DAP over UDP, one command per datagram, with sequence numbers.
+    Udp {
+        device: UdpDevice,
+        max_packet_size: usize,
+        timeout: Duration,
+    },
+
     /// A scripted probe for host tests.
     #[cfg(test)]
     Fake(std::sync::Arc<std::sync::Mutex<fake::FakeProbe>>),
@@ -232,7 +243,7 @@ impl CmsisDapDevice {
             #[cfg(feature = "cmsisdap_v1")]
             Self::V1 { usb_timeout, .. } => *usb_timeout,
             Self::V2 { usb_timeout, .. } => *usb_timeout,
-            Self::Tcp { timeout, .. } => *timeout,
+            Self::Tcp { timeout, .. } | Self::Udp { timeout, .. } => *timeout,
             #[cfg(test)]
             Self::Fake(probe) => probe.lock().unwrap().usb_timeout,
         }
@@ -243,7 +254,7 @@ impl CmsisDapDevice {
             #[cfg(feature = "cmsisdap_v1")]
             Self::V1 { usb_timeout, .. } => *usb_timeout = timeout,
             Self::V2 { usb_timeout, .. } => *usb_timeout = timeout,
-            Self::Tcp { timeout: t, .. } => *t = timeout,
+            Self::Tcp { timeout: t, .. } | Self::Udp { timeout: t, .. } => *t = timeout,
             #[cfg(test)]
             Self::Fake(probe) => probe.lock().unwrap().usb_timeout = timeout,
         }
@@ -270,6 +281,9 @@ impl CmsisDapDevice {
             CmsisDapDevice::Tcp {
                 device, timeout, ..
             } => Ok(device.read(buf, *timeout)?),
+            CmsisDapDevice::Udp {
+                device, timeout, ..
+            } => Ok(device.read(buf, *timeout)?),
             #[cfg(test)]
             CmsisDapDevice::Fake(probe) => {
                 let reply = probe.lock().unwrap().read().ok_or(SendError::Timeout)?;
@@ -294,6 +308,7 @@ impl CmsisDapDevice {
             }
             // Skip the HID report byte, as for v2.
             CmsisDapDevice::Tcp { device, .. } => Ok(device.write(&buf[1..])?),
+            CmsisDapDevice::Udp { device, .. } => Ok(device.write(&buf[1..])?),
             #[cfg(test)]
             CmsisDapDevice::Fake(probe) => {
                 probe.lock().unwrap().write(&buf[1..]);
@@ -361,6 +376,19 @@ impl CmsisDapDevice {
                 }
             }
 
+            // Take the replies still owed, then start a new sequence.
+            CmsisDapDevice::Udp {
+                device,
+                max_packet_size,
+                ..
+            } => {
+                let mut discard = vec![0u8; *max_packet_size];
+                while device.has_outstanding() && device.read(&mut discard, idle).is_ok() {
+                    drained = true;
+                }
+                device.forget_outstanding();
+            }
+
             #[cfg(test)]
             CmsisDapDevice::Fake(probe) => drained = probe.lock().unwrap().drain(),
         }
@@ -382,6 +410,9 @@ impl CmsisDapDevice {
                 max_packet_size, ..
             }
             | CmsisDapDevice::Tcp {
+                max_packet_size, ..
+            }
+            | CmsisDapDevice::Udp {
                 max_packet_size, ..
             } => {
                 *max_packet_size = packet_size;
@@ -514,7 +545,7 @@ impl CmsisDapDevice {
             #[cfg(feature = "cmsisdap_v1")]
             CmsisDapDevice::V1 { .. } => false,
             CmsisDapDevice::V2 { swo_ep, .. } => swo_ep.is_some(),
-            CmsisDapDevice::Tcp { .. } => false,
+            CmsisDapDevice::Tcp { .. } | CmsisDapDevice::Udp { .. } => false,
             #[cfg(test)]
             CmsisDapDevice::Fake(_) => false,
         }
@@ -546,7 +577,9 @@ impl CmsisDapDevice {
                 }
                 None => Err(CmsisDapError::SwoModeNotAvailable),
             },
-            CmsisDapDevice::Tcp { .. } => Err(CmsisDapError::SwoModeNotAvailable),
+            CmsisDapDevice::Tcp { .. } | CmsisDapDevice::Udp { .. } => {
+                Err(CmsisDapError::SwoModeNotAvailable)
+            }
             #[cfg(test)]
             CmsisDapDevice::Fake(_) => Err(CmsisDapError::SwoModeNotAvailable),
         }
@@ -838,6 +871,9 @@ fn packet_buffer_len(device: &CmsisDapDevice) -> usize {
             max_packet_size, ..
         }
         | CmsisDapDevice::Tcp {
+            max_packet_size, ..
+        }
+        | CmsisDapDevice::Udp {
             max_packet_size, ..
         } => *max_packet_size + 1,
         #[cfg(test)]
