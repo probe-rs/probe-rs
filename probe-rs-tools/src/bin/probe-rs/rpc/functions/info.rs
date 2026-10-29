@@ -80,20 +80,38 @@ pub async fn target_metadata(
 }
 
 /// Deduplicated absolute flash sectors for GDB memory-map XML.
+///
+/// Sectors are clipped to the target's NVM regions: a flash algorithm's address range may cover
+/// more than the flash, e.g. RAM in between, and GDB ignores a memory map with overlapping regions.
 fn wire_flash_sectors(target: &probe_rs::Target) -> Vec<WireFlashSector> {
+    use probe_rs::config::MemoryRegion;
     use std::collections::BTreeMap;
     use std::collections::btree_map::Entry;
 
     let mut regions = BTreeMap::new();
     for algo in target.flash_algorithms.iter() {
         let start = algo.flash_properties.address_range.start;
-        let end = if let Some(region) =
-            target.memory_region_by_address(algo.flash_properties.address_range.start)
-        {
-            region.address_range().end
-        } else {
-            algo.flash_properties.address_range.end
-        };
+        let end = algo.flash_properties.address_range.end;
+
+        let mut windows = target
+            .memory_map
+            .iter()
+            .filter_map(|region| match region {
+                MemoryRegion::Nvm(nvm) if !nvm.is_alias => {
+                    let window = nvm.range.start.max(start)..nvm.range.end.min(end);
+                    (window.start < window.end).then_some(window)
+                }
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+        if windows.is_empty() {
+            let end = target
+                .memory_region_by_address(start)
+                .map(|region| region.address_range().end)
+                .unwrap_or(end);
+            windows.push(start..end);
+        }
+
         let mut sectors = algo.flash_properties.sectors.clone();
         sectors.sort_by_key(|s| s.address);
         sectors.push(probe_rs::config::SectorDescription {
@@ -101,18 +119,25 @@ fn wire_flash_sectors(target: &probe_rs::Target) -> Vec<WireFlashSector> {
             address: end - start,
         });
         for (current, next) in sectors.iter().zip(sectors.iter().skip(1)) {
-            let sector = WireFlashSector {
-                start: start + current.address,
-                length: next.address - current.address,
-                blocksize: current.size,
-            };
-            match regions.entry(sector.start) {
-                Entry::Vacant(e) => {
-                    e.insert(sector);
+            for window in &windows {
+                let sector_start = (start + current.address).max(window.start);
+                let sector_end = (start + next.address).min(window.end);
+                if sector_start >= sector_end {
+                    continue;
                 }
-                Entry::Occupied(mut e) => {
-                    if sector.blocksize < e.get().blocksize {
+                let sector = WireFlashSector {
+                    start: sector_start,
+                    length: sector_end - sector_start,
+                    blocksize: current.size,
+                };
+                match regions.entry(sector.start) {
+                    Entry::Vacant(e) => {
                         e.insert(sector);
+                    }
+                    Entry::Occupied(mut e) => {
+                        if sector.blocksize < e.get().blocksize {
+                            e.insert(sector);
+                        }
                     }
                 }
             }
@@ -1177,7 +1202,8 @@ pub(crate) mod convert {
 
 #[cfg(test)]
 mod tests {
-    use super::{JEP_ST, JEP_TENSILICA, JtagTapInfo, TapKind};
+    use super::{JEP_ST, JEP_TENSILICA, JtagTapInfo, TapKind, wire_flash_sectors};
+    use probe_rs::config::Registry;
 
     fn kind(ir_len: u8, idcode: Option<u32>) -> TapKind {
         TapKind::classify(&JtagTapInfo { idcode, ir_len })
@@ -1204,5 +1230,34 @@ mod tests {
         // Xilinx Zynq-7000 PL
         assert_eq!(kind(6, Some(0x0372_7093)), TapKind::Unsupported);
         assert_eq!(kind(8, None), TapKind::Unsupported);
+    }
+
+    fn flash_sectors(target: &str) -> Vec<(u64, u64, u64)> {
+        let registry = Registry::from_builtin_families();
+        let target = registry.get_target_by_name(target).unwrap();
+        wire_flash_sectors(&target)
+            .iter()
+            .map(|s| (s.start, s.length, s.blocksize))
+            .collect()
+    }
+
+    #[test]
+    fn flash_sectors_follow_nvm() {
+        assert_eq!(
+            flash_sectors("nRF52840_xxAA"),
+            [
+                (0x0000_0000, 0x0010_0000, 0x1000),
+                (0x1000_1000, 0x0000_1000, 0x1000)
+            ]
+        );
+    }
+
+    #[test]
+    fn flash_sectors_clipped_to_nvm() {
+        // The flash algorithm covers 0x1000_0000..0x7000_0000, RAM included.
+        assert_eq!(
+            flash_sectors("SF32LB52"),
+            [(0x1200_0000, 0x0DFF_FFFF, 0x1_0000)]
+        );
     }
 }
