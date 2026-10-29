@@ -443,11 +443,17 @@ impl ProbeFactory for SifliUartFactory {
             ));
         };
 
-        if let Some(serial_number) = &selector.serial_number {
-            return self.open_port(serial_number);
-        }
-
-        match ports.iter().find(|port| Self::is_sifli_uart(port)) {
+        match ports
+            .iter()
+            .filter(|port| {
+                selector
+                    .serial_number
+                    .as_ref()
+                    .map(|serial_number| serial_number == &port.port_name)
+                    .unwrap_or(true)
+            })
+            .find(|port| Self::is_sifli_uart(port))
+        {
             Some(port) => self.open_port(&port.port_name),
             None => Err(DebugProbeError::ProbeCouldNotBeCreated(
                 ProbeCreationError::NotFound,
