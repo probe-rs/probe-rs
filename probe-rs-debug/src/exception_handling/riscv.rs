@@ -103,6 +103,13 @@ impl RiscvExceptionHandler {
         // the caller.
         let caller_sp = memory.read_word_32(sp - 8)? as u64;
 
+        // Without frame pointers, the word at `sp - 8` is not a stack pointer.
+        if !caller_sp.is_multiple_of(4) {
+            return Err(DebugError::Other(
+                "Stack pointer of the caller is not aligned".to_string(),
+            ));
+        }
+
         if caller_sp <= sp {
             // The stack grows down, so the stack pointer of the caller must be above.
             return Err(DebugError::Other(
