@@ -96,4 +96,5 @@ flash_algorithms:
       address: 0x0
   cores:
   - cpu0
+  stack_overflow_check: false
   transfer_encoding: miniz
