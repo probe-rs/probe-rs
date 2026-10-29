@@ -180,9 +180,8 @@ pub fn eprintln(message: impl AsRef<str>) {
     fn inner(message: &str) {
         let locked = PROGRESS_BAR.lock();
         match locked.as_ref() {
-            Some(pb) => {
-                let _ = pb.println(message);
-            }
+            // `MultiProgress::println` prints nothing when stderr is not a terminal.
+            Some(pb) => pb.suspend(|| eprintln!("{message}")),
             None => {
                 let prompt_writer = PROMPT_WRITER.lock().clone();
                 if let Some(mut writer) = prompt_writer {
@@ -202,9 +201,7 @@ pub fn println(message: impl AsRef<str>) {
     fn inner(message: &str) {
         let locked = PROGRESS_BAR.lock();
         match locked.as_ref() {
-            Some(pb) => {
-                let _ = pb.println(message);
-            }
+            Some(pb) => pb.suspend(|| println!("{message}")),
             None => {
                 let prompt_writer = PROMPT_WRITER.lock().clone();
                 if let Some(mut writer) = prompt_writer {
