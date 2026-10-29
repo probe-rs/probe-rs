@@ -51,6 +51,13 @@ use crate::{
 const SWO_BUFFER_SIZE: u16 = 128;
 const TIMEOUT_DEFAULT: Duration = Duration::from_millis(500);
 
+/// Times the first command of a session is sent while the probe refuses it. Covers a command an
+/// earlier host left running.
+const MAX_OPEN_ATTEMPTS: usize = 8;
+
+/// How long the probe has to stay silent before an earlier host's reply counts as collected.
+const STALE_REPLY_IDLE: Duration = Duration::from_millis(50);
+
 /// Factory to create [`JLink`] probes.
 #[derive(Debug)]
 pub struct JLinkFactory;
@@ -422,9 +429,9 @@ impl JLink {
         self.caps
     }
 
-    /// Reads the advertised capabilities from the device.
+    /// Reads the advertised capabilities from the device. This is the first command of a session.
     fn fill_capabilities(&mut self) -> Result<(), JlinkError> {
-        self.write_cmd(&[Command::GetCaps as u8])?;
+        self.write_first_cmd(&[Command::GetCaps as u8])?;
 
         let caps = self.read_u32().map(Capabilities::from_raw_legacy)?;
 
@@ -483,6 +490,53 @@ impl JLink {
             )));
         }
         Ok(())
+    }
+
+    /// Sends a session's first command, collecting any reply an earlier host left unread.
+    ///
+    /// The probe accepts no command until the reply to the previous one has been read. A host
+    /// that exits with a command in flight leaves the probe refusing every write until it gives
+    /// up on that reply, seconds later.
+    fn write_first_cmd(&self, cmd: &[u8]) -> Result<(), JlinkError> {
+        let mut attempt = 1;
+        loop {
+            let timeout = match self.write_cmd(cmd) {
+                Err(JlinkError::Usb(e)) if e.kind() == std::io::ErrorKind::TimedOut => e,
+                result => return result,
+            };
+            if attempt == MAX_OPEN_ATTEMPTS {
+                return Err(JlinkError::BusyAtOpen(timeout));
+            }
+            if attempt == 1 {
+                tracing::warn!(
+                    "The J-Link did not accept the first command of this session. It is probably \
+                     still busy with a command from a previous session; discarding that \
+                     session's reply and retrying."
+                );
+            }
+            match self.discard_input(STALE_REPLY_IDLE) {
+                0 => tracing::debug!(
+                    "No reply yet from the previous session's command \
+                     (attempt {attempt} of {MAX_OPEN_ATTEMPTS})"
+                ),
+                n => tracing::debug!(
+                    "Discarded {n} bytes of a previous session's reply \
+                     (attempt {attempt} of {MAX_OPEN_ATTEMPTS})"
+                ),
+            }
+            attempt += 1;
+        }
+    }
+
+    /// Reads and discards whatever the probe sends until it has been silent for `idle`, and
+    /// returns how many bytes that was.
+    fn discard_input(&self, idle: Duration) -> usize {
+        let mut buf = vec![0; self.max_read_ep_packet];
+        let mut total = 0;
+        while let Ok(n @ 1..) = self.handle.read_bulk(self.read_ep, &mut buf, idle) {
+            total += n;
+        }
+        total
     }
 
     fn read(&self, buf: &mut [u8]) -> Result<(), JlinkError> {
