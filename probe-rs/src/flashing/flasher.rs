@@ -5,14 +5,19 @@ use zerocopy::IntoBytes;
 use super::{FlashAlgorithm, FlashBuilder, FlashError, FlashPage, FlashProgress};
 use crate::config::NvmRegion;
 use crate::error::Error;
+use crate::flashing::compare::{
+    CmsisVerify, CompareBackend, CompareCost, CompareOutcome, CompareState, Outside,
+    ReadBackAlgorithm, ReadBackCore, build_checks, run_backend, split_by_region,
+};
 use crate::flashing::encoder::FlashEncoder;
-use crate::flashing::{FlashLayout, FlashSector, FlashVerify, VerifyOutcome};
+use crate::flashing::{FlashLayout, FlashSector, ProgressOperation};
 use crate::memory::MemoryInterface;
 use crate::rtt::{Rtt, RttTarget, ScanRegion};
 use crate::{Core, InstructionSet, RegisterValue, core::CoreRegisters, session::Session};
 use crate::{CoreStatus, Target};
 use std::borrow::Cow;
 use std::marker::PhantomData;
+use std::sync::Arc;
 use std::{
     fmt::Debug,
     time::{Duration, Instant},
@@ -439,7 +444,9 @@ impl Flasher {
         // Flash all necessary pages.
         self.do_program(session, progress, enable_double_buffering)?;
 
-        if verify && !self.verify(session, progress, !restore_unwritten_bytes)? {
+        // After the erase and the program steps, the fill bytes of a page hold either the
+        // restored data or the erased value, so the full page must match.
+        if verify && !self.verify(session, progress, false)? {
             return Err(FlashError::Verify);
         }
 
@@ -523,195 +530,187 @@ impl Flasher {
         result
     }
 
-    /// Check every loaded region with the target's own signature facility.
-    ///
-    /// Returns `None` when any part of the image cannot be checked this way, so the caller
-    /// falls back to reading the contents back. Falling back is deliberate: a range that
-    /// cannot be signed has not been verified, and must not be reported as if it had.
-    fn verify_with_sequence(
-        &mut self,
-        session: &mut Session,
-        progress: &mut FlashProgress<'_>,
-        sequence: &dyn FlashVerify,
-        ignore_filled: bool,
-    ) -> Result<Option<bool>, FlashError> {
-        let core_index = self.core_index;
-        let mut core = session.core(core_index).map_err(FlashError::Core)?;
-
-        for region in self.regions.iter() {
-            let layout = region.data.layout();
-            for (idx, page) in layout.pages().iter().enumerate() {
-                let started = Instant::now();
-
-                // Fill bytes that are not flashed can hold anything.
-                let pieces = if ignore_filled {
-                    layout.page_data_without_fills(idx)
-                } else {
-                    vec![(page.address(), page.data())]
-                };
-
-                for (address, data) in pieces {
-                    let outcome = sequence
-                        .verify_range(&mut core, &region.region, address, data)
-                        .map_err(FlashError::Core)?;
-                    match outcome {
-                        VerifyOutcome::Match => {}
-                        VerifyOutcome::Mismatch => {
-                            tracing::debug!("Signature mismatch for range at {address:#010x}");
-                            return Ok(Some(false));
-                        }
-                        VerifyOutcome::Unsupported => {
-                            tracing::debug!(
-                                "Target cannot sign the range at {address:#010x}; reading the image back instead"
-                            );
-                            return Ok(None);
-                        }
-                    }
-                }
-
-                progress.page_verified(page.size() as u64, started.elapsed());
-            }
-        }
-
-        Ok(Some(true))
-    }
-
     fn do_verify(
         &mut self,
         session: &mut Session,
         progress: &mut FlashProgress<'_>,
         ignore_filled: bool,
     ) -> Result<bool, FlashError> {
-        let encoding = self.flash_algorithm.transfer_encoding;
+        let outcomes = self.compare(
+            session,
+            progress,
+            ProgressOperation::Verify,
+            Outside::Any,
+            ignore_filled,
+            true,
+        )?;
 
-        // A flash controller that can sign a range of flash lets us check the image without
-        // reading it back, which is otherwise the slowest part of a download.
-        if let Some(sequence) = session.target().debug_sequence.flash_verify_sequence()
-            && let Some(result) =
-                self.verify_with_sequence(session, progress, sequence.as_ref(), ignore_filled)?
-        {
-            return Ok(result);
-        }
+        Ok(outcomes
+            .iter()
+            .flatten()
+            .all(|outcome| *outcome == CompareOutcome::Match))
+    }
 
-        if let Some(verify) = self.flash_algorithm.pc_verify {
-            // Try to use the verify function if available.
-            self.run_verify(session, progress, |active, data| {
-                for region in data {
-                    tracing::debug!("Verify using CMSIS function");
-
-                    // Prefer Verify as we may use compression
-                    let flash_encoder = region.data.encoder(encoding, ignore_filled);
-
-                    for page in flash_encoder.pages() {
-                        let start = Instant::now();
-                        let address = page.address();
-                        let bytes = page.data();
-
-                        tracing::debug!(
-                            "Verifying page at address {:#010x} with size: {}",
-                            address,
-                            bytes.len()
-                        );
-
-                        // Transfer the bytes to RAM.
-                        let buffer_address = active.load_page_buffer(bytes, 0)?;
-
-                        let result = active.call_function_and_wait(
-                            &Registers {
-                                pc: verify,
-                                r0: Some(address),
-                                r1: Some(bytes.len() as u64),
-                                r2: Some(buffer_address),
-                                r3: None,
-                            },
-                            false,
-                            Duration::from_secs(30),
-                        )?;
-
-                        // Returns
-                        // status information:
-                        // the sum of (adr+sz) - on success.
-                        // any other number - on failure, and represents the failing address.
-                        if result as u64 != address + bytes.len() as u64 {
-                            tracing::debug!(
-                                "Verification failed for page at address {:#010x}",
-                                result
-                            );
-                            return Ok(false);
-                        }
-
-                        active
-                            .progress
-                            .page_verified(bytes.len() as u64, start.elapsed());
-                    }
-                }
-                Ok(true)
+    /// Returns `true` if a compare backend can run.
+    ///
+    /// A costly compare backend counts only if `allow_costly` is `true`.
+    pub(super) fn can_compare(&self, session: &Session, allow_costly: bool) -> bool {
+        allow_costly
+            || self.compare_chain(session).iter().any(|backend| {
+                let cost = match backend {
+                    CompareBackend::Session(backend) => backend.cost(),
+                    CompareBackend::Algorithm(backend) => backend.cost(),
+                };
+                cost == CompareCost::Cheap
             })
+    }
+
+    /// Compares the flash with the image, and removes the sectors that need no change.
+    ///
+    /// A costly compare backend runs only if `allow_costly` is `true`.
+    pub(super) fn compare_and_prune(
+        &mut self,
+        session: &mut Session,
+        progress: &mut FlashProgress<'_>,
+        keep_unwritten_bytes: bool,
+        allow_costly: bool,
+    ) -> Result<(), FlashError> {
+        // Without restored bytes, a full flash leaves the erased value outside the image.
+        let outside = if keep_unwritten_bytes {
+            Outside::Any
         } else {
-            tracing::debug!("Verify by reading back flash contents");
+            Outside::Erased(self.flash_algorithm.flash_properties.erased_byte_value)
+        };
 
-            fn compare_flash(
-                regions: &[LoadedRegion],
-                progress: &mut FlashProgress<'_>,
-                ignore_filled: bool,
-                mut read: impl FnMut(u64, &mut [u8]) -> Result<(), FlashError>,
-            ) -> Result<bool, FlashError> {
-                for region in regions {
-                    let layout = region.data.layout();
-                    for (idx, page) in layout.pages.iter().enumerate() {
-                        let start = Instant::now();
-                        let address = page.address();
-                        let data = page.data();
+        progress.started(ProgressOperation::Compare);
+        let result = self.compare(
+            session,
+            progress,
+            ProgressOperation::Compare,
+            outside,
+            true,
+            allow_costly,
+        );
+        match result.is_ok() {
+            true => progress.finished(ProgressOperation::Compare),
+            false => progress.failed(ProgressOperation::Compare),
+        }
 
-                        let mut read_back = vec![0; data.len()];
-                        read(address, &mut read_back)?;
+        for (region, outcomes) in self.regions.iter_mut().zip(result?) {
+            region.data.layout_mut().prune(&outcomes);
+        }
 
-                        if ignore_filled {
-                            // "Unfill" fill regions. These don't get flashed, so their contents are
-                            // allowed to differ. We mask these bytes with default flash content here,
-                            // just for the verification process.
-                            for fill in layout.fills() {
-                                if fill.page_index() != idx {
-                                    continue;
-                                }
+        Ok(())
+    }
 
-                                let fill_offset = (fill.address() - address) as usize;
-                                let fill_size = fill.size() as usize;
+    /// Returns the compare backends of this flasher, in the order to try them.
+    fn compare_chain(&self, session: &Session) -> Vec<CompareBackend> {
+        let mut chain = Vec::new();
 
-                                let default_bytes = &data[fill_offset..][..fill_size];
-                                read_back[fill_offset..][..fill_size]
-                                    .copy_from_slice(default_bytes);
-                            }
-                        }
-                        if data != read_back {
-                            tracing::debug!(
-                                "Verification failed for page at address {:#010x}",
-                                address
-                            );
-                            return Ok(false);
-                        }
+        if let Some(backend) = session.target().debug_sequence.flash_compare() {
+            chain.push(CompareBackend::Session(backend));
+        }
+        if self.flash_algorithm.pc_verify.is_some() {
+            chain.push(CompareBackend::Algorithm(Box::new(CmsisVerify)));
+        }
+        if self.flash_algorithm.pc_read.is_some() {
+            chain.push(CompareBackend::Algorithm(Box::new(ReadBackAlgorithm)));
+        } else {
+            chain.push(CompareBackend::Session(Arc::new(ReadBackCore)));
+        }
 
-                        progress.page_verified(data.len() as u64, start.elapsed());
+        chain
+    }
+
+    /// Compares each sector of each loaded region with its expected content.
+    ///
+    /// Returns one result for each sector, for each region. A sector that no backend can
+    /// check is a mismatch. A costly backend runs only if `allow_costly` is `true`.
+    pub(super) fn compare(
+        &mut self,
+        session: &mut Session,
+        progress: &mut FlashProgress<'_>,
+        operation: ProgressOperation,
+        outside: Outside,
+        ignore_fills: bool,
+        allow_costly: bool,
+    ) -> Result<Vec<Vec<CompareOutcome>>, FlashError> {
+        // A copy of the layouts, so that the backends can initialize the flash algorithm while
+        // the checks borrow the image data.
+        let layouts = self
+            .regions
+            .iter()
+            .map(|region| (region.region.clone(), region.data.layout().clone()))
+            .collect::<Vec<_>>();
+
+        let regions = layouts
+            .iter()
+            .map(|(region, _)| region.clone())
+            .collect::<Vec<_>>();
+        let checks = build_checks(
+            &layouts.iter().map(|(_, layout)| layout).collect::<Vec<_>>(),
+            outside,
+            ignore_fills,
+        );
+
+        let mut state = CompareState::new(checks.len());
+
+        let chain = self.compare_chain(session);
+        let mut backends = chain.iter().peekable();
+        while let Some(backend) = backends.next() {
+            match backend {
+                CompareBackend::Session(backend) => {
+                    if backend.cost() == CompareCost::Costly && !allow_costly {
+                        continue;
                     }
+                    run_backend(
+                        backend,
+                        &regions,
+                        &checks,
+                        &mut state,
+                        backend.cost(),
+                        progress,
+                        operation,
+                        |region, batch, out| {
+                            backend
+                                .compare(session, self.core_index, region, batch, out)
+                                .map_err(FlashError::Core)
+                        },
+                    )?;
                 }
-                Ok(true)
-            }
+                CompareBackend::Algorithm(first) => {
+                    // Run the algorithm backends that follow each other with one
+                    // initialization of the flash algorithm.
+                    let mut group = vec![first];
+                    while let Some(CompareBackend::Algorithm(next)) = backends.peek() {
+                        group.push(next);
+                        backends.next();
+                    }
+                    group.retain(|backend| backend.cost() == CompareCost::Cheap || allow_costly);
+                    if group.is_empty() || state.pending().is_empty() {
+                        continue;
+                    }
 
-            if self.flash_algorithm.pc_read.is_some() {
-                self.run_verify(session, &mut FlashProgress::empty(), |active, data| {
-                    compare_flash(data, progress, ignore_filled, |address, data| {
-                        active.read_flash(address, data)
-                    })
-                })
-            } else {
-                // Not using a flash algorithm function, so there's no need to go
-                // through ActiveFlasher.
-                let mut core = session.core(self.core_index).map_err(FlashError::Core)?;
-                compare_flash(&self.regions, progress, ignore_filled, |address, data| {
-                    core.read(address, data).map_err(FlashError::Core)
-                })
+                    let mut algo_progress = FlashProgress::empty();
+                    let (mut active, _) = self.init::<Verify>(session, &mut algo_progress, None)?;
+                    for backend in group {
+                        run_backend(
+                            backend,
+                            &regions,
+                            &checks,
+                            &mut state,
+                            backend.cost(),
+                            progress,
+                            operation,
+                            |region, batch, out| backend.compare(&mut active, region, batch, out),
+                        )?;
+                    }
+                    active.uninit()?;
+                }
             }
         }
+
+        Ok(split_by_region(&checks, state.finish(), regions.len()))
     }
 
     /// Perform an erase of all sectors given in `flash_layout`.
@@ -1415,6 +1414,50 @@ impl<O: Operation> ActiveFlasher<'_, '_, O> {
             }
             Ok(())
         }
+    }
+}
+
+impl ActiveFlasher<'_, '_, Verify> {
+    /// Checks the flash at `address` with the CMSIS `Verify` function of the algorithm.
+    ///
+    /// Returns `Ok(false)` if the flash does not hold `data`.
+    pub(super) fn cmsis_verify(&mut self, address: u64, data: &[u8]) -> Result<bool, FlashError> {
+        let algo = self.flash_algorithm;
+        let verify = algo
+            .pc_verify
+            .expect("the compare chain uses CMSIS Verify only if the algorithm has it");
+
+        let pages = FlashEncoder::encode_image(
+            algo.transfer_encoding,
+            data,
+            address,
+            algo.flash_properties.page_size as usize,
+        );
+
+        for page in pages {
+            let buffer_address = self.load_page_buffer(page.data(), 0)?;
+
+            let result = self.call_function_and_wait(
+                &Registers {
+                    pc: verify,
+                    r0: Some(page.address()),
+                    r1: Some(page.size() as u64),
+                    r2: Some(buffer_address),
+                    r3: None,
+                },
+                false,
+                Duration::from_secs(30),
+            )?;
+
+            // Verify returns the end address of the range on success, and the address of the
+            // first difference on failure.
+            if result as u64 != page.address() + page.size() as u64 {
+                tracing::debug!("Verification failed at address {:#010x}", result);
+                return Ok(false);
+            }
+        }
+
+        Ok(true)
     }
 }
 
