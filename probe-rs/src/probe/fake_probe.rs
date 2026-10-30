@@ -586,6 +586,34 @@ impl Default for FakeProbe {
     }
 }
 
+/// A probe factory that opens a new [`FakeProbe`] and lists no probes.
+///
+/// Use it to create a [`DebugProbeInfo`](crate::probe::DebugProbeInfo) for a fake probe.
+#[cfg(any(test, feature = "test"))]
+#[derive(Debug)]
+pub struct FakeProbeFactory;
+
+#[cfg(any(test, feature = "test"))]
+impl std::fmt::Display for FakeProbeFactory {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("Mocked Probe")
+    }
+}
+
+#[cfg(any(test, feature = "test"))]
+impl crate::probe::ProbeFactory for FakeProbeFactory {
+    fn open(
+        &self,
+        _selector: &crate::probe::DebugProbeSelector,
+    ) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
+        Ok(Box::new(FakeProbe::new()))
+    }
+
+    fn list_probes(&self) -> Vec<crate::probe::list::ProbeListItem> {
+        Vec::new()
+    }
+}
+
 impl DebugProbe for FakeProbe {
     /// Get human readable name for the probe
     fn get_name(&self) -> &str {

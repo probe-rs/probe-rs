@@ -691,8 +691,8 @@ impl From<std::io::Error> for OperationError {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use probe_rs::integration::FakeProbe;
-    use probe_rs::probe::{DebugProbe, DebugProbeInfo, ProbeCreationError, ProbeFactory};
+    use probe_rs::integration::{FakeProbe, FakeProbeFactory};
+    use probe_rs::probe::{DebugProbeInfo, ProbeCreationError};
     use std::sync::Arc;
     use std::sync::atomic::{AtomicUsize, Ordering};
 
@@ -704,28 +704,6 @@ mod tests {
         free_after: usize,
         /// The probe answers the open, then faults.
         faulty: bool,
-    }
-
-    #[derive(Debug)]
-    struct MockProbeFactory;
-
-    impl std::fmt::Display for MockProbeFactory {
-        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            f.write_str("Mocked Probe")
-        }
-    }
-
-    impl ProbeFactory for MockProbeFactory {
-        fn open(
-            &self,
-            _selector: &DebugProbeSelector,
-        ) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
-            unreachable!("BusyLister opens FakeProbe directly")
-        }
-
-        fn list_probes(&self) -> Vec<probe_rs::probe::list::ProbeListItem> {
-            Vec::new()
-        }
     }
 
     impl std::fmt::Debug for BusyLister {
@@ -779,7 +757,7 @@ mod tests {
                 0x12,
                 0x23,
                 Some("busy_serial".to_owned()),
-                &MockProbeFactory,
+                &FakeProbeFactory,
                 None,
                 false,
             ),

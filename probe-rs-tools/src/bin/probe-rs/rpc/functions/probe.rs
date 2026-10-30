@@ -291,13 +291,11 @@ mod tests {
     use crate::rpc::functions::RpcApp;
     use crate::rpc::probe_broker::ProbeBroker;
     use probe_rs::architecture::arm::FullyQualifiedApAddress;
-    use probe_rs::integration::{FakeProbe, Operation, ProbeLister};
+    use probe_rs::integration::{FakeProbe, FakeProbeFactory, Operation, ProbeLister};
     use probe_rs::probe::{
-        DebugProbe, DebugProbeError, DebugProbeInfo, Probe, ProbeCreationError, ProbeFactory,
-        list::ProbeListItem,
+        DebugProbeError, DebugProbeInfo, Probe, ProbeCreationError, list::ProbeListItem,
     };
     use probe_rs_rpc_client::{ClientError, RpcClient, TransportError};
-    use std::fmt::Display;
     use std::path::PathBuf;
     use std::sync::Arc;
     use std::sync::Mutex;
@@ -308,28 +306,6 @@ mod tests {
     fn program_binary() -> PathBuf {
         PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../probe-rs-debug/tests/debug-unwind-tests/nRF52833_xxAA_full_unwind.elf")
-    }
-
-    #[derive(Debug)]
-    struct MockProbeFactory;
-
-    impl Display for MockProbeFactory {
-        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            f.write_str("Mocked Probe")
-        }
-    }
-
-    impl ProbeFactory for MockProbeFactory {
-        fn open(
-            &self,
-            _selector: &DebugProbeSelector,
-        ) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
-            unreachable!("BusyLister opens FakeProbe directly")
-        }
-
-        fn list_probes(&self) -> Vec<ProbeListItem> {
-            Vec::new()
-        }
     }
 
     /// A probe that another process holds. `open` fails until `free_after`
@@ -360,7 +336,7 @@ mod tests {
                     0x12,
                     0x23,
                     Some("busy_serial".to_owned()),
-                    &MockProbeFactory,
+                    &FakeProbeFactory,
                     None,
                     false,
                 ),
