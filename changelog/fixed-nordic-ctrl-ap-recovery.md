@@ -1,0 +1,1 @@
+Hardened Nordic CTRL-AP recovery with bounded ERASEALL polling, flushed reset edges, best-effort reset deassertion, and no implicit destructive retry; nRF5340 dual-core erase paths restore AP1 before continuing.
