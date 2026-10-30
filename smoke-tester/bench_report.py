@@ -14,8 +14,6 @@ import argparse
 import json
 from pathlib import Path
 
-MARKER = "<!-- probe-rs-benchmark -->"
-
 # A change is significant if it is larger than this fraction, and larger than the baseline spread.
 THRESHOLD = 0.10
 
@@ -131,7 +129,6 @@ def main():
 
     if changed:
         comment = [
-            MARKER,
             "## Probe benchmark",
             "",
             f"{compared} Results that changed by more than the noise threshold: {len(changed)}.",

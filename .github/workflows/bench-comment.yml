@@ -30,7 +30,9 @@ jobs:
           github-token: ${{ github.token }}
           path: report
 
-      - name: Create or update the comment
+      # The PR number comes from the artifact. Use it only if the PR head is the tested commit.
+      - name: Check the PR number
+        id: pr
         if: steps.download.outcome == 'success'
         env:
           GH_TOKEN: ${{ github.token }}
@@ -42,28 +44,28 @@ jobs:
             echo "Invalid PR number"
             exit 1
           fi
-          # Comment only on the PR that the run tested.
           if [ "$(gh api "repos/$GH_REPO/pulls/$pr" --jq .head.sha)" != "$HEAD_SHA" ]; then
             echo "The PR head is not the tested commit"
             exit 0
           fi
+          echo "number=$pr" >> "$GITHUB_OUTPUT"
 
-          marker='<!-- probe-rs-benchmark -->'
-          ids=$(gh api --paginate "repos/$GH_REPO/issues/$pr/comments" \
-            --jq ".[] | select(.user.login == \"github-actions[bot]\" and (.body | startswith(\"$marker\"))) | .id")
-          id=${ids%%$'\n'*}
+      - name: Comment the changes
+        if: steps.pr.outputs.number && hashFiles('report/comment.md') != ''
+        uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
+        with:
+          header: probe-rs-benchmark
+          number_force: ${{ steps.pr.outputs.number }}
+          path: report/comment.md
 
-          if [ -f report/comment.md ]; then
-            body=report/comment.md
-          elif [ -n "$id" ]; then
-            body=no-change.md
-            printf '%s\n## Probe benchmark\n\nNo results changed by more than the noise threshold.\n' "$marker" > "$body"
-          else
-            exit 0
-          fi
+      - name: Clear an earlier comment
+        if: steps.pr.outputs.number && hashFiles('report/comment.md') == ''
+        uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
+        with:
+          header: probe-rs-benchmark
+          number_force: ${{ steps.pr.outputs.number }}
+          only_update: true
+          message: |
+            ## Probe benchmark
 
-          if [ -n "$id" ]; then
-            gh api --method PATCH "repos/$GH_REPO/issues/comments/$id" -F body=@"$body" > /dev/null
-          else
-            gh pr comment "$pr" --body-file "$body"
-          fi
+            No results changed by more than the noise threshold.
