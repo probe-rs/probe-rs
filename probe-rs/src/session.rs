@@ -2,11 +2,11 @@ use crate::{
     Core, CoreType, Error,
     architecture::{
         arm::{
-            ArmError, FullyQualifiedApAddress, SwoReader,
-            communication_interface::ArmDebugInterface,
+            ArmError, DapAccess, FullyQualifiedApAddress, SwoAccess, SwoConfig, SwoReader,
+            communication_interface::{ArmDebugInterface, SwdSequence},
             component::{TraceSink, get_arm_components},
-            dp::DpAddress,
-            memory::CoresightComponent,
+            dp::{DpAddress, DpRegisterAddress},
+            memory::{ArmMemoryInterface, CoresightComponent},
             sequences::{ArmDebugSequence, DefaultArmSequence},
         },
         riscv::{
@@ -25,10 +25,11 @@ use crate::{
     core::{Architecture, CombinedCoreState},
     memory_port::MemoryAccessPort,
     probe::{
-        AttachMethod, DebugProbe, DebugProbeError, Probe, ProbeCreationError, WireProtocol,
-        fake_probe::FakeProbe, list::Lister,
+        AttachMethod, BitSequence, DebugProbe, DebugProbeError, Probe, ProbeCreationError,
+        WireProtocol, list::Lister,
     },
 };
+use std::collections::BTreeSet;
 use std::ops::DerefMut;
 use std::{fmt, sync::Arc, time::Duration};
 
@@ -828,17 +829,13 @@ impl Session {
         interface: &mut Box<dyn ArmDebugInterface>,
         debug_sequence: &Arc<dyn ArmDebugSequence>,
     ) -> Result<(), Error> {
-        use crate::probe::DebugProbe;
-
         let current_dp = interface.current_debug_port();
 
         // In order to re-attach we need an owned instance to the interface
         // but we only have &mut. We can work around that by first creating
         // an instance of a Dummy and then swapping it out for the real one.
         // perform the re-attach and then swap it back.
-        let mut tmp_interface = Box::<FakeProbe>::default()
-            .try_get_arm_debug_interface(DefaultArmSequence::create())
-            .unwrap();
+        let mut tmp_interface: Box<dyn ArmDebugInterface> = Box::new(PlaceholderArmInterface);
 
         std::mem::swap(interface, &mut tmp_interface);
 
@@ -1235,3 +1232,108 @@ impl Permissions {
 #[derive(Debug, Clone, thiserror::Error)]
 #[error("An operation could not be performed because it lacked the permission to do so: {0}")]
 pub struct MissingPermissions(pub String);
+
+/// Takes the place of the ARM interface while the session re-attaches the real one.
+///
+/// If the re-attach fails, the placeholder stays. Then all operations fail with
+/// [`DebugProbeError::NotAttached`], and `close` panics.
+struct PlaceholderArmInterface;
+
+const NOT_ATTACHED: ArmError = ArmError::Probe(DebugProbeError::NotAttached);
+
+impl ArmDebugInterface for PlaceholderArmInterface {
+    fn reinitialize(&mut self) -> Result<(), ArmError> {
+        Err(NOT_ATTACHED)
+    }
+
+    fn access_ports(
+        &mut self,
+        _dp: DpAddress,
+    ) -> Result<BTreeSet<FullyQualifiedApAddress>, ArmError> {
+        Err(NOT_ATTACHED)
+    }
+
+    fn close(self: Box<Self>) -> Probe {
+        panic!("the ARM interface was not re-attached")
+    }
+
+    fn select_debug_port(&mut self, _dp: DpAddress) -> Result<(), ArmError> {
+        Err(NOT_ATTACHED)
+    }
+
+    fn current_debug_port(&self) -> Option<DpAddress> {
+        None
+    }
+
+    fn memory_interface(
+        &mut self,
+        _access_port_address: &FullyQualifiedApAddress,
+    ) -> Result<Box<dyn ArmMemoryInterface + '_>, ArmError> {
+        Err(NOT_ATTACHED)
+    }
+}
+
+impl DapAccess for PlaceholderArmInterface {
+    fn read_raw_dp_register(
+        &mut self,
+        _dp: DpAddress,
+        _address: DpRegisterAddress,
+    ) -> Result<u32, ArmError> {
+        Err(NOT_ATTACHED)
+    }
+
+    fn write_raw_dp_register(
+        &mut self,
+        _dp: DpAddress,
+        _address: DpRegisterAddress,
+        _value: u32,
+    ) -> Result<(), ArmError> {
+        Err(NOT_ATTACHED)
+    }
+
+    fn read_raw_ap_register(
+        &mut self,
+        _ap: &FullyQualifiedApAddress,
+        _address: u64,
+    ) -> Result<u32, ArmError> {
+        Err(NOT_ATTACHED)
+    }
+
+    fn write_raw_ap_register(
+        &mut self,
+        _ap: &FullyQualifiedApAddress,
+        _address: u64,
+        _value: u32,
+    ) -> Result<(), ArmError> {
+        Err(NOT_ATTACHED)
+    }
+}
+
+impl SwdSequence for PlaceholderArmInterface {
+    fn swj_sequence(&mut self, _bits: &BitSequence) -> Result<(), DebugProbeError> {
+        Err(DebugProbeError::NotAttached)
+    }
+
+    fn swj_pins(
+        &mut self,
+        _pin_out: u32,
+        _pin_select: u32,
+        _pin_wait: u32,
+    ) -> Result<u32, DebugProbeError> {
+        Err(DebugProbeError::NotAttached)
+    }
+}
+
+impl SwoAccess for PlaceholderArmInterface {
+    fn enable_swo(&mut self, _config: &SwoConfig) -> Result<(), ArmError> {
+        Err(NOT_ATTACHED)
+    }
+
+    fn disable_swo(&mut self) -> Result<(), ArmError> {
+        Err(NOT_ATTACHED)
+    }
+
+    fn read_swo_timeout(&mut self, _timeout: Duration) -> Result<Vec<u8>, ArmError> {
+        Err(NOT_ATTACHED)
+    }
+}

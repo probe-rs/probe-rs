@@ -6,6 +6,7 @@ pub mod usb_util;
 pub mod blackmagic;
 pub mod ch347;
 pub mod cmsisdap;
+#[cfg(any(test, feature = "test"))]
 pub mod fake_probe;
 pub mod ftdi;
 pub mod glasgow;

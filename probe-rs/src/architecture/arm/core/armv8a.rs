@@ -1699,200 +1699,26 @@ impl MemoryInterface for Armv8a<'_> {
 
 #[cfg(test)]
 mod test {
-    use crate::{
-        architecture::arm::{
-            FullyQualifiedApAddress, communication_interface::SwdSequence,
-            sequences::DefaultArmSequence,
-        },
-        probe::{BitSequence, DebugProbeError},
-    };
+    use crate::architecture::arm::sequences::DefaultArmSequence;
 
     use super::*;
+    use crate::architecture::arm::core::mock::MockProbe;
 
     const TEST_BASE_ADDRESS: u64 = 0x8000_1000;
     const TEST_CTI_ADDRESS: u64 = 0x8000_2000;
 
-    fn address_to_reg_num(address: u64) -> u32 {
-        ((address - TEST_BASE_ADDRESS) / 4) as u32
-    }
-
-    pub struct ExpectedMemoryOp {
-        read: bool,
-        address: u64,
-        value: u32,
-    }
-
-    pub struct MockProbe {
-        expected_ops: Vec<ExpectedMemoryOp>,
-        is_64_bit: bool,
-    }
-
-    impl MockProbe {
-        pub fn new(is_64_bit: bool) -> Self {
-            MockProbe {
-                expected_ops: vec![],
-                is_64_bit,
-            }
-        }
-
-        pub fn expected_read(&mut self, addr: u64, value: u32) {
-            self.expected_ops.push(ExpectedMemoryOp {
-                read: true,
-                address: addr,
-                value,
-            });
-        }
-
-        pub fn expected_write(&mut self, addr: u64, value: u32) {
-            self.expected_ops.push(ExpectedMemoryOp {
-                read: false,
-                address: addr,
-                value,
-            });
-        }
-    }
-    impl MemoryInterface<ArmError> for MockProbe {
-        fn read_8(&mut self, _address: u64, _data: &mut [u8]) -> Result<(), ArmError> {
-            todo!()
-        }
-
-        fn read_16(&mut self, _address: u64, _data: &mut [u16]) -> Result<(), ArmError> {
-            todo!()
-        }
-
-        fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), ArmError> {
-            if self.expected_ops.is_empty() {
-                panic!(
-                    "Received unexpected read_32 op: register {:#}",
-                    address_to_reg_num(address)
-                );
-            }
-
-            assert_eq!(data.len(), 1);
-
-            let expected_op = self.expected_ops.remove(0);
-
-            assert!(
-                expected_op.read,
-                "R/W mismatch for register: Expected {:#} Actual: {:#}",
-                address_to_reg_num(expected_op.address),
-                address_to_reg_num(address)
-            );
-            assert_eq!(
-                expected_op.address,
-                address,
-                "Read from unexpected register: Expected {:#} Actual: {:#}",
-                address_to_reg_num(expected_op.address),
-                address_to_reg_num(address)
-            );
-
-            data[0] = expected_op.value;
-
-            Ok(())
-        }
-
-        fn write_8(&mut self, _address: u64, _data: &[u8]) -> Result<(), ArmError> {
-            todo!()
-        }
-
-        fn write_16(&mut self, _address: u64, _data: &[u16]) -> Result<(), ArmError> {
-            todo!()
-        }
-
-        fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), ArmError> {
-            if self.expected_ops.is_empty() {
-                panic!(
-                    "Received unexpected write_32 op: register {:#}",
-                    address_to_reg_num(address)
-                );
-            }
-
-            assert_eq!(data.len(), 1);
-
-            let expected_op = self.expected_ops.remove(0);
-
-            assert!(!expected_op.read);
-            assert_eq!(
-                expected_op.address,
-                address,
-                "Write to unexpected register: Expected {:#} Actual: {:#}",
-                address_to_reg_num(expected_op.address),
-                address_to_reg_num(address)
-            );
-
-            assert_eq!(
-                expected_op.value, data[0],
-                "Write value mismatch Expected {:#X} Actual: {:#X}",
-                expected_op.value, data[0]
-            );
-
-            Ok(())
-        }
-
-        fn read_64(&mut self, _address: u64, _data: &mut [u64]) -> Result<(), ArmError> {
-            todo!()
-        }
-
-        fn write_64(&mut self, _address: u64, _data: &[u64]) -> Result<(), ArmError> {
-            todo!()
-        }
-
-        fn flush(&mut self) -> Result<(), ArmError> {
-            todo!()
-        }
-
-        fn supports_8bit_transfers(&self) -> Result<bool, ArmError> {
-            Ok(false)
-        }
-
-        fn supports_native_64bit_access(&mut self) -> bool {
-            false
-        }
-    }
-
-    impl ArmMemoryInterface for MockProbe {
-        fn fully_qualified_address(&self) -> FullyQualifiedApAddress {
-            todo!()
-        }
-
-        fn get_arm_debug_interface(
-            &mut self,
-        ) -> Result<&mut dyn crate::architecture::arm::ArmDebugInterface, DebugProbeError> {
-            Err(DebugProbeError::NotImplemented {
-                function_name: "get_arm_debug_interface",
-            })
-        }
-
-        fn generic_status(&mut self) -> Result<crate::architecture::arm::ap::CSW, ArmError> {
-            Err(ArmError::Probe(DebugProbeError::NotImplemented {
-                function_name: "generic_status",
-            }))
-        }
-
-        fn base_address(&mut self) -> Result<u64, ArmError> {
-            todo!()
-        }
-    }
-
-    impl SwdSequence for MockProbe {
-        fn swj_sequence(&mut self, _bits: &BitSequence) -> Result<(), DebugProbeError> {
-            todo!()
-        }
-
-        fn swj_pins(
-            &mut self,
-            _pin_out: u32,
-            _pin_select: u32,
-            _pin_wait: u32,
-        ) -> Result<u32, DebugProbeError> {
-            todo!()
-        }
-    }
-
     fn add_status_expectations(probe: &mut MockProbe, halted: bool) {
+        add_status_expectations_with_width(probe, halted, false);
+    }
+
+    fn add_64_bit_status_expectations(probe: &mut MockProbe, halted: bool) {
+        add_status_expectations_with_width(probe, halted, true);
+    }
+
+    fn add_status_expectations_with_width(probe: &mut MockProbe, halted: bool, is_64_bit: bool) {
         let mut edscr = Edscr(0);
         edscr.set_status(if halted { 0b010011 } else { 0b000010 });
-        if probe.is_64_bit {
+        if is_64_bit {
             edscr.set_rw(0b1111);
         }
         probe.expected_read(
@@ -2202,7 +2028,7 @@ mod test {
 
     #[test]
     fn armv8a_new() {
-        let mut probe = MockProbe::new(false);
+        let mut probe = MockProbe::new(TEST_BASE_ADDRESS);
 
         // Add expectations
         add_status_expectations(&mut probe, true);
@@ -2225,7 +2051,7 @@ mod test {
 
     #[test]
     fn armv8a_core_halted() {
-        let mut probe = MockProbe::new(false);
+        let mut probe = MockProbe::new(TEST_BASE_ADDRESS);
         let mut state = CortexARState::new();
 
         // Add expectations
@@ -2262,7 +2088,7 @@ mod test {
 
     #[test]
     fn armv8a_wait_for_core_halted() {
-        let mut probe = MockProbe::new(false);
+        let mut probe = MockProbe::new(TEST_BASE_ADDRESS);
         let mut state = CortexARState::new();
 
         // Add expectations
@@ -2300,7 +2126,7 @@ mod test {
 
     #[test]
     fn armv8a_status_running() {
-        let mut probe = MockProbe::new(false);
+        let mut probe = MockProbe::new(TEST_BASE_ADDRESS);
         let mut state = CortexARState::new();
 
         // Add expectations
@@ -2329,7 +2155,7 @@ mod test {
 
     #[test]
     fn armv8a_status_halted() {
-        let mut probe = MockProbe::new(false);
+        let mut probe = MockProbe::new(TEST_BASE_ADDRESS);
         let mut state = CortexARState::new();
 
         // Add expectations
@@ -2363,7 +2189,7 @@ mod test {
     fn armv8a_read_core_reg_common() {
         const REG_VALUE: u32 = 0xABCD;
 
-        let mut probe = MockProbe::new(false);
+        let mut probe = MockProbe::new(TEST_BASE_ADDRESS);
         let mut state = CortexARState::new();
 
         // Add expectations
@@ -2400,11 +2226,11 @@ mod test {
     fn armv8a_read_core_reg_common_64() {
         const REG_VALUE: u64 = 0xFFFF_EEEE_0000_ABCD;
 
-        let mut probe = MockProbe::new(true);
+        let mut probe = MockProbe::new(TEST_BASE_ADDRESS);
         let mut state = CortexARState::new();
 
         // Add expectations
-        add_status_expectations(&mut probe, true);
+        add_64_bit_status_expectations(&mut probe, true);
 
         // Read register
         add_read_reg_64_expectations(&mut probe, 2, REG_VALUE);
@@ -2437,7 +2263,7 @@ mod test {
     fn armv8a_read_core_reg_pc() {
         const REG_VALUE: u32 = 0xABCD;
 
-        let mut probe = MockProbe::new(false);
+        let mut probe = MockProbe::new(TEST_BASE_ADDRESS);
         let mut state = CortexARState::new();
 
         // Add expectations
@@ -2475,11 +2301,11 @@ mod test {
     fn armv8a_read_core_64_reg_pc() {
         const REG_VALUE: u64 = 0xFFFF_EEEE_0000_ABCD;
 
-        let mut probe = MockProbe::new(true);
+        let mut probe = MockProbe::new(TEST_BASE_ADDRESS);
         let mut state = CortexARState::new();
 
         // Add expectations
-        add_status_expectations(&mut probe, true);
+        add_64_bit_status_expectations(&mut probe, true);
 
         // Read PC
         add_read_reg_64_expectations(&mut probe, 0, 0);
@@ -2513,7 +2339,7 @@ mod test {
     fn armv8a_read_core_reg_cpsr() {
         const REG_VALUE: u32 = 0xABCD;
 
-        let mut probe = MockProbe::new(false);
+        let mut probe = MockProbe::new(TEST_BASE_ADDRESS);
         let mut state = CortexARState::new();
 
         // Add expectations
@@ -2551,11 +2377,11 @@ mod test {
     fn armv8a_read_core_64_reg_cpsr() {
         const REG_VALUE: u32 = 0xABCD;
 
-        let mut probe = MockProbe::new(true);
+        let mut probe = MockProbe::new(TEST_BASE_ADDRESS);
         let mut state = CortexARState::new();
 
         // Add expectations
-        add_status_expectations(&mut probe, true);
+        add_64_bit_status_expectations(&mut probe, true);
 
         // Read CPSR
         add_read_reg_64_expectations(&mut probe, 0, 0);
@@ -2589,7 +2415,7 @@ mod test {
     fn armv8a_halt() {
         const REG_VALUE: u32 = 0xABCD;
 
-        let mut probe = MockProbe::new(false);
+        let mut probe = MockProbe::new(TEST_BASE_ADDRESS);
         let mut state = CortexARState::new();
 
         // Add expectations
@@ -2629,7 +2455,7 @@ mod test {
 
     #[test]
     fn armv8a_run() {
-        let mut probe = MockProbe::new(false);
+        let mut probe = MockProbe::new(TEST_BASE_ADDRESS);
         let mut state = CortexARState::new();
 
         // Add expectations
@@ -2660,7 +2486,7 @@ mod test {
     #[test]
     fn armv8a_available_breakpoint_units() {
         const BP_COUNT: u32 = 4;
-        let mut probe = MockProbe::new(false);
+        let mut probe = MockProbe::new(TEST_BASE_ADDRESS);
         let mut state = CortexARState::new();
 
         // Add expectations
@@ -2688,7 +2514,7 @@ mod test {
         const BP_COUNT: u32 = 4;
         const BP1: u64 = 0x2345;
         const BP2: u64 = 0x8000_0000;
-        let mut probe = MockProbe::new(false);
+        let mut probe = MockProbe::new(TEST_BASE_ADDRESS);
         let mut state = CortexARState::new();
 
         // Add expectations
@@ -2771,7 +2597,7 @@ mod test {
     #[test]
     fn armv8a_set_hw_breakpoint() {
         const BP_VALUE: u64 = 0x2345;
-        let mut probe = MockProbe::new(false);
+        let mut probe = MockProbe::new(TEST_BASE_ADDRESS);
         let mut state = CortexARState::new();
 
         // Add expectations
@@ -2816,7 +2642,7 @@ mod test {
 
     #[test]
     fn armv8a_clear_hw_breakpoint() {
-        let mut probe = MockProbe::new(false);
+        let mut probe = MockProbe::new(TEST_BASE_ADDRESS);
         let mut state = CortexARState::new();
 
         // Add expectations
@@ -2855,7 +2681,7 @@ mod test {
         const MEMORY_VALUE: u32 = 0xBA5EBA11;
         const MEMORY_ADDRESS: u64 = 0x12345678;
 
-        let mut probe = MockProbe::new(false);
+        let mut probe = MockProbe::new(TEST_BASE_ADDRESS);
         let mut state = CortexARState::new();
 
         // Add expectations
@@ -2886,11 +2712,11 @@ mod test {
         const MEMORY_VALUE: u32 = 0xBA5EBA11;
         const MEMORY_ADDRESS: u64 = 0x12345678;
 
-        let mut probe = MockProbe::new(true);
+        let mut probe = MockProbe::new(TEST_BASE_ADDRESS);
         let mut state = CortexARState::new();
 
         // Add expectations
-        add_status_expectations(&mut probe, true);
+        add_64_bit_status_expectations(&mut probe, true);
 
         // Read memory
         add_read_reg_64_expectations(&mut probe, 0, 0);
@@ -2918,7 +2744,7 @@ mod test {
         const MEMORY_ADDRESS: u64 = 0x12345679;
         const MEMORY_WORD_ADDRESS: u64 = 0x12345678;
 
-        let mut probe = MockProbe::new(false);
+        let mut probe = MockProbe::new(TEST_BASE_ADDRESS);
         let mut state = CortexARState::new();
 
         // Add expectations
@@ -2949,11 +2775,11 @@ mod test {
         const MEMORY_ADDRESS: u64 = 0x12345679;
         const MEMORY_WORD_ADDRESS: u64 = 0x12345678;
 
-        let mut probe = MockProbe::new(true);
+        let mut probe = MockProbe::new(TEST_BASE_ADDRESS);
         let mut state = CortexARState::new();
 
         // Add expectations
-        add_status_expectations(&mut probe, true);
+        add_64_bit_status_expectations(&mut probe, true);
 
         // Read memory
         add_read_reg_64_expectations(&mut probe, 0, 0);
@@ -3049,11 +2875,11 @@ mod test {
         const MEMORY_ADDRESS: u64 = 0x12345679;
         const MEMORY_VALUE: [u8; 2] = [0xBA, 0x5E];
 
-        let mut probe = MockProbe::new(true);
+        let mut probe = MockProbe::new(TEST_BASE_ADDRESS);
         let mut state = CortexARState::new();
 
         // Add expectations
-        add_status_expectations(&mut probe, true);
+        add_64_bit_status_expectations(&mut probe, true);
 
         // Read memory one byte at a time
         add_read_reg_64_expectations(&mut probe, 0, 0);

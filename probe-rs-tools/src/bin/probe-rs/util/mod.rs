@@ -1,3 +1,5 @@
+#[cfg(test)]
+pub mod busy_lister;
 pub mod cargo;
 pub mod cli;
 pub mod common_options;

@@ -105,6 +105,10 @@ object = { version = "0.40", default-features = false, features = [
     "std",
 ]}
 
+[[test]]
+name = "flash_dry_run"
+required-features = ["test"]
+
 [[package.metadata.release.pre-release-replacements]]
 file = "../CHANGELOG.md"
 search = "## \\[Unreleased\\]"
