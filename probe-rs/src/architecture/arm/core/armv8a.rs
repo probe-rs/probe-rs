@@ -912,13 +912,14 @@ impl<'probe> Armv8a<'probe> {
         Ok(())
     }
 
-    fn aligned_to_32_split_offset(&self, address: u64, data: &[u8]) -> (usize, usize) {
-        // rounding up
-        let word_aligned_address = (address + 3) & (!0x03u64);
-        let unaligned_prefix_size = usize::try_from(word_aligned_address - address).unwrap();
-        let unaligned_suffix_size =
-            usize::try_from((address + u64::try_from(data.len()).unwrap()) % 4).unwrap();
-        let word_aligned_size = data.len() - (unaligned_prefix_size + unaligned_suffix_size);
+    /// Splits an access of `len` bytes at `address` into the size of the unaligned prefix and
+    /// the size of the 32-bit aligned main section. The remaining bytes are the unaligned suffix.
+    ///
+    /// An access that does not reach the next word boundary is entirely prefix.
+    fn aligned_to_32_split_offset(address: u64, len: usize) -> (usize, usize) {
+        // bytes up to the next word boundary without exceeding 32-bits.
+        let unaligned_prefix_size = usize::from(address.wrapping_neg() as u8 % 4).min(len);
+        let word_aligned_size = (len - unaligned_prefix_size) & !0x03;
 
         (unaligned_prefix_size, word_aligned_size)
     }
@@ -930,7 +931,7 @@ impl<'probe> Armv8a<'probe> {
     ) -> (&'a mut [u8], &'a mut [u8], &'a mut [u8]) {
         // take out 32-bit aligned part
         let (unaligned_prefix_size, word_aligned_size) =
-            self.aligned_to_32_split_offset(address, data);
+            Self::aligned_to_32_split_offset(address, data.len());
 
         // take out 32-bit aligned part
         let (prefix, rest) = data.split_at_mut(unaligned_prefix_size);
@@ -941,7 +942,7 @@ impl<'probe> Armv8a<'probe> {
     fn aligned_to_32<'a>(&self, address: u64, data: &'a [u8]) -> (&'a [u8], &'a [u8], &'a [u8]) {
         // take out 32-bit aligned part
         let (unaligned_prefix_size, word_aligned_size) =
-            self.aligned_to_32_split_offset(address, data);
+            Self::aligned_to_32_split_offset(address, data.len());
 
         // take out 32-bit aligned part
         let (prefix, rest) = data.split_at(unaligned_prefix_size);
@@ -2971,5 +2972,134 @@ mod test {
         .unwrap();
 
         assert_eq!(0xBA, armv8a.read_word_8(MEMORY_ADDRESS).unwrap());
+    }
+
+    /// Returns the (prefix, aligned, suffix) sizes for an access of `len` bytes at `address`.
+    fn split_sizes(address: u64, len: usize) -> (usize, usize, usize) {
+        let (prefix, aligned) = Armv8a::aligned_to_32_split_offset(address, len);
+        (prefix, aligned, len - prefix - aligned)
+    }
+
+    #[test]
+    fn armv8a_aligned_split_aligned() {
+        assert_eq!(split_sizes(0x1000, 4), (0, 4, 0));
+        assert_eq!(split_sizes(0x1000, 8), (0, 8, 0));
+        assert_eq!(split_sizes(0x1000, 6), (0, 4, 2));
+        assert_eq!(split_sizes(0x1000, 3), (0, 0, 3));
+    }
+
+    #[test]
+    fn armv8a_aligned_split_unaligned_within_one_word() {
+        assert_eq!(split_sizes(0x1001, 1), (1, 0, 0));
+        assert_eq!(split_sizes(0x1001, 2), (2, 0, 0));
+        assert_eq!(split_sizes(0x1001, 3), (3, 0, 0));
+        assert_eq!(split_sizes(0x1002, 1), (1, 0, 0));
+        assert_eq!(split_sizes(0x1002, 2), (2, 0, 0));
+        assert_eq!(split_sizes(0x1003, 1), (1, 0, 0));
+    }
+
+    #[test]
+    fn armv8a_aligned_split_unaligned_crossing_one_boundary() {
+        assert_eq!(split_sizes(0x1003, 2), (1, 0, 1));
+        assert_eq!(split_sizes(0x1001, 4), (3, 0, 1));
+        assert_eq!(split_sizes(0x1002, 5), (2, 0, 3));
+        assert_eq!(split_sizes(0x1002, 6), (2, 4, 0));
+    }
+
+    #[test]
+    fn armv8a_aligned_split_unaligned_several_words() {
+        assert_eq!(split_sizes(0x1001, 12), (3, 8, 1));
+        assert_eq!(split_sizes(0x1003, 10), (1, 8, 1));
+        assert_eq!(split_sizes(0x1002, 13), (2, 8, 3));
+    }
+
+    #[test]
+    fn armv8a_aligned_split_zero_length() {
+        for address in 0x1000..0x1004 {
+            assert_eq!(split_sizes(address, 0), (0, 0, 0));
+        }
+    }
+
+    #[test]
+    fn armv8a_aligned_split_end_of_address_space() {
+        assert_eq!(split_sizes(u64::MAX, 1), (1, 0, 0));
+        assert_eq!(split_sizes(u64::MAX - 3, 4), (0, 4, 0));
+    }
+
+    #[test]
+    fn armv8a_aligned_split_invariants() {
+        for address in 0x1000..0x1008u64 {
+            for len in 0..20 {
+                let (prefix, aligned, suffix) = split_sizes(address, len);
+                let to_boundary = usize::try_from(address.next_multiple_of(4) - address).unwrap();
+
+                assert_eq!(prefix, to_boundary.min(len), "{address:#x}+{len}");
+                assert_eq!(aligned % 4, 0, "{address:#x}+{len}");
+                assert!(suffix < 4, "{address:#x}+{len}");
+                if aligned + suffix > 0 {
+                    let rest = address + u64::try_from(prefix).unwrap();
+                    assert!(rest.is_multiple_of(4), "{address:#x}+{len}");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn armv8a_read_8_aarch64_unaligned_within_word() {
+        const MEMORY_ADDRESS: u64 = 0x12345679;
+        const MEMORY_VALUE: [u8; 2] = [0xBA, 0x5E];
+
+        let mut probe = MockProbe::new(true);
+        let mut state = CortexARState::new();
+
+        // Add expectations
+        add_status_expectations(&mut probe, true);
+
+        // Read memory one byte at a time
+        add_read_reg_64_expectations(&mut probe, 0, 0);
+        add_read_reg_64_expectations(&mut probe, 1, 0);
+        add_set_x0_expectation(&mut probe, MEMORY_ADDRESS);
+
+        let mut edscr = Edscr(0);
+        edscr.set_ite(true);
+        edscr.set_txfull(true);
+
+        for value in MEMORY_VALUE {
+            probe.expected_write(
+                Editr::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap(),
+                aarch64::build_ldrb(1, 0, 1),
+            );
+            probe.expected_read(
+                Edscr::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap(),
+                edscr.into(),
+            );
+            probe.expected_write(
+                Editr::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap(),
+                aarch64::build_msr(2, 3, 0, 5, 0, 1),
+            );
+            probe.expected_read(
+                Edscr::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap(),
+                edscr.into(),
+            );
+            probe.expected_read(
+                Dbgdtrtx::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap(),
+                value.into(),
+            );
+        }
+
+        let mock_mem = Box::new(probe) as _;
+
+        let mut armv8a = Armv8a::new(
+            mock_mem,
+            &mut state,
+            TEST_BASE_ADDRESS,
+            TEST_CTI_ADDRESS,
+            DefaultArmSequence::create(),
+        )
+        .unwrap();
+
+        let mut data = [0u8; 2];
+        armv8a.read_8(MEMORY_ADDRESS, &mut data).unwrap();
+        assert_eq!(data, MEMORY_VALUE);
     }
 }
