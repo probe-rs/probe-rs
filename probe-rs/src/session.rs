@@ -1235,38 +1235,41 @@ pub struct MissingPermissions(pub String);
 
 /// Takes the place of the ARM interface while the session re-attaches the real one.
 ///
-/// The session never calls it.
+/// If the re-attach fails, the placeholder stays. Then all operations fail with
+/// [`DebugProbeError::NotAttached`], and `close` panics.
 struct PlaceholderArmInterface;
+
+const NOT_ATTACHED: ArmError = ArmError::Probe(DebugProbeError::NotAttached);
 
 impl ArmDebugInterface for PlaceholderArmInterface {
     fn reinitialize(&mut self) -> Result<(), ArmError> {
-        unreachable!()
+        Err(NOT_ATTACHED)
     }
 
     fn access_ports(
         &mut self,
         _dp: DpAddress,
     ) -> Result<BTreeSet<FullyQualifiedApAddress>, ArmError> {
-        unreachable!()
+        Err(NOT_ATTACHED)
     }
 
     fn close(self: Box<Self>) -> Probe {
-        unreachable!()
+        panic!("the ARM interface was not re-attached")
     }
 
     fn select_debug_port(&mut self, _dp: DpAddress) -> Result<(), ArmError> {
-        unreachable!()
+        Err(NOT_ATTACHED)
     }
 
     fn current_debug_port(&self) -> Option<DpAddress> {
-        unreachable!()
+        None
     }
 
     fn memory_interface(
         &mut self,
         _access_port_address: &FullyQualifiedApAddress,
     ) -> Result<Box<dyn ArmMemoryInterface + '_>, ArmError> {
-        unreachable!()
+        Err(NOT_ATTACHED)
     }
 }
 
@@ -1276,7 +1279,7 @@ impl DapAccess for PlaceholderArmInterface {
         _dp: DpAddress,
         _address: DpRegisterAddress,
     ) -> Result<u32, ArmError> {
-        unreachable!()
+        Err(NOT_ATTACHED)
     }
 
     fn write_raw_dp_register(
@@ -1285,7 +1288,7 @@ impl DapAccess for PlaceholderArmInterface {
         _address: DpRegisterAddress,
         _value: u32,
     ) -> Result<(), ArmError> {
-        unreachable!()
+        Err(NOT_ATTACHED)
     }
 
     fn read_raw_ap_register(
@@ -1293,7 +1296,7 @@ impl DapAccess for PlaceholderArmInterface {
         _ap: &FullyQualifiedApAddress,
         _address: u64,
     ) -> Result<u32, ArmError> {
-        unreachable!()
+        Err(NOT_ATTACHED)
     }
 
     fn write_raw_ap_register(
@@ -1302,13 +1305,13 @@ impl DapAccess for PlaceholderArmInterface {
         _address: u64,
         _value: u32,
     ) -> Result<(), ArmError> {
-        unreachable!()
+        Err(NOT_ATTACHED)
     }
 }
 
 impl SwdSequence for PlaceholderArmInterface {
     fn swj_sequence(&mut self, _bits: &BitSequence) -> Result<(), DebugProbeError> {
-        unreachable!()
+        Err(DebugProbeError::NotAttached)
     }
 
     fn swj_pins(
@@ -1317,20 +1320,20 @@ impl SwdSequence for PlaceholderArmInterface {
         _pin_select: u32,
         _pin_wait: u32,
     ) -> Result<u32, DebugProbeError> {
-        unreachable!()
+        Err(DebugProbeError::NotAttached)
     }
 }
 
 impl SwoAccess for PlaceholderArmInterface {
     fn enable_swo(&mut self, _config: &SwoConfig) -> Result<(), ArmError> {
-        unreachable!()
+        Err(NOT_ATTACHED)
     }
 
     fn disable_swo(&mut self) -> Result<(), ArmError> {
-        unreachable!()
+        Err(NOT_ATTACHED)
     }
 
     fn read_swo_timeout(&mut self, _timeout: Duration) -> Result<Vec<u8>, ArmError> {
-        unreachable!()
+        Err(NOT_ATTACHED)
     }
 }

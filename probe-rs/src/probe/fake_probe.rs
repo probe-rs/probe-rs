@@ -13,7 +13,8 @@ use crate::{
     },
     probe::{
         BatchError, BatchExecutionError, BitSequence, CommandResult, DebugProbe, DebugProbeError,
-        DebugProbeSelector, Probe, ProbeFactory, ResetLine, Results, WireProtocol,
+        DebugProbeSelector, Probe, ProbeCreationError, ProbeFactory, ResetLine, Results,
+        WireProtocol,
         list::ProbeListItem,
         swd::{Direction, Port, SwdBatch, SwdOp, SwdProbe},
     },
@@ -584,9 +585,10 @@ impl Default for FakeProbe {
     }
 }
 
-/// A probe factory that opens a new [`FakeProbe`] and lists no probes.
+/// A probe factory that opens no probe and lists no probes.
 ///
-/// Use it to create a [`DebugProbeInfo`](crate::probe::DebugProbeInfo) for a fake probe.
+/// Use it to create a [`DebugProbeInfo`](crate::probe::DebugProbeInfo) for a fake probe. Open the
+/// fake probe through a [`ProbeLister`](crate::probe::list::ProbeLister).
 #[derive(Debug)]
 pub struct FakeProbeFactory;
 
@@ -598,7 +600,9 @@ impl std::fmt::Display for FakeProbeFactory {
 
 impl ProbeFactory for FakeProbeFactory {
     fn open(&self, _selector: &DebugProbeSelector) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
-        Ok(Box::new(FakeProbe::new()))
+        Err(DebugProbeError::ProbeCouldNotBeCreated(
+            ProbeCreationError::Other("open a fake probe through a probe lister"),
+        ))
     }
 
     fn list_probes(&self) -> Vec<ProbeListItem> {

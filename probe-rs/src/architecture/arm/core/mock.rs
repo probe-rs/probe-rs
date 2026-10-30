@@ -24,7 +24,7 @@ pub struct MockProbe {
     base_address: u64,
     expected_ops: Vec<ExpectedMemoryOp>,
     /// Every call of `execute_operations`: each operation's address, and the value if it
-    /// was a write.
+    /// was a word write.
     pub batches: Vec<Vec<(u64, Option<u32>)>>,
 }
 
@@ -171,8 +171,7 @@ impl ArmMemoryInterface for MockProbe {
                 .map(|operation| {
                     let value = match operation.operation {
                         OperationKind::WriteWord32(value) => Some(value),
-                        OperationKind::Read32(_) => None,
-                        _ => unimplemented!("only word writes and reads are mocked"),
+                        _ => None,
                     };
                     (operation.address, value)
                 })
@@ -181,9 +180,20 @@ impl ArmMemoryInterface for MockProbe {
         for operation in operations.iter_mut() {
             let address = operation.address;
             match &mut operation.operation {
-                OperationKind::WriteWord32(value) => self.write_32(address, &[*value])?,
+                OperationKind::Read(data) => self.read(address, data)?,
+                OperationKind::Read8(data) => self.read_8(address, data)?,
+                OperationKind::Read16(data) => self.read_16(address, data)?,
                 OperationKind::Read32(data) => self.read_32(address, data)?,
-                _ => unimplemented!("only word writes and reads are mocked"),
+                OperationKind::Read64(data) => self.read_64(address, data)?,
+                OperationKind::Write(data) => self.write(address, data)?,
+                OperationKind::Write8(data) => self.write_8(address, data)?,
+                OperationKind::Write16(data) => self.write_16(address, data)?,
+                OperationKind::Write32(data) => self.write_32(address, data)?,
+                OperationKind::Write64(data) => self.write_64(address, data)?,
+                OperationKind::WriteWord8(data) => self.write_word_8(address, *data)?,
+                OperationKind::WriteWord16(data) => self.write_word_16(address, *data)?,
+                OperationKind::WriteWord32(data) => self.write_word_32(address, *data)?,
+                OperationKind::WriteWord64(data) => self.write_word_64(address, *data)?,
             }
             operation.result = Some(Ok(()));
         }
