@@ -8,6 +8,7 @@ use probe_rs::{
     flashing::{DownloadOptions, FlashProgress, download_file_with_options, image_format},
 };
 
+pub mod benchmark;
 pub mod stepping;
 
 use crate::{CORE_TESTS, SESSION_TESTS, TestResult, dut_definition::DutDefinition, skip_test};

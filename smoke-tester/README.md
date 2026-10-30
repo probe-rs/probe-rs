@@ -41,3 +41,12 @@ The smoke tester can called like this:
 ```console
 cargo run -- --dut-definitions <dut_dir>
 ```
+
+## Benchmarks
+
+The `benchmark_` tests measure probe throughput. To record results, set `SMOKE_TESTER_BENCH_OUT` to a file path. The tests append the results to the file as JSON lines. Without the variable, each operation runs once as a test.
+
+```console
+SMOKE_TESTER_BENCH_OUT=bench.jsonl cargo nextest run --profile ci-bench
+python3 smoke-tester/bench_summary.py bench.jsonl
+```
