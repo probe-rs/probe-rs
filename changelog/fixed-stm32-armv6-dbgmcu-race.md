@@ -1,0 +1,1 @@
+Fixed STM32F0/G0/L0 debug sequences switching off peripheral clocks the firmware enabled, not setting stop and standby debug when connecting under reset, clearing DBGEN on detach even when it was on before, and not restoring DBGMCU CR, DEMCR and halting debug on detach.
