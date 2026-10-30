@@ -35,10 +35,19 @@ struct Record<'a> {
     metric: &'static str,
     size: usize,
     unit: &'static str,
+    improves: Improves,
     median: f64,
     p10: f64,
     p90: f64,
     samples: usize,
+}
+
+/// The direction in which a metric gets better.
+#[derive(Clone, Copy, Serialize)]
+#[serde(rename_all = "lowercase")]
+enum Improves {
+    Up,
+    Down,
 }
 
 struct Bench {
@@ -77,6 +86,7 @@ impl Bench {
         metric: &'static str,
         size: usize,
         unit: &'static str,
+        improves: Improves,
         mut values: Vec<f64>,
     ) -> anyhow::Result<()> {
         let Some(output) = &mut self.output else {
@@ -94,6 +104,7 @@ impl Bench {
             metric,
             size,
             unit,
+            improves,
             median: percentile(0.5),
             p10: percentile(0.1),
             p90: percentile(0.9),
@@ -114,7 +125,7 @@ impl Bench {
             core.read_word_32(address)?;
             Ok(start.elapsed())
         })?;
-        self.record("read_word_32", 4, "us", to_micros(samples))?;
+        self.record("read_word_32", 4, "us", Improves::Down, to_micros(samples))?;
 
         let pc = core.program_counter();
         let samples = self.sample(|| {
@@ -122,7 +133,7 @@ impl Bench {
             core.read_core_reg::<u64>(pc)?;
             Ok(start.elapsed())
         })?;
-        self.record("read_core_reg", 0, "us", to_micros(samples))
+        self.record("read_core_reg", 0, "us", Improves::Down, to_micros(samples))
     }
 
     /// Measure the throughput of block accesses in bytes per second.
@@ -144,7 +155,13 @@ impl Bench {
             verify(&data, &readback, address)?;
             Ok(time)
         })?;
-        self.record("write_32", size, "B/s", to_throughput(samples, size))?;
+        self.record(
+            "write_32",
+            size,
+            "B/s",
+            Improves::Up,
+            to_throughput(samples, size),
+        )?;
 
         let samples = self.sample(|| {
             readback.fill(0);
@@ -156,7 +173,13 @@ impl Bench {
             verify(&data, &readback, address)?;
             Ok(time)
         })?;
-        self.record("read_32", size, "B/s", to_throughput(samples, size))
+        self.record(
+            "read_32",
+            size,
+            "B/s",
+            Improves::Up,
+            to_throughput(samples, size),
+        )
     }
 }
 
