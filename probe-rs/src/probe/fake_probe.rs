@@ -13,12 +13,12 @@ use crate::{
     },
     probe::{
         BatchError, BatchExecutionError, BitSequence, CommandResult, DebugProbe, DebugProbeError,
-        Probe, ResetLine, Results, WireProtocol,
+        DebugProbeSelector, Probe, ProbeFactory, ResetLine, Results, WireProtocol,
+        list::ProbeListItem,
         swd::{Direction, Port, SwdBatch, SwdOp, SwdProbe},
     },
 };
 
-#[cfg(any(test, feature = "test"))]
 use object::{
     Object, ObjectSection,
     elf::PT_LOAD,
@@ -362,7 +362,6 @@ impl FakeProbe {
 
     /// Fake probe with a mocked core
     /// with access to an actual binary file.
-    #[cfg(any(test, feature = "test"))]
     pub fn with_mocked_core_and_binary(program_binary: &std::path::Path) -> Self {
         let file_data = std::fs::read(program_binary).unwrap();
         let file_data_slice = file_data.as_slice();
@@ -525,7 +524,6 @@ impl FakeProbe {
     }
 }
 
-#[cfg(any(test, feature = "test"))]
 fn core_with_binary<T: FileHeader>(elf_file: ElfFile<T>) -> MockCore {
     use probe_rs_target::MemoryRange;
 
@@ -589,27 +587,21 @@ impl Default for FakeProbe {
 /// A probe factory that opens a new [`FakeProbe`] and lists no probes.
 ///
 /// Use it to create a [`DebugProbeInfo`](crate::probe::DebugProbeInfo) for a fake probe.
-#[cfg(any(test, feature = "test"))]
 #[derive(Debug)]
 pub struct FakeProbeFactory;
 
-#[cfg(any(test, feature = "test"))]
 impl std::fmt::Display for FakeProbeFactory {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str("Mocked Probe")
     }
 }
 
-#[cfg(any(test, feature = "test"))]
-impl crate::probe::ProbeFactory for FakeProbeFactory {
-    fn open(
-        &self,
-        _selector: &crate::probe::DebugProbeSelector,
-    ) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
+impl ProbeFactory for FakeProbeFactory {
+    fn open(&self, _selector: &DebugProbeSelector) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
         Ok(Box::new(FakeProbe::new()))
     }
 
-    fn list_probes(&self) -> Vec<crate::probe::list::ProbeListItem> {
+    fn list_probes(&self) -> Vec<ProbeListItem> {
         Vec::new()
     }
 }
