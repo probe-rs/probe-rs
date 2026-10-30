@@ -691,56 +691,9 @@ impl From<std::io::Error> for OperationError {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use probe_rs::integration::{FakeProbe, FakeProbeFactory};
-    use probe_rs::probe::{DebugProbeInfo, ProbeCreationError};
+    use crate::util::busy_lister::BusyLister;
+    use probe_rs::integration::FakeProbe;
     use std::sync::Arc;
-    use std::sync::atomic::{AtomicUsize, Ordering};
-
-    /// A probe that another process holds: `open` fails until `free_after`
-    /// attempts have been made.
-    struct BusyLister {
-        info: DebugProbeInfo,
-        attempts: AtomicUsize,
-        free_after: usize,
-        /// The probe answers the open, then faults.
-        faulty: bool,
-    }
-
-    impl std::fmt::Debug for BusyLister {
-        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            f.write_str("BusyLister")
-        }
-    }
-
-    impl probe_rs::integration::ProbeLister for BusyLister {
-        fn open(&self, _selector: &DebugProbeSelector) -> Result<Probe, DebugProbeError> {
-            let attempt = self.attempts.fetch_add(1, Ordering::SeqCst);
-            if self.faulty {
-                return Err(DebugProbeError::ProbeCouldNotBeCreated(
-                    ProbeCreationError::Usb(std::io::Error::other(
-                        "hardware fault or protocol violation",
-                    )),
-                ));
-            }
-            if attempt < self.free_after {
-                return Err(DebugProbeError::ProbeCouldNotBeCreated(
-                    ProbeCreationError::CouldNotOpen,
-                ));
-            }
-            Ok(Probe::from_specific_probe(Box::new(
-                FakeProbe::with_mocked_core(),
-            )))
-        }
-
-        fn list_with_access(
-            &self,
-            _selector: Option<&DebugProbeSelector>,
-        ) -> Vec<probe_rs::probe::list::ProbeListItem> {
-            vec![probe_rs::probe::list::ProbeListItem::accessible(
-                self.info.clone(),
-            )]
-        }
-    }
 
     fn busy_lister(free_after: usize) -> (Arc<BusyLister>, Lister) {
         make_lister(free_after, false)
@@ -751,20 +704,8 @@ mod tests {
     }
 
     fn make_lister(free_after: usize, faulty: bool) -> (Arc<BusyLister>, Lister) {
-        let lister = Arc::new(BusyLister {
-            info: DebugProbeInfo::new(
-                "Mock probe",
-                0x12,
-                0x23,
-                Some("busy_serial".to_owned()),
-                &FakeProbeFactory,
-                None,
-                false,
-            ),
-            attempts: AtomicUsize::new(0),
-            free_after,
-            faulty,
-        });
+        let lister = BusyLister::new(free_after, FakeProbe::with_mocked_core());
+        let lister = Arc::new(if faulty { lister.faulty() } else { lister });
 
         struct ArcLister(Arc<BusyLister>);
 
@@ -817,7 +758,7 @@ mod tests {
             .unwrap();
 
         assert!(options.attach_probe(&handle).is_ok());
-        assert_eq!(lister.attempts.load(Ordering::SeqCst), 3);
+        assert_eq!(lister.attempts(), 3);
     }
 
     /// The wait cannot repair a probe that faults, so the attach timeout must
@@ -831,7 +772,7 @@ mod tests {
             .unwrap();
 
         assert!(options.attach_probe(&handle).is_err());
-        assert_eq!(lister.attempts.load(Ordering::SeqCst), 1);
+        assert_eq!(lister.attempts(), 1);
     }
 
     #[test]
@@ -841,7 +782,7 @@ mod tests {
         let options = probe_options(None).load(&mut registry).unwrap();
 
         assert!(options.attach_probe(&handle).is_err());
-        assert_eq!(lister.attempts.load(Ordering::SeqCst), 1);
+        assert_eq!(lister.attempts(), 1);
     }
 
     #[test]
