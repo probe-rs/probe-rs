@@ -119,6 +119,7 @@ jobs:
           name: bench-${{ matrix.runner }}
           path: bench.jsonl
           if-no-files-found: ignore
+          overwrite: true
 
   bench-report:
     needs: test
@@ -167,6 +168,7 @@ jobs:
         with:
           name: benchmark-report
           path: report
+          overwrite: true
 
   bench-publish:
     needs: bench-report
@@ -198,7 +200,9 @@ jobs:
           fi
           cp "$results" "$GITHUB_SHA.jsonl"
           git add "$GITHUB_SHA.jsonl"
-          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com"             commit -q -m "Add benchmark results for $GITHUB_SHA"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -q -m "Add benchmark results for $GITHUB_SHA"
           git push -q origin bench-data
 
   embedded-test:

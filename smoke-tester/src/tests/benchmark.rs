@@ -77,11 +77,7 @@ fn bulk(recorder: &mut Recorder, core: &mut Core, address: u64, size: usize) -> 
         let start = Instant::now();
         core.write_32(address, &data)?;
         core.flush()?;
-        let time = start.elapsed();
-
-        core.read_32(address, &mut readback)?;
-        verify(&data, &readback, address)?;
-        Ok(time)
+        Ok(start.elapsed())
     })?;
     recorder.record(
         "write_32",
@@ -91,6 +87,7 @@ fn bulk(recorder: &mut Recorder, core: &mut Core, address: u64, size: usize) -> 
         to_throughput(samples, size),
     )?;
 
+    // Each read also verifies the last write.
     let samples = sample(recorder, || {
         readback.fill(0);
 
