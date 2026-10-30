@@ -310,18 +310,15 @@ enum TapKind {
 }
 
 impl TapKind {
-    /// `jtag_dp` is whether the scan found a JTAG-DP on the TAP, if it could check.
-    fn classify(tap: &JtagTapInfo, jtag_dp: Option<bool>) -> Self {
+    fn classify(tap: &JtagTapInfo) -> Self {
         let designer = tap.idcode.map(idcode_designer);
 
-        // ADIv5 and ADIv6 set the IR length of a JTAG-DP to 4. A boundary-scan TAP can have the
-        // same IR length, so the scan also checks the length of the DR behind DPACC. The RISC-V
-        // and Xtensa TAPs that probe-rs supports have an IR length of 5. The RISC-V DTM
-        // instructions do other things on other TAPs, for example they start the configuration
-        // of a Xilinx FPGA.
+        // ADIv5 and ADIv6 set the IR length of a JTAG-DP to 4. The RISC-V and Xtensa TAPs that
+        // probe-rs supports have an IR length of 5. The RISC-V DTM instructions do other things
+        // on other TAPs, for example they start the configuration of a Xilinx FPGA.
         match (tap.ir_len, designer) {
             (_, Some(JEP_ST)) => Self::Unsupported,
-            (4, _) if jtag_dp != Some(false) => Self::Arm,
+            (4, _) => Self::Arm,
             (5, Some(JEP_TENSILICA)) => Self::Xtensa,
             (5, Some(_)) => Self::Riscv,
             (5, None) => Self::RiscvOrXtensa,
@@ -367,10 +364,8 @@ async fn show_jtag_scan_chain_info(
             continue;
         }
 
-        let jtag_dp = probe
-            .try_as_jtag_chain()
-            .and_then(|mut chain| chain.jtag_dps().get(index).copied().flatten());
-        match TapKind::classify(tap, jtag_dp) {
+        match TapKind::classify(tap) {
+            TapKind::Arm if !may_be_jtag_dp(&mut probe, index) => show_unsupported_tap(ctx).await?,
             TapKind::Arm => probe = show_arm_tap_info(ctx, probe).await?,
             TapKind::Riscv => {
                 if !show_riscv_tap_info(ctx, &mut probe).await? {
@@ -388,6 +383,22 @@ async fn show_jtag_scan_chain_info(
     }
 
     Ok(())
+}
+
+/// Return false only when a check shows that the TAP at `index` is not a JTAG-DP.
+///
+/// A boundary-scan TAP can have the same IR length as a JTAG-DP.
+fn may_be_jtag_dp(probe: &mut Probe, index: usize) -> bool {
+    let Some(mut chain) = probe.try_as_jtag_chain() else {
+        return true;
+    };
+    match chain.is_jtag_dp(index) {
+        Ok(is_jtag_dp) => is_jtag_dp,
+        Err(error) => {
+            tracing::debug!("Unable to check whether TAP {index} is a JTAG-DP: {error}");
+            true
+        }
+    }
 }
 
 async fn show_unsupported_tap(ctx: &mut RpcContext) -> anyhow::Result<()> {
@@ -1184,7 +1195,7 @@ mod tests {
     use super::{JEP_ST, JEP_TENSILICA, JtagTapInfo, TapKind};
 
     fn kind(ir_len: u8, idcode: Option<u32>) -> TapKind {
-        TapKind::classify(&JtagTapInfo { idcode, ir_len }, None)
+        TapKind::classify(&JtagTapInfo { idcode, ir_len })
     }
 
     #[test]
@@ -1208,19 +1219,5 @@ mod tests {
         // Xilinx Zynq-7000 PL
         assert_eq!(kind(6, Some(0x0372_7093)), TapKind::Unsupported);
         assert_eq!(kind(8, None), TapKind::Unsupported);
-    }
-
-    #[test]
-    fn classify_checked_taps() {
-        let tap = |ir_len, idcode| JtagTapInfo { idcode, ir_len };
-        // NXP S32K118 boundary scan
-        assert_eq!(
-            TapKind::classify(&tap(4, Some(0x0993_001d)), Some(false)),
-            TapKind::Unsupported
-        );
-        assert_eq!(
-            TapKind::classify(&tap(4, Some(0x4ba0_0477)), Some(true)),
-            TapKind::Arm
-        );
     }
 }
