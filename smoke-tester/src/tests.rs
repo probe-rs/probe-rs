@@ -1,4 +1,4 @@
-use std::time::Instant;
+use std::{cell::RefCell, time::Instant};
 
 use anyhow::Context;
 use linkme::distributed_slice;
@@ -11,7 +11,12 @@ use probe_rs::{
 pub mod benchmark;
 pub mod stepping;
 
-use crate::{CORE_TESTS, SESSION_TESTS, TestResult, dut_definition::DutDefinition, skip_test};
+use crate::{
+    CORE_TESTS, SESSION_TESTS, TestResult,
+    bench::{FlashTimer, Recorder},
+    dut_definition::DutDefinition,
+    skip_test,
+};
 
 #[smoke_tester_macros::test(core)]
 pub fn test_register_read(_dut_definition: &DutDefinition, core: &mut Core) -> TestResult {
@@ -291,10 +296,14 @@ pub fn test_flashing(dut_definition: &DutDefinition, session: &mut Session) -> T
         skip_test!("No flash test binary specified");
     };
 
+    let mut recorder = Recorder::new(dut_definition, session)?;
+    let timer = RefCell::new(FlashTimer::default());
+
     let mut options = DownloadOptions::default();
     options.progress = FlashProgress::new(|event| {
         log::debug!("Flash Event: {event:?}");
         print!(".");
+        timer.borrow_mut().event(&event);
     });
 
     println!("Starting flashing test");
@@ -316,6 +325,8 @@ pub fn test_flashing(dut_definition: &DutDefinition, session: &mut Session) -> T
     println!("Total time for flashing: {:.2?}", start_time.elapsed());
 
     println!("Finished flashing");
+
+    timer.into_inner().record(&mut recorder)?;
 
     Ok(())
 }

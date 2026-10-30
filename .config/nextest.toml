@@ -20,7 +20,3 @@ fail-fast = false
 default-filter = "package(smoke_tester)"
 # Do not cancel the test run on the first failure.
 fail-fast = false
-
-[profile.ci-bench]
-default-filter = "package(smoke_tester) and test(/benchmark_/)"
-fail-fast = false
