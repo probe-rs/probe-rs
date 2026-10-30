@@ -168,16 +168,24 @@ pub type SwdBatch = Batch<SwdOp, DebugProbeError>;
 impl SwdBatch {
     /// Schedule a read and return a handle for the captured value.
     pub fn read(&mut self, port: Port, addr: u8) -> Handle<u32> {
-        self.schedule(SwdOp::Transfer {
-            port,
-            addr,
-            direction: Direction::Read,
-            data: 0,
-        })
-        .map(|result| match result {
-            CommandResult::U32(value) => value,
-            _ => panic!("unexpected CommandResult variant for an SWD read"),
-        })
+        // Not `map`: its closure would capture, and allocate, the conversion it wraps.
+        let id = HandleId::new();
+        let _ = self.schedule_preserved(
+            id.clone(),
+            SwdOp::Transfer {
+                port,
+                addr,
+                direction: Direction::Read,
+                data: 0,
+            },
+        );
+        Handle::from_parts(
+            id,
+            Box::new(|result| match result {
+                CommandResult::U32(value) => value,
+                _ => panic!("unexpected CommandResult variant for an SWD read"),
+            }),
+        )
     }
 
     /// Schedule a write.
