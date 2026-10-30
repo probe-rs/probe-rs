@@ -1940,238 +1940,16 @@ pub(crate) fn check_for_semihosting(
 #[cfg(test)]
 mod test {
     use crate::{
-        architecture::arm::{
-            FullyQualifiedApAddress, communication_interface::SwdSequence,
-            sequences::DefaultArmSequence,
-        },
-        probe::{BitSequence, DebugProbeError},
+        architecture::arm::{FullyQualifiedApAddress, sequences::DefaultArmSequence},
+        probe::DebugProbeError,
     };
 
     use super::*;
+    use crate::architecture::arm::core::mock::MockProbe;
     use crate::architecture::arm::dp::{DpAddress, DpRegisterAddress};
     use std::collections::VecDeque;
 
     const TEST_BASE_ADDRESS: u64 = 0x8000_1000;
-
-    fn address_to_reg_num(address: u64) -> u32 {
-        ((address - TEST_BASE_ADDRESS) / 4) as u32
-    }
-
-    #[derive(Debug)]
-    pub struct ExpectedMemoryOp {
-        read: bool,
-        address: u64,
-        value: u32,
-    }
-
-    pub struct MockProbe {
-        expected_ops: Vec<ExpectedMemoryOp>,
-        /// Every call of `execute_operations`: each operation's address, and the value if it
-        /// was a write.
-        batches: Vec<Vec<(u64, Option<u32>)>>,
-    }
-
-    impl MockProbe {
-        pub fn new() -> Self {
-            MockProbe {
-                expected_ops: vec![],
-                batches: vec![],
-            }
-        }
-
-        pub fn expected_read(&mut self, addr: u64, value: u32) {
-            self.expected_ops.push(ExpectedMemoryOp {
-                read: true,
-                address: addr,
-                value,
-            });
-        }
-
-        pub fn expected_write(&mut self, addr: u64, value: u32) {
-            self.expected_ops.push(ExpectedMemoryOp {
-                read: false,
-                address: addr,
-                value,
-            });
-        }
-    }
-
-    impl MemoryInterface<ArmError> for MockProbe {
-        fn read_8(&mut self, _address: u64, _data: &mut [u8]) -> Result<(), ArmError> {
-            todo!()
-        }
-
-        fn read_16(&mut self, _address: u64, _data: &mut [u16]) -> Result<(), ArmError> {
-            todo!()
-        }
-
-        fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), ArmError> {
-            if self.expected_ops.is_empty() {
-                panic!(
-                    "Received unexpected read_32 op: register {:#}",
-                    address_to_reg_num(address)
-                );
-            }
-
-            assert_eq!(data.len(), 1);
-
-            let expected_op = self.expected_ops.remove(0);
-
-            assert!(
-                expected_op.read,
-                "R/W mismatch for register: Expected {:#} Actual: {:#}",
-                address_to_reg_num(expected_op.address),
-                address_to_reg_num(address)
-            );
-            assert_eq!(
-                expected_op.address,
-                address,
-                "Read from unexpected register: Expected {:#} Actual: {:#}",
-                address_to_reg_num(expected_op.address),
-                address_to_reg_num(address)
-            );
-
-            data[0] = expected_op.value;
-
-            Ok(())
-        }
-
-        fn read(&mut self, address: u64, data: &mut [u8]) -> Result<(), ArmError> {
-            self.read_8(address, data)
-        }
-
-        fn write_8(&mut self, _address: u64, _data: &[u8]) -> Result<(), ArmError> {
-            todo!()
-        }
-
-        fn write_16(&mut self, _address: u64, _data: &[u16]) -> Result<(), ArmError> {
-            todo!()
-        }
-
-        fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), ArmError> {
-            if self.expected_ops.is_empty() {
-                panic!(
-                    "Received unexpected write_32 op: register {:#}",
-                    address_to_reg_num(address)
-                );
-            }
-
-            assert_eq!(data.len(), 1);
-
-            let expected_op = self.expected_ops.remove(0);
-
-            assert!(
-                !expected_op.read,
-                "Read/write mismatch on register: {:#}",
-                address_to_reg_num(address)
-            );
-            assert_eq!(
-                expected_op.address,
-                address,
-                "Write to unexpected register: Expected {:#} Actual: {:#}",
-                address_to_reg_num(expected_op.address),
-                address_to_reg_num(address)
-            );
-
-            assert_eq!(
-                expected_op.value, data[0],
-                "Write value mismatch Expected {:#X} Actual: {:#X}",
-                expected_op.value, data[0]
-            );
-
-            Ok(())
-        }
-
-        fn write(&mut self, address: u64, data: &[u8]) -> Result<(), ArmError> {
-            self.write_8(address, data)
-        }
-
-        fn flush(&mut self) -> Result<(), ArmError> {
-            todo!()
-        }
-
-        fn read_64(&mut self, _address: u64, _data: &mut [u64]) -> Result<(), ArmError> {
-            todo!()
-        }
-
-        fn write_64(&mut self, _address: u64, _data: &[u64]) -> Result<(), ArmError> {
-            todo!()
-        }
-
-        fn supports_8bit_transfers(&self) -> Result<bool, ArmError> {
-            Ok(false)
-        }
-
-        fn supports_native_64bit_access(&mut self) -> bool {
-            false
-        }
-    }
-
-    impl ArmMemoryInterface for MockProbe {
-        /// Records the batch, then performs it one operation at a time like the default.
-        fn execute_operations(&mut self, operations: &mut [Operation<'_>]) -> Result<(), ArmError> {
-            self.batches.push(
-                operations
-                    .iter()
-                    .map(|operation| {
-                        let value = match operation.operation {
-                            OperationKind::WriteWord32(value) => Some(value),
-                            OperationKind::Read32(_) => None,
-                            _ => unimplemented!("only word writes and reads are mocked"),
-                        };
-                        (operation.address, value)
-                    })
-                    .collect(),
-            );
-            for operation in operations.iter_mut() {
-                let address = operation.address;
-                match &mut operation.operation {
-                    OperationKind::WriteWord32(value) => self.write_32(address, &[*value])?,
-                    OperationKind::Read32(data) => self.read_32(address, data)?,
-                    _ => unimplemented!("only word writes and reads are mocked"),
-                }
-                operation.result = Some(Ok(()));
-            }
-            Ok(())
-        }
-
-        fn fully_qualified_address(&self) -> FullyQualifiedApAddress {
-            todo!()
-        }
-
-        fn get_arm_debug_interface(
-            &mut self,
-        ) -> Result<&mut dyn crate::architecture::arm::ArmDebugInterface, DebugProbeError> {
-            Err(DebugProbeError::NotImplemented {
-                function_name: "get_arm_debug_interface",
-            })
-        }
-
-        fn generic_status(&mut self) -> Result<crate::architecture::arm::ap::CSW, ArmError> {
-            Err(ArmError::Probe(DebugProbeError::NotImplemented {
-                function_name: "generic_status",
-            }))
-        }
-
-        fn base_address(&mut self) -> Result<u64, ArmError> {
-            todo!()
-        }
-    }
-
-    impl SwdSequence for MockProbe {
-        fn swj_sequence(&mut self, _bits: &BitSequence) -> Result<(), DebugProbeError> {
-            todo!()
-        }
-
-        fn swj_pins(
-            &mut self,
-            _pin_out: u32,
-            _pin_select: u32,
-            _pin_wait: u32,
-        ) -> Result<u32, DebugProbeError> {
-            todo!()
-        }
-    }
 
     fn add_status_expectations(probe: &mut MockProbe, halted: bool) {
         let mut dbgdscr = Dbgdscr(0);
@@ -2348,7 +2126,7 @@ mod test {
     fn a_debug_register_write_and_the_dbgdscr_read_are_one_batch() {
         let dtrrx = Dbgdtrrx::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap();
         let dbgdscr = Dbgdscr::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap();
-        let mut probe = MockProbe::new();
+        let mut probe = MockProbe::new(TEST_BASE_ADDRESS);
         probe.expected_write(dtrrx, 0x1234_5678);
         probe.expected_read(dbgdscr, 0x4000_0000);
 
@@ -2567,17 +2345,9 @@ mod test {
         assert_eq!(dap.batches, vec![vec![(BD2::ADDRESS, None)]]);
     }
 
-    impl Drop for MockProbe {
-        fn drop(&mut self) {
-            if !self.expected_ops.is_empty() {
-                panic!("self.expected_ops is not empty: {:?}", self.expected_ops);
-            }
-        }
-    }
-
     #[test]
     fn armv7a_new() {
-        let mut probe = MockProbe::new();
+        let mut probe = MockProbe::new(TEST_BASE_ADDRESS);
 
         // Add expectations
         add_status_expectations(&mut probe, true);
@@ -2600,7 +2370,7 @@ mod test {
 
     #[test]
     fn armv7a_core_halted() {
-        let mut probe = MockProbe::new();
+        let mut probe = MockProbe::new(TEST_BASE_ADDRESS);
         let mut state = CortexARState::new();
 
         // Add expectations
@@ -2641,7 +2411,7 @@ mod test {
 
     #[test]
     fn armv7a_wait_for_core_halted() {
-        let mut probe = MockProbe::new();
+        let mut probe = MockProbe::new(TEST_BASE_ADDRESS);
         let mut state = CortexARState::new();
 
         // Add expectations
@@ -2683,7 +2453,7 @@ mod test {
 
     #[test]
     fn armv7a_status_running() {
-        let mut probe = MockProbe::new();
+        let mut probe = MockProbe::new(TEST_BASE_ADDRESS);
         let mut state = CortexARState::new();
 
         // Add expectations
@@ -2717,7 +2487,7 @@ mod test {
 
     #[test]
     fn armv7a_status_halted() {
-        let mut probe = MockProbe::new();
+        let mut probe = MockProbe::new(TEST_BASE_ADDRESS);
         let mut state = CortexARState::new();
 
         // Add expectations
@@ -2756,7 +2526,7 @@ mod test {
     fn armv7a_read_core_reg_common() {
         const REG_VALUE: u32 = 0xABCD;
 
-        let mut probe = MockProbe::new();
+        let mut probe = MockProbe::new(TEST_BASE_ADDRESS);
         let mut state = CortexARState::new();
 
         // Add expectations
@@ -2797,7 +2567,7 @@ mod test {
     fn armv7a_read_core_reg_pc() {
         const REG_VALUE: u32 = 0xABCD;
 
-        let mut probe = MockProbe::new();
+        let mut probe = MockProbe::new(TEST_BASE_ADDRESS);
         let mut state = CortexARState::new();
 
         // Add expectations
@@ -2838,7 +2608,7 @@ mod test {
     fn armv7a_read_core_reg_cpsr() {
         const REG_VALUE: u32 = 0xABCD;
 
-        let mut probe = MockProbe::new();
+        let mut probe = MockProbe::new(TEST_BASE_ADDRESS);
         let mut state = CortexARState::new();
 
         // Add expectations
@@ -2879,7 +2649,7 @@ mod test {
     fn armv7a_halt() {
         const REG_VALUE: u32 = 0xABCD;
 
-        let mut probe = MockProbe::new();
+        let mut probe = MockProbe::new(TEST_BASE_ADDRESS);
         let mut state = CortexARState::new();
 
         // Add expectations
@@ -2926,7 +2696,7 @@ mod test {
 
     #[test]
     fn armv7a_run() {
-        let mut probe = MockProbe::new();
+        let mut probe = MockProbe::new(TEST_BASE_ADDRESS);
         let mut state = CortexARState::new();
 
         // Add expectations
@@ -2983,7 +2753,7 @@ mod test {
     #[test]
     fn armv7a_available_breakpoint_units() {
         const BP_COUNT: u32 = 4;
-        let mut probe = MockProbe::new();
+        let mut probe = MockProbe::new(TEST_BASE_ADDRESS);
         let mut state = CortexARState::new();
 
         // Add expectations
@@ -3015,7 +2785,7 @@ mod test {
         const BP_COUNT: u32 = 4;
         const BP1: u64 = 0x2345;
         const BP2: u64 = 0x8000_0000;
-        let mut probe = MockProbe::new();
+        let mut probe = MockProbe::new(TEST_BASE_ADDRESS);
         let mut state = CortexARState::new();
 
         // Add expectations
@@ -3086,7 +2856,7 @@ mod test {
     #[test]
     fn armv7a_set_hw_breakpoint() {
         const BP_VALUE: u64 = 0x2345;
-        let mut probe = MockProbe::new();
+        let mut probe = MockProbe::new(TEST_BASE_ADDRESS);
         let mut state = CortexARState::new();
 
         // Add expectations
@@ -3131,7 +2901,7 @@ mod test {
 
     #[test]
     fn armv7a_clear_hw_breakpoint() {
-        let mut probe = MockProbe::new();
+        let mut probe = MockProbe::new(TEST_BASE_ADDRESS);
         let mut state = CortexARState::new();
 
         // Add expectations
@@ -3170,7 +2940,7 @@ mod test {
         const MEMORY_VALUE: u32 = 0xBA5EBA11;
         const MEMORY_ADDRESS: u64 = 0x12345678;
 
-        let mut probe = MockProbe::new();
+        let mut probe = MockProbe::new(TEST_BASE_ADDRESS);
         let mut state = CortexARState::new();
 
         // Add expectations
@@ -3198,7 +2968,7 @@ mod test {
     }
 
     fn test_read_word(value: u32, address: u64, memory_word_address: u64, endian: Endian) -> u8 {
-        let mut probe = MockProbe::new();
+        let mut probe = MockProbe::new(TEST_BASE_ADDRESS);
         let mut state = CortexARState::new();
 
         // Add expectations
