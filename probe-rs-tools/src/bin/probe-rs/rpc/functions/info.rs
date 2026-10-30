@@ -385,6 +385,7 @@ async fn show_jtag_scan_chain_info(
         }
 
         match TapKind::classify(tap) {
+            TapKind::Arm if !may_be_jtag_dp(&mut probe, index) => show_unsupported_tap(ctx).await?,
             TapKind::Arm => probe = show_arm_tap_info(ctx, probe).await?,
             TapKind::Riscv => {
                 if !show_riscv_tap_info(ctx, &mut probe).await? {
@@ -402,6 +403,22 @@ async fn show_jtag_scan_chain_info(
     }
 
     Ok(())
+}
+
+/// Return false only when a check shows that the TAP at `index` is not a JTAG-DP.
+///
+/// A boundary-scan TAP can have the same IR length as a JTAG-DP.
+fn may_be_jtag_dp(probe: &mut Probe, index: usize) -> bool {
+    let Some(mut chain) = probe.try_as_jtag_chain() else {
+        return true;
+    };
+    match chain.is_jtag_dp(index) {
+        Ok(is_jtag_dp) => is_jtag_dp,
+        Err(error) => {
+            tracing::debug!("Unable to check whether TAP {index} is a JTAG-DP: {error}");
+            true
+        }
+    }
 }
 
 async fn show_unsupported_tap(ctx: &mut RpcContext) -> anyhow::Result<()> {
