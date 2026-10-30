@@ -111,7 +111,7 @@ jobs:
           SMOKE_TESTER_BENCH_OUT: ${{ github.workspace }}/bench.jsonl
         run: |
           rm -f "$SMOKE_TESTER_BENCH_OUT"
-          cargo-nextest nextest run --archive-file smoke_tester.tar.zst --profile ci-hardware --workspace-remap $GITHUB_WORKSPACE/src
+          cargo-nextest nextest run --archive-file smoke_tester.tar.zst --profile ci-hardware --workspace-remap "$GITHUB_WORKSPACE/src"
 
       - uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}
