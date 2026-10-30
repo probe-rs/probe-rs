@@ -44,6 +44,8 @@ impl Vendor for St {
             DebugSequence::Arm(Stm32Armv7::create())
         } else if chip.name.starts_with("STM32H7S") || chip.name.starts_with("STM32H7R") {
             DebugSequence::Arm(Stm32h7::create(Stm32h7Line::H7S))
+        } else if chip.name.starts_with("STM32H74") || chip.name.starts_with("STM32H75") {
+            DebugSequence::Arm(Stm32h7::create(Stm32h7Line::H74))
         } else if chip.name.starts_with("STM32H7") {
             DebugSequence::Arm(Stm32h7::create(Stm32h7Line::H7))
         } else if chip.name.starts_with("STM32H5")
