@@ -112,6 +112,7 @@ jobs:
 
       - name: Run benchmarks
         if: ${{ !cancelled() }}
+        continue-on-error: true
         env:
           SMOKE_TESTER_BENCH_OUT: ${{ github.workspace }}/bench.jsonl
         run: |

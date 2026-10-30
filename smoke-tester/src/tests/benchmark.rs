@@ -216,7 +216,7 @@ fn benchmark_memory(dut: &DutDefinition, session: &mut Session) -> TestResult {
     };
 
     let mut core = session.core(0)?;
-    core.halt(Duration::from_millis(500))?;
+    core.reset_and_halt(Duration::from_millis(500))?;
 
     let Some(ram) = core
         .memory_regions()
