@@ -1,4 +1,4 @@
-use std::{cell::RefCell, time::Instant};
+use std::time::Instant;
 
 use anyhow::Context;
 use linkme::distributed_slice;
@@ -297,13 +297,13 @@ pub fn test_flashing(dut_definition: &DutDefinition, session: &mut Session) -> T
     };
 
     let mut recorder = Recorder::new(dut_definition, session)?;
-    let timer = RefCell::new(FlashTimer::default());
+    let mut timer = FlashTimer::default();
 
     let mut options = DownloadOptions::default();
     options.progress = FlashProgress::new(|event| {
         log::debug!("Flash Event: {event:?}");
         print!(".");
-        timer.borrow_mut().event(&event);
+        timer.event(&event);
     });
 
     println!("Starting flashing test");
@@ -326,7 +326,7 @@ pub fn test_flashing(dut_definition: &DutDefinition, session: &mut Session) -> T
 
     println!("Finished flashing");
 
-    timer.into_inner().record(&mut recorder)?;
+    timer.record(&mut recorder)?;
 
     Ok(())
 }
