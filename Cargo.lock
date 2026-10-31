@@ -4243,6 +4243,7 @@ dependencies = [
  "probe-rs",
  "probe-rs-espressif",
  "serde",
+ "serde_json",
  "smoke_tester_macros",
  "toml",
  "tracing",
