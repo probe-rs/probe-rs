@@ -36,6 +36,9 @@ pub enum ChipDetectionMethod {
 
     /// NXP MCXA SYSCON identification registers.
     NxpMcxa(NxpMcxaDetection),
+
+    /// Wuhan Xinyuan CW32 factory digital-signature detection.
+    Cw32Signature(Cw32SignatureDetection),
 }
 
 impl ChipDetectionMethod {
@@ -105,6 +108,15 @@ impl ChipDetectionMethod {
     /// Returns the WCH-Link detection information if available.
     pub fn as_wch_link(&self) -> Option<&WchLinkDetection> {
         if let Self::WchLink(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
+
+    /// Returns the CW32 signature detection information if available.
+    pub fn as_cw32_signature(&self) -> Option<&Cw32SignatureDetection> {
+        if let Self::Cw32Signature(v) = self {
             Some(v)
         } else {
             None
@@ -296,4 +308,27 @@ pub struct NxpMcxaDetection {
     #[serde(serialize_with = "hex_keys_indexmap")]
     #[serde(deserialize_with = "maps_duplicate_key_is_error::deserialize")]
     pub variants: IndexMap<u16, String>,
+}
+
+/// Wuhan Xinyuan (CMSemicon) CW32 chip detection via the factory
+/// digital-signature region.
+///
+/// Every CW32 device stores an ASCII part-number string (plus pin count,
+/// flash/RAM sizes and a UID) in a factory-programmed signature region
+/// (ROM_Factory), readable through the standard debug port. The signature
+/// base differs per series; layouts come from the vendor SDK's
+/// `cw32xx_digitalsign.h`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Cw32SignatureDetection {
+    /// Address of the ASCII part-number string.
+    #[serde(serialize_with = "hex_u_int")]
+    pub type_address: u32,
+
+    /// Part-number prefix => target name, checked in declaration order.
+    ///
+    /// Part numbers carry a package suffix (e.g. `CW32L012C8T6`), so a
+    /// prefix can be either an exact variant name or the series name when
+    /// the family maps the whole series onto a single target.
+    pub variants: IndexMap<String, String>,
 }
