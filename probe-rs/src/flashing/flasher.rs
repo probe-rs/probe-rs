@@ -7,7 +7,7 @@ use crate::config::NvmRegion;
 use crate::error::Error;
 use crate::flashing::compare::{
     CmsisVerifyCompare, CompareContext, CompareOutcome, FlashCompare, Outside, ReadBackCore,
-    ReadFlashCompare, RegionCompare, run_chain,
+    ReadFlashCompare, RegionCompare, SectorCheck, run_chain,
 };
 use crate::flashing::encoder::FlashEncoder;
 use crate::flashing::{FlashLayout, FlashSector, ProgressOperation};
@@ -1363,6 +1363,60 @@ impl<'op, 'p, O: Operation> ActiveFlasher<'op, 'p, O> {
 }
 
 impl ActiveFlasher<'_, '_, Verify> {
+    /// Runs `BlankCheck` if the check and the algorithm allow it, and `compare` if the sector is
+    /// not blank.
+    pub(super) fn compare_after_blank_check(
+        &mut self,
+        check: &SectorCheck<'_>,
+        compare: impl FnOnce(&mut Self) -> Result<CompareOutcome, FlashError>,
+    ) -> Result<CompareOutcome, FlashError> {
+        let Outside::Erased(erased) = check.outside else {
+            return compare(self);
+        };
+        if self.flash_algorithm.pc_blank_check.is_none() {
+            return compare(self);
+        }
+
+        // On some targets, a read of erased flash faults.
+        let size = check.sector.end - check.sector.start;
+        if self.is_blank(check.sector.start, size)? {
+            let expected_erased = check
+                .expected
+                .iter()
+                .all(|(_, data)| data.iter().all(|&byte| byte == erased));
+            let outcome = if expected_erased {
+                CompareOutcome::Match
+            } else {
+                CompareOutcome::Empty
+            };
+            return Ok(outcome);
+        }
+
+        compare(self)
+    }
+
+    /// Returns `true` if `BlankCheck` finds `size` bytes at `address` erased.
+    fn is_blank(&mut self, address: u64, size: u64) -> Result<bool, FlashError> {
+        let algo = self.flash_algorithm;
+        let blank_check = algo
+            .pc_blank_check
+            .expect("the compare calls BlankCheck only if the algorithm has it");
+
+        let result = self.call_function_and_wait(
+            &Registers {
+                pc: blank_check,
+                r0: Some(address),
+                r1: Some(size),
+                r2: Some(algo.flash_properties.erased_byte_value.into()),
+                r3: None,
+            },
+            false,
+            Duration::from_secs(10),
+        )?;
+
+        Ok(result == 0)
+    }
+
     /// Returns `true` if CMSIS `Verify` finds `data` at `address`.
     pub(super) fn cmsis_verify(&mut self, address: u64, data: &[u8]) -> Result<bool, FlashError> {
         let algo = self.flash_algorithm;

@@ -89,17 +89,13 @@ impl<'a> SectorCheck<'a> {
         mut read: impl FnMut(u64, &mut [u8]) -> Result<(), E>,
     ) -> Result<CompareOutcome, E> {
         if let Some(content) = self.sector_content() {
-            let Outside::Erased(erased) = self.outside else {
-                unreachable!("`sector_content` returns `Some` only for `Outside::Erased`")
-            };
-
             let mut read_back = vec![0; content.len()];
             read(self.sector.start, &mut read_back)?;
 
+            // On ECC flash, a written word can read as erased, so a read cannot show that a
+            // sector is empty.
             let outcome = if read_back == content {
                 CompareOutcome::Match
-            } else if read_back.iter().all(|&byte| byte == erased) {
-                CompareOutcome::Empty
             } else {
                 CompareOutcome::Mismatch
             };
@@ -598,7 +594,7 @@ mod tests {
         let mut flash = vec![ERASED; 0x1000];
         assert_eq!(
             checks[0].compare_read_back(read_from(&flash)),
-            Ok(CompareOutcome::Empty)
+            Ok(CompareOutcome::Mismatch)
         );
 
         flash[0x10..0x12].copy_from_slice(&[1, 2]);
