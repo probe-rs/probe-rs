@@ -118,7 +118,8 @@ impl Recorder {
 
         let line = serde_json::to_string(&record)?;
         println!("{line}");
-        writeln!(output, "{line}")?;
+        // One write, so that a killed test does not leave a line without its newline.
+        output.write_all(format!("{line}\n").as_bytes())?;
 
         Ok(())
     }

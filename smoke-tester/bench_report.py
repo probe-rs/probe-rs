@@ -29,10 +29,12 @@ def key(record):
 def read_jsonl(path):
     records = []
     for line in path.read_text().splitlines():
-        if line.strip():
+        try:
             record = json.loads(line)
-            if isinstance(record, dict):
-                records.append(record)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(record, dict):
+            records.append(record)
     return records
 
 
