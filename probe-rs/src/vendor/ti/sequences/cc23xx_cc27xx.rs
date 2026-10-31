@@ -381,6 +381,10 @@ impl Default for CC23xxCC27xxFlashSequence {
 }
 
 /// Compares flash with the CRC checks of the SACI ROM.
+///
+/// For CCFG and SCFG, a match only checks the write: the ROM checks the CRCs in CCFG, and only
+/// 0xE4 bytes of SCFG. This is sufficient, because these devices have no sector erase, so no
+/// compare runs before programming. A read-back is not possible: SACI mode has no AHB-AP.
 #[derive(Debug)]
 pub struct SaciCompare;
 
