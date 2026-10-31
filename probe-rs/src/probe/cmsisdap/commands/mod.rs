@@ -273,7 +273,12 @@ impl CmsisDapDevice {
                 ..
             } => {
                 let len = buf.len().min(*max_packet_size);
-                Ok(in_ep.read_bulk(&mut buf[..len], *usb_timeout)?)
+                let mut read = || in_ep.read_bulk(&mut buf[..len], *usb_timeout);
+                // Some probes send a zero-length packet after a full reply; skip it.
+                match read()? {
+                    0 => Ok(read()?),
+                    n => Ok(n),
+                }
             }
             CmsisDapDevice::Tcp {
                 device, timeout, ..
