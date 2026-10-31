@@ -767,6 +767,16 @@ pub(crate) const FT11: CoreRegister = CoreRegister {
 pub static RISCV_CORE_REGISTERS: LazyLock<CoreRegisters> =
     LazyLock::new(|| CoreRegisters::new(RISCV_COMMON_REGS_SET.iter().collect::<Vec<_>>()));
 
+/// The RISCV core registers of an RV32E core, which only has x0-x15.
+pub static RISCV_RV32E_CORE_REGISTERS: LazyLock<CoreRegisters> = LazyLock::new(|| {
+    CoreRegisters::new(
+        RISCV_COMMON_REGS_SET[..16]
+            .iter()
+            .chain(&RISCV_COMMON_REGS_SET[32..])
+            .collect(),
+    )
+});
+
 /// The RISCV core registers with FPU (RV32).
 pub static RISCV_WITH_FP_CORE_REGISTERS: LazyLock<CoreRegisters> = LazyLock::new(|| {
     CoreRegisters::new(
@@ -789,3 +799,21 @@ static RISCV_WITH_FP_REGS_SET: &[CoreRegister] = &[
     FA4, FA5, FA6, FA7, FS2_FP, FS3_FP, FS4_FP, FS5_FP, FS6_FP, FS7_FP, FS8_FP, FS9_FP, FS10_FP,
     FS11_FP, FT8, FT9, FT10, FT11,
 ];
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn rv32e_has_no_registers_above_x15() {
+        let ids: Vec<_> = RISCV_RV32E_CORE_REGISTERS
+            .all_registers()
+            .map(|r| r.id())
+            .collect();
+        assert!(!ids.contains(&A6.id()));
+        assert!(!ids.contains(&T6.id()));
+        assert!(ids.contains(&A5.id()));
+        assert!(ids.contains(&PC.id()));
+        assert_eq!(RISCV_CORE_REGISTERS.all_registers().count() - ids.len(), 16);
+    }
+}

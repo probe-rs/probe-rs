@@ -15,7 +15,9 @@ use crate::{
 };
 use bitfield::bitfield;
 use communication_interface::{AbstractCommandErrorKind, RiscvCommunicationInterface, RiscvError};
-use registers::{FP, RA, RISCV_CORE_REGISTERS, RISCV_WITH_FP_CORE_REGISTERS, SP};
+use registers::{
+    FP, RA, RISCV_CORE_REGISTERS, RISCV_RV32E_CORE_REGISTERS, RISCV_WITH_FP_CORE_REGISTERS, SP,
+};
 use registers64::{FP64, PC64, RA64, RISCV64_CORE_REGISTERS, RISCV64_WITH_FP_CORE_REGISTERS, SP64};
 use std::{
     marker::PhantomData,
@@ -70,8 +72,8 @@ pub trait XlenMode: sealed::Sealed + 'static {
     fn configure_interface(interface: &mut RiscvCommunicationInterface);
     /// The `CoreType` reported by this core.
     fn core_type() -> CoreType;
-    /// The register file for this core, with or without FPU registers.
-    fn registers(fp_present: bool) -> &'static CoreRegisters;
+    /// The register file for this core, with or without FPU registers, and for RV32E cores.
+    fn registers(fp_present: bool, rv32e: bool) -> &'static CoreRegisters;
     /// The program counter register for this core.
     fn program_counter() -> &'static CoreRegister;
     /// The frame pointer register for this core.
@@ -131,8 +133,11 @@ impl XlenMode for Xlen32 {
         CoreType::Riscv
     }
 
-    fn registers(fp_present: bool) -> &'static CoreRegisters {
-        if fp_present {
+    fn registers(fp_present: bool, rv32e: bool) -> &'static CoreRegisters {
+        // RV32E has no standard F extension, so it takes precedence over fp_present
+        if rv32e {
+            &RISCV_RV32E_CORE_REGISTERS
+        } else if fp_present {
             &RISCV_WITH_FP_CORE_REGISTERS
         } else {
             &RISCV_CORE_REGISTERS
@@ -211,7 +216,7 @@ impl XlenMode for Xlen64 {
         CoreType::Riscv64
     }
 
-    fn registers(fp_present: bool) -> &'static CoreRegisters {
+    fn registers(fp_present: bool, _rv32e: bool) -> &'static CoreRegisters {
         if fp_present {
             &RISCV64_WITH_FP_CORE_REGISTERS
         } else {
@@ -332,6 +337,8 @@ impl<'state, X: XlenMode> RiscvCore<'state, X> {
             let isa_extensions = (misa_val & 0x3ff_ffff) as u32;
             let fp_mask = (1 << 3) | (1 << 5) | (1 << 16);
             state.fp_present = isa_extensions & fp_mask != 0;
+            // The E bit is set on RV32E cores, which only have x0-x15.
+            state.rv32e = isa_extensions & (1 << 4) != 0;
             state.misa_read = true;
         }
 
@@ -851,7 +858,7 @@ impl<X: XlenMode> CoreInterface for RiscvCore<'_, X> {
     }
 
     fn registers(&self) -> &'static CoreRegisters {
-        X::registers(self.state.fp_present)
+        X::registers(self.state.fp_present, self.state.rv32e)
     }
 
     fn program_counter(&self) -> &'static CoreRegister {
@@ -954,6 +961,9 @@ pub struct RiscvCoreState {
     /// Whether the core has FPU support (F, D, or Q extensions present)
     fp_present: bool,
 
+    /// Whether the core is RV32E (misa E extension), with only 16 integer registers.
+    rv32e: bool,
+
     /// Whether the MISA CSR has been read.
     misa_read: bool,
 }
@@ -966,6 +976,7 @@ impl RiscvCoreState {
             pc_written: false,
             semihosting_command: None,
             fp_present: false,
+            rv32e: false,
             misa_read: false,
         }
     }
