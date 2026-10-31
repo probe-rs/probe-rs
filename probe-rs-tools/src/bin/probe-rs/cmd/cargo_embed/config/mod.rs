@@ -61,8 +61,8 @@ pub struct Flashing {
     pub do_chip_erase: bool,
     /// Whether to disable double buffering.
     pub disable_double_buffering: bool,
-    /// Whether to also compare flash contents by reading them back, to skip the sectors that are up
-    /// to date.
+    /// Whether to compare each erase sector with the image before flashing, to skip the sectors
+    /// that are up to date.
     pub preverify: bool,
     /// Whether to verify flash contents after downloading.
     pub verify: bool,
