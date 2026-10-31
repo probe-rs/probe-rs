@@ -18,6 +18,7 @@ use std::ops::Range;
 use std::sync::Arc;
 use std::time::Instant;
 
+use crate::Error;
 use crate::config::NvmRegion;
 use crate::flashing::{FlashError, FlashLayout, FlashProgress, ProgressOperation};
 
@@ -281,9 +282,24 @@ impl<'a> RegionCompare<'a> {
         operation: ProgressOperation,
     ) -> Result<(), FlashError> {
         let region = self.region;
+        // Before programming, a costly backend can read erased flash, which faults on some
+        // targets.
+        let tolerate_errors =
+            operation == ProgressOperation::Compare && backend.cost() == CompareCost::Costly;
+
         self.for_each_batch(backend.cost(), |batch| {
+            // After a fault, the algorithm cannot run. The sectors that remain count as mismatches.
+            if context.faulted() {
+                return Ok(());
+            }
+
             let started = Instant::now();
-            backend.compare(context, region, batch)?;
+            let result = backend.compare(context, region, batch);
+            if !tolerate_errors {
+                result?;
+            } else if Self::errors_to_mismatch(backend, result, batch)? {
+                context.handle_fault();
+            }
 
             for check in batch.iter() {
                 tracing::debug!(
@@ -304,6 +320,27 @@ impl<'a> RegionCompare<'a> {
 
             Ok(())
         })
+    }
+
+    /// Sets each result to a mismatch if `result` is an error, and returns `true` then.
+    ///
+    /// A probe error stays an error, because each sector would wait for the same timeout.
+    fn errors_to_mismatch(
+        backend: &dyn FlashCompare,
+        result: Result<(), FlashError>,
+        batch: &mut [SectorCheck<'_>],
+    ) -> Result<bool, FlashError> {
+        match result {
+            Ok(()) => Ok(false),
+            Err(error @ FlashError::Core(Error::Probe(_))) => Err(error),
+            Err(error) => {
+                tracing::debug!("{backend:?} failed, the sectors count as mismatches: {error}");
+                for check in batch {
+                    check.outcome = Some(CompareOutcome::Mismatch);
+                }
+                Ok(true)
+            }
+        }
     }
 
     /// Calls `compare` for the checks that have no result yet.
