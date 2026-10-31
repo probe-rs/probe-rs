@@ -1,6 +1,13 @@
 name: CW32L0 Series
 generated_from_pack: true
 pack_file_release: 1.0.2
+chip_detection:
+- !Cw32Signature
+  type_address: 0x1007E0
+  variants:
+    CW32L010: CW32L010x8
+    CW32L011: CW32L011x8
+    CW32L012: CW32L012x8
 variants:
 - name: CW32L010x8
   cores:
