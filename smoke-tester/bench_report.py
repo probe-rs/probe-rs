@@ -95,6 +95,8 @@ def main():
     parser.add_argument("--baseline-sha")
     parser.add_argument("--run-url")
     args = parser.parse_args()
+    if bool(args.baseline) != bool(args.baseline_sha):
+        parser.error("--baseline and --baseline-sha must be given together")
 
     records = []
     for path in sorted(args.results.glob("bench-*/bench.jsonl")):
