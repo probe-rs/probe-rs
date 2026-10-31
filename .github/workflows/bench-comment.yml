@@ -21,8 +21,21 @@ jobs:
       pull-requests: write
 
     steps:
+      # Find the open PR whose head is the tested commit.
+      - name: Find the PR
+        id: pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          HEAD: ${{ github.event.workflow_run.head_repository.owner.login }}:${{ github.event.workflow_run.head_branch }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          pr=$(gh api -X GET "repos/$GH_REPO/pulls" -f state=open -f head="$HEAD" \
+            --jq '[.[] | select(.head.sha == env.HEAD_SHA)][0].number // empty')
+          echo "number=$pr" >> "$GITHUB_OUTPUT"
+
       - uses: actions/download-artifact@v8
-        id: download
+        if: steps.pr.outputs.number
         continue-on-error: true
         with:
           name: benchmark-report
@@ -30,25 +43,13 @@ jobs:
           github-token: ${{ github.token }}
           path: report
 
-      # The PR number comes from the artifact. Use it only if the PR head is the tested commit.
-      - name: Check the PR number
-        id: pr
-        if: steps.download.outcome == 'success'
+      - name: Note a missing report
+        if: steps.pr.outputs.number && hashFiles('report/comment.md', 'report/clear.md') == ''
         env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          RUN_URL: ${{ github.event.workflow_run.html_url }}
         run: |
-          pr=$(cat report/pr)
-          if ! [[ "$pr" =~ ^[0-9]+$ ]]; then
-            echo "Invalid PR number"
-            exit 1
-          fi
-          if [ "$(gh api "repos/$GH_REPO/pulls/$pr" --jq .head.sha)" != "$HEAD_SHA" ]; then
-            echo "The PR head is not the tested commit"
-            exit 0
-          fi
-          echo "number=$pr" >> "$GITHUB_OUTPUT"
+          mkdir -p report
+          printf '## Probe benchmark\n\nNo benchmark report. See [the run](%s).\n' "$RUN_URL" > report/clear.md
 
       - name: Comment the changes
         if: steps.pr.outputs.number && hashFiles('report/comment.md') != ''
@@ -65,7 +66,4 @@ jobs:
           header: probe-rs-benchmark
           number_force: ${{ steps.pr.outputs.number }}
           only_update: true
-          message: |
-            ## Probe benchmark
-
-            No results changed by more than the noise threshold.
+          path: report/clear.md

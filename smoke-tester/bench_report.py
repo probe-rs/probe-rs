@@ -8,6 +8,7 @@ RESULTS_DIR holds one `bench-<runner>/bench.jsonl` file for each runner. The scr
 - `summary.md`: all records, with the change from the baseline.
 - `comment.md`: only the changes beyond the noise threshold. The script writes it only if such
   changes exist.
+- `clear.md`: the PR comment text if no changes exist.
 
 A result with one sample has no spread. Its change shows in the summary, but is never significant.
 """
@@ -142,9 +143,20 @@ def main():
             HEADER,
             *changed,
         ]
-        if args.run_url:
-            comment += ["", f"[All results]({args.run_url})"]
-        (args.out / "comment.md").write_text("\n".join(comment) + "\n")
+        name = "comment.md"
+    elif records:
+        comment = [
+            "## Probe benchmark",
+            "",
+            f"{compared} No results changed by more than the noise threshold.",
+        ]
+        name = "clear.md"
+    else:
+        comment = ["## Probe benchmark", "", "No results."]
+        name = "clear.md"
+    if args.run_url:
+        comment += ["", f"[All results]({args.run_url})"]
+    (args.out / name).write_text("\n".join(comment) + "\n")
 
 
 if __name__ == "__main__":
