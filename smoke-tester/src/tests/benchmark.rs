@@ -5,7 +5,7 @@
 use std::time::{Duration, Instant};
 
 use linkme::distributed_slice;
-use probe_rs::{Core, MemoryInterface, Session, config::MemoryRegion};
+use probe_rs::{Architecture, Core, MemoryInterface, Session, config::MemoryRegion};
 
 use crate::{
     SESSION_TESTS, TestResult,
@@ -54,6 +54,11 @@ fn latency(recorder: &mut Recorder, core: &mut Core, address: u64) -> anyhow::Re
         Ok(start.elapsed())
     })?;
     recorder.record("read_word_32", 4, "us", Improves::Down, to_micros(samples))?;
+
+    // The Xtensa driver caches register values, so the reads do not access the probe.
+    if core.architecture() == Architecture::Xtensa {
+        return Ok(());
+    }
 
     let pc = core.program_counter();
     let samples = sample(recorder, || {
