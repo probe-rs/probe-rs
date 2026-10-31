@@ -52,7 +52,7 @@ impl CmsisDap {
     ) -> Result<(TapState, Results), BatchExecutionError<DebugProbeError>> {
         let failed = |error| BatchExecutionError::new_from_debug_probe(error, Results::new());
         let (state, requests) =
-            encode_jtag_batch(self.packet_size - 1, start, batch).map_err(failed)?;
+            encode_jtag_batch(self.jtag_packet_size, start, batch).map_err(failed)?;
         let mut captured = BitVec::new();
         for request in requests {
             let response = self

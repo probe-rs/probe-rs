@@ -97,9 +97,11 @@ impl ProbeFactory for CmsisDapFactory {
             },
             None => tools::open_device_from_selector(selector)?,
         };
-        CmsisDap::new_from_device(device)
-            .map(Box::new)
-            .map(DebugProbe::into_probe)
+        let mut probe = CmsisDap::new_from_device(device)?;
+        if (selector.vendor_id, selector.product_id) == XDS110_CMSIS_DAP_V2 {
+            probe.jtag_packet_size = probe.jtag_packet_size.min(XDS110_JTAG_SEQUENCE_BYTES);
+        }
+        Ok(Box::new(probe).into_probe())
     }
 
     fn list_probes(&self) -> Vec<crate::probe::list::ProbeListItem> {
@@ -134,6 +136,14 @@ impl ProbeFactory for CmsisDapFactory {
     }
 }
 
+/// USB IDs of the TI XDS110 in its CMSIS-DAP 2.0 (bulk) configuration.
+const XDS110_CMSIS_DAP_V2: (u16, u16) = (0x1cbe, 0x02a5);
+
+/// Largest `DAP_JTAG_Sequence` request the XDS110 runs reliably. With larger ones it sometimes
+/// clocks only the start of the request and still reports success, which leaves the TAP out of
+/// step with the host.
+const XDS110_JTAG_SEQUENCE_BYTES: u16 = 32;
+
 /// The address of the TCP probe a selector names, if it names one.
 fn tcp_address(selector: &DebugProbeSelector) -> Option<&str> {
     if selector.vendor_id != tcp::TCP_VID || selector.product_id != tcp::TCP_PID {
@@ -157,6 +167,8 @@ pub struct CmsisDap {
 
     packet_size: u16,
     packet_count: u8,
+    /// Largest `DAP_JTAG_Sequence` request to send.
+    jtag_packet_size: u16,
     capabilities: Capabilities,
     swo_buffer_size: Option<usize>,
     swo_active: bool,
@@ -248,6 +260,7 @@ impl CmsisDap {
             protocol: None,
             packet_count,
             packet_size,
+            jtag_packet_size: packet_size - 1,
             capabilities: caps,
             swo_buffer_size,
             swo_active: false,
