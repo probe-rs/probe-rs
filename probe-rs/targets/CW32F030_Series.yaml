@@ -1,6 +1,14 @@
 name: CW32F030 Series
 generated_from_pack: true
 pack_file_release: 1.0.5
+chip_detection:
+- !Cw32Signature
+  type_address: 0x12610
+  variants:
+    CW32F030C8: CW32F030C8
+    CW32F030K8: CW32F030K8
+    CW32F030F8: CW32F030F8
+    CW32F030F6: CW32F030F6
 variants:
 - name: CW32F030C8
   cores:
