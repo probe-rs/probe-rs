@@ -416,15 +416,6 @@ impl DebugFlashSequence for Gd32H7FlashSequence {
         Self::finish_operation(&mut *memory)
     }
 
-    fn verify(&self, session: &mut Session, address: u64, data: &[u8]) -> Result<bool, Error> {
-        Self::check_page(address, data)?;
-
-        let mut memory = Self::memory(session)?;
-        let mut actual = vec![0u8; data.len()];
-        memory.read(address, &mut actual)?;
-        Ok(actual == data)
-    }
-
     fn finish_flash(&self, session: &mut Session) -> Result<(), Error> {
         let mut memory = Self::memory(session)?;
         Self::lock(&mut *memory)
