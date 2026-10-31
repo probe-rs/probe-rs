@@ -130,7 +130,9 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v7
 
+      # The test jobs upload nothing if they fail early. The report then shows no results.
       - uses: actions/download-artifact@v8
+        continue-on-error: true
         with:
           pattern: bench-*
           path: bench
