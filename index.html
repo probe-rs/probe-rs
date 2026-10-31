@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>probe-rs benchmarks</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/uplot@1.6.30/dist/uPlot.min.css">
+<script src="https://cdn.jsdelivr.net/npm/uplot@1.6.30/dist/uPlot.iife.min.js"></script>
+<style>
+  :root {
+    --bg: #ffffff; --fg: #1f2328; --muted: #656d76; --border: #d0d7de; --card: #f6f8fa;
+    --line: #0969da; --band: rgba(9, 105, 218, 0.15); --grid: rgba(0, 0, 0, 0.08);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0d1117; --fg: #e6edf3; --muted: #8d96a0; --border: #30363d; --card: #161b22;
+      --line: #4493f8; --band: rgba(68, 147, 248, 0.2); --grid: rgba(255, 255, 255, 0.08);
+    }
+  }
+  body { margin: 0; font: 14px/1.4 system-ui, sans-serif; background: var(--bg); color: var(--fg); }
+  header {
+    display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center;
+    padding: 12px 16px; border-bottom: 1px solid var(--border);
+  }
+  h1 { font-size: 18px; margin: 0 8px 0 0; }
+  label { color: var(--muted); display: flex; gap: 6px; align-items: center; }
+  select, input {
+    font: inherit; color: var(--fg); background: var(--card);
+    border: 1px solid var(--border); border-radius: 6px; padding: 3px 6px;
+  }
+  #status { padding: 16px; color: var(--muted); }
+  #status:empty { display: none; }
+  #charts {
+    display: grid; gap: 16px; padding: 16px;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 460px), 1fr));
+  }
+  .card {
+    min-width: 0; padding: 8px 8px 4px; background: var(--card);
+    border: 1px solid var(--border); border-radius: 8px;
+  }
+  .card h2 { font-size: 14px; margin: 0 4px; }
+  .card .sub { font-size: 12px; color: var(--muted); margin: 0 4px 4px; }
+  .u-over { cursor: pointer; }
+  #tip {
+    position: fixed; z-index: 10; display: none; max-width: 360px; pointer-events: none;
+    padding: 6px 8px; font-size: 12px; background: var(--bg); color: var(--fg);
+    border: 1px solid var(--border); border-radius: 6px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  }
+  #tip .subject { font-weight: 600; margin: 2px 0; }
+  #tip .muted { color: var(--muted); }
+  code { font-size: 12px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>probe-rs benchmarks</h1>
+  <label>Runner <select id="runner"></select></label>
+  <label>Chip <select id="chip"></select></label>
+  <label>Metric <select id="metric"></select></label>
+  <label>Commits
+    <select id="range">
+      <option value="50">Last 50</option>
+      <option value="200" selected>Last 200</option>
+      <option value="0">All</option>
+    </select>
+  </label>
+</header>
+<div id="status">Loading…</div>
+<div id="charts"></div>
+<div id="tip"></div>
+<script>
+const REPO = "probe-rs/probe-rs";
+const params = new URLSearchParams(location.search);
+// Local tests give other locations for the API and the result files.
+const API = params.get("api") ?? "https://api.github.com";
+const DATA = params.get("data") ?? ".";
+
+const RESULT_MESSAGE = /^Add benchmark results for ([0-9a-f]{40})/;
+const PR_NUMBER = /\(#(\d+)\)$/;
+const KEY = ["runner", "chip", "probe", "protocol", "speed_khz", "metric", "size"];
+const ALL = "";
+
+const $ = (id) => document.getElementById(id);
+const tip = $("tip");
+
+let commits = [];
+let series = [];
+let plots = [];
+
+async function listCommits(query) {
+  let url = `${API}/repos/${REPO}/commits?per_page=100&${query}`;
+  const result = [];
+  while (url) {
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`GitHub API: ${response.status} ${response.statusText}`);
+    }
+    result.push(...(await response.json()));
+    url = response.headers.get("link")?.match(/<([^>]+)>;\s*rel="next"/)?.[1];
+  }
+  return result;
+}
+
+function parseRecords(text) {
+  const records = [];
+  for (const line of text.split("\n")) {
+    try {
+      const record = JSON.parse(line);
+      if (record && typeof record === "object") records.push(record);
+    } catch {}
+  }
+  return records;
+}
+
+async function load() {
+  // Each commit of the bench-data branch adds the results of one master commit.
+  const published = (await listCommits("sha=bench-data"))
+    .map((c) => ({ sha: c.commit.message.match(RESULT_MESSAGE)?.[1], date: c.commit.committer.date }))
+    .filter((c) => c.sha);
+  if (published.length === 0) {
+    $("status").textContent = "No results yet.";
+    return;
+  }
+
+  // Master commits give the subject, the merge date and the PR. Results are published after the
+  // merge, so start one week before the oldest result.
+  const oldest = Math.min(...published.map((c) => Date.parse(c.date)));
+  const since = new Date(oldest - 7 * 24 * 3600 * 1000).toISOString();
+  const master = new Map((await listCommits(`sha=master&since=${since}`)).map((c) => [c.sha, c.commit]));
+
+  // A re-run publishes the same commit again.
+  const unique = new Map(published.map((c) => [c.sha, c]));
+  commits = [...unique.values()]
+    .map(({ sha, date }) => {
+      const commit = master.get(sha);
+      const subject = commit?.message.split("\n")[0] ?? "";
+      return { sha, subject, date: commit?.committer.date ?? date, pr: subject.match(PR_NUMBER)?.[1] };
+    })
+    .sort((a, b) => Date.parse(a.date) - Date.parse(b.date));
+
+  const files = await Promise.all(
+    commits.map((c) => fetch(`${DATA}/${c.sha}.jsonl`).then((r) => (r.ok ? r.text() : ""))),
+  );
+
+  const byKey = new Map();
+  files.forEach((text, i) => {
+    for (const record of parseRecords(text)) {
+      const key = KEY.map((k) => record[k]).join("|");
+      if (!byKey.has(key)) byKey.set(key, { record, points: new Map() });
+      byKey.get(key).points.set(i, record);
+    }
+  });
+  series = [...byKey.values()].sort((a, b) => label(a.record).localeCompare(label(b.record)));
+
+  fillSelect("runner", series.map((s) => s.record.runner));
+  fillSelect("chip", series.map((s) => s.record.chip));
+  fillSelect("metric", series.map((s) => s.record.metric));
+  $("status").textContent = "";
+  render();
+}
+
+function label(r) {
+  return `${r.chip} ${r.runner} ${r.probe} ${r.metric} ${String(r.size).padStart(8, "0")}`;
+}
+
+function fillSelect(id, values) {
+  const select = $(id);
+  const saved = params.get(id) ?? ALL;
+  select.replaceChildren(new Option("All", ALL));
+  for (const value of [...new Set(values)].sort()) select.add(new Option(value, value));
+  select.value = [...select.options].some((o) => o.value === saved) ? saved : ALL;
+}
+
+// Show throughput in KiB/s.
+function scale(unit) {
+  return unit === "B/s" ? { unit: "KiB/s", factor: 1 / 1024 } : { unit, factor: 1 };
+}
+
+function format(value, unit) {
+  return value == null ? "-" : `${value.toFixed(value < 10 ? 2 : 1)} ${unit}`;
+}
+
+function commitUrl(c) {
+  return c.pr ? `https://github.com/${REPO}/pull/${c.pr}` : `https://github.com/${REPO}/commit/${c.sha}`;
+}
+
+// Find the nearest point that has a value.
+function nearestIdx(u, si, idx) {
+  const ys = u.data[si];
+  for (let d = 0; d < ys.length; d++) {
+    if (ys[idx - d] != null) return idx - d;
+    if (ys[idx + d] != null) return idx + d;
+  }
+  return null;
+}
+
+function showTip(u, s, unit) {
+  const idx = u.cursor.idxs?.[2];
+  if (u.cursor.left < 0 || idx == null || u.data[2][idx] == null) {
+    tip.style.display = "none";
+    return;
+  }
+  const commit = commits[u.data[0][idx]];
+  const record = s.points.get(u.data[0][idx]);
+  const { factor } = scale(record.unit);
+
+  const line = (cls, text) => {
+    const div = document.createElement("div");
+    div.className = cls;
+    div.textContent = text;
+    return div;
+  };
+  tip.replaceChildren(
+    line("muted", `${commit.sha.slice(0, 9)} · ${commit.date.slice(0, 16).replace("T", " ")}`),
+    line("subject", commit.subject || "(unknown commit)"),
+    line("", `Median: ${format(record.median * factor, unit)}`),
+    line("", `p10 - p90: ${format(record.p10 * factor, unit)} - ${format(record.p90 * factor, unit)}`),
+    line("muted", `${record.samples} samples · click to open ${commit.pr ? `#${commit.pr}` : "the commit"}`),
+  );
+
+  const rect = u.over.getBoundingClientRect();
+  const x = rect.left + u.valToPos(u.data[0][idx], "x");
+  const y = rect.top + u.valToPos(u.data[2][idx], "y");
+  tip.style.display = "block";
+  const left = x + 12 + tip.offsetWidth > window.innerWidth ? x - 12 - tip.offsetWidth : x + 12;
+  tip.style.left = `${Math.max(4, left)}px`;
+  tip.style.top = `${Math.max(4, y - tip.offsetHeight - 8)}px`;
+}
+
+function render() {
+  for (const plot of plots) plot.destroy();
+  plots = [];
+  const charts = $("charts");
+  charts.replaceChildren();
+
+  const filter = { runner: $("runner").value, chip: $("chip").value, metric: $("metric").value };
+  for (const [k, v] of Object.entries(filter)) {
+    if (v === ALL) params.delete(k);
+    else params.set(k, v);
+  }
+  history.replaceState(null, "", params.size ? `?${params}` : location.pathname);
+
+  const range = Number($("range").value);
+  const start = range ? Math.max(0, commits.length - range) : 0;
+  const xs = commits.slice(start).map((_, i) => start + i);
+
+  const css = getComputedStyle(document.documentElement);
+  const color = (name) => css.getPropertyValue(name).trim();
+  const axis = { stroke: color("--muted"), grid: { stroke: color("--grid") }, ticks: { stroke: color("--grid") } };
+
+  const shown = series.filter(
+    (s) =>
+      Object.entries(filter).every(([k, v]) => v === ALL || String(s.record[k]) === v) &&
+      xs.some((x) => s.points.has(x)),
+  );
+  $("status").textContent = shown.length ? "" : "No results for this filter.";
+
+  for (const s of shown) {
+    const r = s.record;
+    const { unit, factor } = scale(r.unit);
+    const values = (field) => xs.map((x) => (s.points.has(x) ? s.points.get(x)[field] * factor : null));
+
+    const card = document.createElement("div");
+    card.className = "card";
+    const title = document.createElement("h2");
+    title.textContent = `${r.chip} · ${r.metric}${r.size ? ` · ${r.size} B` : ""}`;
+    const sub = document.createElement("div");
+    sub.className = "sub";
+    sub.textContent = `${r.runner} · ${r.probe} · ${r.protocol ?? "-"} · ${r.speed_khz} kHz · ${unit}, ${
+      r.improves === "down" ? "lower" : "higher"
+    } is better`;
+    card.append(title, sub);
+    charts.append(card);
+
+    const plot = new uPlot(
+      {
+        width: card.clientWidth - 16,
+        height: 220,
+        legend: { show: false },
+        scales: { x: { time: false } },
+        axes: [
+          {
+            ...axis,
+            incrs: [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000],
+            values: (u, ticks) => ticks.map((t) => commits[t]?.date.slice(5, 10) ?? ""),
+          },
+          { ...axis, size: 56 },
+        ],
+        series: [
+          {},
+          { stroke: "transparent", points: { show: false }, spanGaps: true },
+          { stroke: color("--line"), width: 2, spanGaps: true, points: { fill: color("--line") } },
+          { stroke: "transparent", points: { show: false }, spanGaps: true },
+        ],
+        bands: [{ series: [1, 3], fill: color("--band") }],
+        cursor: {
+          drag: { x: false, y: false },
+          y: false,
+          dataIdx: nearestIdx,
+          points: { size: 8 },
+        },
+        hooks: { setCursor: [(u) => showTip(u, s, unit)] },
+      },
+      [xs, values("p90"), values("median"), values("p10")],
+      card,
+    );
+    plot.over.addEventListener("mouseleave", () => (tip.style.display = "none"));
+    plot.over.addEventListener("click", (e) => {
+      const idx = plot.cursor.idxs?.[2];
+      if (idx == null) return;
+      const url = commitUrl(commits[plot.data[0][idx]]);
+      if (e.ctrlKey || e.metaKey) window.open(url, "_blank", "noopener");
+      else location.href = url;
+    });
+    new ResizeObserver(() => plot.setSize({ width: card.clientWidth - 16, height: 220 })).observe(card);
+    plots.push(plot);
+  }
+}
+
+for (const id of ["runner", "chip", "metric", "range"]) $(id).addEventListener("change", render);
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", render);
+
+load().catch((e) => ($("status").textContent = `Failed to load the results: ${e.message}`));
+</script>
+</body>
+</html>
