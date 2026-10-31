@@ -36,7 +36,15 @@ use crate::session::Session;
 /// prepare_flash()
 ///   compare ...
 /// finish_flash()
+///
+/// [with preverify, before the full flash, when sector erase is supported — same bookends:]
+/// prepare_flash()
+///   compare ...
+/// finish_flash()
 /// ```
+///
+/// With preverify, the flash loader calls `prepare_flash` and `finish_flash` once more. Do not
+/// reset there if the target loses state on a reset.
 pub trait DebugFlashSequence: Send + Sync + Debug {
     /// Called once before any erase/program/verify operations begin.
     ///
