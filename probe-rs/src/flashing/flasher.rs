@@ -6,8 +6,8 @@ use super::{FlashAlgorithm, FlashBuilder, FlashError, FlashPage, FlashProgress};
 use crate::config::NvmRegion;
 use crate::error::Error;
 use crate::flashing::compare::{
-    CmsisVerify, CompareBackend, CompareCost, CompareOutcome, CompareState, FlashVerifyCompare,
-    Outside, ReadBackAlgorithm, ReadBackCore, run_backend, sector_checks,
+    CompareBackend, CompareOutcome, CompareState, FlashAlgorithmCompare, FlashVerifyCompare,
+    Outside, ReadBackCore, run_backend, sector_checks,
 };
 use crate::flashing::encoder::FlashEncoder;
 use crate::flashing::{FlashLayout, FlashSector, ProgressOperation};
@@ -541,7 +541,6 @@ impl Flasher {
             ProgressOperation::Verify,
             Outside::Any,
             ignore_filled,
-            true,
         )?;
 
         Ok(outcomes
@@ -559,11 +558,13 @@ impl Flasher {
                 sequence,
             ))));
         }
-        if self.flash_algorithm.pc_verify.is_some() {
-            chain.push(CompareBackend::Algorithm(Box::new(CmsisVerify)));
-        }
-        if self.flash_algorithm.pc_read.is_some() {
-            chain.push(CompareBackend::Algorithm(Box::new(ReadBackAlgorithm)));
+        let verify = self.flash_algorithm.pc_verify.is_some();
+        let read = self.flash_algorithm.pc_read.is_some();
+        if verify || read {
+            chain.push(CompareBackend::Algorithm(Box::new(FlashAlgorithmCompare {
+                verify,
+                read,
+            })));
         } else {
             chain.push(CompareBackend::Session(Arc::new(ReadBackCore)));
         }
@@ -573,8 +574,7 @@ impl Flasher {
 
     /// Compares each sector of each loaded region with its expected content.
     ///
-    /// Returns one result for each sector, for each region. A sector that no backend can
-    /// check is a mismatch. A costly backend runs only if `allow_costly` is `true`.
+    /// Returns one result for each sector, for each region.
     pub(super) fn compare(
         &mut self,
         session: &mut Session,
@@ -582,7 +582,6 @@ impl Flasher {
         operation: ProgressOperation,
         outside: Outside,
         ignore_fills: bool,
-        allow_costly: bool,
     ) -> Result<Vec<Vec<CompareOutcome>>, FlashError> {
         // The checks borrow this copy, so that the backends can borrow `self`.
         let layouts = self
@@ -611,9 +610,6 @@ impl Flasher {
         while let Some(backend) = backends.next() {
             match backend {
                 CompareBackend::Session(backend) => {
-                    if backend.cost() == CompareCost::Costly && !allow_costly {
-                        continue;
-                    }
                     run_backend(
                         &layouts,
                         &checks,
@@ -635,8 +631,7 @@ impl Flasher {
                         group.push(next);
                         backends.next();
                     }
-                    group.retain(|backend| backend.cost() == CompareCost::Cheap || allow_costly);
-                    if group.is_empty() || state.pending().is_empty() {
+                    if state.pending().is_empty() {
                         continue;
                     }
 

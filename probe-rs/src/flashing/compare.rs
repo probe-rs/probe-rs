@@ -88,9 +88,9 @@ pub enum CompareOutcome {
 /// How much data a backend moves over the debug link.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CompareCost {
-    /// The backend sends addresses and receives signatures.
+    /// The backend moves signatures. It gets all sectors of a region in one call.
     Cheap,
-    /// The backend moves the sector data over the debug link.
+    /// The backend moves the sector data. It gets one sector in each call.
     Costly,
 }
 
@@ -280,11 +280,18 @@ pub(crate) trait AlgorithmCompare: Debug {
     ) -> Result<(), FlashError>;
 }
 
-/// Reads the flash contents back through the `ReadFlash` function of the flash algorithm.
+/// Compares through the functions of the flash algorithm.
+///
+/// For each sector, it uses CMSIS `Verify` if the algorithm has it, and `ReadFlash` if not.
 #[derive(Debug)]
-pub(crate) struct ReadBackAlgorithm;
+pub(crate) struct FlashAlgorithmCompare {
+    /// The algorithm has a `Verify` function.
+    pub(crate) verify: bool,
+    /// The algorithm has a `ReadFlash` function.
+    pub(crate) read: bool,
+}
 
-impl AlgorithmCompare for ReadBackAlgorithm {
+impl AlgorithmCompare for FlashAlgorithmCompare {
     fn cost(&self) -> CompareCost {
         CompareCost::Costly
     }
@@ -297,41 +304,31 @@ impl AlgorithmCompare for ReadBackAlgorithm {
         out: &mut [CompareOutcome],
     ) -> Result<(), FlashError> {
         for (check, out) in checks.iter().zip(out.iter_mut()) {
-            *out = compare_read_back(check, |address, data| active.read_flash(address, data))?;
+            *out = if self.verify {
+                cmsis_verify(active, check)?
+            } else if self.read {
+                compare_read_back(check, |address, data| active.read_flash(address, data))?
+            } else {
+                CompareOutcome::Unsupported
+            };
         }
 
         Ok(())
     }
 }
 
-/// Sends the expected data to the CMSIS `Verify` function of the flash algorithm.
-#[derive(Debug)]
-pub(crate) struct CmsisVerify;
-
-impl AlgorithmCompare for CmsisVerify {
-    fn cost(&self) -> CompareCost {
-        CompareCost::Costly
-    }
-
-    fn compare(
-        &self,
-        active: &mut ActiveFlasher<'_, '_, Verify>,
-        _region: &NvmRegion,
-        checks: &[SectorCheck<'_>],
-        out: &mut [CompareOutcome],
-    ) -> Result<(), FlashError> {
-        for (check, out) in checks.iter().zip(out.iter_mut()) {
-            *out = CompareOutcome::Match;
-            for (address, data) in check.contiguous_ranges() {
-                if !active.cmsis_verify(address, &data)? {
-                    *out = CompareOutcome::Mismatch;
-                    break;
-                }
-            }
+/// Sends the expected content of the check to the CMSIS `Verify` function.
+fn cmsis_verify(
+    active: &mut ActiveFlasher<'_, '_, Verify>,
+    check: &SectorCheck<'_>,
+) -> Result<CompareOutcome, FlashError> {
+    for (address, data) in check.contiguous_ranges() {
+        if !active.cmsis_verify(address, &data)? {
+            return Ok(CompareOutcome::Mismatch);
         }
-
-        Ok(())
     }
+
+    Ok(CompareOutcome::Match)
 }
 
 /// Uses a [`FlashVerify`] implementation as a compare backend.
