@@ -1,0 +1,1 @@
+Added support for the CW32F030 family (Wuhan Xinyuan / CMSemicon Cortex-M0+), including flashing with the algorithm converted from the vendor FLM.
