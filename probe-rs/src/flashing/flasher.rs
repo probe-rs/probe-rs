@@ -606,10 +606,8 @@ impl Flasher {
             chain.push(CompareBackend::Algorithm(Box::new(FlashAlgorithmCompare {
                 blank_check,
                 verify,
-                read,
             })));
-        }
-        if !verify && !read {
+        } else {
             chain.push(CompareBackend::Session(Arc::new(ReadBackCore)));
         }
 

@@ -281,16 +281,13 @@ pub(crate) trait AlgorithmCompare: Debug {
 
 /// Compares through the functions of the flash algorithm.
 ///
-/// For each sector, it first calls `BlankCheck` if the check defines the erased value. A sector
-/// that is not blank goes to CMSIS `Verify` if the algorithm has it, and to `ReadFlash` if not.
+/// `BlankCheck` runs first. A sector that is not blank goes to `Verify`, or is read back.
 #[derive(Debug)]
 pub(crate) struct FlashAlgorithmCompare {
     /// The algorithm has a `BlankCheck` function.
     pub(crate) blank_check: bool,
     /// The algorithm has a `Verify` function.
     pub(crate) verify: bool,
-    /// The algorithm has a `ReadFlash` function.
-    pub(crate) read: bool,
 }
 
 impl AlgorithmCompare for FlashAlgorithmCompare {
@@ -330,14 +327,11 @@ impl AlgorithmCompare for FlashAlgorithmCompare {
 
             *out = if self.verify {
                 cmsis_verify(active, check)?
-            } else if self.read {
-                compare_read_back(check, |address, data| active.read_flash(address, data))?
             } else {
-                CompareOutcome::Unsupported
+                compare_read_back(check, |address, data| active.read_flash(address, data))?
             };
 
-            // The sector reads as erased, but it is not blank: on ECC flash, a written word can
-            // read as erased. It needs an erase.
+            // On ECC flash, a written word can read as erased.
             if blank.is_some() && *out == CompareOutcome::Empty {
                 *out = CompareOutcome::Mismatch;
             }
