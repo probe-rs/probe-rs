@@ -378,11 +378,33 @@ pub(crate) fn split_by_region(
     per_region
 }
 
-/// Runs one backend on the checks that have no result yet.
+/// Returns `true` if an error of a backend counts as a mismatch.
 ///
-/// `backend` names the backend in the log. `checks` holds the region index, the check, and the
-/// progress size of each sector. A cheap backend gets all sectors of a region in one call. A
-/// costly backend gets one sector in each call, so that the progress moves while it runs.
+/// Before programming, a costly backend can read erased flash, which faults on some targets.
+pub(crate) fn tolerates_errors(operation: ProgressOperation, cost: CompareCost) -> bool {
+    operation == ProgressOperation::Compare && cost == CompareCost::Costly
+}
+
+/// Sets each result to a mismatch if `result` is an error, and returns `true` then.
+///
+/// A probe error stays an error, because each sector would wait for the same timeout.
+pub(crate) fn errors_to_mismatch(
+    backend: &dyn Debug,
+    result: Result<(), FlashError>,
+    out: &mut [CompareOutcome],
+) -> Result<bool, FlashError> {
+    match result {
+        Ok(()) => Ok(false),
+        Err(error @ FlashError::Core(Error::Probe(_))) => Err(error),
+        Err(error) => {
+            tracing::debug!("{backend:?} failed, the sectors count as mismatches: {error}");
+            out.fill(CompareOutcome::Mismatch);
+            Ok(true)
+        }
+    }
+}
+
+/// Runs one backend on the checks that have no result yet.
 #[expect(clippy::too_many_arguments)]
 pub(crate) fn run_backend(
     backend: &dyn Debug,

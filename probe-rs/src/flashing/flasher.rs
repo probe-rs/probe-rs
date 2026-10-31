@@ -7,7 +7,7 @@ use crate::config::NvmRegion;
 use crate::error::Error;
 use crate::flashing::compare::{
     CompareBackend, CompareOutcome, CompareState, FlashAlgorithmCompare, Outside, ReadBackCore,
-    build_checks, run_backend, split_by_region,
+    build_checks, errors_to_mismatch, run_backend, split_by_region, tolerates_errors,
 };
 use crate::flashing::encoder::FlashEncoder;
 use crate::flashing::{FlashLayout, FlashSector, ProgressOperation};
@@ -633,6 +633,7 @@ impl Flasher {
         while let Some(backend) = backends.next() {
             match backend {
                 CompareBackend::Session(backend) => {
+                    let tolerate = tolerates_errors(operation, backend.cost());
                     run_backend(
                         backend,
                         &regions,
@@ -642,9 +643,14 @@ impl Flasher {
                         progress,
                         operation,
                         |region, batch, out| {
-                            backend
+                            let result = backend
                                 .compare(session, self.core_index, region, batch, out)
-                                .map_err(FlashError::Core)
+                                .map_err(FlashError::Core);
+                            if !tolerate {
+                                return result;
+                            }
+                            errors_to_mismatch(backend, result, out)?;
+                            Ok(())
                         },
                     )?;
                 }
@@ -661,7 +667,9 @@ impl Flasher {
 
                     let mut algo_progress = FlashProgress::empty();
                     let (mut active, _) = self.init::<Verify>(session, &mut algo_progress, None)?;
+                    let mut faulted = false;
                     for backend in group {
+                        let tolerate = tolerates_errors(operation, backend.cost());
                         run_backend(
                             backend,
                             &regions,
@@ -670,10 +678,29 @@ impl Flasher {
                             backend.cost(),
                             progress,
                             operation,
-                            |region, batch, out| backend.compare(&mut active, region, batch, out),
+                            |region, batch, out| {
+                                // After a fault, the algorithm cannot run until it is loaded
+                                // again. The sectors that remain count as mismatches.
+                                if faulted {
+                                    return Ok(());
+                                }
+                                let result = backend.compare(&mut active, region, batch, out);
+                                if !tolerate {
+                                    return result;
+                                }
+                                faulted = errors_to_mismatch(backend, result, out)?;
+                                Ok(())
+                            },
                         )?;
                     }
-                    active.uninit()?;
+
+                    if faulted {
+                        if let Err(error) = active.uninit() {
+                            tracing::debug!("Uninit after a compare fault failed: {error}");
+                        }
+                    } else {
+                        active.uninit()?;
+                    }
                 }
             }
         }

@@ -11,7 +11,8 @@ use probe_rs_target::{FlashProperties, NvmRegion, RawFlashAlgorithm, SectorDescr
 use super::builder::FlashBuilder;
 use super::{FlashError, FlashLayout, FlashProgress};
 use crate::flashing::compare::{
-    CompareOutcome, CompareState, Outside, ReadBackCore, build_checks, run_backend, split_by_region,
+    CompareOutcome, CompareState, Outside, ReadBackCore, build_checks, errors_to_mismatch,
+    run_backend, split_by_region, tolerates_errors,
 };
 use crate::flashing::flasher::FlashData;
 use crate::flashing::host_sequence::DebugFlashSequence;
@@ -464,6 +465,7 @@ impl HostSideFlasher {
         chain.push(Arc::new(ReadBackCore));
 
         for backend in chain {
+            let tolerate = tolerates_errors(operation, backend.cost());
             run_backend(
                 &backend,
                 &regions,
@@ -473,9 +475,14 @@ impl HostSideFlasher {
                 progress,
                 operation,
                 |region, batch, out| {
-                    backend
+                    let result = backend
                         .compare(session, self.core_index, region, batch, out)
-                        .map_err(FlashError::Core)
+                        .map_err(FlashError::Core);
+                    if !tolerate {
+                        return result;
+                    }
+                    errors_to_mismatch(&backend, result, out)?;
+                    Ok(())
                 },
             )?;
         }
