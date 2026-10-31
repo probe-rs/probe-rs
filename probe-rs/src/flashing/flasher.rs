@@ -169,6 +169,8 @@ pub struct Flasher {
     pub(super) core_index: usize,
     pub(super) flash_algorithm: FlashAlgorithm,
     pub(super) loaded: bool,
+    /// The algorithm code in target RAM is the code of this flasher.
+    pub(super) code_valid: bool,
     pub(super) regions: Vec<LoadedRegion>,
     pub(super) read_flasher_rtt: bool,
 }
@@ -193,6 +195,7 @@ impl Flasher {
             core_index,
             flash_algorithm,
             loaded: false,
+            code_valid: false,
             regions: Vec::new(),
             read_flasher_rtt: false,
         })
@@ -208,6 +211,13 @@ impl Flasher {
         if !self.loaded {
             self.load(session)?;
             self.loaded = true;
+            self.code_valid = true;
+        } else if !self.code_valid {
+            // Only the first load resets the core. A reset can destroy state that probe-rs does
+            // not know about, for example the configuration of an FPGA.
+            let mut core = session.core(self.core_index).map_err(FlashError::Core)?;
+            Self::write_code(&self.flash_algorithm, &mut core)?;
+            self.code_valid = true;
         }
 
         Ok(())
@@ -235,6 +245,11 @@ impl Flasher {
 
         // TODO: Possible special preparation of the target such as enabling faster clocks for the flash e.g.
 
+        Self::write_code(algo, &mut core)
+    }
+
+    /// Writes the algorithm code into target RAM, and checks it.
+    fn write_code(algo: &FlashAlgorithm, core: &mut Core<'_>) -> Result<(), FlashError> {
         // Load flash algorithm code into target RAM.
         tracing::debug!("Downloading algorithm code to {:#010x}", algo.load_address);
 
