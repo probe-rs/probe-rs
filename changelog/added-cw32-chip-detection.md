@@ -1,0 +1,1 @@
+Add automatic target detection for Wuhan Xinyuan (CW32) chips.
