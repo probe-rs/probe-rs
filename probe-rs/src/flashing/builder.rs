@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 use std::fmt::{Debug, Formatter};
+use std::mem;
 use std::ops::Range;
 
 use probe_rs_target::{FlashProperties, MemoryRange, NvmRegion, PageInfo};
@@ -146,11 +147,11 @@ impl FlashLayout {
 
     /// Removes the work that compare results make unnecessary.
     ///
-    /// `outcomes` holds one result for each sector, in the order of [`Self::sectors`].
+    /// `outcomes` holds one result for each sector.
     ///
-    /// - A sector that matches loses its pages, fills and data blocks.
-    /// - An empty sector keeps its pages, so that it is programmed. It needs no erase, and
-    ///   its fills hold the erased value already, so the sector and its fills go.
+    /// - A matching sector loses its pages, fills and data blocks.
+    /// - An empty sector loses its erase and its fills.
+    /// - A page stays if one sector under it does not match. Then all its sectors are erased.
     pub(crate) fn prune(&mut self, outcomes: &[CompareOutcome]) {
         assert_eq!(outcomes.len(), self.sectors.len());
 
@@ -159,78 +160,43 @@ impl FlashLayout {
             .iter()
             .map(|sector| sector.address..sector.address + sector.size)
             .collect::<Vec<_>>();
-        log_prune(&ranges, outcomes);
-        let outcome_at = |address: u64| {
+        let outcomes = erase_under_kept_pages(&ranges, &self.pages, outcomes);
+        log_prune(&ranges, &outcomes);
+        let sectors_with = |wanted: CompareOutcome| {
             ranges
                 .iter()
-                .position(|range| range.contains(&address))
-                .map_or(CompareOutcome::Mismatch, |idx| outcomes[idx])
+                .zip(&outcomes)
+                .filter(|(_, outcome)| **outcome == wanted)
+                .map(|(range, _)| range.clone())
+                .collect::<Vec<_>>()
         };
-        let page_matches = |page: &FlashPage| {
-            let end = page.address + page.data.len() as u64;
-            let mut covered_until = page.address;
-            for (range, outcome) in ranges.iter().zip(outcomes) {
-                if range.end <= covered_until || end <= range.start {
-                    continue;
-                }
-                if range.start > covered_until || *outcome != CompareOutcome::Match {
-                    return false;
-                }
-                covered_until = range.end.min(end);
-                if covered_until == end {
-                    return true;
-                }
-            }
-            false
-        };
+        let empty = sectors_with(CompareOutcome::Empty);
+        let matched = sectors_with(CompareOutcome::Match);
 
+        // The new index of each page that stays.
         let mut new_index = vec![None; self.pages.len()];
         let mut pages = Vec::new();
-        for (idx, page) in std::mem::take(&mut self.pages).into_iter().enumerate() {
-            if !page_matches(&page) {
-                new_index[idx] = Some(pages.len());
+        for (index, page) in mem::take(&mut self.pages).into_iter().enumerate() {
+            if !page_matches(&ranges, &outcomes, &page) {
+                new_index[index] = Some(pages.len());
                 pages.push(page);
             }
         }
         self.pages = pages;
 
-        self.fills.retain_mut(|fill| {
-            let Some(page_index) = new_index[fill.page_index] else {
-                return false;
-            };
-            fill.page_index = page_index;
-            outcome_at(fill.address) != CompareOutcome::Empty
-        });
+        self.fills
+            .retain_mut(|fill| match new_index[fill.page_index] {
+                Some(index) if !empty.iter().any(|range| range.contains(&fill.address)) => {
+                    fill.page_index = index;
+                    true
+                }
+                _ => false,
+            });
 
-        let matched = ranges
+        self.data_blocks = self
+            .data_blocks
             .iter()
-            .zip(outcomes)
-            .filter(|(_, outcome)| **outcome == CompareOutcome::Match)
-            .map(|(range, _)| range.clone())
-            .collect::<Vec<_>>();
-        self.data_blocks = std::mem::take(&mut self.data_blocks)
-            .into_iter()
-            .flat_map(|block| {
-                matched
-                    .iter()
-                    .fold(
-                        vec![(block.address, block.address + block.size)],
-                        |pieces, cut| {
-                            pieces
-                                .into_iter()
-                                .flat_map(|(start, end)| {
-                                    [(start, end.min(cut.start)), (start.max(cut.end), end)]
-                                })
-                                .filter(|(start, end)| start < end)
-                                .collect()
-                        },
-                    )
-                    .into_iter()
-                    .map(|(start, end)| FlashDataBlockSpan {
-                        address: start,
-                        size: end - start,
-                    })
-            })
+            .flat_map(|block| block.cut(&matched))
             .collect();
 
         let mut outcomes = outcomes.iter();
@@ -273,6 +239,58 @@ impl FlashLayout {
     }
 }
 
+/// Returns `true` if each sector that `page` covers matches.
+fn page_matches(ranges: &[Range<u64>], outcomes: &[CompareOutcome], page: &FlashPage) -> bool {
+    let end = page.address + page.data.len() as u64;
+    let mut covered_until = page.address;
+    for (range, outcome) in ranges.iter().zip(outcomes) {
+        if range.end <= covered_until || end <= range.start {
+            continue;
+        }
+        if range.start > covered_until || *outcome != CompareOutcome::Match {
+            return false;
+        }
+        covered_until = range.end.min(end);
+        if covered_until == end {
+            return true;
+        }
+    }
+    false
+}
+
+/// Turns each matching sector under a page that stays into a mismatch.
+///
+/// A new mismatch can keep another page, so this repeats until nothing changes.
+fn erase_under_kept_pages(
+    ranges: &[Range<u64>],
+    pages: &[FlashPage],
+    outcomes: &[CompareOutcome],
+) -> Vec<CompareOutcome> {
+    let mut outcomes = outcomes.to_vec();
+    loop {
+        let kept = pages
+            .iter()
+            .filter(|page| !page_matches(ranges, &outcomes, page))
+            .map(|page| page.address..page.address + page.data.len() as u64)
+            .collect::<Vec<_>>();
+
+        let mut changed = false;
+        for (range, outcome) in ranges.iter().zip(outcomes.iter_mut()) {
+            let under_kept_page = kept
+                .iter()
+                .any(|page| page.start < range.end && range.start < page.end);
+            if under_kept_page && *outcome == CompareOutcome::Match {
+                *outcome = CompareOutcome::Mismatch;
+                changed = true;
+            }
+        }
+
+        if !changed {
+            return outcomes;
+        }
+    }
+}
+
 /// Logs the action for each run of adjacent sectors with the same compare result.
 fn log_prune(ranges: &[Range<u64>], outcomes: &[CompareOutcome]) {
     let mut start = 0;
@@ -310,6 +328,31 @@ impl FlashDataBlockSpan {
     /// Returns the size of the block in bytes.
     pub fn size(&self) -> u64 {
         self.size
+    }
+
+    /// Returns the parts of the block outside `cuts`. `cuts` are in ascending order.
+    fn cut(&self, cuts: &[Range<u64>]) -> Vec<FlashDataBlockSpan> {
+        let end = self.address + self.size;
+        let mut start = self.address;
+        let mut pieces = Vec::new();
+        for cut in cuts {
+            if cut.start < end && start < cut.end {
+                if start < cut.start {
+                    pieces.push(FlashDataBlockSpan {
+                        address: start,
+                        size: cut.start - start,
+                    });
+                }
+                start = cut.end;
+            }
+        }
+        if start < end {
+            pieces.push(FlashDataBlockSpan {
+                address: start,
+                size: end - start,
+            });
+        }
+        pieces
     }
 }
 
@@ -811,6 +854,8 @@ mod tests {
         ]);
 
         assert_eq!(layout.pages().len(), 1);
+        // The page is programmed, so each sector under it needs an erase.
+        assert_eq!(layout.sectors().len(), 8);
     }
 
     #[test]
