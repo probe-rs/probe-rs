@@ -76,6 +76,9 @@ pub trait DebugFlashSequence: Send + Sync + Debug {
     /// override this method.  When it returns `Ok(true)`, the per-page `program()` loop is skipped.
     ///
     /// The default returns `Ok(false)`, falling back to the per-page `program()` calls.
+    ///
+    /// If [`supports_sector_erase`](Self::supports_sector_erase) returns `true`, `regions` can
+    /// hold only the sectors that changed.
     fn program_image(
         &self,
         _session: &mut Session,

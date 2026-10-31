@@ -549,6 +549,34 @@ impl Flasher {
             .all(|outcome| *outcome == CompareOutcome::Match))
     }
 
+    /// Compares the flash with the image, and removes the sectors that need no change.
+    pub(super) fn compare_and_prune(
+        &mut self,
+        session: &mut Session,
+        progress: &mut FlashProgress<'_>,
+        keep_unwritten_bytes: bool,
+    ) -> Result<(), FlashError> {
+        // Without restored bytes, a full flash leaves the erased value outside the image.
+        let outside = if keep_unwritten_bytes {
+            Outside::Any
+        } else {
+            Outside::Erased(self.flash_algorithm.flash_properties.erased_byte_value)
+        };
+
+        progress.started(ProgressOperation::Compare);
+        let result = self.compare(session, progress, ProgressOperation::Compare, outside, true);
+        match result.is_ok() {
+            true => progress.finished(ProgressOperation::Compare),
+            false => progress.failed(ProgressOperation::Compare),
+        }
+
+        for (region, outcomes) in self.regions.iter_mut().zip(result?) {
+            region.data.layout_mut().prune(&outcomes);
+        }
+
+        Ok(())
+    }
+
     /// Returns the compare backends of this flasher, in the order to try them.
     fn compare_chain(&self, session: &Session) -> Vec<CompareBackend> {
         let mut chain = Vec::new();
@@ -606,6 +634,7 @@ impl Flasher {
             match backend {
                 CompareBackend::Session(backend) => {
                     run_backend(
+                        backend,
                         &regions,
                         &checks,
                         &mut state,
@@ -634,6 +663,7 @@ impl Flasher {
                     let (mut active, _) = self.init::<Verify>(session, &mut algo_progress, None)?;
                     for backend in group {
                         run_backend(
+                            backend,
                             &regions,
                             &checks,
                             &mut state,

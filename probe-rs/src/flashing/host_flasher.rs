@@ -393,10 +393,44 @@ impl HostSideFlasher {
         result
     }
 
+    /// Returns `true` if a compare can skip sectors.
+    pub(super) fn can_compare(&self) -> bool {
+        self.flash_sequence.supports_sector_erase()
+    }
+
+    /// Compares the flash with the image, and removes the sectors that need no change.
+    pub(super) fn compare_and_prune(
+        &mut self,
+        session: &mut Session,
+        progress: &mut FlashProgress<'_>,
+        keep_unwritten_bytes: bool,
+    ) -> Result<(), FlashError> {
+        // Without restored bytes, a full flash leaves the erased value outside the image.
+        let outside = if keep_unwritten_bytes {
+            Outside::Any
+        } else {
+            Outside::Erased(self.flash_algorithm.flash_properties.erased_byte_value)
+        };
+
+        progress.started(ProgressOperation::Compare);
+        let result = self.run_with_flash(session, |this, session| {
+            this.compare(session, progress, ProgressOperation::Compare, outside, true)
+        });
+        match result.is_ok() {
+            true => progress.finished(ProgressOperation::Compare),
+            false => progress.failed(ProgressOperation::Compare),
+        }
+
+        for (region, outcomes) in self.regions.iter_mut().zip(result?) {
+            region.data.layout_mut().prune(&outcomes);
+        }
+
+        Ok(())
+    }
+
     /// Compares each sector of each region with its expected content.
     ///
-    /// Returns one result for each sector, for each region. A sector that no backend can
-    /// check is a mismatch.
+    /// Returns one result for each sector, for each region.
     pub(super) fn compare(
         &self,
         session: &mut Session,
@@ -431,6 +465,7 @@ impl HostSideFlasher {
 
         for backend in chain {
             run_backend(
+                &backend,
                 &regions,
                 &checks,
                 &mut state,
