@@ -134,6 +134,7 @@ impl XlenMode for Xlen32 {
     }
 
     fn registers(fp_present: bool, rv32e: bool) -> &'static CoreRegisters {
+        // RV32E has no standard F extension, so it takes precedence over fp_present
         if rv32e {
             &RISCV_RV32E_CORE_REGISTERS
         } else if fp_present {
