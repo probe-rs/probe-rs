@@ -8,6 +8,8 @@ RESULTS_DIR holds one `bench-<runner>/bench.jsonl` file for each runner. The scr
 - `summary.md`: all records, with the change from the baseline.
 - `comment.md`: only the changes beyond the noise threshold. The script writes it only if such
   changes exist.
+
+A result with one sample has no spread. Its change shows in the summary, but is never significant.
 """
 
 import argparse
@@ -40,7 +42,7 @@ def compare(current, baseline):
         return None, None
     change = current["median"] / baseline["median"] - 1
     spread = abs(baseline["p90"] - baseline["p10"]) / baseline["median"]
-    if abs(change) <= max(THRESHOLD, spread):
+    if abs(change) <= max(THRESHOLD, spread) or min(current["samples"], baseline["samples"]) < 2:
         return change, None
     better = (change > 0) == (current["improves"] == "up")
     return change, "better" if better else "worse"
