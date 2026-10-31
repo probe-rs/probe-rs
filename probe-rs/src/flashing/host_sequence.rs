@@ -29,14 +29,22 @@ use crate::session::Session;
 ///   erase_all() / erase_sector()
 ///   program() ...    ← per-page, OR
 ///   program_image()  ← whole-image (overrides per-page loop when Some is returned)
-///   verify() ...
+///   compare ...      ← the `flash_compare` backend of the debug sequence
 /// finish_flash()     ← exit mode / re-acquire probe; called after both full flash and verify
 ///
 /// [standalone verify pass — same bookends:]
 /// prepare_flash()
-///   verify() ...
+///   compare ...
+/// finish_flash()
+///
+/// [with preverify, before the full flash, when sector erase is supported — same bookends:]
+/// prepare_flash()
+///   compare ...
 /// finish_flash()
 /// ```
+///
+/// With preverify, the flash loader calls `prepare_flash` and `finish_flash` once more. Do not
+/// reset there if the target loses state on a reset.
 pub trait DebugFlashSequence: Send + Sync + Debug {
     /// Called once before any erase/program/verify operations begin.
     ///
@@ -76,6 +84,9 @@ pub trait DebugFlashSequence: Send + Sync + Debug {
     /// override this method.  When it returns `Ok(true)`, the per-page `program()` loop is skipped.
     ///
     /// The default returns `Ok(false)`, falling back to the per-page `program()` calls.
+    ///
+    /// If [`supports_sector_erase`](Self::supports_sector_erase) returns `true`, `regions` can
+    /// hold only the sectors that changed.
     fn program_image(
         &self,
         _session: &mut Session,
@@ -83,11 +94,6 @@ pub trait DebugFlashSequence: Send + Sync + Debug {
     ) -> Result<bool, Error> {
         Ok(false)
     }
-
-    /// Verify that the data at the given address matches `data`.
-    ///
-    /// Returns `Ok(true)` if verification passed, `Ok(false)` on mismatch.
-    fn verify(&self, session: &mut Session, address: u64, data: &[u8]) -> Result<bool, Error>;
 
     /// Returns whether this device supports erasing the entire chip in one operation.
     ///
@@ -145,14 +151,6 @@ mod tests {
             _data: &[u8],
         ) -> Result<(), Error> {
             Ok(())
-        }
-        fn verify(
-            &self,
-            _session: &mut Session,
-            _address: u64,
-            _data: &[u8],
-        ) -> Result<bool, Error> {
-            Ok(true)
         }
     }
 
