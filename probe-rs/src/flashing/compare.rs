@@ -281,9 +281,12 @@ pub(crate) trait AlgorithmCompare: Debug {
 
 /// Compares through the functions of the flash algorithm.
 ///
-/// For each sector, it uses CMSIS `Verify` if the algorithm has it, and `ReadFlash` if not.
+/// For each sector, it first calls `BlankCheck` if the check defines the erased value. A sector
+/// that is not blank goes to CMSIS `Verify` if the algorithm has it, and to `ReadFlash` if not.
 #[derive(Debug)]
 pub(crate) struct FlashAlgorithmCompare {
+    /// The algorithm has a `BlankCheck` function.
+    pub(crate) blank_check: bool,
     /// The algorithm has a `Verify` function.
     pub(crate) verify: bool,
     /// The algorithm has a `ReadFlash` function.
@@ -303,6 +306,28 @@ impl AlgorithmCompare for FlashAlgorithmCompare {
         out: &mut [CompareOutcome],
     ) -> Result<(), FlashError> {
         for (check, out) in checks.iter().zip(out.iter_mut()) {
+            // On some targets, a read of erased flash faults.
+            let blank = match check.outside {
+                Outside::Erased(erased) if self.blank_check => {
+                    let size = check.sector.end - check.sector.start;
+                    Some((erased, active.is_blank(check.sector.start, size)?))
+                }
+                _ => None,
+            };
+
+            if let Some((erased, true)) = blank {
+                let expected_erased = check
+                    .expected
+                    .iter()
+                    .all(|(_, data)| data.iter().all(|&byte| byte == erased));
+                *out = if expected_erased {
+                    CompareOutcome::Match
+                } else {
+                    CompareOutcome::Empty
+                };
+                continue;
+            }
+
             *out = if self.verify {
                 cmsis_verify(active, check)?
             } else if self.read {
@@ -310,6 +335,12 @@ impl AlgorithmCompare for FlashAlgorithmCompare {
             } else {
                 CompareOutcome::Unsupported
             };
+
+            // The sector reads as erased, but it is not blank: on ECC flash, a written word can
+            // read as erased. It needs an erase.
+            if blank.is_some() && *out == CompareOutcome::Empty {
+                *out = CompareOutcome::Mismatch;
+            }
         }
 
         Ok(())

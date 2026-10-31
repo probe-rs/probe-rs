@@ -599,14 +599,17 @@ impl Flasher {
         if let Some(backend) = session.target().debug_sequence.flash_compare() {
             chain.push(CompareBackend::Session(backend));
         }
+        let blank_check = self.flash_algorithm.pc_blank_check.is_some();
         let verify = self.flash_algorithm.pc_verify.is_some();
         let read = self.flash_algorithm.pc_read.is_some();
-        if verify || read {
+        if blank_check || verify || read {
             chain.push(CompareBackend::Algorithm(Box::new(FlashAlgorithmCompare {
+                blank_check,
                 verify,
                 read,
             })));
-        } else {
+        }
+        if !verify && !read {
             chain.push(CompareBackend::Session(Arc::new(ReadBackCore)));
         }
 
@@ -1431,6 +1434,28 @@ impl<O: Operation> ActiveFlasher<'_, '_, O> {
 }
 
 impl ActiveFlasher<'_, '_, Verify> {
+    /// Returns `true` if `BlankCheck` finds `size` bytes at `address` erased.
+    pub(super) fn is_blank(&mut self, address: u64, size: u64) -> Result<bool, FlashError> {
+        let algo = self.flash_algorithm;
+        let blank_check = algo
+            .pc_blank_check
+            .expect("the compare calls BlankCheck only if the algorithm has it");
+
+        let result = self.call_function_and_wait(
+            &Registers {
+                pc: blank_check,
+                r0: Some(address),
+                r1: Some(size),
+                r2: Some(algo.flash_properties.erased_byte_value.into()),
+                r3: None,
+            },
+            false,
+            Duration::from_secs(10),
+        )?;
+
+        Ok(result == 0)
+    }
+
     /// Returns `true` if CMSIS `Verify` finds `data` at `address`.
     pub(super) fn cmsis_verify(&mut self, address: u64, data: &[u8]) -> Result<bool, FlashError> {
         let algo = self.flash_algorithm;
