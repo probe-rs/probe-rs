@@ -9,7 +9,7 @@ use std::fmt::Debug;
 use std::sync::Arc;
 use std::time::Duration;
 
-use crate::flashing::DebugFlashSequence;
+use crate::flashing::{DebugFlashSequence, FlashCompare};
 
 /// A interface to operate debug sequences for RISC-V targets.
 ///
@@ -94,11 +94,10 @@ pub trait RiscvDebugSequence: Send + Sync + Debug {
         None
     }
 
-    /// Return the fast flash verification implementation if one exists.
+    /// Return the flash compare method of this target, if it has one.
     ///
-    /// Override this for a target whose flash controller can compute a signature over a
-    /// range of flash. The default returns `None`.
-    fn flash_verify_sequence(&self) -> Option<Arc<dyn crate::flashing::FlashVerify>> {
+    /// See [`FlashCompare`] for the rules.
+    fn flash_compare(&self) -> Option<Arc<dyn FlashCompare>> {
         None
     }
 
