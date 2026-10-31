@@ -285,6 +285,14 @@ impl<'a> RegionCompare<'a> {
             let started = Instant::now();
             backend.compare(context, region, batch)?;
 
+            for check in batch.iter() {
+                tracing::debug!(
+                    "{backend:?}: sector {:#010x?}: {:?}",
+                    check.sector,
+                    check.outcome
+                );
+            }
+
             let done = batch
                 .iter()
                 .filter(|check| check.outcome.is_some())
@@ -332,13 +340,7 @@ impl<'a> RegionCompare<'a> {
     pub(crate) fn finish(self) -> Vec<CompareOutcome> {
         self.checks
             .iter()
-            .map(|check| {
-                let outcome = check.outcome.unwrap_or(CompareOutcome::Mismatch);
-                if outcome != CompareOutcome::Match {
-                    tracing::debug!("Sector {:#010x?}: {outcome:?}", check.sector);
-                }
-                outcome
-            })
+            .map(|check| check.outcome.unwrap_or(CompareOutcome::Mismatch))
             .collect()
     }
 }
