@@ -174,7 +174,8 @@ jobs:
 
   bench-publish:
     needs: bench-report
-    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    # Publish the results also if a test job failed.
+    if: ${{ !cancelled() && needs.bench-report.result == 'success' && github.event_name == 'push' && github.ref == 'refs/heads/master' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
