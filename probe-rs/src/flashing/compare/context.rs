@@ -1,5 +1,7 @@
 //! The target state that the compare backends share.
 
+use std::time::Duration;
+
 use crate::flashing::{ActiveFlasher, FlashAlgorithm, FlashError, FlashProgress, Flasher, Verify};
 use crate::{Core, Session};
 
@@ -18,6 +20,7 @@ pub struct CompareContext<'a> {
     flasher: Option<&'a mut Flasher>,
     progress: FlashProgress<'static>,
     initialized: bool,
+    init_failed: bool,
     faulted: bool,
 }
 
@@ -29,6 +32,7 @@ impl<'a> CompareContext<'a> {
             flasher: Some(flasher),
             progress: FlashProgress::empty(),
             initialized: false,
+            init_failed: false,
             faulted: false,
         }
     }
@@ -41,6 +45,7 @@ impl<'a> CompareContext<'a> {
             flasher: None,
             progress: FlashProgress::empty(),
             initialized: false,
+            init_failed: false,
             faulted: false,
         }
     }
@@ -75,7 +80,10 @@ impl<'a> CompareContext<'a> {
         let flasher = self.flasher.as_deref_mut().expect(NO_FLASHER);
         let mut active = flasher.activate(self.session, &mut self.progress)?;
         if !self.initialized {
-            active.init(None)?;
+            if let Err(error) = active.init(None) {
+                self.init_failed = true;
+                return Err(error);
+            }
             self.initialized = true;
         }
 
@@ -87,12 +95,23 @@ impl<'a> CompareContext<'a> {
         self.faulted
     }
 
-    /// Stops using the flash algorithm if a backend error happened while it was initialized.
+    /// Stops using the flash algorithm if a backend error happened in `Init` or while it was
+    /// initialized.
     pub(crate) fn handle_fault(&mut self) {
-        if !self.initialized {
+        // A timeout in `Init` leaves the core running.
+        if !self.initialized && !self.init_failed {
             return;
         }
         self.faulted = true;
+
+        // The core can be in the fault handler of the application.
+        let halted = self
+            .session
+            .core(self.core_index)
+            .and_then(|mut core| core.halt(Duration::from_millis(500)));
+        if let Err(error) = halted {
+            tracing::debug!("Halt after a compare fault failed: {error}");
+        }
 
         if let Err(error) = self.uninit() {
             tracing::debug!("Uninit after a compare fault failed: {error}");

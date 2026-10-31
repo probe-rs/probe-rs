@@ -19,6 +19,9 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use crate::Error;
+use crate::architecture::arm::ArmError;
+use crate::architecture::riscv::communication_interface::RiscvError;
+use crate::architecture::xtensa::communication_interface::XtensaError;
 use crate::config::NvmRegion;
 use crate::flashing::{FlashError, FlashLayout, FlashProgress, ProgressOperation};
 
@@ -247,6 +250,27 @@ pub(crate) fn run_chain(
     Ok(regions.into_iter().map(RegionCompare::finish).collect())
 }
 
+/// Returns `true` if the cause of `error` is the probe.
+fn is_probe_error(error: &FlashError) -> bool {
+    let mut current: Option<&(dyn std::error::Error + 'static)> = Some(error);
+    while let Some(error) = current {
+        if matches!(
+            error.downcast_ref::<Error>(),
+            Some(
+                Error::Probe(_)
+                    | Error::Arm(ArmError::Probe(_))
+                    | Error::Riscv(RiscvError::DebugProbe(_))
+                    | Error::Xtensa(XtensaError::DebugProbe(_))
+            )
+        ) {
+            return true;
+        }
+        current = error.source();
+    }
+
+    false
+}
+
 /// The checks of one region, while the backends run.
 pub(crate) struct RegionCompare<'a> {
     region: &'a NvmRegion,
@@ -328,7 +352,7 @@ impl<'a> RegionCompare<'a> {
     ) -> Result<bool, FlashError> {
         match result {
             Ok(()) => Ok(false),
-            Err(error @ FlashError::Core(Error::Probe(_))) => Err(error),
+            Err(error) if is_probe_error(&error) => Err(error),
             Err(error) => {
                 tracing::debug!("{backend:?} failed, the sectors count as mismatches: {error}");
                 for check in batch {
@@ -384,6 +408,7 @@ mod tests {
 
     use super::*;
     use crate::flashing::FlashBuilder;
+    use crate::probe::DebugProbeError;
 
     const ERASED: u8 = 0xFF;
 
@@ -576,6 +601,41 @@ mod tests {
         assert_eq!(ranges.len(), 1);
         assert_eq!(ranges[0].0, 0);
         assert_eq!(ranges[0].1.len(), 0x1000);
+    }
+
+    #[test]
+    fn probe_errors_stop_the_compare() {
+        let probe_errors = [
+            Error::Probe(DebugProbeError::TargetNotFound),
+            Error::Arm(ArmError::Probe(DebugProbeError::TargetNotFound)),
+            Error::Riscv(RiscvError::DebugProbe(DebugProbeError::TargetNotFound)),
+            Error::Xtensa(XtensaError::DebugProbe(DebugProbeError::TargetNotFound)),
+        ];
+        for error in probe_errors {
+            let mut batch = [SectorCheck::new(0..1, vec![], Outside::Any)];
+            let result = RegionCompare::errors_to_mismatch(
+                &ReadBackCore,
+                Err(FlashError::Core(error)),
+                &mut batch,
+            );
+            assert!(result.is_err());
+        }
+
+        let wrapped = FlashError::Init(Box::new(FlashError::UnableToReadCoreStatus(Error::Probe(
+            DebugProbeError::TargetNotFound,
+        ))));
+        let mut batch = [SectorCheck::new(0..1, vec![], Outside::Any)];
+        let result = RegionCompare::errors_to_mismatch(&ReadBackCore, Err(wrapped), &mut batch);
+        assert!(result.is_err());
+
+        let mut batch = [SectorCheck::new(0..1, vec![], Outside::Any)];
+        let result = RegionCompare::errors_to_mismatch(
+            &ReadBackCore,
+            Err(FlashError::Core(Error::Timeout)),
+            &mut batch,
+        );
+        assert!(matches!(result, Ok(true)));
+        assert_eq!(batch[0].outcome, Some(CompareOutcome::Mismatch));
     }
 
     /// Reads from a simulated flash that starts at address 0.
