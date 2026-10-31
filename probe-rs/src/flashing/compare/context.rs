@@ -18,6 +18,7 @@ pub struct CompareContext<'a> {
     flasher: Option<&'a mut Flasher>,
     progress: FlashProgress<'static>,
     initialized: bool,
+    faulted: bool,
 }
 
 impl<'a> CompareContext<'a> {
@@ -28,6 +29,7 @@ impl<'a> CompareContext<'a> {
             flasher: Some(flasher),
             progress: FlashProgress::empty(),
             initialized: false,
+            faulted: false,
         }
     }
 
@@ -39,6 +41,7 @@ impl<'a> CompareContext<'a> {
             flasher: None,
             progress: FlashProgress::empty(),
             initialized: false,
+            faulted: false,
         }
     }
 
@@ -71,6 +74,23 @@ impl<'a> CompareContext<'a> {
         }
 
         Ok(active)
+    }
+
+    /// Returns `true` if the flash algorithm cannot run after a backend error.
+    pub(crate) fn faulted(&self) -> bool {
+        self.faulted
+    }
+
+    /// Stops using the flash algorithm if a backend error happened while it was initialized.
+    pub(crate) fn handle_fault(&mut self) {
+        if !self.initialized {
+            return;
+        }
+        self.faulted = true;
+
+        if let Err(error) = self.uninit() {
+            tracing::debug!("Uninit after a compare fault failed: {error}");
+        }
     }
 
     /// Calls `UnInit` if the flash algorithm is initialized.
