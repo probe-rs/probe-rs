@@ -169,13 +169,15 @@ impl FlashTimer {
     }
 
     /// Record the throughput of each finished operation with a known size, in bytes per second.
+    ///
+    /// The size of an operation depends on the flash layout, so the records have size 0.
     pub fn record(self, recorder: &mut Recorder) -> anyhow::Result<()> {
         for (metric, phase) in self.phases {
             if phase.bytes == 0 || phase.time.is_zero() {
                 continue;
             }
             let throughput = phase.bytes as f64 / phase.time.as_secs_f64();
-            recorder.record(metric, phase.bytes, "B/s", Improves::Up, vec![throughput])?;
+            recorder.record(metric, 0, "B/s", Improves::Up, vec![throughput])?;
         }
         Ok(())
     }
