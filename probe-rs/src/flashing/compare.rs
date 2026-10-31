@@ -42,6 +42,25 @@ impl SectorCheck<'_> {
 
         Some(content)
     }
+
+    /// Returns the content to check, with adjacent ranges joined, so that it compresses better.
+    pub(crate) fn contiguous_ranges(&self) -> Vec<(u64, Vec<u8>)> {
+        if let Some(content) = self.sector_content() {
+            return vec![(self.sector.start, content)];
+        }
+
+        let mut ranges: Vec<(u64, Vec<u8>)> = Vec::new();
+        for &(address, data) in &self.expected {
+            match ranges.last_mut() {
+                Some((start, joined)) if *start + joined.len() as u64 == address => {
+                    joined.extend_from_slice(data);
+                }
+                _ => ranges.push((address, data.to_vec())),
+            }
+        }
+
+        ranges
+    }
 }
 
 /// The content of the bytes of a sector that the image does not cover.
@@ -302,15 +321,9 @@ impl AlgorithmCompare for CmsisVerify {
         out: &mut [CompareOutcome],
     ) -> Result<(), FlashError> {
         for (check, out) in checks.iter().zip(out.iter_mut()) {
-            let content = check.sector_content();
-            let ranges = match &content {
-                Some(content) => vec![(check.sector.start, content.as_slice())],
-                None => check.expected.clone(),
-            };
-
             *out = CompareOutcome::Match;
-            for (address, data) in ranges {
-                if !active.cmsis_verify(address, data)? {
+            for (address, data) in check.contiguous_ranges() {
+                if !active.cmsis_verify(address, &data)? {
                     *out = CompareOutcome::Mismatch;
                     break;
                 }
@@ -510,6 +523,18 @@ mod tests {
         for check in sector_checks(&layout, Outside::Erased(ERASED), true) {
             assert_eq!(check.sector_content().unwrap().len(), 0x2000);
         }
+    }
+
+    #[test]
+    fn contiguous_ranges_join_adjacent_pages() {
+        let layout = layout(&[(0x10, &[1; 0x800]), (0x0c00, &[2])], false);
+
+        let checks = sector_checks(&layout, Outside::Any, false);
+
+        let ranges = checks[0].contiguous_ranges();
+        assert_eq!(ranges.len(), 1);
+        assert_eq!(ranges[0].0, 0);
+        assert_eq!(ranges[0].1.len(), 0x1000);
     }
 
     #[test]
