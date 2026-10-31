@@ -1234,6 +1234,8 @@ impl MemoryInterface for XtensaCommunicationInterface<'_> {
     }
 
     fn flush(&mut self) -> Result<(), crate::Error> {
+        self.xdm.execute()?;
+
         Ok(())
     }
 
