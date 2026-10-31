@@ -264,9 +264,22 @@ impl CmsisDapDevice {
                     n => Ok(n),
                 }
             }
+            // A reply that fills the packet ends on a full USB packet with no short one after it,
+            // so a read posted for more than the packet size waits for data that never comes.
             CmsisDapDevice::V2 {
-                in_ep, usb_timeout, ..
-            } => Ok(in_ep.read_bulk(buf, *usb_timeout)?),
+                in_ep,
+                usb_timeout,
+                max_packet_size,
+                ..
+            } => {
+                let len = buf.len().min(*max_packet_size);
+                let mut read = || in_ep.read_bulk(&mut buf[..len], *usb_timeout);
+                // Some probes send a zero-length packet after a full reply; skip it.
+                match read()? {
+                    0 => Ok(read()?),
+                    n => Ok(n),
+                }
+            }
             CmsisDapDevice::Tcp {
                 device, timeout, ..
             } => Ok(device.read(buf, *timeout)?),
@@ -287,10 +300,20 @@ impl CmsisDapDevice {
             CmsisDapDevice::V2 {
                 out_ep,
                 usb_timeout,
+                max_packet_size,
                 ..
             } => {
                 // Skip first byte as it's set to 0 for HID transfers
-                Ok(out_ep.write_bulk(&buf[1..], *usb_timeout)?)
+                let command = &buf[1..];
+                let written = out_ep.write_bulk(command, *usb_timeout)?;
+                // A command shorter than the packet that ends on a full USB packet needs a
+                // zero-length packet after it, or a probe reading a whole packet waits for more.
+                if command.len() < *max_packet_size
+                    && command.len().is_multiple_of(out_ep.max_packet_size())
+                {
+                    out_ep.write_bulk(&[], *usb_timeout)?;
+                }
+                Ok(written)
             }
             // Skip the HID report byte, as for v2.
             CmsisDapDevice::Tcp { device, .. } => Ok(device.write(&buf[1..])?),
