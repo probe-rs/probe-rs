@@ -21,8 +21,9 @@ impl FlashCompare for ReadFlashCompare {
     ) -> Result<(), FlashError> {
         let mut active = context.algorithm()?;
         for check in checks {
-            let outcome =
-                check.compare_read_back(|address, data| active.read_flash(address, data))?;
+            let outcome = active.compare_after_blank_check(check, |active| {
+                check.compare_read_back(|address, data| active.read_flash(address, data))
+            })?;
             check.outcome = Some(outcome);
         }
 

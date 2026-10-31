@@ -1,6 +1,6 @@
 //! The target state that the compare backends share.
 
-use crate::flashing::{ActiveFlasher, FlashError, FlashProgress, Flasher, Verify};
+use crate::flashing::{ActiveFlasher, FlashAlgorithm, FlashError, FlashProgress, Flasher, Verify};
 use crate::{Core, Session};
 
 /// Only the chain of a [`Flasher`] holds backends that use the flash algorithm.
@@ -63,6 +63,11 @@ impl<'a> CompareContext<'a> {
     pub fn core(&mut self) -> Result<Core<'_>, FlashError> {
         let core_index = self.core_index;
         self.session()?.core(core_index).map_err(FlashError::Core)
+    }
+
+    /// Returns the flash algorithm of this compare, without loading it.
+    pub(crate) fn flash_algorithm(&self) -> Option<&FlashAlgorithm> {
+        self.flasher.as_deref().map(Flasher::flash_algorithm)
     }
 
     /// Returns the flash algorithm, loaded and initialized for [`Verify`].
