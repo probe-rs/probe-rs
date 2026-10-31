@@ -8,6 +8,7 @@ use std::ops::Range;
 use std::sync::Arc;
 use std::time::Instant;
 
+use crate::architecture::arm::ArmError;
 use crate::config::NvmRegion;
 use crate::flashing::{
     ActiveFlasher, FlashError, FlashLayout, FlashProgress, ProgressOperation, Verify,
@@ -420,7 +421,9 @@ pub(crate) fn errors_to_mismatch(
 ) -> Result<bool, FlashError> {
     match result {
         Ok(()) => Ok(false),
-        Err(error @ FlashError::Core(Error::Probe(_))) => Err(error),
+        Err(error @ FlashError::Core(Error::Probe(_) | Error::Arm(ArmError::Probe(_)))) => {
+            Err(error)
+        }
         Err(error) => {
             tracing::debug!("{backend:?} failed, the sectors count as mismatches: {error}");
             out.fill(CompareOutcome::Mismatch);

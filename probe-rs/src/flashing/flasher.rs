@@ -213,9 +213,10 @@ impl Flasher {
             self.loaded = true;
             self.code_valid = true;
         } else if !self.code_valid {
-            // Only the first load resets the core. A reset can destroy state that probe-rs does
-            // not know about, for example the configuration of an FPGA.
+            // No reset: it can clear state such as an FPGA configuration.
             let mut core = session.core(self.core_index).map_err(FlashError::Core)?;
+            core.halt(Duration::from_millis(500))
+                .map_err(FlashError::Core)?;
             Self::write_code(&self.flash_algorithm, &mut core)?;
             self.code_valid = true;
         }
@@ -712,6 +713,10 @@ impl Flasher {
                     }
 
                     if faulted {
+                        // The core can be in the fault handler of the application.
+                        if let Err(error) = active.core.halt(Duration::from_millis(500)) {
+                            tracing::debug!("Halt after a compare fault failed: {error}");
+                        }
                         if let Err(error) = active.uninit() {
                             tracing::debug!("Uninit after a compare fault failed: {error}");
                         }
