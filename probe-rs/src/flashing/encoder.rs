@@ -219,14 +219,23 @@ impl FlashEncoder {
         page_size: usize,
     ) -> Vec<FlashPage> {
         match encoding {
-            TransferEncoding::Raw => image
-                .chunks(page_size)
-                .enumerate()
-                .map(|(idx, chunk)| FlashPage {
-                    address: start_addr + (idx * page_size) as u64,
-                    data: chunk.to_vec(),
-                })
-                .collect(),
+            TransferEncoding::Raw => {
+                // A chunk ends at a page boundary, so that no chunk crosses into the next page.
+                let mut pages = Vec::new();
+                let mut address = start_addr;
+                let mut rest = image;
+                while !rest.is_empty() {
+                    let to_boundary = page_size - (address % page_size as u64) as usize;
+                    let (chunk, tail) = rest.split_at(to_boundary.min(rest.len()));
+                    pages.push(FlashPage {
+                        address,
+                        data: chunk.to_vec(),
+                    });
+                    address += chunk.len() as u64;
+                    rest = tail;
+                }
+                pages
+            }
             #[cfg(feature = "flate2")]
             TransferEncoding::Miniz => ZlibEncoder::compress_image(image, start_addr, page_size),
             #[cfg(not(feature = "flate2"))]
@@ -252,5 +261,21 @@ impl FlashEncoder {
     /// Returns the final flash layout.
     pub fn flash_layout(&self) -> &FlashLayout {
         self.encoder.layout()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn raw_chunks_end_at_page_boundaries() {
+        let pages = FlashEncoder::encode_image(TransferEncoding::Raw, &[0; 0x900], 0x10, 0x400);
+
+        let chunks = pages
+            .iter()
+            .map(|page| (page.address(), page.size()))
+            .collect::<Vec<_>>();
+        assert_eq!(chunks, vec![(0x10, 0x3f0), (0x400, 0x400), (0x800, 0x110)]);
     }
 }
