@@ -41,6 +41,7 @@ pub mod st;
 pub mod ti;
 pub mod vorago;
 pub mod wch;
+pub mod whxy;
 
 /// Vendor support trait.
 pub trait Vendor: Send + Sync + std::fmt::Display {
@@ -109,6 +110,7 @@ static VENDORS: LazyLock<RecursiveRwLock<Vec<&'static dyn Vendor>>> = LazyLock::
         &wch::Wch,
         &gigadevice::GigaDevice,
         &nsing::Nsing,
+        &whxy::Whxy,
     ];
 
     RecursiveRwLock::new(vendors)
