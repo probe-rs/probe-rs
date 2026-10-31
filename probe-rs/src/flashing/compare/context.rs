@@ -51,6 +51,7 @@ impl<'a> CompareContext<'a> {
     /// returns its error.
     pub fn session(&mut self) -> Result<&mut Session, FlashError> {
         self.uninit()?;
+        self.invalidate_code();
 
         Ok(self.session)
     }
@@ -90,6 +91,16 @@ impl<'a> CompareContext<'a> {
 
         if let Err(error) = self.uninit() {
             tracing::debug!("Uninit after a compare fault failed: {error}");
+        }
+        self.invalidate_code();
+    }
+
+    /// Makes the next use of the flash algorithm write its code again.
+    ///
+    /// A fault or a backend with session access can overwrite the code in target RAM.
+    fn invalidate_code(&mut self) {
+        if let Some(flasher) = self.flasher.as_deref_mut() {
+            flasher.code_valid = false;
         }
     }
 
