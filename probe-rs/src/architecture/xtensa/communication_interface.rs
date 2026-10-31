@@ -544,7 +544,7 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
 
     /// Resumes program execution.
     pub fn resume_core(&mut self) -> Result<(), XtensaError> {
-        // Any time we resume the core, we need to restore the registers so the the program
+        // Any time we resume the core, we need to restore the registers so the program
         // doesn't crash.
         self.restore_registers()?;
         // We also need to clear the register cache, as the CPU will likely change the registers.
@@ -1234,6 +1234,8 @@ impl MemoryInterface for XtensaCommunicationInterface<'_> {
     }
 
     fn flush(&mut self) -> Result<(), crate::Error> {
+        self.xdm.execute()?;
+
         Ok(())
     }
 

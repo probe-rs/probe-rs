@@ -1,0 +1,1 @@
+`CmsisDap::send_vendor_command` sends a vendor command to a CMSIS-DAP probe and returns its reply. `Probe::driver_mut` and `Session::driver_mut` borrow the probe driver, to downcast through `std::any::Any`.

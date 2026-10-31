@@ -51,6 +51,13 @@ use crate::{
 const SWO_BUFFER_SIZE: u16 = 128;
 const TIMEOUT_DEFAULT: Duration = Duration::from_millis(500);
 
+/// Times the first command of a session is sent while the probe refuses it. Covers a command an
+/// earlier host left running.
+const MAX_OPEN_ATTEMPTS: usize = 8;
+
+/// How long the probe has to stay silent before an earlier host's reply counts as collected.
+const STALE_REPLY_IDLE: Duration = Duration::from_millis(50);
+
 /// Factory to create [`JLink`] probes.
 #[derive(Debug)]
 pub struct JLinkFactory;
@@ -193,7 +200,7 @@ impl ProbeFactory for JLinkFactory {
             swd_settings: SwdSettings::default(),
             jtag_state: JtagChainState::default(),
             reset_line: ResetLine::default(),
-            force_legacy_jtag_command: selector.product_id == 0x0101,
+            force_legacy_jtag_command: false,
 
             jtag_tms_bits: vec![],
             jtag_tdi_bits: vec![],
@@ -207,6 +214,11 @@ impl ProbeFactory for JLinkFactory {
         };
         this.fill_capabilities()?;
         this.fill_interfaces()?;
+
+        // 0x0101 is the default product ID of every J-Link in SEGGER's old USB format, so only the
+        // firmware string tells the probe of probe-rs/probe-rs#4066 apart from the rest.
+        this.force_legacy_jtag_command =
+            selector.product_id == 0x0101 && is_lite_firmware(&this.read_firmware_version()?);
 
         this.supported_protocols = if this.caps.contains(Capability::SelectIf) {
             this.interfaces
@@ -417,9 +429,9 @@ impl JLink {
         self.caps
     }
 
-    /// Reads the advertised capabilities from the device.
+    /// Reads the advertised capabilities from the device. This is the first command of a session.
     fn fill_capabilities(&mut self) -> Result<(), JlinkError> {
-        self.write_cmd(&[Command::GetCaps as u8])?;
+        self.write_first_cmd(&[Command::GetCaps as u8])?;
 
         let caps = self.read_u32().map(Capabilities::from_raw_legacy)?;
 
@@ -478,6 +490,53 @@ impl JLink {
             )));
         }
         Ok(())
+    }
+
+    /// Sends a session's first command, collecting any reply an earlier host left unread.
+    ///
+    /// The probe accepts no command until the reply to the previous one has been read. A host
+    /// that exits with a command in flight leaves the probe refusing every write until it gives
+    /// up on that reply, seconds later.
+    fn write_first_cmd(&self, cmd: &[u8]) -> Result<(), JlinkError> {
+        let mut attempt = 1;
+        loop {
+            let timeout = match self.write_cmd(cmd) {
+                Err(JlinkError::Usb(e)) if e.kind() == std::io::ErrorKind::TimedOut => e,
+                result => return result,
+            };
+            if attempt == MAX_OPEN_ATTEMPTS {
+                return Err(JlinkError::BusyAtOpen(timeout));
+            }
+            if attempt == 1 {
+                tracing::warn!(
+                    "The J-Link did not accept the first command of this session. It is probably \
+                     still busy with a command from a previous session; discarding that \
+                     session's reply and retrying."
+                );
+            }
+            match self.discard_input(STALE_REPLY_IDLE) {
+                0 => tracing::debug!(
+                    "No reply yet from the previous session's command \
+                     (attempt {attempt} of {MAX_OPEN_ATTEMPTS})"
+                ),
+                n => tracing::debug!(
+                    "Discarded {n} bytes of a previous session's reply \
+                     (attempt {attempt} of {MAX_OPEN_ATTEMPTS})"
+                ),
+            }
+            attempt += 1;
+        }
+    }
+
+    /// Reads and discards whatever the probe sends until it has been silent for `idle`, and
+    /// returns how many bytes that was.
+    fn discard_input(&self, idle: Duration) -> usize {
+        let mut buf = vec![0; self.max_read_ep_packet];
+        let mut total = 0;
+        while let Ok(n @ 1..) = self.handle.read_bulk(self.read_ep, &mut buf, idle) {
+            total += n;
+        }
+        total
     }
 
     fn read(&self, buf: &mut [u8]) -> Result<(), JlinkError> {
@@ -740,7 +799,7 @@ impl JLink {
         self.require_interface_selected(Interface::Jtag)?;
 
         let mut has_status_byte = false;
-        // There's 3 commands for doing a JTAG transfer. The older 2 are obsolete with hardware
+        // There are 3 commands for doing a JTAG transfer. The older 2 are obsolete with hardware
         // version 5 and above, which adds the 3rd command. Unfortunately we cannot reliably use the
         // HW version to determine this since some embedded J-Link probes have a HW version of
         // 1.0.0, but still support SWD, so we use the `SELECT_IF` capability instead.
@@ -1425,8 +1484,9 @@ impl HardwareVersion {
 
     /// The major version.
     fn major(&self) -> u8 {
-        // Decimal coded Decimal, cool cool
-        (self.0 / 10000) as u8
+        // Decimal coded Decimal, cool cool. The hardware type sits above this field, so it
+        // has to be divided out before the cast, which would otherwise truncate.
+        ((self.0 / 10000) % 100) as u8
     }
 
     /// The minor version.
@@ -1468,6 +1528,14 @@ impl fmt::Display for HardwareType {
             HardwareType::JLinkPro => "J-Link Pro",
         })
     }
+}
+
+/// Whether the firmware string names a J-Link Lite.
+///
+/// Only a J-Link ARM Lite V8 is known to need `HW_JTAG2`. The match takes any Lite, in any case,
+/// so that no untested variant changes command.
+fn is_lite_firmware(firmware_version: &str) -> bool {
+    firmware_version.to_ascii_lowercase().contains("lite")
 }
 
 const VID_SEGGER: u16 = 0x1366;
@@ -1784,5 +1852,15 @@ mod test {
     fn jlink_pid_segger_driver() {
         // J-Link device using the legacy Segger driver.
         assert!(super::is_jlink_product_id(0x1059));
+    }
+
+    #[test]
+    fn a_version_above_the_hardware_type_field_is_not_truncated() {
+        // A J-Link Ultra reports 7040000, which SEGGER's own tools show as V4.00.
+        let version = super::HardwareVersion::from_u32(7_040_000);
+        assert_eq!(
+            (version.major(), version.minor(), version.revision()),
+            (4, 0, 0)
+        );
     }
 }

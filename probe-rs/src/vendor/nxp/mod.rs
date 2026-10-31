@@ -3,7 +3,9 @@
 use probe_rs_target::Chip;
 
 use crate::{
-    config::DebugSequence,
+    Error,
+    architecture::arm::{ArmChipInfo, ArmDebugInterface},
+    config::{DebugSequence, Registry},
     vendor::{
         Vendor,
         nxp::sequences::{
@@ -22,6 +24,8 @@ use crate::{
 };
 
 pub mod sequences;
+
+mod mcxa;
 
 /// NXP
 #[derive(docsplay::Display)]
@@ -58,5 +62,14 @@ impl Vendor for Nxp {
         };
 
         Some(sequence)
+    }
+
+    fn try_detect_arm_chip(
+        &self,
+        registry: &Registry,
+        interface: &mut dyn ArmDebugInterface,
+        chip_info: ArmChipInfo,
+    ) -> Result<Option<String>, Error> {
+        mcxa::detect(registry, interface, chip_info)
     }
 }

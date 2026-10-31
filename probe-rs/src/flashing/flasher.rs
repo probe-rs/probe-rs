@@ -159,7 +159,7 @@ impl LoadedRegion {
 
 /// A structure to control the flash of an attached microchip.
 ///
-/// Once constructed it can be used to program date to the flash.
+/// Once constructed it can be used to program data to the flash.
 pub struct Flasher {
     pub(super) core_index: usize,
     pub(super) flash_algorithm: FlashAlgorithm,
@@ -535,33 +535,41 @@ impl Flasher {
         sequence: &dyn FlashVerify,
         ignore_filled: bool,
     ) -> Result<Option<bool>, FlashError> {
-        let encoding = self.flash_algorithm.transfer_encoding;
         let core_index = self.core_index;
         let mut core = session.core(core_index).map_err(FlashError::Core)?;
 
-        for region in self.regions.iter_mut() {
-            let flash_encoder = region.data.encoder(encoding, ignore_filled);
-            for page in flash_encoder.pages() {
+        for region in self.regions.iter() {
+            let layout = region.data.layout();
+            for (idx, page) in layout.pages().iter().enumerate() {
                 let started = Instant::now();
-                let outcome = sequence
-                    .verify_range(&mut core, &region.region, page.address(), page.data())
-                    .map_err(FlashError::Core)?;
-                match outcome {
-                    VerifyOutcome::Match => {
-                        progress.page_verified(page.size() as u64, started.elapsed())
-                    }
-                    VerifyOutcome::Mismatch => {
-                        tracing::debug!("Signature mismatch for page at {:#010x}", page.address());
-                        return Ok(Some(false));
-                    }
-                    VerifyOutcome::Unsupported => {
-                        tracing::debug!(
-                            "Target cannot sign the page at {:#010x}; reading the image back instead",
-                            page.address()
-                        );
-                        return Ok(None);
+
+                // Fill bytes that are not flashed can hold anything.
+                let pieces = if ignore_filled {
+                    layout.page_data_without_fills(idx)
+                } else {
+                    vec![(page.address(), page.data())]
+                };
+
+                for (address, data) in pieces {
+                    let outcome = sequence
+                        .verify_range(&mut core, &region.region, address, data)
+                        .map_err(FlashError::Core)?;
+                    match outcome {
+                        VerifyOutcome::Match => {}
+                        VerifyOutcome::Mismatch => {
+                            tracing::debug!("Signature mismatch for range at {address:#010x}");
+                            return Ok(Some(false));
+                        }
+                        VerifyOutcome::Unsupported => {
+                            tracing::debug!(
+                                "Target cannot sign the range at {address:#010x}; reading the image back instead"
+                            );
+                            return Ok(None);
+                        }
                     }
                 }
+
+                progress.page_verified(page.size() as u64, started.elapsed());
             }
         }
 
@@ -1005,7 +1013,8 @@ impl<O: Operation> ActiveFlasher<'_, '_, O> {
                 false,
                 INIT_TIMEOUT,
             )
-            .map_err(|error| FlashError::FlashSizeFailed {
+            .map_err(|error| FlashError::VendorFunctionFailed {
+                name: function.to_string(),
                 source: Box::new(error),
             })?;
 

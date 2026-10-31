@@ -95,6 +95,10 @@ pub struct TestOptions {
     )]
     pub skip_test: Vec<String>,
 
+    /// Show the output of all tests while they run. By default, only the output of failed tests is shown.
+    #[clap(long = "nocapture", help_heading = "TEST OPTIONS")]
+    pub nocapture: bool,
+
     /// Options which are ignored, but exist for compatibility with libtest.
     /// E.g. so that vscode and intellij can invoke the test runner with the args they are used to
     #[clap(flatten)]
@@ -104,11 +108,7 @@ pub struct TestOptions {
 /// Options which are ignored, but exist for compatibility with libtest.
 #[derive(Debug, clap::Parser)]
 struct NoOpTestOptions {
-    // No-op, ignored (libtest-mimic always runs in no-capture mode)
-    #[clap(long = "nocapture", hide = true)]
-    nocapture: bool,
-
-    /// No-op, ignored. libtest-mimic does not currently capture stdout.
+    /// No-op, ignored. Flag only exists for CLI compatibility with libtest.
     #[clap(long = "show-output", hide = true)]
     show_output: bool,
 
@@ -290,6 +290,7 @@ impl Cmd {
                     ignored: self.test_options.ignored,
                     include_ignored: self.test_options.include_ignored,
                     format: self.test_options.format,
+                    nocapture: self.test_options.nocapture,
                     skip: self.test_options.skip_test.clone(),
                     filter: if self.test_options.filter.is_empty() {
                         None

@@ -14,8 +14,11 @@ use crate::architecture::arm::{
 /// Supported lines for custom sequences on STM32H7xx devices.
 #[derive(Debug)]
 pub enum Stm32h7Line {
-    /// STM32H72x, STM32H73x, STM32H74x, STM32H75x, STM32H7Ax, STM32H7Bx
+    /// STM32H72x, STM32H73x, STM32H7Ax, STM32H7Bx
     H7,
+
+    /// STM32H74x, STM32H75x
+    H74,
 
     /// STM32H7Rx, STM32H7Sx
     H7S,
@@ -45,6 +48,7 @@ enum TraceFunnelId {
 #[derive(Debug)]
 pub struct Stm32h7 {
     ap: u8,
+    swtf: bool,
 }
 
 impl Stm32h7 {
@@ -52,11 +56,12 @@ impl Stm32h7 {
     pub fn create(family: Stm32h7Line) -> Arc<Self> {
         let ap = match family {
             // Most H7 variants have the debug unit on AP2.
-            Stm32h7Line::H7 => 2,
+            Stm32h7Line::H7 | Stm32h7Line::H74 => 2,
             // The H7S/R lack power domain 3 and the third AP; their debug unit is on AP1.
             Stm32h7Line::H7S => 1,
         };
-        Arc::new(Self { ap })
+        let swtf = matches!(family, Stm32h7Line::H74);
+        Arc::new(Self { ap, swtf })
     }
 
     /// Configure all debug components on the chip.
@@ -217,18 +222,20 @@ impl ArmDebugSequence for Stm32h7 {
             TraceSink::Tpiu(_) | TraceSink::TraceMemory => cstf.enable_port(0b10)?,
         }
 
-        // The SWTF needs to be configured to route traffic to SWO. When not in use, it needs to be
-        // disabled so that the SWO peripheral does not propagate buffer overflows through the
-        // trace bus via busy signalling.
-        let mut swtf = TraceFunnel::new(
-            interface,
-            find_trace_funnel(components, TraceFunnelId::SerialWire)?,
-        );
-        swtf.unlock()?;
-        if matches!(sink, TraceSink::Swo(_)) {
-            swtf.enable_port(0b01)?;
-        } else {
-            swtf.enable_port(0b00)?;
+        if self.swtf {
+            // The SWTF needs to be configured to route traffic to SWO. When not in use, it needs to be
+            // disabled so that the SWO peripheral does not propagate buffer overflows through the
+            // trace bus via busy signalling.
+            let mut swtf = TraceFunnel::new(
+                interface,
+                find_trace_funnel(components, TraceFunnelId::SerialWire)?,
+            );
+            swtf.unlock()?;
+            if matches!(sink, TraceSink::Swo(_)) {
+                swtf.enable_port(0b01)?;
+            } else {
+                swtf.enable_port(0b00)?;
+            }
         }
 
         Ok(())

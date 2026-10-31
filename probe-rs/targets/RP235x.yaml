@@ -63,6 +63,8 @@ variants:
     cores:
     - rv0
     - rv1
+  flash_algorithms:
+  - algo_rv32
 flash_algorithms:
 - name: algo
   description: algo
@@ -86,3 +88,25 @@ flash_algorithms:
       address: 0x0
   cores:
   - core0
+- name: algo_rv32
+  description: rp-rs/flash-algo
+  default: true
+  instructions: lwUAAJOFBSeQgRHOQriYRbcFAPAulYVlQWaTBoANApcBRUK6goAFRYKAwriXCwAAk4tLJAPFCwAyhAnFlwAAAOeAABqFRH0UEUUjgJsAY3+kFBFlEwWVZJcAAADngGAaLopjFJUAUoTRoBllEwVVhJcAAADngOAYBUYuiWMUxQBKhG2gA0UAAbdFABATBtAEE4QlVWMcxQgDRRABkwVQB2MWtQgDRSABiUVjDbUAhUVjGrUGA1VAAQNWgAGRZZOFJVUBqCFlA1al3xFlEwUlVYVFApY3RAAgEwQkVaqKEeGiiinFA0UAAbdVABATBtAEE4QlBWMcxQIDRRABkwVQB2MWtQIDRSABiUVjA7UChUVjF7UGA1VAAQNWgAGVZZOFJQUxqDdEABATBCRVIoXCviFlA1al3xVlEwUlBYVFApY3VAAgEwQkBSqLEeEii3ndEWUTBWU0lwAAAOeAgAqFRC6E4wWV/BllEwU1hJcAAADngCAJroljGZUAToRFvzdUABATBCQFXbfjDAruApoCmQVF3oWIiSOiSwEjpFsBI6ZrAYDJI6o7AQFESbeXAAAA54AAC66GlwUAAJOFpQuYgQHPQrjYRbcFAPAulbKFNoYClwFFQrqCgAVFgoBSuBcEAAATBCQJCIAJyQhIApVISAKVAUUjAAQAEaAFRVK+UriDRQABEwbQBDNEBQhjlsUCA0UQAZMFUAdjELUCA0UgAYlFYw+1AIVFYxi1AANVQAEDVoABooURqJMVxCkFRVK+IWUDVqXfhUUihQKWGcGqhRmgkxXUKRM1FQDVt0ERBsYixAAIlwAAAOeAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+  pc_init: 0x2a
+  pc_uninit: 0x1dc
+  pc_program_page: 0x1b4
+  pc_erase_sector: 0x0
+  data_section_offset: 0x0
+  flash_properties:
+    address_range:
+      start: 0x10000000
+      end: 0x18000000
+    page_size: 0x1000
+    erased_byte_value: 0xff
+    program_page_timeout: 1000
+    erase_sector_timeout: 3000
+    sectors:
+    - size: 0x1000
+      address: 0x0
+  cores:
+  - rv0

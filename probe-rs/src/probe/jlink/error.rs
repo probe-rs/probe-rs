@@ -15,6 +15,13 @@ pub enum JlinkError {
     /// permission to access it.
     Usb(#[from] std::io::Error),
 
+    #[error(
+        "the probe kept refusing commands, as it does while a previous session's command is pending; try again, or unplug the probe and plug it back in"
+    )]
+    /// The probe refused every attempt at a session's first command, even with its pending
+    /// output discarded between them.
+    BusyAtOpen(#[source] std::io::Error),
+
     #[error("device is missing capabilities ({0:?}) for operation")]
     /// An operation was attempted that is not supported by the probe.
     ///

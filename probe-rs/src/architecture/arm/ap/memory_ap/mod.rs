@@ -1,5 +1,6 @@
 //! Memory access port
 
+#[cfg(any(test, feature = "test"))]
 pub(crate) mod mock;
 
 mod amba_ahb3;

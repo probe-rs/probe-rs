@@ -912,13 +912,14 @@ impl<'probe> Armv8a<'probe> {
         Ok(())
     }
 
-    fn aligned_to_32_split_offset(&self, address: u64, data: &[u8]) -> (usize, usize) {
-        // rounding up
-        let word_aligned_address = (address + 3) & (!0x03u64);
-        let unaligned_prefix_size = usize::try_from(word_aligned_address - address).unwrap();
-        let unaligned_suffix_size =
-            usize::try_from((address + u64::try_from(data.len()).unwrap()) % 4).unwrap();
-        let word_aligned_size = data.len() - (unaligned_prefix_size + unaligned_suffix_size);
+    /// Splits an access of `len` bytes at `address` into the size of the unaligned prefix and
+    /// the size of the 32-bit aligned main section. The remaining bytes are the unaligned suffix.
+    ///
+    /// An access that does not reach the next word boundary is entirely prefix.
+    fn aligned_to_32_split_offset(address: u64, len: usize) -> (usize, usize) {
+        // bytes up to the next word boundary without exceeding 32-bits.
+        let unaligned_prefix_size = usize::from(address.wrapping_neg() as u8 % 4).min(len);
+        let word_aligned_size = (len - unaligned_prefix_size) & !0x03;
 
         (unaligned_prefix_size, word_aligned_size)
     }
@@ -930,7 +931,7 @@ impl<'probe> Armv8a<'probe> {
     ) -> (&'a mut [u8], &'a mut [u8], &'a mut [u8]) {
         // take out 32-bit aligned part
         let (unaligned_prefix_size, word_aligned_size) =
-            self.aligned_to_32_split_offset(address, data);
+            Self::aligned_to_32_split_offset(address, data.len());
 
         // take out 32-bit aligned part
         let (prefix, rest) = data.split_at_mut(unaligned_prefix_size);
@@ -941,7 +942,7 @@ impl<'probe> Armv8a<'probe> {
     fn aligned_to_32<'a>(&self, address: u64, data: &'a [u8]) -> (&'a [u8], &'a [u8], &'a [u8]) {
         // take out 32-bit aligned part
         let (unaligned_prefix_size, word_aligned_size) =
-            self.aligned_to_32_split_offset(address, data);
+            Self::aligned_to_32_split_offset(address, data.len());
 
         // take out 32-bit aligned part
         let (prefix, rest) = data.split_at(unaligned_prefix_size);
@@ -1698,200 +1699,26 @@ impl MemoryInterface for Armv8a<'_> {
 
 #[cfg(test)]
 mod test {
-    use crate::{
-        architecture::arm::{
-            FullyQualifiedApAddress, communication_interface::SwdSequence,
-            sequences::DefaultArmSequence,
-        },
-        probe::{BitSequence, DebugProbeError},
-    };
+    use crate::architecture::arm::sequences::DefaultArmSequence;
 
     use super::*;
+    use crate::architecture::arm::core::mock::MockProbe;
 
     const TEST_BASE_ADDRESS: u64 = 0x8000_1000;
     const TEST_CTI_ADDRESS: u64 = 0x8000_2000;
 
-    fn address_to_reg_num(address: u64) -> u32 {
-        ((address - TEST_BASE_ADDRESS) / 4) as u32
-    }
-
-    pub struct ExpectedMemoryOp {
-        read: bool,
-        address: u64,
-        value: u32,
-    }
-
-    pub struct MockProbe {
-        expected_ops: Vec<ExpectedMemoryOp>,
-        is_64_bit: bool,
-    }
-
-    impl MockProbe {
-        pub fn new(is_64_bit: bool) -> Self {
-            MockProbe {
-                expected_ops: vec![],
-                is_64_bit,
-            }
-        }
-
-        pub fn expected_read(&mut self, addr: u64, value: u32) {
-            self.expected_ops.push(ExpectedMemoryOp {
-                read: true,
-                address: addr,
-                value,
-            });
-        }
-
-        pub fn expected_write(&mut self, addr: u64, value: u32) {
-            self.expected_ops.push(ExpectedMemoryOp {
-                read: false,
-                address: addr,
-                value,
-            });
-        }
-    }
-    impl MemoryInterface<ArmError> for MockProbe {
-        fn read_8(&mut self, _address: u64, _data: &mut [u8]) -> Result<(), ArmError> {
-            todo!()
-        }
-
-        fn read_16(&mut self, _address: u64, _data: &mut [u16]) -> Result<(), ArmError> {
-            todo!()
-        }
-
-        fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), ArmError> {
-            if self.expected_ops.is_empty() {
-                panic!(
-                    "Received unexpected read_32 op: register {:#}",
-                    address_to_reg_num(address)
-                );
-            }
-
-            assert_eq!(data.len(), 1);
-
-            let expected_op = self.expected_ops.remove(0);
-
-            assert!(
-                expected_op.read,
-                "R/W mismatch for register: Expected {:#} Actual: {:#}",
-                address_to_reg_num(expected_op.address),
-                address_to_reg_num(address)
-            );
-            assert_eq!(
-                expected_op.address,
-                address,
-                "Read from unexpected register: Expected {:#} Actual: {:#}",
-                address_to_reg_num(expected_op.address),
-                address_to_reg_num(address)
-            );
-
-            data[0] = expected_op.value;
-
-            Ok(())
-        }
-
-        fn write_8(&mut self, _address: u64, _data: &[u8]) -> Result<(), ArmError> {
-            todo!()
-        }
-
-        fn write_16(&mut self, _address: u64, _data: &[u16]) -> Result<(), ArmError> {
-            todo!()
-        }
-
-        fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), ArmError> {
-            if self.expected_ops.is_empty() {
-                panic!(
-                    "Received unexpected write_32 op: register {:#}",
-                    address_to_reg_num(address)
-                );
-            }
-
-            assert_eq!(data.len(), 1);
-
-            let expected_op = self.expected_ops.remove(0);
-
-            assert!(!expected_op.read);
-            assert_eq!(
-                expected_op.address,
-                address,
-                "Write to unexpected register: Expected {:#} Actual: {:#}",
-                address_to_reg_num(expected_op.address),
-                address_to_reg_num(address)
-            );
-
-            assert_eq!(
-                expected_op.value, data[0],
-                "Write value mismatch Expected {:#X} Actual: {:#X}",
-                expected_op.value, data[0]
-            );
-
-            Ok(())
-        }
-
-        fn read_64(&mut self, _address: u64, _data: &mut [u64]) -> Result<(), ArmError> {
-            todo!()
-        }
-
-        fn write_64(&mut self, _address: u64, _data: &[u64]) -> Result<(), ArmError> {
-            todo!()
-        }
-
-        fn flush(&mut self) -> Result<(), ArmError> {
-            todo!()
-        }
-
-        fn supports_8bit_transfers(&self) -> Result<bool, ArmError> {
-            Ok(false)
-        }
-
-        fn supports_native_64bit_access(&mut self) -> bool {
-            false
-        }
-    }
-
-    impl ArmMemoryInterface for MockProbe {
-        fn fully_qualified_address(&self) -> FullyQualifiedApAddress {
-            todo!()
-        }
-
-        fn get_arm_debug_interface(
-            &mut self,
-        ) -> Result<&mut dyn crate::architecture::arm::ArmDebugInterface, DebugProbeError> {
-            Err(DebugProbeError::NotImplemented {
-                function_name: "get_arm_debug_interface",
-            })
-        }
-
-        fn generic_status(&mut self) -> Result<crate::architecture::arm::ap::CSW, ArmError> {
-            Err(ArmError::Probe(DebugProbeError::NotImplemented {
-                function_name: "generic_status",
-            }))
-        }
-
-        fn base_address(&mut self) -> Result<u64, ArmError> {
-            todo!()
-        }
-    }
-
-    impl SwdSequence for MockProbe {
-        fn swj_sequence(&mut self, _bits: &BitSequence) -> Result<(), DebugProbeError> {
-            todo!()
-        }
-
-        fn swj_pins(
-            &mut self,
-            _pin_out: u32,
-            _pin_select: u32,
-            _pin_wait: u32,
-        ) -> Result<u32, DebugProbeError> {
-            todo!()
-        }
-    }
-
     fn add_status_expectations(probe: &mut MockProbe, halted: bool) {
+        add_status_expectations_with_width(probe, halted, false);
+    }
+
+    fn add_64_bit_status_expectations(probe: &mut MockProbe, halted: bool) {
+        add_status_expectations_with_width(probe, halted, true);
+    }
+
+    fn add_status_expectations_with_width(probe: &mut MockProbe, halted: bool, is_64_bit: bool) {
         let mut edscr = Edscr(0);
         edscr.set_status(if halted { 0b010011 } else { 0b000010 });
-        if probe.is_64_bit {
+        if is_64_bit {
             edscr.set_rw(0b1111);
         }
         probe.expected_read(
@@ -2201,7 +2028,7 @@ mod test {
 
     #[test]
     fn armv8a_new() {
-        let mut probe = MockProbe::new(false);
+        let mut probe = MockProbe::new(TEST_BASE_ADDRESS);
 
         // Add expectations
         add_status_expectations(&mut probe, true);
@@ -2224,7 +2051,7 @@ mod test {
 
     #[test]
     fn armv8a_core_halted() {
-        let mut probe = MockProbe::new(false);
+        let mut probe = MockProbe::new(TEST_BASE_ADDRESS);
         let mut state = CortexARState::new();
 
         // Add expectations
@@ -2261,7 +2088,7 @@ mod test {
 
     #[test]
     fn armv8a_wait_for_core_halted() {
-        let mut probe = MockProbe::new(false);
+        let mut probe = MockProbe::new(TEST_BASE_ADDRESS);
         let mut state = CortexARState::new();
 
         // Add expectations
@@ -2299,7 +2126,7 @@ mod test {
 
     #[test]
     fn armv8a_status_running() {
-        let mut probe = MockProbe::new(false);
+        let mut probe = MockProbe::new(TEST_BASE_ADDRESS);
         let mut state = CortexARState::new();
 
         // Add expectations
@@ -2328,7 +2155,7 @@ mod test {
 
     #[test]
     fn armv8a_status_halted() {
-        let mut probe = MockProbe::new(false);
+        let mut probe = MockProbe::new(TEST_BASE_ADDRESS);
         let mut state = CortexARState::new();
 
         // Add expectations
@@ -2362,7 +2189,7 @@ mod test {
     fn armv8a_read_core_reg_common() {
         const REG_VALUE: u32 = 0xABCD;
 
-        let mut probe = MockProbe::new(false);
+        let mut probe = MockProbe::new(TEST_BASE_ADDRESS);
         let mut state = CortexARState::new();
 
         // Add expectations
@@ -2399,11 +2226,11 @@ mod test {
     fn armv8a_read_core_reg_common_64() {
         const REG_VALUE: u64 = 0xFFFF_EEEE_0000_ABCD;
 
-        let mut probe = MockProbe::new(true);
+        let mut probe = MockProbe::new(TEST_BASE_ADDRESS);
         let mut state = CortexARState::new();
 
         // Add expectations
-        add_status_expectations(&mut probe, true);
+        add_64_bit_status_expectations(&mut probe, true);
 
         // Read register
         add_read_reg_64_expectations(&mut probe, 2, REG_VALUE);
@@ -2436,7 +2263,7 @@ mod test {
     fn armv8a_read_core_reg_pc() {
         const REG_VALUE: u32 = 0xABCD;
 
-        let mut probe = MockProbe::new(false);
+        let mut probe = MockProbe::new(TEST_BASE_ADDRESS);
         let mut state = CortexARState::new();
 
         // Add expectations
@@ -2474,11 +2301,11 @@ mod test {
     fn armv8a_read_core_64_reg_pc() {
         const REG_VALUE: u64 = 0xFFFF_EEEE_0000_ABCD;
 
-        let mut probe = MockProbe::new(true);
+        let mut probe = MockProbe::new(TEST_BASE_ADDRESS);
         let mut state = CortexARState::new();
 
         // Add expectations
-        add_status_expectations(&mut probe, true);
+        add_64_bit_status_expectations(&mut probe, true);
 
         // Read PC
         add_read_reg_64_expectations(&mut probe, 0, 0);
@@ -2512,7 +2339,7 @@ mod test {
     fn armv8a_read_core_reg_cpsr() {
         const REG_VALUE: u32 = 0xABCD;
 
-        let mut probe = MockProbe::new(false);
+        let mut probe = MockProbe::new(TEST_BASE_ADDRESS);
         let mut state = CortexARState::new();
 
         // Add expectations
@@ -2550,11 +2377,11 @@ mod test {
     fn armv8a_read_core_64_reg_cpsr() {
         const REG_VALUE: u32 = 0xABCD;
 
-        let mut probe = MockProbe::new(true);
+        let mut probe = MockProbe::new(TEST_BASE_ADDRESS);
         let mut state = CortexARState::new();
 
         // Add expectations
-        add_status_expectations(&mut probe, true);
+        add_64_bit_status_expectations(&mut probe, true);
 
         // Read CPSR
         add_read_reg_64_expectations(&mut probe, 0, 0);
@@ -2588,7 +2415,7 @@ mod test {
     fn armv8a_halt() {
         const REG_VALUE: u32 = 0xABCD;
 
-        let mut probe = MockProbe::new(false);
+        let mut probe = MockProbe::new(TEST_BASE_ADDRESS);
         let mut state = CortexARState::new();
 
         // Add expectations
@@ -2628,7 +2455,7 @@ mod test {
 
     #[test]
     fn armv8a_run() {
-        let mut probe = MockProbe::new(false);
+        let mut probe = MockProbe::new(TEST_BASE_ADDRESS);
         let mut state = CortexARState::new();
 
         // Add expectations
@@ -2659,7 +2486,7 @@ mod test {
     #[test]
     fn armv8a_available_breakpoint_units() {
         const BP_COUNT: u32 = 4;
-        let mut probe = MockProbe::new(false);
+        let mut probe = MockProbe::new(TEST_BASE_ADDRESS);
         let mut state = CortexARState::new();
 
         // Add expectations
@@ -2687,7 +2514,7 @@ mod test {
         const BP_COUNT: u32 = 4;
         const BP1: u64 = 0x2345;
         const BP2: u64 = 0x8000_0000;
-        let mut probe = MockProbe::new(false);
+        let mut probe = MockProbe::new(TEST_BASE_ADDRESS);
         let mut state = CortexARState::new();
 
         // Add expectations
@@ -2770,7 +2597,7 @@ mod test {
     #[test]
     fn armv8a_set_hw_breakpoint() {
         const BP_VALUE: u64 = 0x2345;
-        let mut probe = MockProbe::new(false);
+        let mut probe = MockProbe::new(TEST_BASE_ADDRESS);
         let mut state = CortexARState::new();
 
         // Add expectations
@@ -2815,7 +2642,7 @@ mod test {
 
     #[test]
     fn armv8a_clear_hw_breakpoint() {
-        let mut probe = MockProbe::new(false);
+        let mut probe = MockProbe::new(TEST_BASE_ADDRESS);
         let mut state = CortexARState::new();
 
         // Add expectations
@@ -2854,7 +2681,7 @@ mod test {
         const MEMORY_VALUE: u32 = 0xBA5EBA11;
         const MEMORY_ADDRESS: u64 = 0x12345678;
 
-        let mut probe = MockProbe::new(false);
+        let mut probe = MockProbe::new(TEST_BASE_ADDRESS);
         let mut state = CortexARState::new();
 
         // Add expectations
@@ -2885,11 +2712,11 @@ mod test {
         const MEMORY_VALUE: u32 = 0xBA5EBA11;
         const MEMORY_ADDRESS: u64 = 0x12345678;
 
-        let mut probe = MockProbe::new(true);
+        let mut probe = MockProbe::new(TEST_BASE_ADDRESS);
         let mut state = CortexARState::new();
 
         // Add expectations
-        add_status_expectations(&mut probe, true);
+        add_64_bit_status_expectations(&mut probe, true);
 
         // Read memory
         add_read_reg_64_expectations(&mut probe, 0, 0);
@@ -2917,7 +2744,7 @@ mod test {
         const MEMORY_ADDRESS: u64 = 0x12345679;
         const MEMORY_WORD_ADDRESS: u64 = 0x12345678;
 
-        let mut probe = MockProbe::new(false);
+        let mut probe = MockProbe::new(TEST_BASE_ADDRESS);
         let mut state = CortexARState::new();
 
         // Add expectations
@@ -2948,11 +2775,11 @@ mod test {
         const MEMORY_ADDRESS: u64 = 0x12345679;
         const MEMORY_WORD_ADDRESS: u64 = 0x12345678;
 
-        let mut probe = MockProbe::new(true);
+        let mut probe = MockProbe::new(TEST_BASE_ADDRESS);
         let mut state = CortexARState::new();
 
         // Add expectations
-        add_status_expectations(&mut probe, true);
+        add_64_bit_status_expectations(&mut probe, true);
 
         // Read memory
         add_read_reg_64_expectations(&mut probe, 0, 0);
@@ -2971,5 +2798,134 @@ mod test {
         .unwrap();
 
         assert_eq!(0xBA, armv8a.read_word_8(MEMORY_ADDRESS).unwrap());
+    }
+
+    /// Returns the (prefix, aligned, suffix) sizes for an access of `len` bytes at `address`.
+    fn split_sizes(address: u64, len: usize) -> (usize, usize, usize) {
+        let (prefix, aligned) = Armv8a::aligned_to_32_split_offset(address, len);
+        (prefix, aligned, len - prefix - aligned)
+    }
+
+    #[test]
+    fn armv8a_aligned_split_aligned() {
+        assert_eq!(split_sizes(0x1000, 4), (0, 4, 0));
+        assert_eq!(split_sizes(0x1000, 8), (0, 8, 0));
+        assert_eq!(split_sizes(0x1000, 6), (0, 4, 2));
+        assert_eq!(split_sizes(0x1000, 3), (0, 0, 3));
+    }
+
+    #[test]
+    fn armv8a_aligned_split_unaligned_within_one_word() {
+        assert_eq!(split_sizes(0x1001, 1), (1, 0, 0));
+        assert_eq!(split_sizes(0x1001, 2), (2, 0, 0));
+        assert_eq!(split_sizes(0x1001, 3), (3, 0, 0));
+        assert_eq!(split_sizes(0x1002, 1), (1, 0, 0));
+        assert_eq!(split_sizes(0x1002, 2), (2, 0, 0));
+        assert_eq!(split_sizes(0x1003, 1), (1, 0, 0));
+    }
+
+    #[test]
+    fn armv8a_aligned_split_unaligned_crossing_one_boundary() {
+        assert_eq!(split_sizes(0x1003, 2), (1, 0, 1));
+        assert_eq!(split_sizes(0x1001, 4), (3, 0, 1));
+        assert_eq!(split_sizes(0x1002, 5), (2, 0, 3));
+        assert_eq!(split_sizes(0x1002, 6), (2, 4, 0));
+    }
+
+    #[test]
+    fn armv8a_aligned_split_unaligned_several_words() {
+        assert_eq!(split_sizes(0x1001, 12), (3, 8, 1));
+        assert_eq!(split_sizes(0x1003, 10), (1, 8, 1));
+        assert_eq!(split_sizes(0x1002, 13), (2, 8, 3));
+    }
+
+    #[test]
+    fn armv8a_aligned_split_zero_length() {
+        for address in 0x1000..0x1004 {
+            assert_eq!(split_sizes(address, 0), (0, 0, 0));
+        }
+    }
+
+    #[test]
+    fn armv8a_aligned_split_end_of_address_space() {
+        assert_eq!(split_sizes(u64::MAX, 1), (1, 0, 0));
+        assert_eq!(split_sizes(u64::MAX - 3, 4), (0, 4, 0));
+    }
+
+    #[test]
+    fn armv8a_aligned_split_invariants() {
+        for address in 0x1000..0x1008u64 {
+            for len in 0..20 {
+                let (prefix, aligned, suffix) = split_sizes(address, len);
+                let to_boundary = usize::try_from(address.next_multiple_of(4) - address).unwrap();
+
+                assert_eq!(prefix, to_boundary.min(len), "{address:#x}+{len}");
+                assert_eq!(aligned % 4, 0, "{address:#x}+{len}");
+                assert!(suffix < 4, "{address:#x}+{len}");
+                if aligned + suffix > 0 {
+                    let rest = address + u64::try_from(prefix).unwrap();
+                    assert!(rest.is_multiple_of(4), "{address:#x}+{len}");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn armv8a_read_8_aarch64_unaligned_within_word() {
+        const MEMORY_ADDRESS: u64 = 0x12345679;
+        const MEMORY_VALUE: [u8; 2] = [0xBA, 0x5E];
+
+        let mut probe = MockProbe::new(TEST_BASE_ADDRESS);
+        let mut state = CortexARState::new();
+
+        // Add expectations
+        add_64_bit_status_expectations(&mut probe, true);
+
+        // Read memory one byte at a time
+        add_read_reg_64_expectations(&mut probe, 0, 0);
+        add_read_reg_64_expectations(&mut probe, 1, 0);
+        add_set_x0_expectation(&mut probe, MEMORY_ADDRESS);
+
+        let mut edscr = Edscr(0);
+        edscr.set_ite(true);
+        edscr.set_txfull(true);
+
+        for value in MEMORY_VALUE {
+            probe.expected_write(
+                Editr::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap(),
+                aarch64::build_ldrb(1, 0, 1),
+            );
+            probe.expected_read(
+                Edscr::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap(),
+                edscr.into(),
+            );
+            probe.expected_write(
+                Editr::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap(),
+                aarch64::build_msr(2, 3, 0, 5, 0, 1),
+            );
+            probe.expected_read(
+                Edscr::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap(),
+                edscr.into(),
+            );
+            probe.expected_read(
+                Dbgdtrtx::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap(),
+                value.into(),
+            );
+        }
+
+        let mock_mem = Box::new(probe) as _;
+
+        let mut armv8a = Armv8a::new(
+            mock_mem,
+            &mut state,
+            TEST_BASE_ADDRESS,
+            TEST_CTI_ADDRESS,
+            DefaultArmSequence::create(),
+        )
+        .unwrap();
+
+        let mut data = [0u8; 2];
+        armv8a.read_8(MEMORY_ADDRESS, &mut data).unwrap();
+        assert_eq!(data, MEMORY_VALUE);
     }
 }

@@ -666,7 +666,7 @@ impl<'probe> Armv7m<'probe> {
             };
 
             // Clear DFSR register. The bits in the register are sticky,
-            // so we clear them here to ensure that that none are set.
+            // so we clear them here to ensure that none are set.
             let dfsr_clear = Dfsr::clear_all();
 
             memory.write_word_32(Dfsr::get_mmio_address(), dfsr_clear.into())?;

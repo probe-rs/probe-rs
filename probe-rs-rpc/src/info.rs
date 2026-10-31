@@ -132,7 +132,7 @@ pub enum DpAddress {
     /// Access the single DP on the bus, assuming there is only one.
     /// Will cause corruption if multiple are present.
     Default,
-    /// Select a particular DP on a SWDv2 multidrop bus. The contained `u32` is
+    /// Select a particular DP on an SWDv2 multidrop bus. The contained `u32` is
     /// the `TARGETSEL` value to select it.
     Multidrop(u32),
 }

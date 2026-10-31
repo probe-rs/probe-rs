@@ -2,8 +2,24 @@ name: MCXA3
 manufacturer:
   id: 0x15
   cc: 0x0
-generated_from_pack: true
-pack_file_release: 26.09.00
+chip_detection:
+# MCXAP100M180F40RM 14.5.1.36-37 and MCXAP144M240F60RM 14.5.1.30-31.
+- !NxpMcxa
+  register_address: 0x40091ff0
+  jtag_id: 0x0726902b
+  variants:
+    0x2343: MCXA343
+    0x2344: MCXA344
+- !NxpMcxa
+  register_address: 0x40091ff0
+  jtag_id: 0x0726802b
+  variants:
+    0x2345: MCXA345
+    0x2346: MCXA346
+    0x2355: MCXA355
+    0x2356: MCXA356
+    0x2365: MCXA365
+    0x2366: MCXA366
 variants:
 - name: MCXA343
   package_variants:

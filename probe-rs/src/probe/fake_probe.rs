@@ -13,12 +13,13 @@ use crate::{
     },
     probe::{
         BatchError, BatchExecutionError, BitSequence, CommandResult, DebugProbe, DebugProbeError,
-        Probe, ResetLine, Results, WireProtocol,
+        DebugProbeSelector, Probe, ProbeCreationError, ProbeFactory, ResetLine, Results,
+        WireProtocol,
+        list::ProbeListItem,
         swd::{Direction, Port, SwdBatch, SwdOp, SwdProbe},
     },
 };
 
-#[cfg(any(test, feature = "test"))]
 use object::{
     Object, ObjectSection,
     elf::PT_LOAD,
@@ -362,7 +363,6 @@ impl FakeProbe {
 
     /// Fake probe with a mocked core
     /// with access to an actual binary file.
-    #[cfg(any(test, feature = "test"))]
     pub fn with_mocked_core_and_binary(program_binary: &std::path::Path) -> Self {
         let file_data = std::fs::read(program_binary).unwrap();
         let file_data_slice = file_data.as_slice();
@@ -525,7 +525,6 @@ impl FakeProbe {
     }
 }
 
-#[cfg(any(test, feature = "test"))]
 fn core_with_binary<T: FileHeader>(elf_file: ElfFile<T>) -> MockCore {
     use probe_rs_target::MemoryRange;
 
@@ -583,6 +582,31 @@ fn core_with_binary<T: FileHeader>(elf_file: ElfFile<T>) -> MockCore {
 impl Default for FakeProbe {
     fn default() -> Self {
         FakeProbe::new()
+    }
+}
+
+/// A probe factory that opens no probe and lists no probes.
+///
+/// Use it to create a [`DebugProbeInfo`](crate::probe::DebugProbeInfo) for a fake probe. Open the
+/// fake probe through a [`ProbeLister`](crate::probe::list::ProbeLister).
+#[derive(Debug)]
+pub struct FakeProbeFactory;
+
+impl std::fmt::Display for FakeProbeFactory {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("Mocked Probe")
+    }
+}
+
+impl ProbeFactory for FakeProbeFactory {
+    fn open(&self, _selector: &DebugProbeSelector) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
+        Err(DebugProbeError::ProbeCouldNotBeCreated(
+            ProbeCreationError::Other("open a fake probe through a probe lister"),
+        ))
+    }
+
+    fn list_probes(&self) -> Vec<ProbeListItem> {
+        Vec::new()
     }
 }
 
@@ -762,6 +786,10 @@ impl SwdSequence for FakeArmInterface {
 }
 
 impl ArmDebugInterface for FakeArmInterface {
+    fn driver_mut(&mut self) -> Option<&mut dyn DebugProbe> {
+        Some(self.probe.as_mut())
+    }
+
     fn memory_interface(
         &mut self,
         access_port_address: &FullyQualifiedApAddress,
@@ -994,5 +1022,16 @@ mod test {
         probe
             .attach("nrf51822_xxAC", Permissions::default())
             .unwrap();
+    }
+
+    #[test]
+    fn a_session_lends_its_probe() {
+        let mut session = FakeProbe::with_mocked_core()
+            .into_probe()
+            .attach("nrf51822_xxAC", Permissions::default())
+            .unwrap();
+
+        let probe: &mut dyn std::any::Any = session.driver_mut().unwrap();
+        assert!(probe.downcast_mut::<FakeProbe>().is_some());
     }
 }

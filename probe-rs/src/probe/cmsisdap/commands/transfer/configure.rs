@@ -12,7 +12,9 @@ pub struct ConfigureRequest {
 }
 
 impl Request for ConfigureRequest {
-    const COMMAND_ID: CommandId = CommandId::TransferConfigure;
+    fn command(&self) -> CommandId {
+        CommandId::TransferConfigure
+    }
 
     type Response = ConfigureResponse;
 

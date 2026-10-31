@@ -87,6 +87,20 @@ impl StreamDecoder {
         }
         Ok(Some(DecodedData::String(string)))
     }
+
+    /// Returns the data that waits for more input, and ends the last line.
+    /// Use this when the stream starts again, for example after a reset.
+    pub fn flush(&mut self) -> String {
+        match self {
+            StreamDecoder::String(decoder) => decoder.flush(),
+            StreamDecoder::Defmt { processor } => {
+                processor.reset();
+                String::new()
+            }
+            StreamDecoder::Auto { decoder } => decoder.flush(),
+            StreamDecoder::BinaryLE | StreamDecoder::ZephyrDict { .. } => String::new(),
+        }
+    }
 }
 
 /// Decodes text. Adds a timestamp at the start of each line, if enabled.
@@ -144,6 +158,12 @@ impl TextDecoder {
             output.push_str(line);
             self.at_line_start = line.ends_with('\n');
         }
+        output
+    }
+
+    fn flush(&mut self) -> String {
+        let mut output = String::from_utf8_lossy(&std::mem::take(&mut self.partial)).into_owned();
+        output.push_str(self.end_line());
         output
     }
 
@@ -292,16 +312,24 @@ impl DefmtProcessor {
                 format,
                 is_timestamp_available: has_timestamp && show_timestamps,
             }),
-            decoder: unsafe {
-                // Extend lifetime to 'static. We can do this because we hold a reference to the
-                // defmt_data's inner table for the lifetime of the processor.
-                std::mem::transmute::<
-                    Box<dyn DefmtStreamDecoder>,
-                    Box<dyn DefmtStreamDecoder + 'static>,
-                >(defmt_data.as_ref().table.new_stream_decoder())
-            },
+            decoder: Self::new_decoder(&defmt_data),
             defmt_data: defmt_data.clone(),
         }
+    }
+
+    fn new_decoder(defmt_data: &DefmtState) -> Box<dyn DefmtStreamDecoder + 'static> {
+        unsafe {
+            // Extend lifetime to 'static. We can do this because we hold a reference to the
+            // defmt_data's inner table for the lifetime of the processor.
+            std::mem::transmute::<Box<dyn DefmtStreamDecoder>, Box<dyn DefmtStreamDecoder + 'static>>(
+                defmt_data.as_ref().table.new_stream_decoder(),
+            )
+        }
+    }
+
+    /// Drops an incomplete frame.
+    fn reset(&mut self) {
+        self.decoder = Self::new_decoder(&self.defmt_data);
     }
 
     /// Returns `true` if `data` starts a valid defmt stream for this table.
@@ -435,6 +463,24 @@ impl AutoDecoder {
             (DetectedFormat::Defmt, Some(defmt)) => defmt.process(&pending),
             _ => Ok(hex(&pending)),
         }
+    }
+
+    fn flush(&mut self) -> String {
+        let pending = std::mem::take(&mut self.pending);
+        let mut output = if self.in_frame && !pending.is_empty() {
+            // An esp-println frame that did not end.
+            self.process_frame(&pending)
+        } else if self.format.is_none() && !looks_like_text(&pending) {
+            hex(&pending)
+        } else {
+            self.text.process(&pending)
+        };
+        self.in_frame = false;
+        if let Some(defmt) = &mut self.defmt {
+            defmt.reset();
+        }
+        output.push_str(&self.text.flush());
+        output
     }
 
     /// Returns `None` if more data is necessary.

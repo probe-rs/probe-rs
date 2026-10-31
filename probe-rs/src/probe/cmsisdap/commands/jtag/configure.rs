@@ -19,7 +19,9 @@ impl ConfigureRequest {
 }
 
 impl Request for ConfigureRequest {
-    const COMMAND_ID: CommandId = CommandId::JtagConfigure;
+    fn command(&self) -> CommandId {
+        CommandId::JtagConfigure
+    }
 
     type Response = ConfigureResponse;
 

@@ -95,7 +95,7 @@ pub fn extract_flash_algo(
     let code_section_offset = algorithm_binary.code_section.start;
 
     // Extract the function pointers,
-    // and check if a RTT symbol is present.
+    // and check if an RTT symbol is present.
     for sym in elf.syms.iter() {
         let name = &elf.strtab[sym.st_name];
 

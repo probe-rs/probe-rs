@@ -94,6 +94,7 @@ flash_algorithms:
     FlashSize: 0x60c
   data_section_offset: 0xcf0
   rtt_location: 0x2f022c08
+  rtt_poll_interval: 500
   flash_properties:
     address_range:
       start: 0x0
@@ -108,4 +109,5 @@ flash_algorithms:
   cores:
   - cpu0
   - cpu1
+  stack_overflow_check: false
   transfer_encoding: miniz

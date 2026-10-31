@@ -1,6 +1,6 @@
 //! The probe table of the configuration file: settings for each probe.
 
-use std::collections::HashMap;
+use std::{any::Any, collections::HashMap};
 
 use anyhow::Context as _;
 use probe_rs::probe::{
@@ -108,12 +108,12 @@ impl DriverConfig {
             ))
         };
         match self {
-            DriverConfig::Ch347(config) => probe
-                .try_into::<Ch347>()
+            DriverConfig::Ch347(config) => (probe.driver_mut() as &mut dyn Any)
+                .downcast_mut::<Ch347>()
                 .ok_or_else(mismatch)?
                 .configure(config),
-            DriverConfig::Ftdi(config) => probe
-                .try_into::<FtdiProbe>()
+            DriverConfig::Ftdi(config) => (probe.driver_mut() as &mut dyn Any)
+                .downcast_mut::<FtdiProbe>()
                 .ok_or_else(mismatch)?
                 .configure(config),
         }

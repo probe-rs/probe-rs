@@ -91,10 +91,10 @@ pub(crate) async fn with_dap_rpc_connection<R>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::cmd::dap_server::test::{MockProbeFactory, TestLister};
+    use crate::cmd::dap_server::test::TestLister;
     use crate::util::common_options::ProbeOptions;
     use probe_rs::architecture::arm::FullyQualifiedApAddress;
-    use probe_rs::integration::{FakeProbe, Operation};
+    use probe_rs::integration::{FakeProbe, FakeProbeFactory, Operation};
     use probe_rs::probe::DebugProbeInfo;
     use std::path::PathBuf;
     use std::sync::Arc;
@@ -112,7 +112,7 @@ mod tests {
             0x12,
             0x23,
             Some(serial.to_owned()),
-            &MockProbeFactory,
+            &FakeProbeFactory,
             None,
             false,
         );

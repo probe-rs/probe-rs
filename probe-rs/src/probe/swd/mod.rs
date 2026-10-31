@@ -33,11 +33,11 @@ pub struct SwdSettings {
     /// low.
     pub num_idle_cycles_between_writes: usize,
 
-    /// How often a SWD transfer is retried when a WAIT response
+    /// How often an SWD transfer is retried when a WAIT response
     /// is received.
     pub num_retries_after_wait: usize,
 
-    /// When a SWD transfer is retried due to a WAIT response, the idle
+    /// When an SWD transfer is retried due to a WAIT response, the idle
     /// cycle amount is doubled every time as a backoff. This sets a maximum
     /// cap to the cycle amount.
     pub max_retry_idle_cycles_after_wait: usize,

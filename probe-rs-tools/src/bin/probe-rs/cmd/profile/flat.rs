@@ -167,7 +167,7 @@ pub(super) fn flat_profile(
     Ok(())
 }
 
-// Wrapper around addr2line that allows to look up function names
+// Wrapper around addr2line that allows the caller to look up function names
 pub(crate) struct Symbols {
     loader: Loader,
 }

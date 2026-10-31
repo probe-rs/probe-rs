@@ -1795,6 +1795,8 @@ impl<'state> RiscvCommunicationInterface<'state> {
 
             // Reset the systembus busy error flag.
             sbcs.set_sbbusyerror(true);
+            // `sberror` is sticky and blocks all accesses until it is cleared.
+            sbcs.set_sberror(0b111);
 
             sbcs.set_sbaccess(V::WIDTH as u32);
 
@@ -1839,6 +1841,8 @@ impl<'state> RiscvCommunicationInterface<'state> {
 
             // Reset the systembus busy error flag.
             sbcs.set_sbbusyerror(true);
+            // `sberror` is sticky and blocks all accesses until it is cleared.
+            sbcs.set_sberror(0b111);
 
             sbcs.set_sbaccess(V::WIDTH as u32);
 
@@ -2331,6 +2335,8 @@ impl<'state> RiscvCommunicationInterface<'state> {
             let mut sbcs = Sbcs(0);
             // Reset busy error flag;
             sbcs.set_sbbusyerror(true);
+            // `sberror` is sticky and blocks all accesses until it is cleared.
+            sbcs.set_sberror(0b111);
             // Set correct access width
             sbcs.set_sbaccess(V::WIDTH as u32);
             sbcs.set_sbautoincrement(true);
@@ -2345,8 +2351,10 @@ impl<'state> RiscvCommunicationInterface<'state> {
                 self.schedule_write_large_dtm_register::<V, Sbdata>(*value)?;
             }
 
-            // Check that the write was successful
+            // Check that the write was successful. The last write can still be in progress, and
+            // the next access clears the error that it reports.
             let sbcs = self.read_dm_register::<Sbcs>()?;
+            let sbcs = self.wait_for_sysbus_idle(sbcs, Instant::now())?;
             if sbcs.sberror() != 0 {
                 break Err(RiscvError::SystemBusAccess);
             }
@@ -2359,16 +2367,17 @@ impl<'state> RiscvCommunicationInterface<'state> {
     }
 
     /// Wait until `sbbusy` is clear, so that a system bus access can start again.
+    /// Returns the last value of `sbcs`.
     ///
     /// Fails if the access that started at `start` takes longer than `RISCV_TIMEOUT`.
-    fn wait_for_sysbus_idle(&mut self, mut sbcs: Sbcs, start: Instant) -> Result<(), RiscvError> {
+    fn wait_for_sysbus_idle(&mut self, mut sbcs: Sbcs, start: Instant) -> Result<Sbcs, RiscvError> {
         loop {
             if start.elapsed() > RISCV_TIMEOUT {
                 tracing::warn!("System bus access timed out, sbcs: {:?}", sbcs);
                 return Err(RiscvError::Timeout);
             }
             if !sbcs.sbbusy() {
-                return Ok(());
+                return Ok(sbcs);
             }
             std::thread::sleep(Duration::from_millis(1));
             sbcs = self.read_dm_register::<Sbcs>()?;

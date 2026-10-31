@@ -78,7 +78,7 @@ impl Display for RegisterRole {
 /// - To be Implemented: [AAPCS64](https://github.com/ARM-software/abi-aa/blob/main/aapcs32/aapcs32.rst#core-registers)
 /// - To be Implemented: [RISC-V PCS](https://github.com/riscv-non-isa/riscv-elf-psabi-doc/releases/download/v1.0/riscv-abi.pdf)
 ///
-/// Please note that the `Procedure Calling Standard` define register rules for the act of calling and/or returning from functions,
+/// Please note that the `Procedure Calling Standard` defines register rules for the act of calling and/or returning from functions,
 /// while the timing of a stack unwinding is different (the `callee` has not yet completed / executed the epilogue),
 /// and the rules about preserving register values have to take this into account.
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
@@ -581,7 +581,7 @@ impl CoreRegisters {
         self.core_registers().nth(index).unwrap()
     }
 
-    /// Returns the nth platform register if it is exists, `None` otherwise.
+    /// Returns the nth platform register if it exists, `None` otherwise.
     pub fn get_core_register(&self, index: usize) -> Option<&CoreRegister> {
         self.core_registers().nth(index)
     }
@@ -595,7 +595,7 @@ impl CoreRegisters {
         self.get_argument_register(index).unwrap()
     }
 
-    /// Returns the nth argument register if it is exists, `None` otherwise.
+    /// Returns the nth argument register if it exists, `None` otherwise.
     pub fn get_argument_register(&self, index: usize) -> Option<&CoreRegister> {
         self.0
             .iter()
@@ -617,7 +617,7 @@ impl CoreRegisters {
         self.get_result_register(index).unwrap()
     }
 
-    /// Returns the nth result register if it is exists, `None` otherwise.
+    /// Returns the nth result register if it exists, `None` otherwise.
     pub fn get_result_register(&self, index: usize) -> Option<&CoreRegister> {
         self.0
             .iter()
@@ -719,7 +719,7 @@ impl CoreRegisters {
         self.get_fpu_register(index).unwrap()
     }
 
-    /// Returns the nth fpu register if it is exists, `None` otherwise.
+    /// Returns the nth fpu register if it exists, `None` otherwise.
     pub fn get_fpu_register(&self, index: usize) -> Option<&CoreRegister> {
         self.0
             .iter()
