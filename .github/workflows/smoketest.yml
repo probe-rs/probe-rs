@@ -1,6 +1,4 @@
 on:
-  push:
-    branches: [master, staging, trying]
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
   merge_group:
@@ -143,7 +141,7 @@ jobs:
       # commit that has a result for it. The comment workflow uses report/baseline.jsonl.
       - name: Find the baseline
         env:
-          BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}
+          BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
         run: |
           mkdir baseline
           if [ -n "$BASE" ] && git fetch -q --depth=20 origin "$BASE" && git fetch -q --depth=1 origin bench-data; then
