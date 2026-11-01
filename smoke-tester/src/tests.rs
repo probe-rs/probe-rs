@@ -8,9 +8,15 @@ use probe_rs::{
     flashing::{DownloadOptions, FlashProgress, download_file_with_options, image_format},
 };
 
+pub mod benchmark;
 pub mod stepping;
 
-use crate::{CORE_TESTS, SESSION_TESTS, TestResult, dut_definition::DutDefinition, skip_test};
+use crate::{
+    CORE_TESTS, SESSION_TESTS, TestResult,
+    bench::{FlashTimer, Recorder},
+    dut_definition::DutDefinition,
+    skip_test,
+};
 
 #[smoke_tester_macros::test(core)]
 pub fn test_register_read(_dut_definition: &DutDefinition, core: &mut Core) -> TestResult {
@@ -97,10 +103,16 @@ fn test_write_read(scenario: &str, core: &mut Core, address: u64, data: &[u8]) -
     Ok(())
 }
 
+/// Returns the reason to skip memory access tests on `dut`, if one exists.
+pub(crate) fn memory_access_skip_reason(dut: &DutDefinition) -> Option<&'static str> {
+    (dut.chip.name == "STM32H753ZI")
+        .then_some("STM32H7 memory read has some unknown issue - maybe cache problems")
+}
+
 #[smoke_tester_macros::test(core)]
 fn test_memory_access(dut: &DutDefinition, core: &mut Core) -> TestResult {
-    if dut.chip.name == "STM32H753ZI" {
-        skip_test!("STM32H7 memory read has some unknown issue - maybe cache problems");
+    if let Some(reason) = memory_access_skip_reason(dut) {
+        skip_test!(reason);
     }
 
     let memory_regions = core
@@ -290,10 +302,14 @@ pub fn test_flashing(dut_definition: &DutDefinition, session: &mut Session) -> T
         skip_test!("No flash test binary specified");
     };
 
+    let mut recorder = Recorder::new(dut_definition, session)?;
+    let mut timer = FlashTimer::default();
+
     let mut options = DownloadOptions::default();
     options.progress = FlashProgress::new(|event| {
         log::debug!("Flash Event: {event:?}");
         print!(".");
+        timer.event(&event);
     });
 
     println!("Starting flashing test");
@@ -315,6 +331,8 @@ pub fn test_flashing(dut_definition: &DutDefinition, session: &mut Session) -> T
     println!("Total time for flashing: {:.2?}", start_time.elapsed());
 
     println!("Finished flashing");
+
+    timer.record(&mut recorder)?;
 
     Ok(())
 }
