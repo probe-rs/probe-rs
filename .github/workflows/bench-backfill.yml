@@ -20,10 +20,11 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       commits: ${{ steps.list.outputs.commits }}
+      jobs: ${{ steps.list.outputs.jobs }}
     steps:
       - uses: actions/checkout@v7
       - id: list
-        run: echo "commits=$(grep -o '^[0-9a-f]\{40\}' backfill/commits.txt | jq -Rsc 'split("\n") | map(select(. != ""))')" >> "$GITHUB_OUTPUT"
+        run: python3 backfill/matrix.py >> "$GITHUB_OUTPUT"
 
   build:
     needs: commits
@@ -76,17 +77,13 @@ jobs:
   test:
     needs: [commits, build]
     if: ${{ !cancelled() }}
-    name: test (${{ matrix.setup.runner }} ${{ matrix.setup.part }}, ${{ matrix.sha }})
-    runs-on: ["self-hosted", "linux", "ARM64", "${{ matrix.setup.runner }}"]
+    name: test (${{ matrix.runner }} ${{ matrix.part }}, ${{ matrix.sha }})
+    runs-on: ["self-hosted", "linux", "ARM64", "${{ matrix.runner }}"]
     strategy:
       fail-fast: false
       matrix:
-        # A board that fails makes only its part fail. Re-run that part only.
-        setup:
-          - { runner: smoke-tester-2, part: esp-rp, filter: 'test(/\[(RP2040|esp32[0-9a-z]*)\]/)' }
-          - { runner: smoke-tester-2, part: arm, filter: 'not test(/\[(RP2040|esp32[0-9a-z]*)\]/)' }
-          - { runner: probe-rs-tester-0, part: all, filter: 'all()' }
-        sha: ${{ fromJSON(needs.commits.outputs.commits) }}
+        # backfill/matrix.py gives the parts of backfill/setups.json for each commit.
+        include: ${{ fromJSON(needs.commits.outputs.jobs) }}
     env:
       CARGO_TERM_COLOR: always
     steps:
@@ -105,12 +102,13 @@ jobs:
         run: |
           ports=()
           for file in "$SMOKE_TESTER_CONFIG"/*.toml; do
-            selector=$(sed -n 's/^probe_selector *= *"\(.*\)"/\1/p' "$file")
+            # The definitions can have CRLF line ends.
+            selector=$(tr -d '\r' < "$file" | sed -n 's/^probe_selector *= *"\(.*\)"/\1/p')
             [ -n "$selector" ] || continue
             vid=${selector%%:*}; rest=${selector#*:}; pid=${rest%%:*}; serial=${rest#"$pid"}; serial=${serial#:}
             for dev in /sys/bus/usb/devices/*/; do
-              [ "$(cat "$dev/idVendor" 2>/dev/null)" = "$vid" ] || continue
-              [ "$(cat "$dev/idProduct" 2>/dev/null)" = "$pid" ] || continue
+              [ "$(cat "$dev/idVendor" 2>/dev/null)" = "${vid,,}" ] || continue
+              [ "$(cat "$dev/idProduct" 2>/dev/null)" = "${pid,,}" ] || continue
               [ -z "$serial" ] || [ "$(cat "$dev/serial" 2>/dev/null)" = "$serial" ] || continue
               port=$(readlink -f "$dev/port" 2>/dev/null) && ports+=("$port")
             done
@@ -128,12 +126,12 @@ jobs:
         run: |
           rm -f "$SMOKE_TESTER_BENCH_OUT"
           mkdir -p src/smoke-tester
-          cargo-nextest nextest run --archive-file smoke_tester.tar.zst --profile ci-hardware --workspace-remap "$GITHUB_WORKSPACE/src" -E '(test(benchmark_memory) | test(test_flashing)) & ${{ matrix.setup.filter }}'
+          cargo-nextest nextest run --archive-file smoke_tester.tar.zst --profile ci-hardware --workspace-remap "$GITHUB_WORKSPACE/src" -E '(test(benchmark_memory) | test(test_flashing)) & ${{ matrix.filter }}'
 
       - uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}
         with:
-          name: bench-${{ matrix.setup.runner }}-${{ matrix.setup.part }}-${{ matrix.sha }}
+          name: bench-${{ matrix.runner }}-${{ matrix.part }}-${{ matrix.sha }}
           path: ${{ runner.temp }}/bench.jsonl
           if-no-files-found: ignore
           overwrite: true
