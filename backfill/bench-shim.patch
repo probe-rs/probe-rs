@@ -15,7 +15,7 @@ new file mode 100644
 index 000000000..8ac5b2cdf
 --- /dev/null
 +++ b/smoke-tester/src/bench.rs
-@@ -0,0 +1,165 @@
+@@ -0,0 +1,166 @@
 +//! Benchmark result output.
 +//!
 +//! Set `SMOKE_TESTER_BENCH_OUT` to a file path to record results. The results are appended to the
@@ -44,7 +44,8 @@ index 000000000..8ac5b2cdf
 +pub fn set_probe(probe: &probe_rs::probe::Probe) {
 +    *PROBE.lock().unwrap() = Some((
 +        probe.get_name(),
-+        probe.protocol().map(|p| p.to_string()),
++        // probe-rs selects SWD at attach if the DUT selects no protocol.
++        Some(probe.protocol().unwrap_or(probe_rs::probe::WireProtocol::Swd).to_string()),
 +        probe.speed_khz(),
 +    ));
 +}

@@ -51,7 +51,9 @@ jobs:
             git apply ../backfill/bench-shim.patch
           fi
 
+      # The commit selects its own toolchain.
       - name: Install target for cross-compilation
+        working-directory: src
         run: rustup target add aarch64-unknown-linux-musl
 
       - uses: taiki-e/install-action@nextest
@@ -124,11 +126,13 @@ jobs:
           path: artifacts
 
       # The live data has these keys. A backfilled key that is not in this set does not line up
-      # with the live data.
+      # with the live data. Not every live file has every test.
       - name: Merge the results
         run: |
           git fetch -q --depth=1 origin bench-data
-          git show "FETCH_HEAD:00e5f34804171496ce6f35c4ff36b1b3570d6189.jsonl" > live.jsonl
+          for file in $(git ls-tree --name-only FETCH_HEAD | grep '\.jsonl$'); do
+            git show "FETCH_HEAD:$file"
+          done > live.jsonl
           mkdir results
           for sha in $(grep -o '^[0-9a-f]\{40\}' backfill/commits.txt); do
             mkdir -p "bench/$sha"
