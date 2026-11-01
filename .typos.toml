@@ -1,3 +1,7 @@
+[files]
+# Keep the DAP schema identical to upstream, so the update workflow opens no PR for typo-only diffs.
+extend-exclude = ["probe-rs-tools/src/bin/probe-rs/cmd/dap_server/debug_adapter/dap/debugProtocol.*"]
+
 [default]
 # Chip part numbers (e.g. PSC3P7GES3PAFQ1, STM32H747XI) are single caps+digit
 # tokens whose substrings keep tripping the checker (GES, ...). Ignore any
