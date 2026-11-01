@@ -1,0 +1,184 @@
+# Run the benchmark on earlier master commits, and add the results to the bench-data branch.
+#
+# This workflow runs only in its pull request, which is never merged. Each push runs the
+# commits in backfill/commits.txt. Commits before #4569 get backfill/bench-shim.patch, later
+# commits get backfill/bench.patch.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+name: Benchmark backfill
+
+env:
+  CARGO_INCREMENTAL: 0
+  # Set to true to write the results to the bench-data branch.
+  PUBLISH: false
+
+jobs:
+  commits:
+    runs-on: ubuntu-latest
+    outputs:
+      commits: ${{ steps.list.outputs.commits }}
+    steps:
+      - uses: actions/checkout@v7
+      - id: list
+        run: echo "commits=$(grep -o '^[0-9a-f]\{40\}' backfill/commits.txt | jq -Rsc 'split("\n") | map(select(. != ""))')" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: commits
+    runs-on: ubuntu-24.04-arm
+    strategy:
+      fail-fast: false
+      matrix:
+        sha: ${{ fromJSON(needs.commits.outputs.commits) }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ matrix.sha }}
+          path: src
+
+      - name: Add the benchmark
+        working-directory: src
+        run: |
+          if [ -e smoke-tester/src/bench.rs ]; then
+            exit 0
+          elif grep -q "fn driver_mut" probe-rs/src/session.rs; then
+            git apply ../backfill/bench.patch
+          else
+            git apply ../backfill/bench-shim.patch
+          fi
+
+      - name: Install target for cross-compilation
+        run: rustup target add aarch64-unknown-linux-musl
+
+      - uses: taiki-e/install-action@nextest
+
+      - name: Cache Dependencies
+        uses: Swatinem/rust-cache@v2.9.3
+        with:
+          workspaces: src
+          shared-key: backfill
+
+      - name: Build smoke-tester
+        working-directory: src
+        run: cargo nextest archive --release --target aarch64-unknown-linux-musl -p smoke_tester --archive-file ../smoke_tester.tar.zst
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: smoke_tester-${{ matrix.sha }}
+          path: smoke_tester.tar.zst
+
+  test:
+    needs: [commits, build]
+    if: ${{ !cancelled() }}
+    runs-on: ["self-hosted", "linux", "ARM64", "${{ matrix.runner }}"]
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: ["smoke-tester-2", "probe-rs-tester-0"]
+        sha: ${{ fromJSON(needs.commits.outputs.commits) }}
+    env:
+      CARGO_TERM_COLOR: always
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ matrix.sha }}
+          path: src/
+
+      - uses: taiki-e/install-action@nextest
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: smoke_tester-${{ matrix.sha }}
+
+      # Only the tests that record results.
+      - name: Run the benchmark
+        env:
+          SMOKE_TESTER_BENCH_OUT: ${{ runner.temp }}/bench.jsonl
+        run: |
+          cargo-nextest nextest run --archive-file smoke_tester.tar.zst --profile ci-hardware --workspace-remap "$GITHUB_WORKSPACE/src" -E 'test(benchmark_memory) | test(test_flashing)'
+
+      - uses: actions/upload-artifact@v7
+        if: ${{ !cancelled() }}
+        with:
+          name: bench-${{ matrix.runner }}-${{ matrix.sha }}
+          path: ${{ runner.temp }}/bench.jsonl
+          if-no-files-found: ignore
+          overwrite: true
+
+  publish:
+    needs: test
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: bench-*
+          path: artifacts
+
+      # The live data has these keys. A backfilled key that is not in this set does not line up
+      # with the live data.
+      - name: Merge the results
+        run: |
+          git fetch -q --depth=1 origin bench-data
+          git show "FETCH_HEAD:00e5f34804171496ce6f35c4ff36b1b3570d6189.jsonl" > live.jsonl
+          mkdir results
+          for sha in $(grep -o '^[0-9a-f]\{40\}' backfill/commits.txt); do
+            mkdir -p "bench/$sha"
+            for runner in smoke-tester-2 probe-rs-tester-0; do
+              if [ -s "artifacts/bench-$runner-$sha/bench.jsonl" ]; then
+                mkdir -p "bench/$sha/bench-$runner"
+                cp "artifacts/bench-$runner-$sha/bench.jsonl" "bench/$sha/bench-$runner/"
+              fi
+            done
+            python3 smoke-tester/bench_report.py "bench/$sha" "report/$sha"
+            cp "report/$sha/results.jsonl" "results/$sha.jsonl"
+            echo "$sha: $(wc -l < "results/$sha.jsonl") results"
+          done
+          python3 - <<'EOF'
+          import json
+          from pathlib import Path
+          KEY = ("runner", "chip", "probe", "protocol", "speed_khz", "metric", "size")
+          def keys(path):
+              return {tuple(json.loads(l).get(k) for k in KEY) for l in path.read_text().splitlines()}
+          live = keys(Path("live.jsonl"))
+          for path in sorted(Path("results").glob("*.jsonl")):
+              for k in sorted(keys(path) - live, key=str):
+                  print(f"::warning::{path.stem[:9]}: key not in the live data: {k}")
+          EOF
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: backfill-results
+          path: results
+
+      # Do not replace results that exist.
+      - name: Add the results to the bench-data branch
+        if: ${{ env.PUBLISH == 'true' }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          for attempt in 1 2 3 4 5; do
+            git fetch -q --depth=1 origin bench-data
+            git switch -q --detach FETCH_HEAD
+            for file in results/*.jsonl; do
+              name=$(basename "$file")
+              if [ -s "$file" ] && [ ! -e "$name" ]; then
+                cp "$file" "$name"
+                git add "$name"
+              fi
+            done
+            git diff --cached --quiet && exit 0
+            git commit -q -m "Add backfilled benchmark results"
+            git push -q origin HEAD:refs/heads/bench-data && exit 0
+            git reset -q --hard
+            sleep $((attempt * 5))
+          done
+          exit 1
