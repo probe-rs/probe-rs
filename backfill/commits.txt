@@ -1,4 +1,3 @@
 # Commits to benchmark. The workflow reads the 40-digit hash at the start of each line.
 cc646796fd41ed666b4be3d2bd78fd6770b9a7e5 breakpoint/status/step improvements (#4313)
 bd0661c0f641bb6c9755f5b1e4ab876b6b5bea37 Update Rust crate parking_lot to 0.13.0 (#4568)
-5db8f01ff53e040bf2f5155639105e4bf626c8ce Add CmsisDap::send_vendor_command and driver_mut on Probe and Session (#4569)
