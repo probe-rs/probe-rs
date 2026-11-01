@@ -9,6 +9,7 @@ use linkme::distributed_slice;
 use probe_rs::Permissions;
 use tracing_subscriber::EnvFilter;
 
+mod bench;
 mod dut_definition;
 mod macros;
 mod tests;
