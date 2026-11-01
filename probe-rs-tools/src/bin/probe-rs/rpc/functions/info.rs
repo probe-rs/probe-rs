@@ -717,7 +717,7 @@ async fn show_arm_info(
         Err(e) => return Err(e.into()),
     };
 
-    let dpinfo = if dp_info.version == dp::DebugPortVersion::DPv2 {
+    let dpinfo = if dp_info.version >= dp::DebugPortVersion::DPv2 {
         let targetid = interface.read_raw_dp_register(dp, TARGETID::ADDRESS)?;
 
         // Read Instance ID
