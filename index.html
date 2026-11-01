@@ -30,15 +30,20 @@
   }
   #status { padding: 16px; color: var(--muted); }
   #status:empty { display: none; }
-  #charts {
-    display: grid; gap: 16px; padding: 16px;
+  #charts { padding: 0 16px 16px; }
+  details { margin-top: 16px; }
+  summary { cursor: pointer; }
+  summary h2 { display: inline; font-size: 16px; margin: 0; }
+  summary .sub { display: inline; font-size: 12px; color: var(--muted); margin-left: 8px; }
+  .grid {
+    display: grid; gap: 16px; margin-top: 8px;
     grid-template-columns: repeat(auto-fill, minmax(min(100%, 460px), 1fr));
   }
   .card {
     min-width: 0; padding: 8px 8px 4px; background: var(--card);
     border: 1px solid var(--border); border-radius: 8px;
   }
-  .card h2 { font-size: 14px; margin: 0 4px; }
+  .card h3 { font-size: 14px; margin: 0 4px; }
   .card .sub { font-size: 12px; color: var(--muted); margin: 0 4px 4px; }
   .u-over { cursor: pointer; }
   #tip {
@@ -78,6 +83,8 @@ const DATA = params.get("data") ?? ".";
 const RESULT_MESSAGE = /^Add benchmark results for ([0-9a-f]{40})/;
 const PR_NUMBER = /\(#(\d+)\)$/;
 const KEY = ["runner", "chip", "probe", "protocol", "speed_khz", "metric", "size"];
+// The charts of one DUT setup are in one group.
+const GROUP = ["chip", "runner", "probe", "protocol", "speed_khz"];
 const ALL = "";
 
 const $ = (id) => document.getElementById(id);
@@ -86,6 +93,8 @@ const tip = $("tip");
 let commits = [];
 let series = [];
 let plots = [];
+// The groups that the user closed.
+const closed = new Set();
 
 async function listCommits(query) {
   let url = `${API}/repos/${REPO}/commits?per_page=100&${query}`;
@@ -255,67 +264,94 @@ function render() {
   );
   $("status").textContent = shown.length ? "" : "No results for this filter.";
 
+  const groups = new Map();
   for (const s of shown) {
-    const r = s.record;
-    const { unit, factor } = scale(r.unit);
-    const values = (field) => xs.map((x) => (s.points.has(x) ? s.points.get(x)[field] * factor : null));
-
-    const card = document.createElement("div");
-    card.className = "card";
-    const title = document.createElement("h2");
-    title.textContent = `${r.chip} · ${r.metric}${r.size ? ` · ${r.size} B` : ""}`;
-    const sub = document.createElement("div");
-    sub.className = "sub";
-    // Throughput gets better upward, latency downward. bench_report.py uses the same rule.
-    sub.textContent = `${r.runner} · ${r.probe} · ${r.protocol ?? "-"} · ${r.speed_khz} kHz · ${unit}, ${
-      r.unit === "B/s" ? "higher" : "lower"
-    } is better`;
-    card.append(title, sub);
-    charts.append(card);
-
-    const plot = new uPlot(
-      {
-        width: card.clientWidth - 16,
-        height: 220,
-        legend: { show: false },
-        scales: { x: { time: false } },
-        axes: [
-          {
-            ...axis,
-            incrs: [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000],
-            values: (u, ticks) => ticks.map((t) => commits[t]?.date.slice(5, 10) ?? ""),
-          },
-          { ...axis, size: 56 },
-        ],
-        series: [
-          {},
-          { stroke: "transparent", points: { show: false }, spanGaps: true },
-          { stroke: color("--line"), width: 2, spanGaps: true, points: { fill: color("--line") } },
-          { stroke: "transparent", points: { show: false }, spanGaps: true },
-        ],
-        bands: [{ series: [1, 3], fill: color("--band") }],
-        cursor: {
-          drag: { x: false, y: false },
-          y: false,
-          dataIdx: nearestIdx,
-          points: { size: 8 },
-        },
-        hooks: { setCursor: [(u) => showTip(u, s, unit)] },
-      },
-      [xs, values("p90"), values("median"), values("p10")],
-      card,
-    );
-    plot.over.addEventListener("mouseleave", () => (tip.style.display = "none"));
-    plot.over.addEventListener("click", (e) => {
-      const idx = plot.cursor.idxs?.[2];
-      if (idx == null) return;
-      const url = commitUrl(commits[plot.data[0][idx]]);
-      if (e.ctrlKey || e.metaKey) window.open(url, "_blank", "noopener");
-      else location.href = url;
-    });
-    new ResizeObserver(() => plot.setSize({ width: card.clientWidth - 16, height: 220 })).observe(card);
-    plots.push(plot);
+    const key = GROUP.map((k) => s.record[k]).join("|");
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(s);
   }
+
+  for (const [key, members] of groups) {
+    const r = members[0].record;
+    const details = document.createElement("details");
+    details.open = !closed.has(key);
+    details.addEventListener("toggle", () => (details.open ? closed.delete(key) : closed.add(key)));
+    const summary = document.createElement("summary");
+    const name = document.createElement("h2");
+    name.textContent = r.chip;
+    const setup = document.createElement("span");
+    setup.className = "sub";
+    setup.textContent = `${r.runner} · ${r.probe} · ${r.protocol ?? "-"} · ${r.speed_khz} kHz`;
+    summary.append(name, setup);
+    const grid = document.createElement("div");
+    grid.className = "grid";
+    details.append(summary, grid);
+    charts.append(details);
+    for (const s of members) addChart(s, grid, xs, axis, color);
+  }
+}
+
+function addChart(s, grid, xs, axis, color) {
+  const r = s.record;
+  const { unit, factor } = scale(r.unit);
+  const values = (field) => xs.map((x) => (s.points.has(x) ? s.points.get(x)[field] * factor : null));
+
+  const card = document.createElement("div");
+  card.className = "card";
+  const title = document.createElement("h3");
+  title.textContent = `${r.metric}${r.size ? ` · ${r.size} B` : ""}`;
+  const sub = document.createElement("div");
+  sub.className = "sub";
+  // Throughput gets better upward, latency downward. bench_report.py uses the same rule.
+  sub.textContent = `${unit}, ${r.unit === "B/s" ? "higher" : "lower"} is better`;
+  card.append(title, sub);
+  grid.append(card);
+
+  const plot = new uPlot(
+    {
+      width: card.clientWidth - 16,
+      height: 220,
+      legend: { show: false },
+      scales: { x: { time: false } },
+      axes: [
+        {
+          ...axis,
+          incrs: [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000],
+          values: (u, ticks) => ticks.map((t) => commits[t]?.date.slice(5, 10) ?? ""),
+        },
+        { ...axis, size: 56 },
+      ],
+      series: [
+        {},
+        { stroke: "transparent", points: { show: false }, spanGaps: true },
+        { stroke: color("--line"), width: 2, spanGaps: true, points: { fill: color("--line") } },
+        { stroke: "transparent", points: { show: false }, spanGaps: true },
+      ],
+      bands: [{ series: [1, 3], fill: color("--band") }],
+      cursor: {
+        drag: { x: false, y: false },
+        y: false,
+        dataIdx: nearestIdx,
+        points: { size: 8 },
+      },
+      hooks: { setCursor: [(u) => showTip(u, s, unit)] },
+    },
+    [xs, values("p90"), values("median"), values("p10")],
+    card,
+  );
+  plot.over.addEventListener("mouseleave", () => (tip.style.display = "none"));
+  plot.over.addEventListener("click", (e) => {
+    const idx = plot.cursor.idxs?.[2];
+    if (idx == null) return;
+    const url = commitUrl(commits[plot.data[0][idx]]);
+    if (e.ctrlKey || e.metaKey) window.open(url, "_blank", "noopener");
+    else location.href = url;
+  });
+  // A closed group has zero width. Keep the old size.
+  new ResizeObserver(() => {
+    if (card.clientWidth) plot.setSize({ width: card.clientWidth - 16, height: 220 });
+  }).observe(card);
+  plots.push(plot);
 }
 
 for (const id of ["runner", "chip", "metric", "range"]) $(id).addEventListener("change", render);
