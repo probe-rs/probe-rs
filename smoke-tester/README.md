@@ -52,4 +52,4 @@ SMOKE_TESTER_CONFIG=<dut_dir> SMOKE_TESTER_BENCH_OUT="$PWD/bench/bench-local/ben
 python3 smoke-tester/bench_report.py bench report
 ```
 
-`bench_report.py` writes `report/summary.md`. With `--baseline <sha>.jsonl`, it also compares the results. In CI, the results of each master commit are in the `bench-data` branch, and a PR comment shows the changes.
+`bench_report.py` writes `report/summary.md`. With `--baseline <sha>.jsonl` (one for each earlier commit, nearest first), it also compares the results with the nearest earlier results. A change is significant only if it is larger than the commit-to-commit noise of the earlier results. In CI, the results of each master commit are in the `bench-data` branch, and a PR comment shows the changes.
