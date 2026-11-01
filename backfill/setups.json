@@ -1,0 +1,5 @@
+{
+  "esp-rp": { "runner": "smoke-tester-2", "filter": "test(/\\[(RP2040|esp32[0-9a-z]*)\\]/)" },
+  "arm": { "runner": "smoke-tester-2", "filter": "not test(/\\[(RP2040|esp32[0-9a-z]*)\\]/)" },
+  "all": { "runner": "probe-rs-tester-0", "filter": "all()" }
+}
