@@ -266,8 +266,9 @@ function render() {
     title.textContent = `${r.chip} · ${r.metric}${r.size ? ` · ${r.size} B` : ""}`;
     const sub = document.createElement("div");
     sub.className = "sub";
+    // Throughput gets better upward, latency downward. bench_report.py uses the same rule.
     sub.textContent = `${r.runner} · ${r.probe} · ${r.protocol ?? "-"} · ${r.speed_khz} kHz · ${unit}, ${
-      r.improves === "down" ? "lower" : "higher"
+      r.unit === "B/s" ? "higher" : "lower"
     } is better`;
     card.append(title, sub);
     charts.append(card);
