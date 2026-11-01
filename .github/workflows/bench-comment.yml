@@ -1,0 +1,123 @@
+# Comment the benchmark changes on the PR.
+#
+# The smoke test runs with a read-only token for PRs from forks. This workflow runs on the default
+# branch with write access. The report artifact comes from PR code: use it only as data, and write
+# the comment with the report script of the default branch.
+
+on:
+  workflow_run:
+    workflows: ["Run smoke test"]
+    types: [completed]
+
+name: Benchmark comment
+
+permissions: {}
+
+jobs:
+  # Find the open PR whose head is the tested commit. Keep the earlier comment if the report job did
+  # not run, for example on a draft PR.
+  find:
+    if: github.event.workflow_run.event == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      pull-requests: read
+    outputs:
+      number: ${{ steps.pr.outputs.number }}
+
+    steps:
+      - name: Find the PR
+        id: pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          HEAD: ${{ github.event.workflow_run.head_repository.owner.login }}:${{ github.event.workflow_run.head_branch }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          report=$(gh run view "$RUN_ID" --json jobs --jq '.jobs[] | select(.name == "bench-report") | .conclusion')
+          case "$report" in
+            success | failure) ;;
+            *) exit 0 ;;
+          esac
+          pr=$(gh api -X GET "repos/$GH_REPO/pulls" -f state=open -f head="$HEAD" \
+            --jq '[.[] | select(.head.sha == env.HEAD_SHA)][0].number // empty')
+          echo "number=$pr" >> "$GITHUB_OUTPUT"
+
+  comment:
+    needs: find
+    if: needs.find.outputs.number
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      pull-requests: write
+    # Only one job at a time changes the comment of a PR. A new pending job cancels the earlier
+    # pending job, so the find job lets only jobs for the PR head get here.
+    concurrency:
+      cancel-in-progress: false
+      group: ${{ github.workflow }}-${{ needs.find.outputs.number }}
+
+    steps:
+      - uses: actions/download-artifact@v8
+        continue-on-error: true
+        with:
+          name: benchmark-report
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+          path: data
+
+      - uses: actions/checkout@v7
+        if: hashFiles('data/results.jsonl') != ''
+        with:
+          path: src
+          persist-credentials: false
+
+      - name: Write the comment
+        if: hashFiles('data/results.jsonl') != ''
+        continue-on-error: true
+        env:
+          RUN_URL: ${{ github.event.workflow_run.html_url }}
+        run: |
+          args=(data/results.jsonl report --run-url "$RUN_URL")
+          if [ -s data/baseline.jsonl ]; then
+            args+=(--baseline data/baseline.jsonl)
+          fi
+          python3 src/smoke-tester/bench_report.py "${args[@]}"
+
+      - name: Note a missing report
+        if: hashFiles('report/comment.md', 'report/clear.md') == ''
+        env:
+          RUN_URL: ${{ github.event.workflow_run.html_url }}
+        run: |
+          mkdir -p report
+          printf '## Probe benchmark\n\nNo benchmark report. See [the run](%s).\n' "$RUN_URL" > report/clear.md
+
+      # A newer commit can be pushed while this job runs. Do not replace its comment.
+      - name: Check the PR head
+        id: head
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PR: ${{ needs.find.outputs.number }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          if [ "$(gh api "repos/$GH_REPO/pulls/$PR" --jq .head.sha)" = "$HEAD_SHA" ]; then
+            echo "current=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Comment the changes
+        if: steps.head.outputs.current && hashFiles('report/comment.md') != ''
+        uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
+        with:
+          header: probe-rs-benchmark
+          number_force: ${{ needs.find.outputs.number }}
+          path: report/comment.md
+
+      - name: Clear an earlier comment
+        if: steps.head.outputs.current && hashFiles('report/comment.md') == ''
+        uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
+        with:
+          header: probe-rs-benchmark
+          number_force: ${{ needs.find.outputs.number }}
+          only_update: true
+          path: report/clear.md

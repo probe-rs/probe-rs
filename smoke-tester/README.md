@@ -49,4 +49,7 @@ The `benchmark_memory` test measures memory access latency and throughput. The f
 ```console
 mkdir -p bench/bench-local
 SMOKE_TESTER_CONFIG=<dut_dir> SMOKE_TESTER_BENCH_OUT="$PWD/bench/bench-local/bench.jsonl" cargo nextest run --profile ci-hardware
+python3 smoke-tester/bench_report.py bench report
 ```
+
+`bench_report.py` writes `report/summary.md`. With `--baseline <sha>.jsonl`, it also compares the results. In CI, the results of each master commit are in the `bench-data` branch, and a PR comment shows the changes.
