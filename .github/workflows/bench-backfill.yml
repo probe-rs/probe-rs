@@ -13,7 +13,7 @@ name: Benchmark backfill
 env:
   CARGO_INCREMENTAL: 0
   # Set to true to write the results to the bench-data branch.
-  PUBLISH: false
+  PUBLISH: true
 
 jobs:
   commits:
@@ -126,7 +126,8 @@ jobs:
           path: artifacts
 
       # The live data has these keys. A backfilled key that is not in this set does not line up
-      # with the live data. Not every live file has every test.
+      # with the live data. Not every live file has every test. Before #4569, the speed is the
+      # speed before attach, which is 0 for J-Link. The script then uses the live speed.
       - name: Merge the results
         run: |
           git fetch -q --depth=1 origin bench-data
@@ -150,11 +151,22 @@ jobs:
           import json
           from pathlib import Path
           KEY = ("runner", "chip", "probe", "protocol", "speed_khz", "metric", "size")
-          def keys(path):
-              return {tuple(json.loads(l).get(k) for k in KEY) for l in path.read_text().splitlines()}
-          live = keys(Path("live.jsonl"))
+          PROBE = ("runner", "chip", "probe", "protocol")
+          def load(path):
+              return [json.loads(l) for l in path.read_text().splitlines()]
+          live = load(Path("live.jsonl"))
+          live_keys = {tuple(r.get(k) for k in KEY) for r in live}
+          speeds = {}
+          for r in live:
+              speeds.setdefault(tuple(r.get(k) for k in PROBE), set()).add(r.get("speed_khz"))
           for path in sorted(Path("results").glob("*.jsonl")):
-              for k in sorted(keys(path) - live, key=str):
+              records = load(path)
+              for r in records:
+                  speed = speeds.get(tuple(r.get(k) for k in PROBE), set())
+                  if r.get("speed_khz") == 0 and len(speed) == 1:
+                      r["speed_khz"] = next(iter(speed))
+              path.write_text("".join(json.dumps(r) + "\n" for r in records))
+              for k in sorted({tuple(r.get(k) for k in KEY) for r in records} - live_keys, key=str):
                   print(f"::warning::{path.stem[:9]}: key not in the live data: {k}")
           EOF
 
