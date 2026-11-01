@@ -2,7 +2,7 @@
 #
 # This workflow runs only in its pull request, which is never merged. Each push runs the
 # commits in backfill/commits.txt. Commits before #4569 get backfill/bench-shim.patch, later
-# commits get backfill/bench.patch.
+# commits get backfill/bench.patch. backfill/publish.py adds the results to bench-data.
 
 on:
   pull_request:
@@ -76,125 +76,100 @@ jobs:
   test:
     needs: [commits, build]
     if: ${{ !cancelled() }}
-    runs-on: ["self-hosted", "linux", "ARM64", "${{ matrix.runner }}"]
+    name: test (${{ matrix.setup.runner }} ${{ matrix.setup.part }}, ${{ matrix.sha }})
+    runs-on: ["self-hosted", "linux", "ARM64", "${{ matrix.setup.runner }}"]
     strategy:
       fail-fast: false
       matrix:
-        runner: ["smoke-tester-2", "probe-rs-tester-0"]
+        # A board that fails makes only its part fail. Re-run that part only.
+        setup:
+          - { runner: smoke-tester-2, part: esp-rp, filter: 'test(/\[(RP2040|esp32[0-9a-z]*)\]/)' }
+          - { runner: smoke-tester-2, part: arm, filter: 'not test(/\[(RP2040|esp32[0-9a-z]*)\]/)' }
+          - { runner: probe-rs-tester-0, part: all, filter: 'all()' }
         sha: ${{ fromJSON(needs.commits.outputs.commits) }}
     env:
       CARGO_TERM_COLOR: always
     steps:
-      - uses: actions/checkout@v7
-        with:
-          ref: ${{ matrix.sha }}
-          path: src/
+      - id: nextest
+        run: echo "found=$(command -v cargo-nextest > /dev/null && echo true || echo false)" >> "$GITHUB_OUTPUT"
 
-      - uses: taiki-e/install-action@nextest
+      - if: ${{ steps.nextest.outputs.found != 'true' }}
+        uses: taiki-e/install-action@nextest
 
       - uses: actions/download-artifact@v8
         with:
           name: smoke_tester-${{ matrix.sha }}
 
-      # Only the tests that record results.
+      # Turn off the USB port power of each probe, then turn it on again. A failure is a warning.
+      - name: Power-cycle the probes
+        run: |
+          ports=()
+          for file in "$SMOKE_TESTER_CONFIG"/*.toml; do
+            selector=$(sed -n 's/^probe_selector *= *"\(.*\)"/\1/p' "$file")
+            [ -n "$selector" ] || continue
+            vid=${selector%%:*}; rest=${selector#*:}; pid=${rest%%:*}; serial=${rest#"$pid"}; serial=${serial#:}
+            for dev in /sys/bus/usb/devices/*/; do
+              [ "$(cat "$dev/idVendor" 2>/dev/null)" = "$vid" ] || continue
+              [ "$(cat "$dev/idProduct" 2>/dev/null)" = "$pid" ] || continue
+              [ -z "$serial" ] || [ "$(cat "$dev/serial" 2>/dev/null)" = "$serial" ] || continue
+              port=$(readlink -f "$dev/port" 2>/dev/null) && ports+=("$port")
+            done
+          done
+          for port in "${ports[@]}"; do echo 1 > "$port/disable" || echo "::warning::Cannot turn off $port"; done
+          sleep 1
+          for port in "${ports[@]}"; do echo 0 > "$port/disable" || echo "::warning::Cannot turn on $port"; done
+          echo "Power-cycled ${#ports[@]} probes"
+          sleep 10
+
+      # Only the tests that record results. nextest needs the workspace directory, not the sources.
       - name: Run the benchmark
         env:
           SMOKE_TESTER_BENCH_OUT: ${{ runner.temp }}/bench.jsonl
         run: |
-          cargo-nextest nextest run --archive-file smoke_tester.tar.zst --profile ci-hardware --workspace-remap "$GITHUB_WORKSPACE/src" -E 'test(benchmark_memory) | test(test_flashing)'
+          rm -f "$SMOKE_TESTER_BENCH_OUT"
+          mkdir -p src/smoke-tester
+          cargo-nextest nextest run --archive-file smoke_tester.tar.zst --profile ci-hardware --workspace-remap "$GITHUB_WORKSPACE/src" -E '(test(benchmark_memory) | test(test_flashing)) & ${{ matrix.setup.filter }}'
 
       - uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}
         with:
-          name: bench-${{ matrix.runner }}-${{ matrix.sha }}
+          name: bench-${{ matrix.setup.runner }}-${{ matrix.setup.part }}-${{ matrix.sha }}
           path: ${{ runner.temp }}/bench.jsonl
           if-no-files-found: ignore
           overwrite: true
 
+  # A re-run of failed jobs is safe: the script adds only the records that bench-data does not
+  # have. The script also reads the results of the runs in backfill/runs.txt.
   publish:
     needs: test
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     permissions:
+      actions: read
       contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v7
 
-      - uses: actions/download-artifact@v8
-        with:
-          pattern: bench-*
-          path: artifacts
-
-      # The live data has these keys. A backfilled key that is not in this set does not line up
-      # with the live data. Not every live file has every test. Before #4569, the speed is the
-      # speed before attach, which is 0 for J-Link. The script then uses the live speed.
-      - name: Merge the results
+      - name: Download the results
         run: |
-          git fetch -q --depth=1 origin bench-data
-          for file in $(git ls-tree --name-only FETCH_HEAD | grep '\.jsonl$'); do
-            git show "FETCH_HEAD:$file"
-          done > live.jsonl
-          mkdir results
-          for sha in $(grep -o '^[0-9a-f]\{40\}' backfill/commits.txt); do
-            mkdir -p "bench/$sha"
-            for runner in smoke-tester-2 probe-rs-tester-0; do
-              if [ -s "artifacts/bench-$runner-$sha/bench.jsonl" ]; then
-                mkdir -p "bench/$sha/bench-$runner"
-                cp "artifacts/bench-$runner-$sha/bench.jsonl" "bench/$sha/bench-$runner/"
-              fi
-            done
-            python3 smoke-tester/bench_report.py "bench/$sha" "report/$sha"
-            cp "report/$sha/results.jsonl" "results/$sha.jsonl"
-            echo "$sha: $(wc -l < "results/$sha.jsonl") results"
+          for run in "$GITHUB_RUN_ID" $(grep -o '^[0-9]\+' backfill/runs.txt); do
+            gh run download "$run" -R "$GITHUB_REPOSITORY" -p 'bench-*' -D "artifacts/$run" || echo "::warning::No results in run $run"
           done
-          python3 - <<'EOF'
-          import json
-          from pathlib import Path
-          KEY = ("runner", "chip", "probe", "protocol", "speed_khz", "metric", "size")
-          PROBE = ("runner", "chip", "probe", "protocol")
-          def load(path):
-              return [json.loads(l) for l in path.read_text().splitlines()]
-          live = load(Path("live.jsonl"))
-          live_keys = {tuple(r.get(k) for k in KEY) for r in live}
-          speeds = {}
-          for r in live:
-              speeds.setdefault(tuple(r.get(k) for k in PROBE), set()).add(r.get("speed_khz"))
-          for path in sorted(Path("results").glob("*.jsonl")):
-              records = load(path)
-              for r in records:
-                  speed = speeds.get(tuple(r.get(k) for k in PROBE), set())
-                  if r.get("speed_khz") == 0 and len(speed) == 1:
-                      r["speed_khz"] = next(iter(speed))
-              path.write_text("".join(json.dumps(r) + "\n" for r in records))
-              for k in sorted({tuple(r.get(k) for k in KEY) for r in records} - live_keys, key=str):
-                  print(f"::warning::{path.stem[:9]}: key not in the live data: {k}")
-          EOF
 
-      - uses: actions/upload-artifact@v7
-        with:
-          name: backfill-results
-          path: results
-
-      # Do not replace results that exist.
       - name: Add the results to the bench-data branch
-        if: ${{ env.PUBLISH == 'true' }}
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
           for attempt in 1 2 3 4 5; do
-            git fetch -q --depth=1 origin bench-data
-            git switch -q --detach FETCH_HEAD
-            for file in results/*.jsonl; do
-              name=$(basename "$file")
-              if [ -s "$file" ] && [ ! -e "$name" ]; then
-                cp "$file" "$name"
-                git add "$name"
-              fi
-            done
-            git diff --cached --quiet && exit 0
-            git commit -q -m "Add backfilled benchmark results"
-            git push -q origin HEAD:refs/heads/bench-data && exit 0
-            git reset -q --hard
+            rm -rf data
+            git fetch -q origin bench-data
+            git worktree prune
+            git worktree add -q --detach data FETCH_HEAD
+            python3 backfill/publish.py artifacts data
+            [ "$PUBLISH" = true ] || exit 0
+            git -C data push -q origin HEAD:refs/heads/bench-data && exit 0
             sleep $((attempt * 5))
           done
           exit 1
