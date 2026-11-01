@@ -7,10 +7,19 @@ use crate::architecture::arm::armv7m::{Demcr, Dhcsr};
 use crate::architecture::arm::memory::ArmMemoryInterface;
 use crate::architecture::arm::sequences::{ArmDebugSequence, ArmDebugSequenceError};
 use crate::architecture::arm::traits::DebugPortWire;
-use crate::architecture::arm::{ArmError, dp::DpAddress};
+use crate::architecture::arm::{
+    ArmDebugInterface, ArmError, FullyQualifiedApAddress, Pins, dp::DpAddress,
+};
 use crate::probe::{BitSequence, WireProtocol};
 
 use super::icepick::{DefaultProtocol, Icepick};
+
+/// nRESET low time. The datasheet minimum for RESET_N is 1 us.
+const RESET_PULSE: Duration = Duration::from_millis(1);
+
+/// Wait after releasing nRESET. The datasheet gives 850 to 3000 us from
+/// reset to active.
+const RESET_RECOVERY: Duration = Duration::from_millis(5);
 
 /// Marker struct indicating initialization sequencing for cc13xx_cc26xx family parts.
 #[derive(Debug)]
@@ -59,6 +68,50 @@ fn reset_chip(chip: &str, probe: &mut dyn ArmMemoryInterface) {
 }
 
 impl ArmDebugSequence for CC13xxCC26xx {
+    fn reset_hardware_assert(&self, interface: &mut dyn DebugPortWire) -> Result<(), ArmError> {
+        // ICEPICK devices cannot attach under reset. Pulse the pin and let the
+        // chip boot
+        let mut n_reset = Pins(0);
+        n_reset.set_nreset(true);
+        interface.swj_pins(Pins(0), n_reset, Duration::ZERO)?;
+        std::thread::sleep(RESET_PULSE);
+        // Retry once so a failed release does not leave the chip in reset.
+        if interface
+            .swj_pins(n_reset, n_reset, Duration::ZERO)
+            .is_err()
+        {
+            interface.swj_pins(n_reset, n_reset, Duration::ZERO)?;
+        }
+        std::thread::sleep(RESET_RECOVERY);
+        Ok(())
+    }
+
+    fn reset_hardware_deassert(
+        &self,
+        probe: &mut dyn ArmDebugInterface,
+        default_ap: &FullyQualifiedApAddress,
+    ) -> Result<(), ArmError> {
+        // The pin was released in reset_hardware_assert, so the application
+        // has been running since. If the caller asked for a halt (vector catch
+        // set in DEMCR by the generic attach-under-reset flow before calling
+        // this), run a system reset after TCK activity so the boot ROM waits
+        // at halt-in-boot (TRM 6.6). Otherwise leave the running target alone.
+        let mut memory = probe.memory_interface(default_ap)?;
+        let demcr = Demcr(memory.read_word_32(Demcr::get_mmio_address())?);
+        if !demcr.vc_corereset() {
+            return Ok(());
+        }
+
+        // Now do the matching core reset if requested.
+        let core_type = match self.name.chars().nth(5) {
+            Some('0') => probe_rs_target::CoreType::Armv7m,
+            Some('2') | Some('1') => probe_rs_target::CoreType::Armv7em,
+            Some('4') => probe_rs_target::CoreType::Armv8m,
+            _ => probe_rs_target::CoreType::Armv7em,
+        };
+        self.reset_system(&mut *memory, core_type, None)
+    }
+
     fn reset_system(
         &self,
         probe: &mut dyn ArmMemoryInterface,
