@@ -43,9 +43,10 @@ fn list_tests_impl(
     sender: MonitorSender,
 ) -> anyhow::Result<Tests> {
     let shared_session = ctx.shared_session(request.sessid);
-    let mut list_handler = ListEventHandler::new(request.semihosting_options, |event| {
-        _ = sender.send_semihosting_event(event)
-    });
+    let mut list_handler = ListEventHandler::new(
+        ctx.semihosting_options(request.semihosting_options)?,
+        |event| _ = sender.send_semihosting_event(event),
+    );
 
     let core_id = request
         .rtt_client
@@ -146,10 +147,11 @@ fn run_test_impl(
     }
 
     let expected_outcome = request.test.expected_outcome;
-    let mut run_handler =
-        RunEventHandler::new(request.test, request.semihosting_options, |event| {
-            _ = sender.send_semihosting_event(event)
-        });
+    let mut run_handler = RunEventHandler::new(
+        request.test,
+        ctx.semihosting_options(request.semihosting_options)?,
+        |event| _ = sender.send_semihosting_event(event),
+    );
 
     let mut run_loop = RunLoop {
         core_id,

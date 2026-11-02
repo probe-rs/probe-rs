@@ -331,6 +331,7 @@ mod tests {
             16,
             lister as Arc<dyn ProbeLister + Send + Sync>,
             Arc::new(ProbeBroker::new()),
+            crate::rpc::functions::HostFiles::Allow,
         );
         let handle = tokio::spawn(async move { server.run().await });
         let client = RpcClient::new_local_from_wire(tx, rx);
@@ -468,6 +469,7 @@ mod tests {
             16,
             lister.clone() as Arc<dyn ProbeLister + Send + Sync>,
             Arc::new(ProbeBroker::new()),
+            crate::rpc::functions::HostFiles::Allow,
         );
         let server = tokio::spawn(server.run());
         let client = RpcClient::new_local_from_wire(tx, rx);
@@ -515,6 +517,7 @@ mod tests {
             16,
             lister.clone() as Arc<dyn ProbeLister + Send + Sync>,
             broker.clone(),
+            crate::rpc::functions::HostFiles::Allow,
         );
         let server = tokio::spawn(server.run());
         let client = RpcClient::new_local_from_wire(tx, rx);

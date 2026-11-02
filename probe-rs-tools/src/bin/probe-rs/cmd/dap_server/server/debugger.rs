@@ -1560,7 +1560,12 @@ mod test {
         // `FakeProbe` is visible to `probe/attach`), and drive the DAP
         // session through `RpcBackend` — the same path production uses.
         let probe_broker = Arc::new(crate::rpc::probe_broker::ProbeBroker::new());
-        let (local_server, tx, rx) = RpcApp::create_server_with_lister(16, lister, probe_broker);
+        let (local_server, tx, rx) = RpcApp::create_server_with_lister(
+            16,
+            lister,
+            probe_broker,
+            crate::rpc::functions::HostFiles::Allow,
+        );
         let handle = tokio::spawn(async move { local_server.run().await });
 
         let client = RpcClient::new_local_from_wire(tx, rx);
