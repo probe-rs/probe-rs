@@ -20,7 +20,8 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       commits: ${{ steps.list.outputs.commits }}
-      jobs: ${{ steps.list.outputs.jobs }}
+      jobs1: ${{ steps.list.outputs.jobs1 }}
+      jobs2: ${{ steps.list.outputs.jobs2 }}
     steps:
       - uses: actions/checkout@v7
       - id: list
@@ -74,7 +75,8 @@ jobs:
           name: smoke_tester-${{ matrix.sha }}
           path: smoke_tester.tar.zst
 
-  test:
+  # A matrix has at most 256 jobs, so two jobs share the test jobs.
+  test-1:
     needs: [commits, build]
     if: ${{ !cancelled() }}
     name: test (${{ matrix.runner }} ${{ matrix.part }}, ${{ matrix.sha }})
@@ -83,10 +85,10 @@ jobs:
       fail-fast: false
       matrix:
         # backfill/matrix.py gives the parts of backfill/setups.json for each commit.
-        include: ${{ fromJSON(needs.commits.outputs.jobs) }}
+        include: ${{ fromJSON(needs.commits.outputs.jobs1) }}
     env:
       CARGO_TERM_COLOR: always
-    steps:
+    steps: &test-steps
       - id: nextest
         run: echo "found=$(command -v cargo-nextest > /dev/null && echo true || echo false)" >> "$GITHUB_OUTPUT"
 
@@ -136,10 +138,24 @@ jobs:
           if-no-files-found: ignore
           overwrite: true
 
+  test-2:
+    needs: [commits, build]
+    if: ${{ !cancelled() && needs.commits.outputs.jobs2 != '[]' }}
+    name: test (${{ matrix.runner }} ${{ matrix.part }}, ${{ matrix.sha }})
+    runs-on: ["self-hosted", "linux", "ARM64", "${{ matrix.runner }}"]
+    strategy:
+      fail-fast: false
+      matrix:
+        # backfill/matrix.py gives the parts of backfill/setups.json for each commit.
+        include: ${{ fromJSON(needs.commits.outputs.jobs2) }}
+    env:
+      CARGO_TERM_COLOR: always
+    steps: *test-steps
+
   # A re-run of failed jobs is safe: the script adds only the records that bench-data does not
   # have. The script also reads the results of the runs in backfill/runs.txt.
   publish:
-    needs: test
+    needs: [test-1, test-2]
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     permissions:

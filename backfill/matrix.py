@@ -27,4 +27,7 @@ for line in Path("backfill/commits.txt").read_text().splitlines():
     jobs += [{"sha": sha, "part": part, **setups[part]} for part in parts]
 
 print(f"commits={json.dumps(commits)}")
-print(f"jobs={json.dumps(jobs)}")
+# A matrix has at most 256 jobs.
+half = (len(jobs) + 1) // 2
+print(f"jobs1={json.dumps(jobs[:half])}")
+print(f"jobs2={json.dumps(jobs[half:])}")
