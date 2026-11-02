@@ -238,12 +238,13 @@ def main() -> None:
     )
 
     count = sum(outcomes.values())
+    moved = " and ".join(f"{n} got {o}" for o, n in outcomes.items() if o and n)
     if changed:
         comment = [
             "## Probe benchmark",
             "",
-            f"Of {plural(count, 'result')} with a baseline, {outcomes['better']} got better and "
-            f"{outcomes['worse']} got worse by more than the noise threshold. {compared}",
+            f"Of {plural(count, 'result')} with a baseline, {moved} by more than the noise "
+            f"threshold. {compared}",
             "",
             CAUTION,
             "",
@@ -260,8 +261,8 @@ def main() -> None:
         comment = [
             "## Probe benchmark",
             "",
-            f"No change in {plural(count, 'result')} with a baseline is larger than the noise "
-            f"threshold. {compared}",
+            f"No result changed by more than the noise threshold "
+            f"({plural(count, 'result')} with a baseline). {compared}",
             "",
             CAUTION,
         ]
