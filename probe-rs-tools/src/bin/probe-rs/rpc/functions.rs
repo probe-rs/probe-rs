@@ -180,7 +180,8 @@ impl RpcSpawnContext {
     ) -> anyhow::Result<SemihostingOptions> {
         if self.host_files == HostFiles::Deny && !options.mappings().is_empty() {
             anyhow::bail!(
-                "This server does not give semihosting access to its files.                 Remove the semihosting file mappings."
+                "This server does not give semihosting access to its files. \
+                Remove the semihosting file mappings."
             );
         }
         Ok(options)
