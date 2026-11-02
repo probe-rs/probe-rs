@@ -138,14 +138,15 @@ jobs:
           path: bench
 
       # The baseline of each test is its result of the nearest first-parent ancestor of the base
-      # commit that has a result for it. The comment workflow uses report/baseline.jsonl.
+      # commit. Its results of the last 30 give the noise. The comment workflow uses
+      # report/baseline.jsonl.
       - name: Find the baseline
         env:
           BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
         run: |
           mkdir baseline
-          if [ -n "$BASE" ] && git fetch -q --depth=20 origin "$BASE" && git fetch -q --depth=1 origin bench-data; then
-            for sha in $(git rev-list --first-parent -n 20 "$BASE"); do
+          if [ -n "$BASE" ] && git fetch -q --depth=30 origin "$BASE" && git fetch -q --depth=1 origin bench-data; then
+            for sha in $(git rev-list --first-parent -n 30 "$BASE"); do
               if git cat-file -e "FETCH_HEAD:$sha.jsonl" 2> /dev/null; then
                 git show "FETCH_HEAD:$sha.jsonl" > "baseline/$sha.jsonl"
                 echo "$sha" >> baseline/order
@@ -153,7 +154,7 @@ jobs:
             done
           fi
           if [ ! -s baseline/order ]; then
-            echo "::warning::No baseline in the last 20 first-parent commits of ${BASE:-the base}."
+            echo "::warning::No baseline in the last 30 first-parent commits of ${BASE:-the base}."
           fi
 
       - name: Compare with the baseline
