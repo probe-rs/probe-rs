@@ -13,7 +13,7 @@ name: Benchmark backfill
 env:
   CARGO_INCREMENTAL: 0
   # Set to true to write the results to the bench-data branch.
-  PUBLISH: false
+  PUBLISH: true
 
 jobs:
   commits:

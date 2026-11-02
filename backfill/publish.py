@@ -7,8 +7,9 @@ bench-data branch. The script adds the records that a file does not have yet, an
 for each master commit. The benchmark page finds the results by the commit message, and sorts them
 by the commit date, so the commit gets the date of the master commit.
 
-Before #4569, the speed is the speed before attach, which is 0 for J-Link. The script then uses the
-speed of the live data.
+Before #4569, the protocol and the speed are the values before attach. The speed is 0 for J-Link, and
+the protocol is SWD if the DUT selects none. If the live data has one protocol and speed for a DUT
+setup, the script uses them.
 """
 
 import json
@@ -19,8 +20,9 @@ import sys
 from pathlib import Path
 
 KEY = ("runner", "chip", "probe", "protocol", "speed_khz", "metric", "size")
-PROBE = ("runner", "chip", "probe", "protocol")
-ARTIFACT = re.compile(r"bench-(.+?)-(?:(?:arm|esp-rp|all)-)?([0-9a-f]{40})")
+SETUP = ("runner", "chip", "probe")
+PARTS = "|".join(map(re.escape, json.loads(Path("backfill/setups.json").read_text())))
+ARTIFACT = re.compile(rf"bench-(.+?)-(?:(?:{PARTS})-)?([0-9a-f]{{40}})")
 MESSAGE = re.compile(r"^Add benchmark results for ([0-9a-f]{40})", re.MULTILINE)
 
 
@@ -57,9 +59,9 @@ def main() -> None:
 
     live = [r for path in data.glob("*.jsonl") for r in load(path)]
     live_keys = {key(r) for r in live}
-    speeds: dict[tuple, set] = {}
+    wires: dict[tuple, set] = {}
     for record in live:
-        speeds.setdefault(key(record, PROBE), set()).add(record.get("speed_khz"))
+        wires.setdefault(key(record, SETUP), set()).add(key(record, ("protocol", "speed_khz")))
 
     marked = set(MESSAGE.findall(git(data, "log", "--format=%B")))
     dates = {
@@ -76,9 +78,9 @@ def main() -> None:
         known = {key(r) for r in records}
         added = 0
         for record in results[sha]:
-            speed = speeds.get(key(record, PROBE), set())
-            if record.get("speed_khz") == 0 and len(speed) == 1:
-                record["speed_khz"] = next(iter(speed))
+            wire = wires.get(key(record, SETUP), set())
+            if len(wire) == 1:
+                record["protocol"], record["speed_khz"] = next(iter(wire))
             if key(record) not in live_keys:
                 print(f"::warning::{sha[:9]}: key not in the live data: {key(record)}")
             if key(record) not in known:
