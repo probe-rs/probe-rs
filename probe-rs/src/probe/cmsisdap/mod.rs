@@ -86,20 +86,35 @@ impl std::fmt::Display for CmsisDapFactory {
 
 impl ProbeFactory for CmsisDapFactory {
     fn open(&self, selector: &DebugProbeSelector) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
-        let device = match tcp_address(selector) {
-            Some(address) => CmsisDapDevice::Tcp {
-                device: tcp::TcpDevice::connect(address).map_err(|error| {
-                    DebugProbeError::ProbeCouldNotBeCreated(CmsisDapError::TcpConnect(error).into())
-                })?,
-                // Large enough for the packet size query; the reply to it replaces this.
-                max_packet_size: 1024,
-                timeout: commands::DEFAULT_USB_TIMEOUT,
-            },
+        let (device, product) = match tcp_address(selector) {
+            Some(address) => (
+                CmsisDapDevice::Tcp {
+                    device: tcp::TcpDevice::connect(address).map_err(|error| {
+                        DebugProbeError::ProbeCouldNotBeCreated(
+                            CmsisDapError::TcpConnect(error).into(),
+                        )
+                    })?,
+                    // Large enough for the packet size query; the reply to it replaces this.
+                    max_packet_size: 1024,
+                    timeout: commands::DEFAULT_USB_TIMEOUT,
+                },
+                None,
+            ),
             None => tools::open_device_from_selector(selector)?,
         };
-        CmsisDap::new_from_device(device)
-            .map(Box::new)
-            .map(DebugProbe::into_probe)
+
+        let mut dap = CmsisDap::new_from_device(device)?;
+        if let Some(product) = product
+            && tools::loses_pipelined_replies(&product)
+        {
+            tracing::warn!(
+                "{product}: this firmware loses replies to parallel requests. \
+                 probe-rs sends one request at a time. Update the firmware for faster transfers."
+            );
+            dap.packet_count = 1;
+        }
+
+        Ok(DebugProbe::into_probe(Box::new(dap)))
     }
 
     fn list_probes(&self) -> Vec<crate::probe::list::ProbeListItem> {
