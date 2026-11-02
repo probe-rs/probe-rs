@@ -1,4 +1,4 @@
 # <sha> [<part>,...] # comment. The parts are keys of setups.json. Without parts, all parts run.
-# esp32s3 failed twice on these.
-0b62f8612fcebab524404b372b231b69aa2fe16b esp-rp # Add Infineon XMC1000 (XMC1100/1200/1300/1400) target support (#4382)
-1f6489e534860bb0486007b0fc2e28df8874ebb0 esp-rp # Faster flashing, and J-Link in CMSIS-DAP mode (#4407)
+# Dry run of the CC1354 sweep: one commit before #4569 and one after.
+bd0661c0f641bb6c9755f5b1e4ab876b6b5bea37 cc13 # Update Rust crate parking_lot to 0.13.0 (#4568)
+5db8f01ff53e040bf2f5155639105e4bf626c8ce cc13 # Add CmsisDap::send_vendor_command and driver_mut on Probe and Session (#4569)
