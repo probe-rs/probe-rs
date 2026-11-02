@@ -1,0 +1,439 @@
+diff --git a/smoke-tester/Cargo.toml b/smoke-tester/Cargo.toml
+index f6e8d31f9..1bb018164 100644
+--- a/smoke-tester/Cargo.toml
++++ b/smoke-tester/Cargo.toml
+@@ -20,6 +20,7 @@ probe-rs-espressif.workspace = true
+ 
+ anyhow = { version = "1.0" }
+ serde = { version = "1", features = ["derive"] }
++serde_json = "1"
+ toml = "1.0.0"
+ log = "0.4.21"
+ clap = { version = "4.5", features = ["derive", "env"] }
+diff --git a/smoke-tester/src/bench.rs b/smoke-tester/src/bench.rs
+new file mode 100644
+index 000000000..8ac5b2cdf
+--- /dev/null
++++ b/smoke-tester/src/bench.rs
+@@ -0,0 +1,166 @@
++//! Benchmark result output.
++//!
++//! Set `SMOKE_TESTER_BENCH_OUT` to a file path to record results. The results are appended to the
++//! file as JSON lines.
++
++use std::{
++    collections::BTreeMap,
++    fs::{File, OpenOptions},
++    io::Write,
++    time::{Duration, Instant},
++};
++
++use anyhow::Context;
++use probe_rs::{
++    Session,
++    flashing::{ProgressEvent, ProgressOperation},
++};
++
++use crate::dut_definition::DutDefinition;
++
++const OUTPUT_ENV: &str = "SMOKE_TESTER_BENCH_OUT";
++
++// Backfill shim: this probe-rs version has no Session::driver_mut.
++static PROBE: std::sync::Mutex<Option<(String, Option<String>, u32)>> = std::sync::Mutex::new(None);
++
++pub fn set_probe(probe: &probe_rs::probe::Probe) {
++    *PROBE.lock().unwrap() = Some((
++        probe.get_name(),
++        // probe-rs selects SWD at attach if the DUT selects no protocol.
++        Some(probe.protocol().unwrap_or(probe_rs::probe::WireProtocol::Swd).to_string()),
++        probe.speed_khz(),
++    ));
++}
++
++/// Writes benchmark results for one DUT.
++pub struct Recorder {
++    output: Option<File>,
++    chip: String,
++    probe: String,
++    protocol: Option<String>,
++    speed_khz: u32,
++}
++
++impl Recorder {
++    pub fn new(dut: &DutDefinition, session: &mut Session) -> anyhow::Result<Self> {
++        let output = std::env::var_os(OUTPUT_ENV)
++            .map(|path| OpenOptions::new().create(true).append(true).open(path))
++            .transpose()
++            .context("Failed to open the benchmark output file")?;
++
++        let _ = session;
++        let (probe, protocol, speed_khz) =
++            PROBE.lock().unwrap().clone().unwrap_or(("unknown".to_string(), None, 0));
++
++        Ok(Self {
++            output,
++            chip: dut.chip.name.clone(),
++            probe,
++            protocol,
++            speed_khz,
++        })
++    }
++
++    /// Returns `true` if results are recorded.
++    pub fn is_enabled(&self) -> bool {
++        self.output.is_some()
++    }
++
++    /// Write the statistics of `values` to the output file.
++    ///
++    /// The report script gets the direction in which the metric gets better from `unit`.
++    pub fn record(
++        &mut self,
++        metric: &str,
++        size: u64,
++        unit: &str,
++        mut values: Vec<f64>,
++    ) -> anyhow::Result<()> {
++        let Some(output) = &mut self.output else {
++            return Ok(());
++        };
++        anyhow::ensure!(!values.is_empty(), "No samples for {metric}");
++
++        values.sort_by(f64::total_cmp);
++        let percentile = |q: f64| values[((values.len() - 1) as f64 * q).round() as usize];
++
++        let line = serde_json::json!({
++            "chip": self.chip,
++            "probe": self.probe,
++            "protocol": self.protocol,
++            "speed_khz": self.speed_khz,
++            "metric": metric,
++            "size": size,
++            "unit": unit,
++            "median": percentile(0.5),
++            "p10": percentile(0.1),
++            "p90": percentile(0.9),
++            "samples": values.len(),
++        })
++        .to_string();
++        println!("{line}");
++        // One write, so that a killed test does not leave a line without its newline.
++        output.write_all(format!("{line}\n").as_bytes())?;
++
++        Ok(())
++    }
++}
++
++#[derive(Default)]
++struct Phase {
++    bytes: u64,
++    time: Duration,
++    started: Option<Instant>,
++}
++
++/// Measures the throughput of each flash operation from the flash progress events.
++#[derive(Default)]
++pub struct FlashTimer {
++    phases: BTreeMap<&'static str, Phase>,
++}
++
++impl FlashTimer {
++    pub fn event(&mut self, event: &ProgressEvent) {
++        match event {
++            ProgressEvent::AddProgressBar {
++                operation,
++                total: Some(total),
++            } => self.phase(*operation).bytes += total,
++            ProgressEvent::Started(operation) => {
++                self.phase(*operation).started = Some(Instant::now());
++            }
++            ProgressEvent::Finished(operation) => {
++                let phase = self.phase(*operation);
++                if let Some(started) = phase.started.take() {
++                    phase.time += started.elapsed();
++                }
++            }
++            _ => {}
++        }
++    }
++
++    fn phase(&mut self, operation: ProgressOperation) -> &mut Phase {
++        let metric = match operation {
++            ProgressOperation::Fill => "flash_fill",
++            ProgressOperation::Erase => "flash_erase",
++            ProgressOperation::Program => "flash_program",
++            ProgressOperation::Verify => "flash_verify",
++            ProgressOperation::Ram => "ram_load",
++        };
++        self.phases.entry(metric).or_default()
++    }
++
++    /// Record the throughput of each finished operation with a known size, in bytes per second.
++    ///
++    /// The size of an operation depends on the flash layout, so the records have size 0.
++    pub fn record(self, recorder: &mut Recorder) -> anyhow::Result<()> {
++        for (metric, phase) in self.phases {
++            if phase.bytes == 0 || phase.time.is_zero() {
++                continue;
++            }
++            let throughput = phase.bytes as f64 / phase.time.as_secs_f64();
++            recorder.record(metric, 0, "B/s", vec![throughput])?;
++        }
++        Ok(())
++    }
++}
+diff --git a/smoke-tester/src/dut_definition.rs b/smoke-tester/src/dut_definition.rs
+index 0a7533a0c..12200fb6b 100644
+--- a/smoke-tester/src/dut_definition.rs
++++ b/smoke-tester/src/dut_definition.rs
+@@ -183,6 +183,7 @@ impl DutDefinition {
+             probe.select_protocol(protocol)?;
+         }
+ 
++        crate::bench::set_probe(&probe);
+         Ok(probe)
+     }
+ 
+diff --git a/smoke-tester/src/main.rs b/smoke-tester/src/main.rs
+index 9144fb898..3a2e92f71 100644
+--- a/smoke-tester/src/main.rs
++++ b/smoke-tester/src/main.rs
+@@ -9,6 +9,7 @@ use linkme::distributed_slice;
+ use probe_rs::Permissions;
+ use tracing_subscriber::EnvFilter;
+ 
++mod bench;
+ mod dut_definition;
+ mod macros;
+ mod tests;
+diff --git a/smoke-tester/src/tests.rs b/smoke-tester/src/tests.rs
+index d2685ce6d..b65c33232 100644
+--- a/smoke-tester/src/tests.rs
++++ b/smoke-tester/src/tests.rs
+@@ -9,9 +9,15 @@ use probe_rs::{
+     flashing::{DownloadOptions, FlashProgress, download_file_with_options, image_format},
+ };
+ 
++pub mod benchmark;
+ pub mod stepping;
+ 
+-use crate::{CORE_TESTS, SESSION_TESTS, TestResult, dut_definition::DutDefinition, skip_test};
++use crate::{
++    CORE_TESTS, SESSION_TESTS, TestResult,
++    bench::{FlashTimer, Recorder},
++    dut_definition::DutDefinition,
++    skip_test,
++};
+ 
+ #[smoke_tester_macros::test(core)]
+ pub fn test_register_read(_dut_definition: &DutDefinition, core: &mut Core) -> TestResult {
+@@ -93,10 +99,16 @@ fn test_write_read(scenario: &str, core: &mut Core, address: u64, data: &[u8]) -
+     Ok(())
+ }
+ 
++/// Returns the reason to skip memory access tests on `dut`, if one exists.
++pub(crate) fn memory_access_skip_reason(dut: &DutDefinition) -> Option<&'static str> {
++    (dut.chip.name == "STM32H753ZI")
++        .then_some("STM32H7 memory read has some unknown issue - maybe cache problems")
++}
++
+ #[smoke_tester_macros::test(core)]
+ fn test_memory_access(dut: &DutDefinition, core: &mut Core) -> TestResult {
+-    if dut.chip.name == "STM32H753ZI" {
+-        skip_test!("STM32H7 memory read has some unknown issue - maybe cache problems");
++    if let Some(reason) = memory_access_skip_reason(dut) {
++        skip_test!(reason);
+     }
+ 
+     let memory_regions = core
+@@ -286,10 +298,14 @@ pub fn test_flashing(dut_definition: &DutDefinition, session: &mut Session) -> R
+         skip_test!("No flash test binary specified");
+     };
+ 
++    let mut recorder = Recorder::new(dut_definition, session)?;
++    let mut timer = FlashTimer::default();
++
+     let mut options = DownloadOptions::default();
+     options.progress = FlashProgress::new(|event| {
+         log::debug!("Flash Event: {event:?}");
+         print!(".");
++        timer.event(&event);
+     });
+ 
+     println!("Starting flashing test");
+@@ -312,5 +328,7 @@ pub fn test_flashing(dut_definition: &DutDefinition, session: &mut Session) -> R
+ 
+     println!("Finished flashing");
+ 
++    timer.record(&mut recorder)?;
++
+     Ok(())
+ }
+diff --git a/smoke-tester/src/tests/benchmark.rs b/smoke-tester/src/tests/benchmark.rs
+new file mode 100644
+index 000000000..6b06567e5
+--- /dev/null
++++ b/smoke-tester/src/tests/benchmark.rs
+@@ -0,0 +1,162 @@
++//! Probe throughput benchmarks.
++//!
++//! Without a benchmark output file, each operation runs once as a test.
++
++use std::time::{Duration, Instant};
++
++use linkme::distributed_slice;
++use probe_rs::{Architecture, Core, MemoryInterface, Session, config::MemoryRegion};
++
++use crate::{
++    SESSION_TESTS, TestResult, bench::Recorder, dut_definition::DutDefinition, skip_test,
++    tests::memory_access_skip_reason,
++};
++
++/// Minimum total time of the samples of one measurement.
++const SAMPLE_TIME: Duration = Duration::from_millis(200);
++const MIN_SAMPLES: usize = 5;
++const MAX_SAMPLES: usize = 1000;
++
++/// Bulk transfer sizes in bytes.
++const BULK_SIZES: [usize; 2] = [64, 16 * 1024];
++
++/// Run `op` once, then again until enough samples are collected if `recorder` records.
++///
++/// `op` returns the time of the part to measure.
++fn sample(
++    recorder: &Recorder,
++    mut op: impl FnMut() -> anyhow::Result<Duration>,
++) -> anyhow::Result<Vec<f64>> {
++    op()?;
++
++    let mut samples = Vec::new();
++    if !recorder.is_enabled() {
++        return Ok(samples);
++    }
++
++    let mut total = Duration::ZERO;
++    while samples.len() < MAX_SAMPLES && (samples.len() < MIN_SAMPLES || total < SAMPLE_TIME) {
++        let time = op()?;
++        total += time;
++        samples.push(time.as_secs_f64());
++    }
++
++    Ok(samples)
++}
++
++/// Measure the time of single accesses in microseconds.
++fn latency(recorder: &mut Recorder, core: &mut Core, address: u64) -> anyhow::Result<()> {
++    let samples = sample(recorder, || {
++        let start = Instant::now();
++        core.read_word_32(address)?;
++        Ok(start.elapsed())
++    })?;
++    recorder.record("read_word_32", 4, "us", to_micros(samples))?;
++
++    // The Xtensa driver caches register values, so the reads do not access the probe.
++    if core.architecture() == Architecture::Xtensa {
++        return Ok(());
++    }
++
++    let pc = core.program_counter();
++    let samples = sample(recorder, || {
++        let start = Instant::now();
++        core.read_core_reg::<u64>(pc)?;
++        Ok(start.elapsed())
++    })?;
++    recorder.record("read_core_reg", 0, "us", to_micros(samples))
++}
++
++/// Measure the throughput of block accesses in bytes per second.
++fn bulk(recorder: &mut Recorder, core: &mut Core, address: u64, size: usize) -> anyhow::Result<()> {
++    let mut data = vec![0; size / 4];
++    let mut readback = vec![0; size / 4];
++    let mut seed = 0;
++
++    let samples = sample(recorder, || {
++        seed += 1;
++        fill(&mut data, seed);
++
++        let start = Instant::now();
++        core.write_32(address, &data)?;
++        core.flush()?;
++        Ok(start.elapsed())
++    })?;
++    recorder.record("write_32", size as u64, "B/s", to_throughput(samples, size))?;
++
++    // Each read also verifies the last write.
++    let samples = sample(recorder, || {
++        readback.fill(0);
++
++        let start = Instant::now();
++        core.read_32(address, &mut readback)?;
++        let time = start.elapsed();
++
++        verify(&data, &readback, address)?;
++        Ok(time)
++    })?;
++    recorder.record("read_32", size as u64, "B/s", to_throughput(samples, size))
++}
++
++/// Fill `data` with a pattern that differs for each `seed`.
++fn fill(data: &mut [u32], seed: u32) {
++    for (i, word) in data.iter_mut().enumerate() {
++        *word = (i as u32 ^ seed.rotate_left(16)).wrapping_mul(0x9E37_79B9);
++    }
++}
++
++fn verify(expected: &[u32], actual: &[u32], address: u64) -> anyhow::Result<()> {
++    if let Some(i) = expected.iter().zip(actual).position(|(e, a)| e != a) {
++        anyhow::bail!(
++            "Readback differs at address {:#010X}: expected {:#010X}, got {:#010X}",
++            address + 4 * i as u64,
++            expected[i],
++            actual[i]
++        );
++    }
++    Ok(())
++}
++
++fn to_micros(samples: Vec<f64>) -> Vec<f64> {
++    samples.into_iter().map(|s| s * 1e6).collect()
++}
++
++fn to_throughput(samples: Vec<f64>, size: usize) -> Vec<f64> {
++    samples.into_iter().map(|s| size as f64 / s).collect()
++}
++
++#[smoke_tester_macros::test(session)]
++fn benchmark_memory(dut: &DutDefinition, session: &mut Session) -> TestResult {
++    if let Some(reason) = memory_access_skip_reason(dut) {
++        skip_test!(reason);
++    }
++
++    let mut recorder = Recorder::new(dut, session)?;
++
++    let mut core = session.core(0)?;
++    core.reset_and_halt(Duration::from_millis(500))?;
++
++    let Some(ram) = core
++        .memory_regions()
++        .find_map(MemoryRegion::as_ram_region)
++        .cloned()
++    else {
++        skip_test!("No RAM region found");
++    };
++    let address = ram.range.start;
++    let ram_size = (ram.range.end - ram.range.start) as usize & !3;
++
++    latency(&mut recorder, &mut core, address)?;
++
++    // A small RAM region limits more than one size to the same value. Measure each value once.
++    let mut last_size = 0;
++    for size in BULK_SIZES {
++        let size = size.min(ram_size);
++        if size > last_size {
++            bulk(&mut recorder, &mut core, address, size)?;
++            last_size = size;
++        }
++    }
++
++    Ok(())
++}

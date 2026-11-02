@@ -1,0 +1,189 @@
+# Run the benchmark on earlier master commits, and add the results to the bench-data branch.
+#
+# This workflow runs only in its pull request, which is never merged. Each push runs the
+# commits in backfill/commits.txt. Commits before #4569 get backfill/bench-shim.patch, later
+# commits get backfill/bench.patch. backfill/publish.py adds the results to bench-data.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+name: Benchmark backfill
+
+env:
+  CARGO_INCREMENTAL: 0
+  # Set to true to write the results to the bench-data branch.
+  PUBLISH: true
+
+jobs:
+  commits:
+    runs-on: ubuntu-latest
+    outputs:
+      commits: ${{ steps.list.outputs.commits }}
+      jobs1: ${{ steps.list.outputs.jobs1 }}
+      jobs2: ${{ steps.list.outputs.jobs2 }}
+    steps:
+      - uses: actions/checkout@v7
+      - id: list
+        run: python3 backfill/matrix.py >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: commits
+    runs-on: ubuntu-24.04-arm
+    strategy:
+      fail-fast: false
+      matrix:
+        sha: ${{ fromJSON(needs.commits.outputs.commits) }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ matrix.sha }}
+          path: src
+
+      - name: Add the benchmark
+        working-directory: src
+        run: |
+          if [ -e smoke-tester/src/bench.rs ]; then
+            exit 0
+          elif grep -q "fn driver_mut" probe-rs/src/session.rs; then
+            git apply ../backfill/bench.patch
+          else
+            git apply ../backfill/bench-shim.patch
+          fi
+
+      # The commit selects its own toolchain.
+      - name: Install target for cross-compilation
+        working-directory: src
+        run: rustup target add aarch64-unknown-linux-musl
+
+      - uses: taiki-e/install-action@nextest
+
+      - name: Cache Dependencies
+        uses: Swatinem/rust-cache@v2.9.3
+        with:
+          workspaces: src
+          shared-key: backfill
+
+      - name: Build smoke-tester
+        working-directory: src
+        run: cargo nextest archive --release --target aarch64-unknown-linux-musl -p smoke_tester --archive-file ../smoke_tester.tar.zst
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: smoke_tester-${{ matrix.sha }}
+          path: smoke_tester.tar.zst
+
+  # A matrix has at most 256 jobs, so two jobs share the test jobs.
+  test-1:
+    needs: [commits, build]
+    if: ${{ !cancelled() }}
+    name: test (${{ matrix.runner }} ${{ matrix.part }}, ${{ matrix.sha }})
+    runs-on: ["self-hosted", "linux", "ARM64", "${{ matrix.runner }}"]
+    strategy:
+      fail-fast: false
+      matrix:
+        # backfill/matrix.py gives the parts of backfill/setups.json for each commit.
+        include: ${{ fromJSON(needs.commits.outputs.jobs1) }}
+    env:
+      CARGO_TERM_COLOR: always
+    steps: &test-steps
+      - id: nextest
+        run: echo "found=$(command -v cargo-nextest > /dev/null && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
+      - if: ${{ steps.nextest.outputs.found != 'true' }}
+        uses: taiki-e/install-action@nextest
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: smoke_tester-${{ matrix.sha }}
+
+      # Turn off the USB port power of each probe, then turn it on again. A failure is a warning.
+      - name: Power-cycle the probes
+        run: |
+          ports=()
+          for file in "$SMOKE_TESTER_CONFIG"/*.toml; do
+            # The definitions can have CRLF line ends.
+            selector=$(tr -d '\r' < "$file" | sed -n 's/^probe_selector *= *"\(.*\)"/\1/p')
+            [ -n "$selector" ] || continue
+            vid=${selector%%:*}; rest=${selector#*:}; pid=${rest%%:*}; serial=${rest#"$pid"}; serial=${serial#:}
+            for dev in /sys/bus/usb/devices/*/; do
+              [ "$(cat "$dev/idVendor" 2>/dev/null)" = "${vid,,}" ] || continue
+              [ "$(cat "$dev/idProduct" 2>/dev/null)" = "${pid,,}" ] || continue
+              [ -z "$serial" ] || [ "$(cat "$dev/serial" 2>/dev/null)" = "$serial" ] || continue
+              port=$(readlink -f "$dev/port" 2>/dev/null) && ports+=("$port")
+            done
+          done
+          for port in "${ports[@]}"; do echo 1 > "$port/disable" || echo "::warning::Cannot turn off $port"; done
+          sleep 1
+          for port in "${ports[@]}"; do echo 0 > "$port/disable" || echo "::warning::Cannot turn on $port"; done
+          echo "Power-cycled ${#ports[@]} probes"
+          sleep 10
+
+      # Only the tests that record results. nextest needs the workspace directory, not the sources.
+      - name: Run the benchmark
+        env:
+          SMOKE_TESTER_BENCH_OUT: ${{ runner.temp }}/bench.jsonl
+        run: |
+          rm -f "$SMOKE_TESTER_BENCH_OUT"
+          mkdir -p src/smoke-tester
+          cargo-nextest nextest run --archive-file smoke_tester.tar.zst --profile ci-hardware --workspace-remap "$GITHUB_WORKSPACE/src" -E '(test(benchmark_memory) | test(test_flashing)) & ${{ matrix.filter }}'
+
+      - uses: actions/upload-artifact@v7
+        if: ${{ !cancelled() }}
+        with:
+          name: bench-${{ matrix.runner }}-${{ matrix.part }}-${{ matrix.sha }}
+          path: ${{ runner.temp }}/bench.jsonl
+          if-no-files-found: ignore
+          overwrite: true
+
+  test-2:
+    needs: [commits, build]
+    if: ${{ !cancelled() && needs.commits.outputs.jobs2 != '[]' }}
+    name: test (${{ matrix.runner }} ${{ matrix.part }}, ${{ matrix.sha }})
+    runs-on: ["self-hosted", "linux", "ARM64", "${{ matrix.runner }}"]
+    strategy:
+      fail-fast: false
+      matrix:
+        # backfill/matrix.py gives the parts of backfill/setups.json for each commit.
+        include: ${{ fromJSON(needs.commits.outputs.jobs2) }}
+    env:
+      CARGO_TERM_COLOR: always
+    steps: *test-steps
+
+  # A re-run of failed jobs is safe: the script adds only the records that bench-data does not
+  # have. The script also reads the results of the runs in backfill/runs.txt.
+  publish:
+    needs: [test-1, test-2]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Download the results
+        run: |
+          for run in "$GITHUB_RUN_ID" $(grep -o '^[0-9]\+' backfill/runs.txt); do
+            gh run download "$run" -R "$GITHUB_REPOSITORY" -p 'bench-*' -D "artifacts/$run" || echo "::warning::No results in run $run"
+          done
+
+      - name: Add the results to the bench-data branch
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          for attempt in 1 2 3 4 5; do
+            rm -rf data
+            git fetch -q origin bench-data
+            git worktree prune
+            git worktree add -q --detach data FETCH_HEAD
+            python3 backfill/publish.py artifacts data
+            [ "$PUBLISH" = true ] || exit 0
+            git -C data push -q origin HEAD:refs/heads/bench-data && exit 0
+            sleep $((attempt * 5))
+          done
+          exit 1
