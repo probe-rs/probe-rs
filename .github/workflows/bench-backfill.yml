@@ -53,6 +53,18 @@ jobs:
             git apply ../backfill/bench-shim.patch
           fi
 
+      # The CC1354 needs #4449. The fix applies from #4404 on. Older commits stay as they are.
+      - name: Add the ICEPick fix
+        working-directory: src
+        run: |
+          if git apply --reverse --check ../backfill/icepick.patch 2> /dev/null; then
+            echo "The commit has the ICEPick fix"
+          elif git apply ../backfill/icepick.patch; then
+            echo "Added the ICEPick fix"
+          else
+            echo "::warning::The ICEPick fix does not apply"
+          fi
+
       # The commit selects its own toolchain.
       - name: Install target for cross-compilation
         working-directory: src

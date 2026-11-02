@@ -1,4 +1,4 @@
 # <sha> [<part>,...] # comment. The parts are keys of setups.json. Without parts, all parts run.
-# Dry run of the CC1354 sweep: one commit before #4569 and one after.
-bd0661c0f641bb6c9755f5b1e4ab876b6b5bea37 cc13 # Update Rust crate parking_lot to 0.13.0 (#4568)
-5db8f01ff53e040bf2f5155639105e4bf626c8ce cc13 # Add CmsisDap::send_vendor_command and driver_mut on Probe and Session (#4569)
+# Dry run of the CC1354 sweep with the ICEPick fix of #4449 added.
+444e2ad75ad8c74b612ad5a49651431b5008a402 cc13 # Fix a number of regressions (#4404)
+57f59e77e9c1faa71d03918cb5e3d84cc70a4dbc cc13 # cmsis-dap: add a TCP transport (#4499)
