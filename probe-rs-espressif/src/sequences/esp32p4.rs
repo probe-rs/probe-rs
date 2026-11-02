@@ -328,6 +328,13 @@ impl RiscvDebugSequence for ESP32P4 {
         interface.write_dm_register(Sbdata0(0xFFFF0000))?;
         std::thread::sleep(Duration::from_millis(10));
 
+        // Halt the core when the system reset ends. The HARTRESET below resets only
+        // the CPU, and the ROM can crash if the HARTRESET interrupts it.
+        let mut dmcontrol = Dmcontrol(0);
+        dmcontrol.set_dmactive(true);
+        dmcontrol.set_resethaltreq(true);
+        interface.write_dm_register(dmcontrol)?;
+
         // Writing LP_SYS_SYS_CTRL_REG causes the System Reset
         // System Reset: resets the whole digital system, including the LP system.
         interface.write_dm_register(Sbaddress0(0x50110008))?;
@@ -358,6 +365,12 @@ impl RiscvDebugSequence for ESP32P4 {
         )?;
 
         interface.reset_hart_and_halt(timeout)?;
+
+        // A later reset by the firmware must not halt the core.
+        let mut dmcontrol = Dmcontrol(0);
+        dmcontrol.set_dmactive(true);
+        dmcontrol.set_clrresethaltreq(true);
+        interface.write_dm_register(dmcontrol)?;
 
         // Perform a manual reset of all peripherals
         for reg in &[
