@@ -55,7 +55,7 @@ fn test_register_write(_definition: &DutDefinition, core: &mut Core) -> TestResu
         if core.architecture() == Architecture::Arm {
             match register.name() {
                 // TODO: Should this be a part of `core_registers`?
-                "EXTRA" => continue,
+                "EXTRA" | "EXTRA_S" | "EXTRA_NS" => continue,
                 // TODO: This does not work on all chips (nRF51822), needs to be investigated.
                 "XPSR" => continue,
                 _ => (),
