@@ -117,6 +117,13 @@ impl RiscvDebugSequence for ESP32S31 {
         interface.write_dm_register(Sbdata0(PMU_CPU_UNSTALL_VALUE))?;
         std::thread::sleep(Duration::from_millis(10));
 
+        // Halt the core when the system reset ends. The HARTRESET below resets only
+        // the CPU, and the ROM can crash if the HARTRESET interrupts it.
+        let mut dmcontrol = Dmcontrol(0);
+        dmcontrol.set_dmactive(true);
+        dmcontrol.set_resethaltreq(true);
+        interface.write_dm_register(dmcontrol)?;
+
         // Trigger a full digital-system reset via LP_SYSTEM_REG_SYS_CTRL_REG bit 1.
         // Must read-modify-write to preserve other bits.
         // Configure SB for read-on-addr + 32-bit access
@@ -141,6 +148,12 @@ impl RiscvDebugSequence for ESP32S31 {
 
         interface.enter_debug_mode()?;
         interface.reset_hart_and_halt(timeout)?;
+
+        // A later reset by the firmware must not halt the core.
+        let mut dmcontrol = Dmcontrol(0);
+        dmcontrol.set_dmactive(true);
+        dmcontrol.set_clrresethaltreq(true);
+        interface.write_dm_register(dmcontrol)?;
 
         // HARTRESET leaves DPC at reset vector + 4 on the S31. That points at
         // zero-filled ROM rather than the jump at the actual reset vector.
