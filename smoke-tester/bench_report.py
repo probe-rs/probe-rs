@@ -19,8 +19,8 @@ The script writes:
 - `baseline.jsonl`: the baseline records that the comparison uses, with their commit hash added,
   nearest commit first.
 - `summary.md`: all records, with the change from the baseline.
-- `comment.md`: only the changes beyond the noise threshold. The script writes it only if such
-  changes exist.
+- `comment.md`: a summary, and a table of the changes beyond the noise threshold. The script writes
+  it only if such changes exist.
 - `clear.md`: the PR comment text if no changes exist.
 
 The records can come from PR code. Each table cell is a code span, so that the records cannot add
@@ -186,6 +186,17 @@ HEADER = (
     "| Change |\n|---|---|---|---|---|---|---|---|---|---|"
 )
 
+CAUTION = (
+    "> [!NOTE]\n"
+    "> The benchmarks run on real hardware, and the results change from run to run. "
+    "A change in this report can be noise, and noise can hide a small change. "
+    "If a change looks wrong, run the smoke test again."
+)
+
+
+def plural(n: int, word: str) -> str:
+    return f"{n} {word}" if n == 1 else f"{n} {word}s"
+
 
 def main() -> None:
     parser = argparse.ArgumentParser()
@@ -210,9 +221,13 @@ def main() -> None:
 
     rows = []
     changed = []
+    outcomes = {"better": 0, "worse": 0, None: 0}
     for record in records:
-        change, outcome = compare(record, baseline.get(key(record), []))
+        history = baseline.get(key(record), [])
+        change, outcome = compare(record, history)
         rows.append(row(record, change, outcome))
+        if history:
+            outcomes[outcome] += 1
         if outcome:
             changed.append(rows[-1])
 
@@ -223,22 +238,37 @@ def main() -> None:
         "\n".join(summary) + "\n", encoding="utf-8", errors="replace"
     )
 
+    count = sum(outcomes.values())
     if changed:
         comment = [
             "## Probe benchmark",
             "",
-            f"{compared} Results that changed by more than the noise threshold: {len(changed)}.",
+            f"Of {plural(count, 'result')} with a baseline, {outcomes['better']} got better and "
+            f"{outcomes['worse']} got worse by more than the noise threshold. {compared}",
+            "",
+            CAUTION,
+            "",
+            "<details>",
+            f"<summary>Changed results ({len(changed)})</summary>",
             "",
             HEADER,
             *changed,
+            "",
+            "</details>",
         ]
         name = "comment.md"
-    elif records:
+    elif count:
         comment = [
             "## Probe benchmark",
             "",
-            f"{compared} No results changed by more than the noise threshold.",
+            f"No change in {plural(count, 'result')} with a baseline is larger than the noise "
+            f"threshold. {compared}",
+            "",
+            CAUTION,
         ]
+        name = "clear.md"
+    elif records:
+        comment = ["## Probe benchmark", "", f"{compared} The results have no baseline."]
         name = "clear.md"
     else:
         comment = ["## Probe benchmark", "", "No results."]
