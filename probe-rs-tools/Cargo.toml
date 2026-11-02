@@ -32,7 +32,7 @@ num-traits = "0.2"
 scroll = "0.13"
 serde = { version = "1", features = ["derive"] }
 tracing = "0.1"
-typed-path = "0.12"
+typed-path = "0.13"
 espflash = { version = "4.7", default-features = false }
 
 itertools = "0.15"
