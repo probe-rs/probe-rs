@@ -103,6 +103,13 @@ impl RiscvDebugSequence for ESP32H4 {
         interface.write_dm_register(Sbaddress0(LP_AON_CPUCORE_CFG))?;
         interface.write_dm_register(Sbdata0(LP_AON_CPU_UNSTALL))?;
 
+        // Halt the core when the system reset ends. The HARTRESET below resets only
+        // the CPU, and the ROM can crash if the HARTRESET interrupts it.
+        let mut dmcontrol = Dmcontrol(0);
+        dmcontrol.set_dmactive(true);
+        dmcontrol.set_resethaltreq(true);
+        interface.write_dm_register(dmcontrol)?;
+
         interface.write_dm_register(Sbcs(0x140000))?;
         interface.write_dm_register(Sbaddress0(LP_AON_SYS_CFG))?;
         let reg_val = interface.read_dm_register::<Sbdata0>()?.0;
@@ -113,12 +120,7 @@ impl RiscvDebugSequence for ESP32H4 {
         interface.write_dm_register(Sbaddress0(LP_AON_CPUCORE_CFG))?;
         interface.write_dm_register(Sbdata0(LP_AON_CPU_RESET))?;
 
-        let mut dmcontrol = Dmcontrol(0);
-        dmcontrol.set_dmactive(true);
-        dmcontrol.set_resumereq(true);
-        interface.write_dm_register(dmcontrol)?;
-
-        std::thread::sleep(Duration::from_millis(100));
+        std::thread::sleep(Duration::from_millis(10));
 
         let mut dmcontrol = Dmcontrol(0);
         dmcontrol.set_dmactive(true);
@@ -134,6 +136,12 @@ impl RiscvDebugSequence for ESP32H4 {
         interface.write_word_32(PCR_UART0_SCLK_CONF, reg | PCR_UART0_SCLK_EN)?;
 
         interface.reset_hart_and_halt(timeout)?;
+
+        // A later reset by the firmware must not halt the core.
+        let mut dmcontrol = Dmcontrol(0);
+        dmcontrol.set_dmactive(true);
+        dmcontrol.set_clrresethaltreq(true);
+        interface.write_dm_register(dmcontrol)?;
 
         Ok(())
     }
