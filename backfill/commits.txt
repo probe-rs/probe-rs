@@ -1,16 +1,4 @@
 # <sha> [<part>,...] # comment. The parts are keys of setups.json. Without parts, all parts run.
-# The transient failures of run 41369057735. The FTDI failures of #4320 to #4396 come from the code.
-c0b48362f94c65fe4d0b1e24a710f756f7f06957 esp-rp # Move the scan chain and the TAP paths into JtagChain (#4318)
-09811fbbd7bd0ce0be0b994190a30fcb81607364 esp-rp # Rest of the SWD/JTAG PRs (#4334)
-3bacb7cb605f717264cdde8d5000cd1df620a6cb esp-rp # CMSIS-DAP: split a batch longer than the transfer count field (#4341)
-5b15a277f487d1e978be1bc2065f595f4a871495 esp-rp # rpc_client::connect: Use path concatenation (#4350)
-fa6277673d4eb94b95cd0199c8dd3bfe1aaa33b3 esp-rp # Update Non-breaking updates (#4351)
-f0e400f47473cdf8b99f709966b7c861b0a4f9ac arm # Fix tms570 and cc26xx (#4360)
-dca8288573f677e63fde784ebdd57ecf145ba5e7 esp-rp # Unwinding improvements (#4372)
+# esp32s3 failed twice on these.
 0b62f8612fcebab524404b372b231b69aa2fe16b esp-rp # Add Infineon XMC1000 (XMC1100/1200/1300/1400) target support (#4382)
-29415442a21cace26bcee7ab3cc5e6a7c4ceaf66 arm,esp-rp # Fix ESP32H4 cores, clean up changelog entries (#4396)
 1f6489e534860bb0486007b0fc2e28df8874ebb0 esp-rp # Faster flashing, and J-Link in CMSIS-DAP mode (#4407)
-a58886b27d7f31624f4bbf47f94c611df0b7c0b4 arm # cmsisdap: handle stringless interface on VID/PID (#4415)
-04f7ef128aead5cbdacfb54dbab5929ed3787641 esp-rp # ICDI probe PR (#746) rebase (#4368)
-b1ab7af729a7088585bc138bac2c0dc773fb7214 esp-rp # reliability fix for VA416XX reset (#4448)
-842af5e58786db520421ddb050dfc372b484a1ef arm # T32CZ20: start the flash region at 0x10000000 (#4450)
