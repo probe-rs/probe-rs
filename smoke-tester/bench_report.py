@@ -223,10 +223,9 @@ def main() -> None:
     changed = []
     outcomes = {"better": 0, "worse": 0, None: 0}
     for record in records:
-        history = baseline.get(key(record), [])
-        change, outcome = compare(record, history)
+        change, outcome = compare(record, baseline.get(key(record), []))
         rows.append(row(record, change, outcome))
-        if history:
+        if change is not None:
             outcomes[outcome] += 1
         if outcome:
             changed.append(rows[-1])
@@ -268,7 +267,7 @@ def main() -> None:
         ]
         name = "clear.md"
     elif records:
-        comment = ["## Probe benchmark", "", f"{compared} The results have no baseline."]
+        comment = ["## Probe benchmark", "", compared]
         name = "clear.md"
     else:
         comment = ["## Probe benchmark", "", "No results."]
