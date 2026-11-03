@@ -124,6 +124,8 @@ fn run_test_impl(
 ) -> anyhow::Result<TestResult> {
     tracing::info!("Running test {}", request.test.name);
 
+    let semihosting_options = ctx.semihosting_options(request.semihosting_options)?;
+
     let timeout = request.test.timeout.map(|t| Duration::from_secs(t as u64));
     let timeout = timeout.unwrap_or(Duration::from_secs(60));
 
@@ -147,11 +149,9 @@ fn run_test_impl(
     }
 
     let expected_outcome = request.test.expected_outcome;
-    let mut run_handler = RunEventHandler::new(
-        request.test,
-        ctx.semihosting_options(request.semihosting_options)?,
-        |event| _ = sender.send_semihosting_event(event),
-    );
+    let mut run_handler = RunEventHandler::new(request.test, semihosting_options, |event| {
+        _ = sender.send_semihosting_event(event)
+    });
 
     let mut run_loop = RunLoop {
         core_id,
