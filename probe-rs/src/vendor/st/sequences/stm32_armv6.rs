@@ -149,8 +149,11 @@ impl ArmDebugSequence for Stm32Armv6 {
     fn debug_core_stop(
         &self,
         memory: &mut dyn ArmMemoryInterface,
-        _core_type: CoreType,
+        core_type: CoreType,
     ) -> Result<(), ArmError> {
+        // The stock steps first: halting debug off and the vector catches cleared.
+        self.debug_core_stop_default(memory, core_type)?;
+
         match self.family {
             Stm32Armv6Family::F0 => {
                 let mut enr = rcc::EnrF0::read(&mut *memory)?;

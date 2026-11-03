@@ -93,8 +93,11 @@ impl ArmDebugSequence for Stm32Armv7 {
     fn debug_core_stop(
         &self,
         memory: &mut dyn ArmMemoryInterface,
-        _core_type: CoreType,
+        core_type: CoreType,
     ) -> Result<(), ArmError> {
+        // The stock steps first: halting debug off and the vector catches cleared.
+        self.debug_core_stop_default(memory, core_type)?;
+
         let mut saved_cr_value = self.saved_cr_value.lock().unwrap();
         if let Some(crv) = saved_cr_value.take() {
             let mut cr = dbgmcu::Control(crv);

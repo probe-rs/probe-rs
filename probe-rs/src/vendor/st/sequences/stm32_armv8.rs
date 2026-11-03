@@ -82,8 +82,11 @@ impl ArmDebugSequence for Stm32Armv8 {
     fn debug_core_stop(
         &self,
         memory: &mut dyn ArmMemoryInterface,
-        _core_type: CoreType,
+        core_type: CoreType,
     ) -> Result<(), ArmError> {
+        // The stock steps first: halting debug off and the vector catches cleared.
+        self.debug_core_stop_default(memory, core_type)?;
+
         let mut cr = dbgmcu::Control::read(&mut *memory)?;
         cr.enable_standby_debug(false);
         cr.enable_stop_debug(false);

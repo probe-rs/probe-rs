@@ -193,8 +193,11 @@ impl ArmDebugSequence for Stm32h7 {
     fn debug_core_stop(
         &self,
         memory: &mut dyn ArmMemoryInterface,
-        _core_type: CoreType,
+        core_type: CoreType,
     ) -> Result<(), ArmError> {
+        // The stock steps first: halting debug off and the vector catches cleared.
+        self.debug_core_stop_default(memory, core_type)?;
+
         // Power down the debug components through selected AP.
 
         self.enable_debug_components(&mut *memory, false)?;
