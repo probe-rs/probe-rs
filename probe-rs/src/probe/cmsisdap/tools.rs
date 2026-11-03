@@ -588,6 +588,10 @@ fn is_known_cmsis_dap_dev(device: &DeviceInfo) -> bool {
 /// `DAP_TransferBlock` reads. Firmware 3.0.0.45 keeps all of them. The XDS110 shows its firmware
 /// version in the product string, for example "XDS110 (03.00.00.22) Embed with CMSIS-DAP".
 pub(super) fn loses_pipelined_replies(product: &str) -> bool {
+    if product == "IFMCU CMSIS-DAP" {
+        return true;
+    }
+
     let Some(version) = product
         .strip_prefix("XDS110 (")
         .and_then(|rest| rest.split_once(')'))
