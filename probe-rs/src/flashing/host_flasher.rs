@@ -283,11 +283,6 @@ impl HostSideFlasher {
                         progress.page_programmed(page.size() as u64, std::time::Duration::ZERO);
                     }
                     progress.finished_programming();
-
-                    // Verify if requested
-                    if verify && !this.verify_layout(session, layout)? {
-                        return Err(FlashError::Verify);
-                    }
                 }
             } else {
                 // Process each region with the per-page loop.
@@ -333,12 +328,11 @@ impl HostSideFlasher {
                         t = Instant::now();
                     }
                     progress.finished_programming();
-
-                    // Verify if requested
-                    if verify && !this.verify_layout(session, layout)? {
-                        return Err(FlashError::Verify);
-                    }
                 }
+            }
+
+            if verify && !this.verify_regions(session, progress)? {
+                return Err(FlashError::Verify);
             }
 
             Ok(())
@@ -351,27 +345,49 @@ impl HostSideFlasher {
     pub(super) fn verify(
         &mut self,
         session: &mut Session,
-        _progress: &mut FlashProgress<'_>,
+        progress: &mut FlashProgress<'_>,
         _ignore_filled: bool,
     ) -> Result<bool, FlashError> {
         tracing::debug!("Host-side: Starting verify procedure");
         self.run_with_flash(session, |this, session| {
-            for r in &this.regions {
-                if !this.verify_layout(session, r.flash_layout())? {
+            this.verify_regions(session, progress)
+        })
+    }
+
+    /// Verify all regions and report the verify progress.
+    fn verify_regions(
+        &self,
+        session: &mut Session,
+        progress: &mut FlashProgress<'_>,
+    ) -> Result<bool, FlashError> {
+        progress.started_verifying();
+
+        let result = (|| {
+            for r in &self.regions {
+                if !self.verify_layout(session, r.flash_layout(), progress)? {
                     return Ok(false);
                 }
             }
 
             Ok(true)
-        })
+        })();
+
+        match result.is_ok() {
+            true => progress.finished_verifying(),
+            false => progress.failed_verifying(),
+        }
+
+        result
     }
 
     fn verify_layout(
         &self,
         session: &mut Session,
         layout: &FlashLayout,
+        progress: &mut FlashProgress<'_>,
     ) -> Result<bool, FlashError> {
         for page in layout.pages() {
+            let start = Instant::now();
             let verified = self
                 .flash_sequence
                 .verify(session, page.address(), page.data())
@@ -384,6 +400,7 @@ impl HostSideFlasher {
                 );
                 return Ok(false);
             }
+            progress.page_verified(page.size() as u64, start.elapsed());
         }
 
         Ok(true)
