@@ -64,6 +64,9 @@ impl ESP32 {
     const DG_WRAP_FORCE_PU: u32 = 1 << 20;
     const DG_WRAP_FORCE_PD: u32 = 1 << 19;
 
+    const DPORT_APPCPU_CTRL_B_REG: u64 = 0x3FF0_0030;
+    const DPORT_APPCPU_CLKGATE_EN: u32 = 1 << 0;
+
     /// Creates a new debug sequence handle for the ESP32.
     pub fn create() -> Arc<dyn XtensaDebugSequence> {
         tracing::warn!(
@@ -359,6 +362,14 @@ impl ESP32 {
 
         core.reset_and_halt(timeout)?;
         self.on_connect(core)?;
+
+        // The stub starts the APP CPU in ROM. The ROM code fails when the application uses the
+        // memory of the ROM. Firmware that uses the APP CPU starts it again.
+        let appcpu_ctrl_b = core.read_word_32(Self::DPORT_APPCPU_CTRL_B_REG)?;
+        core.write_word_32(
+            Self::DPORT_APPCPU_CTRL_B_REG,
+            appcpu_ctrl_b & !Self::DPORT_APPCPU_CLKGATE_EN,
+        )?;
 
         Ok(())
     }
