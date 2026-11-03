@@ -143,12 +143,13 @@ impl FlashLayout {
     pub(crate) fn page_data_without_fills(&self, page_index: usize) -> Vec<(u64, &[u8])> {
         let page = &self.pages[page_index];
 
-        let mut fills = self
+        // The fills are in page order, and in address order in a page.
+        let first = self
             .fills
+            .partition_point(|fill| fill.page_index < page_index);
+        let fills = self.fills[first..]
             .iter()
-            .filter(|fill| fill.page_index == page_index)
-            .collect::<Vec<_>>();
-        fills.sort_by_key(|fill| fill.address);
+            .take_while(|fill| fill.page_index == page_index);
 
         let mut pieces = Vec::new();
         let mut offset = 0;
