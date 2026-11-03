@@ -430,9 +430,11 @@ fn reject_probe_by_version(
 
 /// Attempt to open the given DebugProbeInfo in CMSIS-DAP v2 mode if possible,
 /// otherwise in v1 mode.
+///
+/// Also returns the USB product string of the device.
 pub fn open_device_from_selector(
     selector: &DebugProbeSelector,
-) -> Result<CmsisDapDevice, ProbeCreationError> {
+) -> Result<(CmsisDapDevice, Option<String>), ProbeCreationError> {
     tracing::trace!("Attempting to open device matching {}", selector);
 
     // We need to use nusb to detect the proper HID interface to use
@@ -464,8 +466,8 @@ pub fn open_device_from_selector(
                     // If the VID, PID, and potentially SN all match,
                     // and the device is a valid CMSIS-DAP probe,
                     // attempt to open the device in v2 mode.
-                    if let Some(device) = open_v2_device(&device, device_info.interface)? {
-                        return Ok(device);
+                    if let Some(opened) = open_v2_device(&device, device_info.interface)? {
+                        return Ok((opened, device.product_string().map(str::to_owned)));
                     } else {
                         #[cfg(feature = "cmsisdap_v1")]
                         {
@@ -540,11 +542,14 @@ pub fn open_device_from_selector(
                     device_info.product_id(),
                     device_info.release_number(),
                 )?;
-                Ok(CmsisDapDevice::V1 {
-                    handle: device,
-                    report_size: hid_report_size(device_info),
-                    usb_timeout: DEFAULT_USB_TIMEOUT,
-                })
+                Ok((
+                    CmsisDapDevice::V1 {
+                        handle: device,
+                        report_size: hid_report_size(device_info),
+                        usb_timeout: DEFAULT_USB_TIMEOUT,
+                    },
+                    Some(s),
+                ))
             }
             _ => {
                 // Return NotFound if this VID:PID was not a valid CMSIS-DAP probe,
@@ -577,6 +582,32 @@ fn is_known_cmsis_dap_dev(device: &DeviceInfo) -> bool {
         .any(|&(vid, pid)| device.vendor_id() == vid && device.product_id() == pid)
 }
 
+/// Whether the probe loses replies when it gets more than one request at a time.
+///
+/// XDS110 firmware 3.0.0.22 reports 64 packet buffers, but drops some of the replies to parallel
+/// `DAP_TransferBlock` reads. Firmware 3.0.0.45 keeps all of them. The XDS110 shows its firmware
+/// version in the product string, for example "XDS110 (03.00.00.22) Embed with CMSIS-DAP".
+pub(super) fn loses_pipelined_replies(product: &str) -> bool {
+    if product == "IFMCU CMSIS-DAP" {
+        return true;
+    }
+
+    let Some(version) = product
+        .strip_prefix("XDS110 (")
+        .and_then(|rest| rest.split_once(')'))
+        .map(|(version, _)| version)
+    else {
+        return false;
+    };
+
+    let parts = version
+        .split('.')
+        .map(str::parse::<u8>)
+        .collect::<Result<Vec<_>, _>>();
+
+    matches!(parts.as_deref(), Ok(parts) if parts < [3, 0, 0, 45].as_slice())
+}
+
 /// Manual override of HID report size
 ///
 /// This is only needed for devices which:
@@ -606,4 +637,20 @@ fn hid_report_size(device: &hidapi::DeviceInfo) -> usize {
     // Devices are queried at startup for their packet size so it can usually be increased quickly
     // if needed; only some devices are annoying to query the packet size so are worth an override.
     64
+}
+
+#[cfg(test)]
+mod tests {
+    use super::loses_pipelined_replies;
+
+    #[test]
+    fn old_xds110_firmware_loses_pipelined_replies() {
+        assert!(loses_pipelined_replies(
+            "XDS110 (03.00.00.22) Embed with CMSIS-DAP"
+        ));
+        assert!(!loses_pipelined_replies(
+            "XDS110 (03.00.00.45) Embed with CMSIS-DAP"
+        ));
+        assert!(!loses_pipelined_replies("DAPLink CMSIS-DAP"));
+    }
 }
