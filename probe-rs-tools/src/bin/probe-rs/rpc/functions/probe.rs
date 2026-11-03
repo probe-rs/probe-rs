@@ -288,7 +288,7 @@ fn open_target_serial(probe: &mut Probe, config: &SerialConfig) -> Option<Shared
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::rpc::functions::RpcApp;
+    use crate::rpc::functions::{HostFiles, RpcApp};
     use crate::rpc::probe_broker::ProbeBroker;
     use crate::util::busy_lister::BusyLister;
     use probe_rs::architecture::arm::FullyQualifiedApAddress;
@@ -331,7 +331,7 @@ mod tests {
             16,
             lister as Arc<dyn ProbeLister + Send + Sync>,
             Arc::new(ProbeBroker::new()),
-            crate::rpc::functions::HostFiles::Allow,
+            HostFiles::Allow,
         );
         let handle = tokio::spawn(async move { server.run().await });
         let client = RpcClient::new_local_from_wire(tx, rx);
@@ -469,7 +469,7 @@ mod tests {
             16,
             lister.clone() as Arc<dyn ProbeLister + Send + Sync>,
             Arc::new(ProbeBroker::new()),
-            crate::rpc::functions::HostFiles::Allow,
+            HostFiles::Allow,
         );
         let server = tokio::spawn(server.run());
         let client = RpcClient::new_local_from_wire(tx, rx);
@@ -517,7 +517,7 @@ mod tests {
             16,
             lister.clone() as Arc<dyn ProbeLister + Send + Sync>,
             broker.clone(),
-            crate::rpc::functions::HostFiles::Allow,
+            HostFiles::Allow,
         );
         let server = tokio::spawn(server.run());
         let client = RpcClient::new_local_from_wire(tx, rx);
