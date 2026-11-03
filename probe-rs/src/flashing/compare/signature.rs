@@ -147,7 +147,7 @@ impl AlgorithmSignatures {
     }
 
     /// Builds the entries for the checks. A check that cannot be signed gets no entry.
-    fn entries(&self, checks: &[SectorCheck<'_>]) -> Vec<Entry> {
+    fn entries(&self, checks: &[SectorCheck<'_>], erased: u8) -> Vec<Entry> {
         let mut entries = Vec::new();
         for (idx, check) in checks.iter().enumerate() {
             let mut check_entries = Vec::new();
@@ -169,7 +169,7 @@ impl AlgorithmSignatures {
                             data.len(),
                             (self.hash.compute)(&[data]),
                             false,
-                            false,
+                            data.iter().all(|&byte| byte == erased),
                         ));
                     }
                 }
@@ -263,7 +263,7 @@ fn check_outcome<'a>(
         match *status {
             STATUS_SIGNED if *signature == entry.expected => {}
             STATUS_SIGNED => return Some(CompareOutcome::Mismatch),
-            STATUS_EMPTY if entry.full_sector && entry.expected_erased => {}
+            STATUS_EMPTY if entry.expected_erased => {}
             STATUS_EMPTY if entry.full_sector => outcome = CompareOutcome::Empty,
             STATUS_EMPTY => return Some(CompareOutcome::Mismatch),
             _ => return None,
@@ -284,7 +284,8 @@ impl FlashCompare for AlgorithmSignatures {
         checks: &mut [SectorCheck<'_>],
     ) -> Result<(), FlashError> {
         let mut active = context.algorithm()?;
-        let entries = self.entries(checks);
+        let erased = active.flash_algorithm().flash_properties.erased_byte_value;
+        let entries = self.entries(checks, erased);
         let results = self.sign(&mut active, &entries)?;
 
         for (idx, check) in checks.iter_mut().enumerate() {
@@ -399,5 +400,34 @@ mod tests {
             check_outcome([(&partial, &empty)].into_iter()),
             Some(CompareOutcome::Mismatch)
         );
+
+        // Image data that is all erased matches an empty range.
+        let partial_erased = entry(&[1], false, true);
+        assert_eq!(
+            check_outcome([(&partial_erased, &empty)].into_iter()),
+            Some(CompareOutcome::Match)
+        );
+    }
+
+    #[test]
+    fn entries_of_erased_image_data_expect_erased_flash() {
+        let signatures = AlgorithmSignatures {
+            hash: hash("md5"),
+            function: "Signatures_md5".into(),
+        };
+        let erased_data = [0xFF; 0x400];
+        let check = SectorCheck::new(
+            0x0..0x1000,
+            vec![(0x0, &erased_data[..]), (0x400, &[1, 2])],
+            Outside::Any,
+        );
+
+        let entries = signatures.entries(&[check], 0xFF);
+
+        let erased = entries
+            .iter()
+            .map(|entry| entry.expected_erased)
+            .collect::<Vec<_>>();
+        assert_eq!(erased, vec![true, false]);
     }
 }
