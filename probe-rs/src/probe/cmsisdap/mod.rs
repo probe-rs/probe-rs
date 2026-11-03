@@ -904,15 +904,20 @@ impl CmsisDap {
         Ok(())
     }
 
+    /// The packet size the probe reported, in bytes.
+    pub fn packet_size(&self) -> usize {
+        usize::from(self.packet_size)
+    }
+
     /// Send a vendor command and return its response payload.
     ///
     /// The command ID and payload are defined by the probe firmware. The response excludes the
     /// command ID and may include packet padding.
     ///
-    /// The payload must fit in one packet, leaving one byte for the command ID. Callers must
-    /// interpret the response using the vendor's protocol, including any status bytes. A probe
-    /// that rejects the command with `ID_DAP_Invalid` returns
-    /// [`DebugProbeError::CommandNotSupportedByProbe`].
+    /// The payload must fit in one packet, leaving one byte for the command ID: at most
+    /// [`packet_size`](Self::packet_size) - 1 bytes. Callers must interpret the response using
+    /// the vendor's protocol, including any status bytes. A probe that rejects the command with
+    /// `ID_DAP_Invalid` returns [`DebugProbeError::CommandNotSupportedByProbe`].
     pub fn send_vendor_command(
         &mut self,
         command_id: VendorCommandId,
@@ -1362,13 +1367,15 @@ mod tests {
         let mut dap = CmsisDap::new_from_device(CmsisDapDevice::Fake(probe.clone())).unwrap();
         let sent = probe.lock().unwrap().sent.len();
 
+        let maximum = dap.packet_size() - 1;
+
         assert!(
-            dap.send_vendor_command(VENDOR_COMMAND, &[0x55; 64])
+            dap.send_vendor_command(VENDOR_COMMAND, &vec![0x55; maximum + 1])
                 .is_err()
         );
         assert_eq!(probe.lock().unwrap().sent.len(), sent);
 
-        dap.send_vendor_command(VENDOR_COMMAND, &[0x55; 63])
+        dap.send_vendor_command(VENDOR_COMMAND, &vec![0x55; maximum])
             .unwrap();
         assert_eq!(probe.lock().unwrap().sent.last().unwrap().len(), 64);
     }
