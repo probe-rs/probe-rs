@@ -268,7 +268,11 @@ impl Session {
             && let Some(scan_chain) = jtag.scan_chain.clone()
             && let Some(mut chain) = probe.try_as_jtag_chain()
         {
+            // CMSIS-DAP's `configure_jtag` reads only the expected chain, forced or not.
             chain.set_expected(&scan_chain);
+            if jtag.force_scan_chain {
+                chain.set_chain(&scan_chain);
+            }
         }
 
         probe.attach_to_unspecified()?;
