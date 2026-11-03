@@ -2,6 +2,8 @@
 
 use std::collections::HashSet;
 
+use rustc_hash::FxBuildHasher;
+
 use super::{Direction, Port, SwdBatch, SwdOp, SwdProbe, SwdTransferError};
 use crate::probe::{
     BatchError, CommandResult, DebugProbeError, Handle, HandleId, Results, SwdSettings,
@@ -269,6 +271,8 @@ fn expand_batch(
     let mut transfer_index = 0usize;
 
     for (handle_id, op) in batch.iter() {
+        // Asked before the expanded transfer clones the handle.
+        let capture = handle_id.should_capture();
         let op = op.clone();
         match op {
             SwdOp::Transfer {
@@ -288,7 +292,7 @@ fn expand_batch(
                     expanded.idle(settings.num_idle_cycles_between_writes as u32);
                 }
                 if direction == Direction::Read {
-                    if handle_id.should_capture() {
+                    if capture {
                         read_handles.push(Some(handle_id.clone()));
                     } else {
                         read_handles.push(None);
@@ -328,7 +332,7 @@ fn expand_batch(
                     pipeline_handles.push(handle);
                 }
 
-                if direction == Direction::Read && handle_id.should_capture() {
+                if direction == Direction::Read && capture {
                     if response_in_next && !probe_handles_pipeline {
                         logical_mappings.push(LogicalMapping::FromNext {
                             handle_id: handle_id.clone(),
@@ -407,17 +411,9 @@ fn schedule_transfer(
         direction,
         data,
     };
-    match direction {
-        Direction::Read if handle_id.should_capture() => {
-            batch.schedule_preserved(handle_id.clone(), op);
-        }
-        Direction::Read => {
-            let _ = batch.schedule(op);
-        }
-        Direction::Write => {
-            let _ = batch.schedule(op);
-        }
-    }
+    // Keep the logical handle: the logical batch is dropped before this one runs, so a handle
+    // nobody holds still reports that nothing is to be captured.
+    let _ = batch.schedule_preserved(handle_id.clone(), op);
 }
 
 fn bump_write_idle(batch: &mut SwdBatch, extra: u32) {
@@ -536,15 +532,25 @@ fn remap_results(
     mut expanded_results: Results,
     block_read_counts: &[usize],
 ) -> Results {
-    let mut logical_results = Results::new();
+    // A probe that runs the AP pipeline answers every read under its own handle: unless reads
+    // were aggregated or added, its results already are the logical ones.
+    let passthrough = block_read_counts.is_empty()
+        && logical
+            .iter()
+            .all(|mapping| matches!(mapping, LogicalMapping::Passthrough { .. }))
+        && read_handles.iter().flatten().count() == logical.len();
+    if passthrough {
+        return expanded_results;
+    }
+
+    let mut logical_results = Results::with_capacity(logical.len() + pins_handles.len());
     for handle_id in pins_handles {
-        let handle = Handle::from_parts(handle_id.clone(), Box::new(|result| result));
-        if let Ok(result) = expanded_results.take(handle) {
+        if let Some(result) = expanded_results.take_id(handle_id) {
             logical_results.push(handle_id, result);
         }
     }
     let mut expanded_read_values: Vec<Option<u32>> = vec![None; read_handles.len()];
-    let block_aggregate_ids: HashSet<HandleId> = block_read_counts
+    let block_aggregate_ids: HashSet<HandleId, FxBuildHasher> = block_read_counts
         .iter()
         .filter_map(|&count| {
             block_value_indices(&read_handles, count)
@@ -555,15 +561,10 @@ fn remap_results(
 
     for (index, handle_id) in read_handles.iter().enumerate() {
         if let Some(handle_id) = handle_id {
-            let handle = Handle::from_parts(
-                handle_id.clone(),
-                Box::new(|result| match result {
-                    CommandResult::U32(value) => value,
-                    _ => panic!("unexpected CommandResult variant for an SWD read"),
-                }),
-            );
-            if let Ok(value) = expanded_results.take(handle) {
-                expanded_read_values[index] = Some(value);
+            match expanded_results.take_id(handle_id) {
+                Some(CommandResult::U32(value)) => expanded_read_values[index] = Some(value),
+                Some(_) => panic!("unexpected CommandResult variant for an SWD read"),
+                None => {}
             }
         }
     }

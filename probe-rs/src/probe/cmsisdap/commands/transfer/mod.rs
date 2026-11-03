@@ -137,14 +137,6 @@ impl InnerTransferResponse {
 /// command id, the transfer count and the last transfer's acknowledgement.
 const HEADER_LEN: usize = 3;
 
-/// A point in a [`TransferRequest`] to come back to.
-#[derive(Debug, Clone, Copy)]
-pub struct TransferMark {
-    transfers: usize,
-    request_len: usize,
-    response_len: usize,
-}
-
 /// Read/write single and multiple registers.
 ///
 /// The DAP_Transfer Command reads or writes data to CoreSight registers.
@@ -177,26 +169,6 @@ impl TransferRequest {
         }
     }
 
-    /// How much of a request has been built, so that it can be put back.
-    pub fn mark(&self) -> TransferMark {
-        TransferMark {
-            transfers: self.transfers.len(),
-            request_len: self.request_len,
-            response_len: self.response_len,
-        }
-    }
-
-    /// Drop everything added since `mark`.
-    pub fn rewind(&mut self, mark: TransferMark) {
-        debug_assert!(
-            mark.transfers <= self.transfers.len(),
-            "a mark from another request"
-        );
-        self.transfers.truncate(mark.transfers);
-        self.request_len = mark.request_len;
-        self.response_len = mark.response_len;
-    }
-
     /// Bytes this command and its reply occupy in a packet.
     pub fn packet_lengths(&self) -> (usize, usize) {
         (self.request_len, self.response_len)
@@ -207,12 +179,12 @@ impl TransferRequest {
         self.transfers.len()
     }
 
-    /// True when a `packet_size` packet still has room for one more `rw` transfer.
+    /// True when a `packet_size` packet still has room for `count` more `rw` transfers.
     ///
     /// The transfer count travels in a single byte, so a command is capped at [`u8::MAX`]
     /// transfers however large the packet is.
-    pub fn has_room_for(&self, rw: RW, packet_size: u16) -> bool {
-        if self.len() == u8::MAX as usize {
+    pub fn has_room_for_many(&self, rw: RW, count: usize, packet_size: u16) -> bool {
+        if self.len() + count > u8::MAX as usize {
             return false;
         }
 
@@ -227,7 +199,7 @@ impl TransferRequest {
 
         let capacity = packet_size as usize;
         let (request, response) = self.packet_lengths();
-        request + added_request <= capacity && response + added_response <= capacity
+        request + count * added_request <= capacity && response + count * added_response <= capacity
     }
 
     pub fn read<T: Into<RegisterAddress>>(address: T) -> Self {
@@ -577,12 +549,12 @@ mod packet_length_tests {
     #[test]
     fn a_packet_takes_more_reads_than_writes() {
         let mut reads = TransferRequest::empty();
-        while reads.has_room_for(RW::R, 64) {
+        while reads.has_room_for_many(RW::R, 1, 64) {
             reads.add_read(RegisterAddress::ApRegister(0x0C));
         }
 
         let mut writes = TransferRequest::empty();
-        while writes.has_room_for(RW::W, 64) {
+        while writes.has_room_for_many(RW::W, 1, 64) {
             writes.add_write(RegisterAddress::ApRegister(0x0C), 0);
         }
 
@@ -595,7 +567,7 @@ mod packet_length_tests {
     #[test]
     fn no_packet_takes_more_transfers_than_the_count_field() {
         let mut request = TransferRequest::empty();
-        while request.has_room_for(RW::R, u16::MAX) {
+        while request.has_room_for_many(RW::R, 1, u16::MAX) {
             request.add_read(RegisterAddress::ApRegister(0x0C));
         }
 
