@@ -185,6 +185,8 @@ impl Cmd {
             )?,
         };
 
+        session.resume_all_cores().await?;
+
         Ok(())
     }
 
