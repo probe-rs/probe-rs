@@ -283,7 +283,7 @@ pub(crate) enum ProbeAccess {
 pub(crate) enum HostFiles {
     /// The server runs in the client process, so its files are the files of the client.
     Allow,
-    /// The server is remote. A client must not access its files.
+    /// The server accepts connections from other processes. A client must not access its files.
     Deny,
 }
 
