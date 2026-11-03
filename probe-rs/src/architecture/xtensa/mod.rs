@@ -186,17 +186,20 @@ impl<'probe> Xtensa<'probe> {
         if !self.state.pc_written {
             let debug_cause = self.debug_cause()?;
 
-            if debug_cause.break_instruction() || debug_cause.break_n_instruction() {
-                // Firmware also uses `break` to stop on a fatal error, for example in the ROM
-                // exception vectors. Only a semihosting call can continue after its `break`.
-                if matches!(
-                    self.current_instruction()?,
-                    CurrentInstruction::SemihostingBreak | CurrentInstruction::Semihosting(_)
-                ) {
-                    let pc_value = self.interface.read_register_untyped(Register::CurrentPc)?;
-                    self.interface
-                        .write_register_untyped(Register::CurrentPc, pc_value + 3)?;
-                }
+            let pc_increment = if debug_cause.break_instruction() {
+                3
+            } else if debug_cause.break_n_instruction() {
+                2
+            } else {
+                0
+            };
+
+            if pc_increment > 0 {
+                // Step through the breakpoint
+                let mut pc_value = self.interface.read_register_untyped(Register::CurrentPc)?;
+                pc_value += pc_increment;
+                self.interface
+                    .write_register_untyped(Register::CurrentPc, pc_value)?;
             } else if debug_cause.ibreak_exception() {
                 let pc_value = self.interface.read_register_untyped(Register::CurrentPc)?;
                 let bps = self.hw_breakpoints()?;
