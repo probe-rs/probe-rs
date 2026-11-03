@@ -49,54 +49,12 @@ struct ZlibEncoder {
 #[cfg(feature = "flate2")]
 impl ZlibEncoder {
     fn new(flash: FlashLayout, ignore_fills: bool) -> Self {
-        use std::io::Write as _;
-
         let mut compressed_pages = vec![];
 
         let page_size = flash.pages()[0].data().len();
 
         let mut compress_image = |image: &[u8], start_addr: u64| {
-            if image.is_empty() {
-                return;
-            }
-
-            use flate2::Compression;
-            use flate2::write::ZlibEncoder;
-
-            tracing::debug!("Image length: {} @ {:#010x}", image.len(), start_addr);
-
-            // This page is not contiguous with the previous one, finish the previous image.
-            let mut e = ZlibEncoder::new(Vec::new(), Compression::best());
-            // These unwraps are okay because we are writing to a Vec and that is infallible.
-            e.write_all(image).unwrap();
-            let compressed = e.finish().unwrap();
-
-            let image_len = compressed.len();
-            // We chunk up the image and prepend the compressed image's length to the first chunk.
-            let first_chunk_len = image_len.min(page_size - 4);
-            let (first, rest) = compressed.split_at(first_chunk_len);
-
-            let first_chunk = (image_len as u32)
-                .to_le_bytes()
-                .into_iter()
-                .chain(first.iter().copied())
-                .collect::<Vec<u8>>();
-
-            tracing::debug!("Compressed length: {}", image_len + 4);
-
-            // We add each page with `start_addr`. The address identifies the image and the
-            // flash loader is responsible for tracking the write offset in the current image.
-            compressed_pages.push(FlashPage {
-                address: start_addr,
-                data: first_chunk,
-            });
-
-            for chunk in rest.chunks(page_size) {
-                compressed_pages.push(FlashPage {
-                    address: start_addr,
-                    data: chunk.to_vec(),
-                });
-            }
+            compressed_pages.extend(Self::compress_image(image, start_addr, page_size));
         };
 
         // (start_addr, compressed_image)
@@ -168,6 +126,54 @@ impl ZlibEncoder {
             compressed_pages,
             flash,
         }
+    }
+
+    /// Compresses one contiguous image into pages.
+    fn compress_image(image: &[u8], start_addr: u64, page_size: usize) -> Vec<FlashPage> {
+        use std::io::Write as _;
+
+        if image.is_empty() {
+            return vec![];
+        }
+
+        use flate2::Compression;
+        use flate2::write::ZlibEncoder;
+
+        tracing::debug!("Image length: {} @ {:#010x}", image.len(), start_addr);
+
+        let mut e = ZlibEncoder::new(Vec::new(), Compression::best());
+        // These unwraps are okay because we are writing to a Vec and that is infallible.
+        e.write_all(image).unwrap();
+        let compressed = e.finish().unwrap();
+
+        let image_len = compressed.len();
+        // We chunk up the image and prepend the compressed image's length to the first chunk.
+        let first_chunk_len = image_len.min(page_size - 4);
+        let (first, rest) = compressed.split_at(first_chunk_len);
+
+        let first_chunk = (image_len as u32)
+            .to_le_bytes()
+            .into_iter()
+            .chain(first.iter().copied())
+            .collect::<Vec<u8>>();
+
+        tracing::debug!("Compressed length: {}", image_len + 4);
+
+        // We add each page with `start_addr`. The address identifies the image and the
+        // flash loader is responsible for tracking the write offset in the current image.
+        let mut pages = vec![FlashPage {
+            address: start_addr,
+            data: first_chunk,
+        }];
+
+        for chunk in rest.chunks(page_size) {
+            pages.push(FlashPage {
+                address: start_addr,
+                data: chunk.to_vec(),
+            });
+        }
+
+        pages
     }
 }
 

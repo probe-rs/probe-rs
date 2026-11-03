@@ -593,7 +593,7 @@ impl Flasher {
             return Ok(result);
         }
 
-        if let Some(verify) = self.flash_algorithm.pc_verify {
+        if self.flash_algorithm.pc_verify.is_some() {
             // Try to use the verify function if available.
             self.run_verify(session, progress, |active, data| {
                 for region in data {
@@ -613,30 +613,7 @@ impl Flasher {
                             bytes.len()
                         );
 
-                        // Transfer the bytes to RAM.
-                        let buffer_address = active.load_page_buffer(bytes, 0)?;
-
-                        let result = active.call_function_and_wait(
-                            &Registers {
-                                pc: verify,
-                                r0: Some(address),
-                                r1: Some(bytes.len() as u64),
-                                r2: Some(buffer_address),
-                                r3: None,
-                            },
-                            false,
-                            Duration::from_secs(30),
-                        )?;
-
-                        // Returns
-                        // status information:
-                        // the sum of (adr+sz) - on success.
-                        // any other number - on failure, and represents the failing address.
-                        if result as u64 != address + bytes.len() as u64 {
-                            tracing::debug!(
-                                "Verification failed for page at address {:#010x}",
-                                result
-                            );
+                        if !active.cmsis_verify_page(address, bytes)? {
                             return Ok(false);
                         }
 
@@ -1415,6 +1392,42 @@ impl<O: Operation> ActiveFlasher<'_, '_, O> {
             }
             Ok(())
         }
+    }
+}
+
+impl ActiveFlasher<'_, '_, Verify> {
+    /// Returns `true` if CMSIS `Verify` finds the encoded page `bytes` at `address`.
+    fn cmsis_verify_page(&mut self, address: u64, bytes: &[u8]) -> Result<bool, FlashError> {
+        let verify = self
+            .flash_algorithm
+            .pc_verify
+            .expect("CMSIS Verify is called only if the algorithm has it");
+
+        // Transfer the bytes to RAM.
+        let buffer_address = self.load_page_buffer(bytes, 0)?;
+
+        let result = self.call_function_and_wait(
+            &Registers {
+                pc: verify,
+                r0: Some(address),
+                r1: Some(bytes.len() as u64),
+                r2: Some(buffer_address),
+                r3: None,
+            },
+            false,
+            Duration::from_secs(30),
+        )?;
+
+        // Returns
+        // status information:
+        // the sum of (adr+sz) - on success.
+        // any other number - on failure, and represents the failing address.
+        if result as u64 != address + bytes.len() as u64 {
+            tracing::debug!("Verification failed for page at address {:#010x}", result);
+            return Ok(false);
+        }
+
+        Ok(true)
     }
 }
 
