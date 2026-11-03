@@ -6,13 +6,14 @@ use tempfile::NamedTempFile;
 use std::sync::Arc;
 
 use crate::rpc::functions::{HostFiles, ProbeAccess, RpcApp};
+use crate::rpc::probe_broker::ProbeBroker;
 
 #[tokio::test]
 async fn local_resolve_upload_tracks_content_changes() {
     let (_server, tx, rx) = RpcApp::create_server(
         16,
         ProbeAccess::All,
-        Arc::new(crate::rpc::probe_broker::ProbeBroker::new()),
+        Arc::new(ProbeBroker::new()),
         HostFiles::Allow,
     );
     let client = RpcClient::new_local_from_wire(tx, rx);
@@ -34,7 +35,7 @@ async fn local_server_schema_matches_the_client() {
     let (server, tx, rx) = RpcApp::create_server(
         16,
         ProbeAccess::All,
-        Arc::new(crate::rpc::probe_broker::ProbeBroker::new()),
+        Arc::new(ProbeBroker::new()),
         HostFiles::Allow,
     );
     let handle = tokio::spawn(async move { server.run().await });
