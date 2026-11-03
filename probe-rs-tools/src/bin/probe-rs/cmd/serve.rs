@@ -31,7 +31,7 @@ use std::path::PathBuf;
 use std::{fmt::Write, sync::Arc, time::Duration};
 
 use crate::{
-    rpc::functions::{ProbeAccess, RpcApp},
+    rpc::functions::{HostFiles, ProbeAccess, RpcApp},
     rpc::probe_broker::ProbeBroker,
     util::{probe_config::ProbeConfigs, pwr},
 };
@@ -373,6 +373,7 @@ async fn serve_socket(
         SERVER_DEPTH,
         user.access.clone(),
         state.probe_broker.clone(),
+        HostFiles::Deny,
     );
 
     // Connect the server's channels to the websocket connection
@@ -468,7 +469,12 @@ async fn handle_unix_rpc(stream: tokio::net::UnixStream, probe_broker: Arc<Probe
     tracing::info!("Unix socket client connected");
 
     let (reader, writer) = stream.into_split();
-    let (server, tx, mut rx) = RpcApp::create_server(SERVER_DEPTH, ProbeAccess::All, probe_broker);
+    let (server, tx, mut rx) = RpcApp::create_server(
+        SERVER_DEPTH,
+        ProbeAccess::All,
+        probe_broker,
+        HostFiles::Deny,
+    );
 
     // Connect the server's channels to the unix socket connection
     let sender = async {

@@ -466,8 +466,12 @@ async fn run_app<R>(
 
     // Create a local server to run commands against.
     let probe_broker = Arc::new(ProbeBroker::new_with_config(probe_configs));
-    let (local_server, tx, rx) =
-        RpcApp::create_server(16, rpc::functions::ProbeAccess::All, probe_broker);
+    let (local_server, tx, rx) = RpcApp::create_server(
+        16,
+        rpc::functions::ProbeAccess::All,
+        probe_broker,
+        rpc::functions::HostFiles::Allow,
+    );
     let handle = tokio::spawn(async move { local_server.run().await });
 
     // Run the command locally.

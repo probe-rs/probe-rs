@@ -124,10 +124,10 @@ fn monitor_impl(
 ) -> anyhow::Result<MonitorExitReason> {
     let shared_session = ctx.shared_session(request.sessid);
 
-    let mut semihosting_sink =
-        MonitorEventHandler::new(request.options.semihosting_options, |event| {
-            _ = sender.send_semihosting_event(event)
-        });
+    let mut semihosting_sink = MonitorEventHandler::new(
+        ctx.semihosting_options(request.options.semihosting_options)?,
+        |event| _ = sender.send_semihosting_event(event),
+    );
 
     let client_key = request.options.rtt_client;
     let core_id = client_key
