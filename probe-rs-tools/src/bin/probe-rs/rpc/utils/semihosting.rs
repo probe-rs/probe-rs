@@ -33,49 +33,51 @@ enum FileVariant {
     UnixStream(String),
 }
 
-fn map_file(options: &SemihostingOptions, value: &str) -> Option<String> {
+fn map_file(options: &SemihostingOptions, value: &str) -> anyhow::Result<Option<String>> {
     for item in options.mappings() {
         match item {
             Mapping::Exact(from, to) => {
                 if value == from {
-                    return Some(to.clone());
+                    return Ok(Some(to.clone()));
                 }
             }
             Mapping::Prefix(prefix, to) => {
                 if let Some(rest) = value.strip_prefix(prefix) {
-                    return Some(to.clone() + rest);
+                    return Ok(Some(to.clone() + rest));
                 }
             }
             Mapping::Regex(re, to) => {
-                let re = Regex::new(re).expect("valid Regex");
+                let re = Regex::new(re)?;
                 if let Some(captures) = re.captures(value) {
                     let mut ret = String::new();
                     captures.expand(to, &mut ret);
-                    return Some(ret);
+                    return Ok(Some(ret));
                 }
             }
         }
     }
 
-    None
+    Ok(None)
 }
 
-fn find_file(options: &SemihostingOptions, value: &str) -> Option<FileVariant> {
-    let v = map_file(options, value)?;
+fn find_file(options: &SemihostingOptions, value: &str) -> anyhow::Result<Option<FileVariant>> {
+    let Some(v) = map_file(options, value)? else {
+        return Ok(None);
+    };
 
     if let Some(r) = v.strip_prefix("file:") {
-        return Some(FileVariant::File(r.into()));
+        return Ok(Some(FileVariant::File(r.into())));
     }
 
     if let Some(r) = v.strip_prefix("tcp:") {
-        return Some(FileVariant::TcpStream(r.into()));
+        return Ok(Some(FileVariant::TcpStream(r.into())));
     }
 
     if let Some(r) = v.strip_prefix("unix:") {
-        return Some(FileVariant::UnixStream(r.into()));
+        return Ok(Some(FileVariant::UnixStream(r.into())));
     }
 
-    Some(FileVariant::File(v))
+    Ok(Some(FileVariant::File(v)))
 }
 
 pub struct SemihostingFileManager {
@@ -227,7 +229,7 @@ impl SemihostingFileManager {
 
         let f = if path == ":tt" {
             self.open_tt(request.mode())
-        } else if let Some(path) = find_file(&self.semihosting_options, &path) {
+        } else if let Some(path) = find_file(&self.semihosting_options, &path)? {
             match path {
                 FileVariant::File(path) => self.open_file(&path, request.mode()),
                 FileVariant::TcpStream(addr) => self.open_tcp_stream(&addr),
@@ -488,6 +490,16 @@ mod test {
         fn contents(&self) -> Vec<u8> {
             std::fs::read(&self.path).unwrap()
         }
+    }
+
+    #[test]
+    fn invalid_regex_mapping_is_an_error() {
+        // A remote client can send a regex that `add_file_regex` did not check.
+        let options: SemihostingOptions =
+            serde_json::from_value(serde_json::json!({ "mappings": [{ "Regex": ["(", "x"] }] }))
+                .unwrap();
+
+        assert!(map_file(&options, "in.txt").is_err());
     }
 
     #[test]
