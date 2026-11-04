@@ -1,0 +1,1 @@
+Fixed `probe-rs debug -c ... -c quit` panicking without a terminal: the interactive console, and with it the terminal, is only set up when the `-c` commands leave the session running. Without a terminal it now ends with an error instead of a panic.
