@@ -678,6 +678,7 @@ variants:
       write: false
   - !Ram
     name: SRAMX0
+    is_alias: true
     range:
       start: 0x4000000
       end: 0x4008000
@@ -685,6 +686,7 @@ variants:
     - main
   - !Ram
     name: SRAMX1
+    is_alias: true
     range:
       start: 0x4008000
       end: 0x4010000
@@ -692,6 +694,7 @@ variants:
     - main
   - !Ram
     name: SRAMX2
+    is_alias: true
     range:
       start: 0x4010000
       end: 0x4018000
@@ -699,6 +702,7 @@ variants:
     - main
   - !Ram
     name: SRAMX3
+    is_alias: true
     range:
       start: 0x4018000
       end: 0x4020000
@@ -708,7 +712,7 @@ variants:
     name: SRAM
     range:
       start: 0x20000000
-      end: 0x20080000
+      end: 0x200a0000
     cores:
     - main
   flash_algorithms:
