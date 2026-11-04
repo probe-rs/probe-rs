@@ -1,0 +1,1542 @@
+name: MCXN55
+manufacturer:
+  id: 0x15
+  cc: 0x0
+# Based on NXP device-family packs 26.09.00.
+# N55 uses the MCXNP184M150F70RM memory layout and sequences in its packs.
+# CPU1 remains omitted: ROM holds it in reset, and debug/reset sequences
+# currently support CPU0 only (RM 17.4.1.95-96).
+variants:
+- name: MCXN556SCDF
+  cores:
+  - name: cm33_core0
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: PROGRAM_FLASH0
+    range:
+      start: 0x0
+      end: 0x80000
+    cores:
+    - cm33_core0
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: PROGRAM_FLASH1
+    range:
+      start: 0x80000
+      end: 0x100000
+    cores:
+    - cm33_core0
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: BootROM
+    range:
+      start: 0x3000000
+      end: 0x3040000
+    cores:
+    - cm33_core0
+    access:
+      write: false
+  - !Ram
+    name: SRAMX
+    range:
+      start: 0x4000000
+      end: 0x4018000
+    cores:
+    - cm33_core0
+    access:
+      execute: true
+  - !Nvm
+    name: PROGRAM_FLASH_alias0
+    range:
+      start: 0x10000000
+      end: 0x10080000
+    cores:
+    - cm33_core0
+    is_alias: true
+    access:
+      write: false
+  - !Nvm
+    name: PROGRAM_FLASH_alias1
+    range:
+      start: 0x10080000
+      end: 0x10100000
+    cores:
+    - cm33_core0
+    is_alias: true
+    access:
+      write: false
+  - !Generic
+    name: BootROM_alias
+    range:
+      start: 0x13000000
+      end: 0x13040000
+    cores:
+    - cm33_core0
+    access:
+      write: false
+  - !Ram
+    name: SRAMX_alias
+    range:
+      start: 0x14000000
+      end: 0x14018000
+    cores:
+    - cm33_core0
+    is_alias: true
+    access:
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20060000
+    cores:
+    - cm33_core0
+    access:
+      execute: true
+  - !Ram
+    name: SRAMH
+    range:
+      start: 0x20060000
+      end: 0x20068000
+    cores:
+    - cm33_core0
+    access:
+      execute: false
+  - !Ram
+    name: SRAM_alias
+    range:
+      start: 0x30000000
+      end: 0x30060000
+    cores:
+    - cm33_core0
+    is_alias: true
+    access:
+      execute: false
+  - !Ram
+    name: SRAMH_alias
+    range:
+      start: 0x30060000
+      end: 0x30068000
+    cores:
+    - cm33_core0
+    is_alias: true
+    access:
+      execute: false
+  - !Ram
+    name: USB_RAM
+    range:
+      start: 0x400ba000
+      end: 0x400bb000
+    cores:
+    - cm33_core0
+    access:
+      execute: false
+  - !Ram
+    name: USB_RAM_alias
+    range:
+      start: 0x500ba000
+      end: 0x500bb000
+    cores:
+    - cm33_core0
+    is_alias: true
+    access:
+      execute: false
+  flash_algorithms:
+  - mcxn9xx_ts_1024
+  - mcxn9xx_ts_1024_s
+- name: MCXN556TCAB
+  cores:
+  - name: cm33_core0
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: PROGRAM_FLASH0
+    range:
+      start: 0x0
+      end: 0x80000
+    cores:
+    - cm33_core0
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: PROGRAM_FLASH1
+    range:
+      start: 0x80000
+      end: 0x100000
+    cores:
+    - cm33_core0
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: BootROM
+    range:
+      start: 0x3000000
+      end: 0x3040000
+    cores:
+    - cm33_core0
+    access:
+      write: false
+  - !Ram
+    name: SRAMX
+    range:
+      start: 0x4000000
+      end: 0x4018000
+    cores:
+    - cm33_core0
+    access:
+      execute: true
+  - !Nvm
+    name: PROGRAM_FLASH_alias0
+    range:
+      start: 0x10000000
+      end: 0x10080000
+    cores:
+    - cm33_core0
+    is_alias: true
+    access:
+      write: false
+  - !Nvm
+    name: PROGRAM_FLASH_alias1
+    range:
+      start: 0x10080000
+      end: 0x10100000
+    cores:
+    - cm33_core0
+    is_alias: true
+    access:
+      write: false
+  - !Generic
+    name: BootROM_alias
+    range:
+      start: 0x13000000
+      end: 0x13040000
+    cores:
+    - cm33_core0
+    access:
+      write: false
+  - !Ram
+    name: SRAMX_alias
+    range:
+      start: 0x14000000
+      end: 0x14018000
+    cores:
+    - cm33_core0
+    is_alias: true
+    access:
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20060000
+    cores:
+    - cm33_core0
+    access:
+      execute: true
+  - !Ram
+    name: SRAMH
+    range:
+      start: 0x20060000
+      end: 0x20068000
+    cores:
+    - cm33_core0
+    access:
+      execute: false
+  - !Ram
+    name: SRAM_alias
+    range:
+      start: 0x30000000
+      end: 0x30060000
+    cores:
+    - cm33_core0
+    is_alias: true
+    access:
+      execute: false
+  - !Ram
+    name: SRAMH_alias
+    range:
+      start: 0x30060000
+      end: 0x30068000
+    cores:
+    - cm33_core0
+    is_alias: true
+    access:
+      execute: false
+  - !Ram
+    name: USB_RAM
+    range:
+      start: 0x400ba000
+      end: 0x400bb000
+    cores:
+    - cm33_core0
+    access:
+      execute: false
+  - !Ram
+    name: USB_RAM_alias
+    range:
+      start: 0x500ba000
+      end: 0x500bb000
+    cores:
+    - cm33_core0
+    is_alias: true
+    access:
+      execute: false
+  flash_algorithms:
+  - mcxn9xx_ts_1024
+  - mcxn9xx_ts_1024_s
+- name: MCXN556TCDF
+  cores:
+  - name: cm33_core0
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: PROGRAM_FLASH0
+    range:
+      start: 0x0
+      end: 0x80000
+    cores:
+    - cm33_core0
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: PROGRAM_FLASH1
+    range:
+      start: 0x80000
+      end: 0x100000
+    cores:
+    - cm33_core0
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: BootROM
+    range:
+      start: 0x3000000
+      end: 0x3040000
+    cores:
+    - cm33_core0
+    access:
+      write: false
+  - !Ram
+    name: SRAMX
+    range:
+      start: 0x4000000
+      end: 0x4018000
+    cores:
+    - cm33_core0
+    access:
+      execute: true
+  - !Nvm
+    name: PROGRAM_FLASH_alias0
+    range:
+      start: 0x10000000
+      end: 0x10080000
+    cores:
+    - cm33_core0
+    is_alias: true
+    access:
+      write: false
+  - !Nvm
+    name: PROGRAM_FLASH_alias1
+    range:
+      start: 0x10080000
+      end: 0x10100000
+    cores:
+    - cm33_core0
+    is_alias: true
+    access:
+      write: false
+  - !Generic
+    name: BootROM_alias
+    range:
+      start: 0x13000000
+      end: 0x13040000
+    cores:
+    - cm33_core0
+    access:
+      write: false
+  - !Ram
+    name: SRAMX_alias
+    range:
+      start: 0x14000000
+      end: 0x14018000
+    cores:
+    - cm33_core0
+    is_alias: true
+    access:
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20060000
+    cores:
+    - cm33_core0
+    access:
+      execute: true
+  - !Ram
+    name: SRAMH
+    range:
+      start: 0x20060000
+      end: 0x20068000
+    cores:
+    - cm33_core0
+    access:
+      execute: false
+  - !Ram
+    name: SRAM_alias
+    range:
+      start: 0x30000000
+      end: 0x30060000
+    cores:
+    - cm33_core0
+    is_alias: true
+    access:
+      execute: false
+  - !Ram
+    name: SRAMH_alias
+    range:
+      start: 0x30060000
+      end: 0x30068000
+    cores:
+    - cm33_core0
+    is_alias: true
+    access:
+      execute: false
+  - !Ram
+    name: USB_RAM
+    range:
+      start: 0x400ba000
+      end: 0x400bb000
+    cores:
+    - cm33_core0
+    access:
+      execute: false
+  - !Ram
+    name: USB_RAM_alias
+    range:
+      start: 0x500ba000
+      end: 0x500bb000
+    cores:
+    - cm33_core0
+    is_alias: true
+    access:
+      execute: false
+  flash_algorithms:
+  - mcxn9xx_ts_1024
+  - mcxn9xx_ts_1024_s
+- name: MCXN556TVAB
+  cores:
+  - name: cm33_core0
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: PROGRAM_FLASH0
+    range:
+      start: 0x0
+      end: 0x80000
+    cores:
+    - cm33_core0
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: PROGRAM_FLASH1
+    range:
+      start: 0x80000
+      end: 0x100000
+    cores:
+    - cm33_core0
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: BootROM
+    range:
+      start: 0x3000000
+      end: 0x3040000
+    cores:
+    - cm33_core0
+    access:
+      write: false
+  - !Ram
+    name: SRAMX
+    range:
+      start: 0x4000000
+      end: 0x4018000
+    cores:
+    - cm33_core0
+    access:
+      execute: true
+  - !Nvm
+    name: PROGRAM_FLASH_alias0
+    range:
+      start: 0x10000000
+      end: 0x10080000
+    cores:
+    - cm33_core0
+    is_alias: true
+    access:
+      write: false
+  - !Nvm
+    name: PROGRAM_FLASH_alias1
+    range:
+      start: 0x10080000
+      end: 0x10100000
+    cores:
+    - cm33_core0
+    is_alias: true
+    access:
+      write: false
+  - !Generic
+    name: BootROM_alias
+    range:
+      start: 0x13000000
+      end: 0x13040000
+    cores:
+    - cm33_core0
+    access:
+      write: false
+  - !Ram
+    name: SRAMX_alias
+    range:
+      start: 0x14000000
+      end: 0x14018000
+    cores:
+    - cm33_core0
+    is_alias: true
+    access:
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20060000
+    cores:
+    - cm33_core0
+    access:
+      execute: true
+  - !Ram
+    name: SRAMH
+    range:
+      start: 0x20060000
+      end: 0x20068000
+    cores:
+    - cm33_core0
+    access:
+      execute: false
+  - !Ram
+    name: SRAM_alias
+    range:
+      start: 0x30000000
+      end: 0x30060000
+    cores:
+    - cm33_core0
+    is_alias: true
+    access:
+      execute: false
+  - !Ram
+    name: SRAMH_alias
+    range:
+      start: 0x30060000
+      end: 0x30068000
+    cores:
+    - cm33_core0
+    is_alias: true
+    access:
+      execute: false
+  - !Ram
+    name: USB_RAM
+    range:
+      start: 0x400ba000
+      end: 0x400bb000
+    cores:
+    - cm33_core0
+    access:
+      execute: false
+  - !Ram
+    name: USB_RAM_alias
+    range:
+      start: 0x500ba000
+      end: 0x500bb000
+    cores:
+    - cm33_core0
+    is_alias: true
+    access:
+      execute: false
+  flash_algorithms:
+  - mcxn9xx_ts_1024
+  - mcxn9xx_ts_1024_s
+- name: MCXN556TVDF
+  cores:
+  - name: cm33_core0
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: PROGRAM_FLASH0
+    range:
+      start: 0x0
+      end: 0x80000
+    cores:
+    - cm33_core0
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: PROGRAM_FLASH1
+    range:
+      start: 0x80000
+      end: 0x100000
+    cores:
+    - cm33_core0
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: BootROM
+    range:
+      start: 0x3000000
+      end: 0x3040000
+    cores:
+    - cm33_core0
+    access:
+      write: false
+  - !Ram
+    name: SRAMX
+    range:
+      start: 0x4000000
+      end: 0x4018000
+    cores:
+    - cm33_core0
+    access:
+      execute: true
+  - !Nvm
+    name: PROGRAM_FLASH_alias0
+    range:
+      start: 0x10000000
+      end: 0x10080000
+    cores:
+    - cm33_core0
+    is_alias: true
+    access:
+      write: false
+  - !Nvm
+    name: PROGRAM_FLASH_alias1
+    range:
+      start: 0x10080000
+      end: 0x10100000
+    cores:
+    - cm33_core0
+    is_alias: true
+    access:
+      write: false
+  - !Generic
+    name: BootROM_alias
+    range:
+      start: 0x13000000
+      end: 0x13040000
+    cores:
+    - cm33_core0
+    access:
+      write: false
+  - !Ram
+    name: SRAMX_alias
+    range:
+      start: 0x14000000
+      end: 0x14018000
+    cores:
+    - cm33_core0
+    is_alias: true
+    access:
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20060000
+    cores:
+    - cm33_core0
+    access:
+      execute: true
+  - !Ram
+    name: SRAMH
+    range:
+      start: 0x20060000
+      end: 0x20068000
+    cores:
+    - cm33_core0
+    access:
+      execute: false
+  - !Ram
+    name: SRAM_alias
+    range:
+      start: 0x30000000
+      end: 0x30060000
+    cores:
+    - cm33_core0
+    is_alias: true
+    access:
+      execute: false
+  - !Ram
+    name: SRAMH_alias
+    range:
+      start: 0x30060000
+      end: 0x30068000
+    cores:
+    - cm33_core0
+    is_alias: true
+    access:
+      execute: false
+  - !Ram
+    name: USB_RAM
+    range:
+      start: 0x400ba000
+      end: 0x400bb000
+    cores:
+    - cm33_core0
+    access:
+      execute: false
+  - !Ram
+    name: USB_RAM_alias
+    range:
+      start: 0x500ba000
+      end: 0x500bb000
+    cores:
+    - cm33_core0
+    is_alias: true
+    access:
+      execute: false
+  flash_algorithms:
+  - mcxn9xx_ts_1024
+  - mcxn9xx_ts_1024_s
+- name: MCXN557SCDF
+  cores:
+  - name: cm33_core0
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: PROGRAM_FLASH0
+    range:
+      start: 0x0
+      end: 0x100000
+    cores:
+    - cm33_core0
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: PROGRAM_FLASH1
+    range:
+      start: 0x100000
+      end: 0x200000
+    cores:
+    - cm33_core0
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: BootROM
+    range:
+      start: 0x3000000
+      end: 0x3040000
+    cores:
+    - cm33_core0
+    access:
+      write: false
+  - !Ram
+    name: SRAMX
+    range:
+      start: 0x4000000
+      end: 0x4018000
+    cores:
+    - cm33_core0
+    access:
+      execute: true
+  - !Nvm
+    name: PROGRAM_FLASH_alias0
+    range:
+      start: 0x10000000
+      end: 0x10100000
+    cores:
+    - cm33_core0
+    is_alias: true
+    access:
+      write: false
+  - !Nvm
+    name: PROGRAM_FLASH_alias1
+    range:
+      start: 0x10100000
+      end: 0x10200000
+    cores:
+    - cm33_core0
+    is_alias: true
+    access:
+      write: false
+  - !Generic
+    name: BootROM_alias
+    range:
+      start: 0x13000000
+      end: 0x13040000
+    cores:
+    - cm33_core0
+    access:
+      write: false
+  - !Ram
+    name: SRAMX_alias
+    range:
+      start: 0x14000000
+      end: 0x14018000
+    cores:
+    - cm33_core0
+    is_alias: true
+    access:
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20060000
+    cores:
+    - cm33_core0
+    access:
+      execute: true
+  - !Ram
+    name: SRAMH
+    range:
+      start: 0x20060000
+      end: 0x20068000
+    cores:
+    - cm33_core0
+    access:
+      execute: false
+  - !Ram
+    name: SRAM_alias
+    range:
+      start: 0x30000000
+      end: 0x30060000
+    cores:
+    - cm33_core0
+    is_alias: true
+    access:
+      execute: false
+  - !Ram
+    name: SRAMH_alias
+    range:
+      start: 0x30060000
+      end: 0x30068000
+    cores:
+    - cm33_core0
+    is_alias: true
+    access:
+      execute: false
+  - !Ram
+    name: USB_RAM
+    range:
+      start: 0x400ba000
+      end: 0x400bb000
+    cores:
+    - cm33_core0
+    access:
+      execute: false
+  - !Ram
+    name: USB_RAM_alias
+    range:
+      start: 0x500ba000
+      end: 0x500bb000
+    cores:
+    - cm33_core0
+    is_alias: true
+    access:
+      execute: false
+  flash_algorithms:
+  - mcxn9xx_ts_2048
+  - mcxn9xx_ts_2048_s
+- name: MCXN557TCAB
+  cores:
+  - name: cm33_core0
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: PROGRAM_FLASH0
+    range:
+      start: 0x0
+      end: 0x100000
+    cores:
+    - cm33_core0
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: PROGRAM_FLASH1
+    range:
+      start: 0x100000
+      end: 0x200000
+    cores:
+    - cm33_core0
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: BootROM
+    range:
+      start: 0x3000000
+      end: 0x3040000
+    cores:
+    - cm33_core0
+    access:
+      write: false
+  - !Ram
+    name: SRAMX
+    range:
+      start: 0x4000000
+      end: 0x4018000
+    cores:
+    - cm33_core0
+    access:
+      execute: true
+  - !Nvm
+    name: PROGRAM_FLASH_alias0
+    range:
+      start: 0x10000000
+      end: 0x10100000
+    cores:
+    - cm33_core0
+    is_alias: true
+    access:
+      write: false
+  - !Nvm
+    name: PROGRAM_FLASH_alias1
+    range:
+      start: 0x10100000
+      end: 0x10200000
+    cores:
+    - cm33_core0
+    is_alias: true
+    access:
+      write: false
+  - !Generic
+    name: BootROM_alias
+    range:
+      start: 0x13000000
+      end: 0x13040000
+    cores:
+    - cm33_core0
+    access:
+      write: false
+  - !Ram
+    name: SRAMX_alias
+    range:
+      start: 0x14000000
+      end: 0x14018000
+    cores:
+    - cm33_core0
+    is_alias: true
+    access:
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20060000
+    cores:
+    - cm33_core0
+    access:
+      execute: true
+  - !Ram
+    name: SRAMH
+    range:
+      start: 0x20060000
+      end: 0x20068000
+    cores:
+    - cm33_core0
+    access:
+      execute: false
+  - !Ram
+    name: SRAM_alias
+    range:
+      start: 0x30000000
+      end: 0x30060000
+    cores:
+    - cm33_core0
+    is_alias: true
+    access:
+      execute: false
+  - !Ram
+    name: SRAMH_alias
+    range:
+      start: 0x30060000
+      end: 0x30068000
+    cores:
+    - cm33_core0
+    is_alias: true
+    access:
+      execute: false
+  - !Ram
+    name: USB_RAM
+    range:
+      start: 0x400ba000
+      end: 0x400bb000
+    cores:
+    - cm33_core0
+    access:
+      execute: false
+  - !Ram
+    name: USB_RAM_alias
+    range:
+      start: 0x500ba000
+      end: 0x500bb000
+    cores:
+    - cm33_core0
+    is_alias: true
+    access:
+      execute: false
+  flash_algorithms:
+  - mcxn9xx_ts_2048
+  - mcxn9xx_ts_2048_s
+- name: MCXN557TCDF
+  cores:
+  - name: cm33_core0
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: PROGRAM_FLASH0
+    range:
+      start: 0x0
+      end: 0x100000
+    cores:
+    - cm33_core0
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: PROGRAM_FLASH1
+    range:
+      start: 0x100000
+      end: 0x200000
+    cores:
+    - cm33_core0
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: BootROM
+    range:
+      start: 0x3000000
+      end: 0x3040000
+    cores:
+    - cm33_core0
+    access:
+      write: false
+  - !Ram
+    name: SRAMX
+    range:
+      start: 0x4000000
+      end: 0x4018000
+    cores:
+    - cm33_core0
+    access:
+      execute: true
+  - !Nvm
+    name: PROGRAM_FLASH_alias0
+    range:
+      start: 0x10000000
+      end: 0x10100000
+    cores:
+    - cm33_core0
+    is_alias: true
+    access:
+      write: false
+  - !Nvm
+    name: PROGRAM_FLASH_alias1
+    range:
+      start: 0x10100000
+      end: 0x10200000
+    cores:
+    - cm33_core0
+    is_alias: true
+    access:
+      write: false
+  - !Generic
+    name: BootROM_alias
+    range:
+      start: 0x13000000
+      end: 0x13040000
+    cores:
+    - cm33_core0
+    access:
+      write: false
+  - !Ram
+    name: SRAMX_alias
+    range:
+      start: 0x14000000
+      end: 0x14018000
+    cores:
+    - cm33_core0
+    is_alias: true
+    access:
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20060000
+    cores:
+    - cm33_core0
+    access:
+      execute: true
+  - !Ram
+    name: SRAMH
+    range:
+      start: 0x20060000
+      end: 0x20068000
+    cores:
+    - cm33_core0
+    access:
+      execute: false
+  - !Ram
+    name: SRAM_alias
+    range:
+      start: 0x30000000
+      end: 0x30060000
+    cores:
+    - cm33_core0
+    is_alias: true
+    access:
+      execute: false
+  - !Ram
+    name: SRAMH_alias
+    range:
+      start: 0x30060000
+      end: 0x30068000
+    cores:
+    - cm33_core0
+    is_alias: true
+    access:
+      execute: false
+  - !Ram
+    name: USB_RAM
+    range:
+      start: 0x400ba000
+      end: 0x400bb000
+    cores:
+    - cm33_core0
+    access:
+      execute: false
+  - !Ram
+    name: USB_RAM_alias
+    range:
+      start: 0x500ba000
+      end: 0x500bb000
+    cores:
+    - cm33_core0
+    is_alias: true
+    access:
+      execute: false
+  flash_algorithms:
+  - mcxn9xx_ts_2048
+  - mcxn9xx_ts_2048_s
+- name: MCXN557TVAB
+  cores:
+  - name: cm33_core0
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: PROGRAM_FLASH0
+    range:
+      start: 0x0
+      end: 0x100000
+    cores:
+    - cm33_core0
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: PROGRAM_FLASH1
+    range:
+      start: 0x100000
+      end: 0x200000
+    cores:
+    - cm33_core0
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: BootROM
+    range:
+      start: 0x3000000
+      end: 0x3040000
+    cores:
+    - cm33_core0
+    access:
+      write: false
+  - !Ram
+    name: SRAMX
+    range:
+      start: 0x4000000
+      end: 0x4018000
+    cores:
+    - cm33_core0
+    access:
+      execute: true
+  - !Nvm
+    name: PROGRAM_FLASH_alias0
+    range:
+      start: 0x10000000
+      end: 0x10100000
+    cores:
+    - cm33_core0
+    is_alias: true
+    access:
+      write: false
+  - !Nvm
+    name: PROGRAM_FLASH_alias1
+    range:
+      start: 0x10100000
+      end: 0x10200000
+    cores:
+    - cm33_core0
+    is_alias: true
+    access:
+      write: false
+  - !Generic
+    name: BootROM_alias
+    range:
+      start: 0x13000000
+      end: 0x13040000
+    cores:
+    - cm33_core0
+    access:
+      write: false
+  - !Ram
+    name: SRAMX_alias
+    range:
+      start: 0x14000000
+      end: 0x14018000
+    cores:
+    - cm33_core0
+    is_alias: true
+    access:
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20060000
+    cores:
+    - cm33_core0
+    access:
+      execute: true
+  - !Ram
+    name: SRAMH
+    range:
+      start: 0x20060000
+      end: 0x20068000
+    cores:
+    - cm33_core0
+    access:
+      execute: false
+  - !Ram
+    name: SRAM_alias
+    range:
+      start: 0x30000000
+      end: 0x30060000
+    cores:
+    - cm33_core0
+    is_alias: true
+    access:
+      execute: false
+  - !Ram
+    name: SRAMH_alias
+    range:
+      start: 0x30060000
+      end: 0x30068000
+    cores:
+    - cm33_core0
+    is_alias: true
+    access:
+      execute: false
+  - !Ram
+    name: USB_RAM
+    range:
+      start: 0x400ba000
+      end: 0x400bb000
+    cores:
+    - cm33_core0
+    access:
+      execute: false
+  - !Ram
+    name: USB_RAM_alias
+    range:
+      start: 0x500ba000
+      end: 0x500bb000
+    cores:
+    - cm33_core0
+    is_alias: true
+    access:
+      execute: false
+  flash_algorithms:
+  - mcxn9xx_ts_2048
+  - mcxn9xx_ts_2048_s
+- name: MCXN557TVDF
+  cores:
+  - name: cm33_core0
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: PROGRAM_FLASH0
+    range:
+      start: 0x0
+      end: 0x100000
+    cores:
+    - cm33_core0
+    access:
+      write: false
+      boot: true
+  - !Nvm
+    name: PROGRAM_FLASH1
+    range:
+      start: 0x100000
+      end: 0x200000
+    cores:
+    - cm33_core0
+    access:
+      write: false
+      boot: true
+  - !Generic
+    name: BootROM
+    range:
+      start: 0x3000000
+      end: 0x3040000
+    cores:
+    - cm33_core0
+    access:
+      write: false
+  - !Ram
+    name: SRAMX
+    range:
+      start: 0x4000000
+      end: 0x4018000
+    cores:
+    - cm33_core0
+    access:
+      execute: true
+  - !Nvm
+    name: PROGRAM_FLASH_alias0
+    range:
+      start: 0x10000000
+      end: 0x10100000
+    cores:
+    - cm33_core0
+    is_alias: true
+    access:
+      write: false
+  - !Nvm
+    name: PROGRAM_FLASH_alias1
+    range:
+      start: 0x10100000
+      end: 0x10200000
+    cores:
+    - cm33_core0
+    is_alias: true
+    access:
+      write: false
+  - !Generic
+    name: BootROM_alias
+    range:
+      start: 0x13000000
+      end: 0x13040000
+    cores:
+    - cm33_core0
+    access:
+      write: false
+  - !Ram
+    name: SRAMX_alias
+    range:
+      start: 0x14000000
+      end: 0x14018000
+    cores:
+    - cm33_core0
+    is_alias: true
+    access:
+      execute: false
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20060000
+    cores:
+    - cm33_core0
+    access:
+      execute: true
+  - !Ram
+    name: SRAMH
+    range:
+      start: 0x20060000
+      end: 0x20068000
+    cores:
+    - cm33_core0
+    access:
+      execute: false
+  - !Ram
+    name: SRAM_alias
+    range:
+      start: 0x30000000
+      end: 0x30060000
+    cores:
+    - cm33_core0
+    is_alias: true
+    access:
+      execute: false
+  - !Ram
+    name: SRAMH_alias
+    range:
+      start: 0x30060000
+      end: 0x30068000
+    cores:
+    - cm33_core0
+    is_alias: true
+    access:
+      execute: false
+  - !Ram
+    name: USB_RAM
+    range:
+      start: 0x400ba000
+      end: 0x400bb000
+    cores:
+    - cm33_core0
+    access:
+      execute: false
+  - !Ram
+    name: USB_RAM_alias
+    range:
+      start: 0x500ba000
+      end: 0x500bb000
+    cores:
+    - cm33_core0
+    is_alias: true
+    access:
+      execute: false
+  flash_algorithms:
+  - mcxn9xx_ts_2048
+  - mcxn9xx_ts_2048_s
+flash_algorithms:
+- name: mcxn9xx_ts_1024
+  description: MCXN9XX IAP 1024kB Flash
+  default: true
+  instructions: sLVE8gAwxPIEAAAhgWABaCH0AAEBYAFoQfAQAQFgAWhB8AEBAWABaMkBCdQBaMkBXL8BaF/qwREC1AFoyQHy1U/2FFHP9v9xT/BAckJQT/YQUc/2/3EAv0JYAvBwYrLxQH8R0EJYAvBwYrLxQH8L0EJYAvBwYrLxQH8F0EJYAvBwYrLxQH/n0UDyBAXA8gAFCesFBCBGRCEA8N/5IEYA8JP4ACgcvwEgsL0J6wUAAPDl+AAoGL8BILC9AL9E8gBMwPaVDEb2AENgRcDy3CMev5hCASBwR0TyADHCGsTyBAEYvwEiimAKaJhCIvQAAgpgA9BgRQXRICAA4BAgCmgQQwhgCGhA8AEACGAE4AhowAFEvwAgcEcIaMABBtQIaMABXL8IaF/qwBDw1QAgcEcAvwAgcEeAtUDyBADA8gAARvJsY0hEACHG9mUzT/SAEgDwS/gAKBi/ASCAvQC/gLUg8HBBQPIEAMDyAABG8mxjSETG9mUzT/QAUgDwNvgAKBi/ASCAvYC1C0Yg8HBBQPIEAMDyAABIRLP1AH+Yv0/0AHMA8Cz4ACgYvwEggL2wtQxGBUYg8HBAEUYiRgDwIvkAKAi/JUQoRrC9TvIQAcHyAzEJaEloCEcAv07yEAHB8gMxCWjJbQhHAL9O8hAMwfIDPNz4AMDc+AjAYEcAv07yEAzB8gM83PgAwNz4DMBgRwC/TvIQA8HyAzMbaBtpGEcAv07yEAzB8gM83PgAwNz4UMBgRwC/sLVO8hAOwfIDPt74AOAFnQSc3vgUwM3pBEW96LBAYEdO8hADwfIDMxtom2kYRwC/SPZBQ8HyAjMYRwC/SPahQ8HyAjMYRwC/TvIQAcHyAzEJaIlqCEcAv07yEAHB8gMxCWjJaghHAL9O8hADwfIDMxtoG2sYRwC/TvIQAsHyAzISaFJrEEcAv07yEAzB8gM83PgAwNz4OMBgRwC/TvIQAsHyAzISaNJrEEcAv07yEAPB8gMzG2ibbBhHAL9O8hAMwfIDPNz4AMDc+EzAYEcAv07yEAzB8gM83PgAwNz4WMBgRwC/TvIsAsHyAzISaFJoEEcAv07yLAzB8gM83PgAwNz4CMBgRwC/TvIsAsHyAzISaNJoEEcAv07yLAzB8gM83PgAwNz4EMBgRwC/TvIsA8HyAzMbaFtpGEcAv07yLAPB8gMzG2ibaRhHAL9O8iwAwfIDMABoAGhwRwC/TvIsA8HyAzMbaNtpGEcAv4C1TvIsDMHyAzzc+ADA3fgI4Nz4IMDN+AjgveiAQGBHTvIsAsHyAzISaFJqEEcAv07yLAzB8gM83PgAwNz4KMBgRwC/TvIsAcHyAzEJaMlqCEcAv07yLAPB8gMzG2gbaxhHQOoBAxC1mwcP0QQqDdMQyAjJEh+cQvjQILoZuohCAdkBIBC9T/D/MBC9GrHTBwPQUhwH4AAgEL0Q+AE7EfgBSxsbB9EQ+AE7EfgBSxsbAdGSHvHRGEYQvU/wAAIAtRNGlEaWRiA5Ir+g6AxQoOgMULHxIAG/9PevCQcov6DoDFBIvwzAXfgE64kAKL9A+AQrCL9wR0i/IPgCKxHwgE8YvwD4AStwRwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==
+  load_address: 0x20000008
+  pc_init: 0x1
+  pc_uninit: 0x131
+  pc_program_page: 0x185
+  pc_erase_sector: 0x15d
+  pc_erase_all: 0x135
+  pc_verify: 0x1ad
+  data_section_offset: 0x4a8
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x100000
+    page_size: 0x200
+    erased_byte_value: 0xff
+    program_page_timeout: 300
+    erase_sector_timeout: 3000
+    sectors:
+    - size: 0x2000
+      address: 0x0
+- name: mcxn9xx_ts_1024_s
+  description: MCXN9XX S IAP 1024kB Flash
+  default: true
+  instructions: sLVE8gAwxPIEAAAhgWABaCH0AAEBYAFoQfAQAQFgAWhB8AEBAWABaMkBCdQBaMkBXL8BaF/qwREC1AFoyQHy1U/2FFHP9v9xT/BAckJQT/YQUc/2/3EAv0JYAvBwYrLxQH8R0EJYAvBwYrLxQH8L0EJYAvBwYrLxQH8F0EJYAvBwYrLxQH/n0UDyBAXA8gAFCesFBCBGRCEA8N/5IEYA8JP4ACgcvwEgsL0J6wUAAPDl+AAoGL8BILC9AL9E8gBMwPaVDEb2AENgRcDy3CMev5hCASBwR0TyADHCGsTyBAEYvwEiimAKaJhCIvQAAgpgA9BgRQXRICAA4BAgCmgQQwhgCGhA8AEACGAE4AhowAFEvwAgcEcIaMABBtQIaMABXL8IaF/qwBDw1QAgcEcAvwAgcEeAtUDyBADA8gAARvJsY0hEACHG9mUzT/SAEgDwS/gAKBi/ASCAvQC/gLUg8HBBQPIEAMDyAABG8mxjSETG9mUzT/QAUgDwNvgAKBi/ASCAvYC1C0Yg8HBBQPIEAMDyAABIRLP1AH+Yv0/0AHMA8Cz4ACgYvwEggL2wtQxGBUYg8HBAEUYiRgDwIvkAKAi/JUQoRrC9TvIQAcHyAzEJaEloCEcAv07yEAHB8gMxCWjJbQhHAL9O8hAMwfIDPNz4AMDc+AjAYEcAv07yEAzB8gM83PgAwNz4DMBgRwC/TvIQA8HyAzMbaBtpGEcAv07yEAzB8gM83PgAwNz4UMBgRwC/sLVO8hAOwfIDPt74AOAFnQSc3vgUwM3pBEW96LBAYEdO8hADwfIDMxtom2kYRwC/SPZBQ8HyAjMYRwC/SPahQ8HyAjMYRwC/TvIQAcHyAzEJaIlqCEcAv07yEAHB8gMxCWjJaghHAL9O8hADwfIDMxtoG2sYRwC/TvIQAsHyAzISaFJrEEcAv07yEAzB8gM83PgAwNz4OMBgRwC/TvIQAsHyAzISaNJrEEcAv07yEAPB8gMzG2ibbBhHAL9O8hAMwfIDPNz4AMDc+EzAYEcAv07yEAzB8gM83PgAwNz4WMBgRwC/TvIsAsHyAzISaFJoEEcAv07yLAzB8gM83PgAwNz4CMBgRwC/TvIsAsHyAzISaNJoEEcAv07yLAzB8gM83PgAwNz4EMBgRwC/TvIsA8HyAzMbaFtpGEcAv07yLAPB8gMzG2ibaRhHAL9O8iwAwfIDMABoAGhwRwC/TvIsA8HyAzMbaNtpGEcAv4C1TvIsDMHyAzzc+ADA3fgI4Nz4IMDN+AjgveiAQGBHTvIsAsHyAzISaFJqEEcAv07yLAzB8gM83PgAwNz4KMBgRwC/TvIsAcHyAzEJaMlqCEcAv07yLAPB8gMzG2gbaxhHQOoBAxC1mwcP0QQqDdMQyAjJEh+cQvjQILoZuohCAdkBIBC9T/D/MBC9GrHTBwPQUhwH4AAgEL0Q+AE7EfgBSxsbB9EQ+AE7EfgBSxsbAdGSHvHRGEYQvU/wAAIAtRNGlEaWRiA5Ir+g6AxQoOgMULHxIAG/9PevCQcov6DoDFBIvwzAXfgE64kAKL9A+AQrCL9wR0i/IPgCKxHwgE8YvwD4AStwRwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==
+  load_address: 0x20000008
+  pc_init: 0x1
+  pc_uninit: 0x131
+  pc_program_page: 0x185
+  pc_erase_sector: 0x15d
+  pc_erase_all: 0x135
+  pc_verify: 0x1ad
+  data_section_offset: 0x4a8
+  flash_properties:
+    address_range:
+      start: 0x10000000
+      end: 0x10100000
+    page_size: 0x200
+    erased_byte_value: 0xff
+    program_page_timeout: 300
+    erase_sector_timeout: 3000
+    sectors:
+    - size: 0x2000
+      address: 0x0
+- name: mcxn9xx_ts_2048
+  description: MCXN9XX IAP 2048kB Flash
+  default: true
+  instructions: sLVE8gAwxPIEAAAhgWABaCH0AAEBYAFoQfAQAQFgAWhB8AEBAWABaMkBCdQBaMkBXL8BaF/qwREC1AFoyQHy1U/2FFHP9v9xT/BAckJQT/YQUc/2/3EAv0JYAvBwYrLxQH8R0EJYAvBwYrLxQH8L0EJYAvBwYrLxQH8F0EJYAvBwYrLxQH/n0UDyBAXA8gAFCesFBCBGRCEA8N/5IEYA8JP4ACgcvwEgsL0J6wUAAPDl+AAoGL8BILC9AL9E8gBMwPaVDEb2AENgRcDy3CMev5hCASBwR0TyADHCGsTyBAEYvwEiimAKaJhCIvQAAgpgA9BgRQXRICAA4BAgCmgQQwhgCGhA8AEACGAE4AhowAFEvwAgcEcIaMABBtQIaMABXL8IaF/qwBDw1QAgcEcAvwAgcEeAtUDyBADA8gAARvJsY0hEACHG9mUzT/QAEgDwS/gAKBi/ASCAvQC/gLUg8HBBQPIEAMDyAABG8mxjSETG9mUzT/QAUgDwNvgAKBi/ASCAvYC1C0Yg8HBBQPIEAMDyAABIRLP1AH+Yv0/0AHMA8Cz4ACgYvwEggL2wtQxGBUYg8HBAEUYiRgDwIvkAKAi/JUQoRrC9TvIQAcHyAzEJaEloCEcAv07yEAHB8gMxCWjJbQhHAL9O8hAMwfIDPNz4AMDc+AjAYEcAv07yEAzB8gM83PgAwNz4DMBgRwC/TvIQA8HyAzMbaBtpGEcAv07yEAzB8gM83PgAwNz4UMBgRwC/sLVO8hAOwfIDPt74AOAFnQSc3vgUwM3pBEW96LBAYEdO8hADwfIDMxtom2kYRwC/SPZBQ8HyAjMYRwC/SPahQ8HyAjMYRwC/TvIQAcHyAzEJaIlqCEcAv07yEAHB8gMxCWjJaghHAL9O8hADwfIDMxtoG2sYRwC/TvIQAsHyAzISaFJrEEcAv07yEAzB8gM83PgAwNz4OMBgRwC/TvIQAsHyAzISaNJrEEcAv07yEAPB8gMzG2ibbBhHAL9O8hAMwfIDPNz4AMDc+EzAYEcAv07yEAzB8gM83PgAwNz4WMBgRwC/TvIsAsHyAzISaFJoEEcAv07yLAzB8gM83PgAwNz4CMBgRwC/TvIsAsHyAzISaNJoEEcAv07yLAzB8gM83PgAwNz4EMBgRwC/TvIsA8HyAzMbaFtpGEcAv07yLAPB8gMzG2ibaRhHAL9O8iwAwfIDMABoAGhwRwC/TvIsA8HyAzMbaNtpGEcAv4C1TvIsDMHyAzzc+ADA3fgI4Nz4IMDN+AjgveiAQGBHTvIsAsHyAzISaFJqEEcAv07yLAzB8gM83PgAwNz4KMBgRwC/TvIsAcHyAzEJaMlqCEcAv07yLAPB8gMzG2gbaxhHQOoBAxC1mwcP0QQqDdMQyAjJEh+cQvjQILoZuohCAdkBIBC9T/D/MBC9GrHTBwPQUhwH4AAgEL0Q+AE7EfgBSxsbB9EQ+AE7EfgBSxsbAdGSHvHRGEYQvU/wAAIAtRNGlEaWRiA5Ir+g6AxQoOgMULHxIAG/9PevCQcov6DoDFBIvwzAXfgE64kAKL9A+AQrCL9wR0i/IPgCKxHwgE8YvwD4AStwRwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==
+  load_address: 0x20000008
+  pc_init: 0x1
+  pc_uninit: 0x131
+  pc_program_page: 0x185
+  pc_erase_sector: 0x15d
+  pc_erase_all: 0x135
+  pc_verify: 0x1ad
+  data_section_offset: 0x4a8
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x200000
+    page_size: 0x200
+    erased_byte_value: 0xff
+    program_page_timeout: 300
+    erase_sector_timeout: 3000
+    sectors:
+    - size: 0x2000
+      address: 0x0
+- name: mcxn9xx_ts_2048_s
+  description: MCXN9XX S IAP 2048kB Flash
+  default: true
+  instructions: sLVE8gAwxPIEAAAhgWABaCH0AAEBYAFoQfAQAQFgAWhB8AEBAWABaMkBCdQBaMkBXL8BaF/qwREC1AFoyQHy1U/2FFHP9v9xT/BAckJQT/YQUc/2/3EAv0JYAvBwYrLxQH8R0EJYAvBwYrLxQH8L0EJYAvBwYrLxQH8F0EJYAvBwYrLxQH/n0UDyBAXA8gAFCesFBCBGRCEA8N/5IEYA8JP4ACgcvwEgsL0J6wUAAPDl+AAoGL8BILC9AL9E8gBMwPaVDEb2AENgRcDy3CMev5hCASBwR0TyADHCGsTyBAEYvwEiimAKaJhCIvQAAgpgA9BgRQXRICAA4BAgCmgQQwhgCGhA8AEACGAE4AhowAFEvwAgcEcIaMABBtQIaMABXL8IaF/qwBDw1QAgcEcAvwAgcEeAtUDyBADA8gAARvJsY0hEACHG9mUzT/QAEgDwS/gAKBi/ASCAvQC/gLUg8HBBQPIEAMDyAABG8mxjSETG9mUzT/QAUgDwNvgAKBi/ASCAvYC1C0Yg8HBBQPIEAMDyAABIRLP1AH+Yv0/0AHMA8Cz4ACgYvwEggL2wtQxGBUYg8HBAEUYiRgDwIvkAKAi/JUQoRrC9TvIQAcHyAzEJaEloCEcAv07yEAHB8gMxCWjJbQhHAL9O8hAMwfIDPNz4AMDc+AjAYEcAv07yEAzB8gM83PgAwNz4DMBgRwC/TvIQA8HyAzMbaBtpGEcAv07yEAzB8gM83PgAwNz4UMBgRwC/sLVO8hAOwfIDPt74AOAFnQSc3vgUwM3pBEW96LBAYEdO8hADwfIDMxtom2kYRwC/SPZBQ8HyAjMYRwC/SPahQ8HyAjMYRwC/TvIQAcHyAzEJaIlqCEcAv07yEAHB8gMxCWjJaghHAL9O8hADwfIDMxtoG2sYRwC/TvIQAsHyAzISaFJrEEcAv07yEAzB8gM83PgAwNz4OMBgRwC/TvIQAsHyAzISaNJrEEcAv07yEAPB8gMzG2ibbBhHAL9O8hAMwfIDPNz4AMDc+EzAYEcAv07yEAzB8gM83PgAwNz4WMBgRwC/TvIsAsHyAzISaFJoEEcAv07yLAzB8gM83PgAwNz4CMBgRwC/TvIsAsHyAzISaNJoEEcAv07yLAzB8gM83PgAwNz4EMBgRwC/TvIsA8HyAzMbaFtpGEcAv07yLAPB8gMzG2ibaRhHAL9O8iwAwfIDMABoAGhwRwC/TvIsA8HyAzMbaNtpGEcAv4C1TvIsDMHyAzzc+ADA3fgI4Nz4IMDN+AjgveiAQGBHTvIsAsHyAzISaFJqEEcAv07yLAzB8gM83PgAwNz4KMBgRwC/TvIsAcHyAzEJaMlqCEcAv07yLAPB8gMzG2gbaxhHQOoBAxC1mwcP0QQqDdMQyAjJEh+cQvjQILoZuohCAdkBIBC9T/D/MBC9GrHTBwPQUhwH4AAgEL0Q+AE7EfgBSxsbB9EQ+AE7EfgBSxsbAdGSHvHRGEYQvU/wAAIAtRNGlEaWRiA5Ir+g6AxQoOgMULHxIAG/9PevCQcov6DoDFBIvwzAXfgE64kAKL9A+AQrCL9wR0i/IPgCKxHwgE8YvwD4AStwRwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==
+  load_address: 0x20000008
+  pc_init: 0x1
+  pc_uninit: 0x131
+  pc_program_page: 0x185
+  pc_erase_sector: 0x15d
+  pc_erase_all: 0x135
+  pc_verify: 0x1ad
+  data_section_offset: 0x4a8
+  flash_properties:
+    address_range:
+      start: 0x10000000
+      end: 0x10200000
+    page_size: 0x200
+    erased_byte_value: 0xff
+    program_page_timeout: 300
+    erase_sector_timeout: 3000
+    sectors:
+    - size: 0x2000
+      address: 0x0

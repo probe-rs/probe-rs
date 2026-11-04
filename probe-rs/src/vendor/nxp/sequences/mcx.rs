@@ -15,9 +15,10 @@ use crate::{
     architecture::arm::{
         ArmDebugInterface, ArmError, DapAccess, FullyQualifiedApAddress, Pins,
         ap::ApRegister,
+        component::TraceSink,
         dp::{DpAccess, DpAddress, DpRegister},
-        memory::ArmMemoryInterface,
-        sequences::ArmDebugSequence,
+        memory::{ArmMemoryInterface, CoresightComponent},
+        sequences::{ArmDebugSequence, ArmDebugSequenceError, DefaultArmSequence},
     },
     flashing::FlashCompare,
     probe::WireProtocol,
@@ -33,12 +34,12 @@ mod debugmailbox {
         name: DMCSW,
         address: 0x00,
         fields: [
-            pub ResynchReq, set_ResynchReq: 31;
-            pub ReqPending, set_ReqPending: 30;
-            pub DbgOrErr, set_DbgOrErr: 29;
-            pub AhbOrErr, set_AhbOrErr: 28;
-            pub SoftReset, set_SoftReset: 27;
-            pub ChipResetReq, set_ChipResetReq: 26;
+            pub ResynchReq, set_ResynchReq: 0;
+            pub ReqPending, set_ReqPending: 1;
+            pub DbgOrErr, set_DbgOrErr: 2;
+            pub AhbOrErr, set_AhbOrErr: 3;
+            pub SoftReset, set_SoftReset: 4;
+            pub ChipResetReq, set_ChipResetReq: 5;
         ]
     );
 
@@ -82,7 +83,7 @@ impl MCX {
     ];
     const VARIANT_A5: [&str; 6] = ["MCXA28", "MCXA45", "MCXA53", "MCXA55", "MCXA56", "MCXA57"];
     const VARIANT_N: [&str; 1] = ["MCXN"];
-    const VARIANT_N0: [&str; 2] = ["MCXN947", "MCXN526"];
+    const VARIANT_N23: [&str; 1] = ["MCXN23"];
 
     /// Parts whose reference manual documents the FMU at 0x4009_5000 with the Read into
     /// MISR command, so flash can be verified by signature rather than by reading it back.
@@ -178,6 +179,11 @@ impl MCX {
         let start = Instant::now();
         loop {
             let csw_val = interface.read_raw_ap_register(&ap, DMCSW::ADDRESS)?;
+            if self.is_variant(Self::VARIANT_N) && csw_val & 0xC != 0 {
+                return Err(ArmDebugSequenceError::SequenceSpecific(
+                    format!("MCXN debug mailbox overrun (CSW={csw_val:#010x}); resynchronization required").into(),
+                ).into());
+            }
             if (csw_val & 0xFFFF) == 0 {
                 break;
             }
@@ -198,6 +204,14 @@ impl MCX {
             let return_val = interface.read_raw_ap_register(&ap, DMRETURN::ADDRESS)? & 0xFFFF;
             if return_val == 0 {
                 break;
+            }
+            if self.is_variant(Self::VARIANT_N) {
+                // RETURN is a response packet, not a busy flag. Reading it
+                // again after an error waits for a response that will not arrive.
+                return Err(ArmDebugSequenceError::SequenceSpecific(
+                    format!("MCXN START_DBG_SESSION failed with status {return_val:#06x}").into(),
+                )
+                .into());
             }
             if start.elapsed() > Duration::from_millis(1000) {
                 return Err(ArmError::Timeout);
@@ -257,15 +271,19 @@ impl MCX {
     ) -> Result<(), ArmError> {
         tracing::info!("configuring trace clock");
 
-        if self.is_variant(Self::VARIANT_N0) {
-            // MCXN947 specific register addresses
+        if self.is_variant(Self::VARIANT_N) {
+            // SYSCON register addresses shared by the MCX N parts.
             const SYSCON_NS_BASE: u64 = 0x40000000;
             const TRACECLKSEL_ADDR: u64 = SYSCON_NS_BASE + 0x268;
             const TRACECLKDIV_ADDR: u64 = SYSCON_NS_BASE + 0x308;
             const AHBCLKCTRLSET0_ADDR: u64 = SYSCON_NS_BASE + 0x220;
 
-            interface.write_word_32(TRACECLKSEL_ADDR, 0x0)?;
-            interface.write_word_32(TRACECLKDIV_ADDR, 0x2)?;
+            // EnableTraceClk in the MCXN DFPs preserves a selected clock and divider.
+            if interface.read_word_32(TRACECLKSEL_ADDR)? & 0x7 > 2 {
+                interface.write_word_32(TRACECLKSEL_ADDR, 0x0)?;
+            }
+            let divider = interface.read_word_32(TRACECLKDIV_ADDR)? & 0xFF;
+            interface.write_word_32(TRACECLKDIV_ADDR, divider)?;
 
             // Enable PORT0 clock for trace pins
             interface.write_word_32(AHBCLKCTRLSET0_ADDR, 1 << 13)?;
@@ -317,13 +335,13 @@ impl MCX {
     fn wait_for_stop_after_reset(
         &self,
         interface: &mut dyn ArmMemoryInterface,
-    ) -> Result<(), ArmError> {
+    ) -> Result<bool, ArmError> {
         use crate::architecture::arm::armv8m::Dhcsr;
 
         tracing::info!("wait for stop after reset");
 
         // Give bootloader time to do what it needs to do
-        if self.is_variant(Self::VARIANT_N0) {
+        if self.is_variant(Self::VARIANT_N) && !self.is_variant(Self::VARIANT_N23) {
             thread::sleep(Duration::from_millis(1000));
         } else {
             thread::sleep(Duration::from_millis(100));
@@ -337,17 +355,15 @@ impl MCX {
             self.enable_debug_mailbox(interface.get_arm_debug_interface()?, dp)?;
         }
 
-        let start = Instant::now();
-        let timeout = if self.is_variant(Self::VARIANT_N0) {
-            Duration::from_millis(500)
+        if self.is_variant(Self::VARIANT_N) {
+            self.wait_for_ap_enabled(interface.get_arm_debug_interface()?, &ap)?;
         } else {
-            Duration::from_millis(300)
-        };
-
-        while !self.is_ap_enabled(interface.get_arm_debug_interface()?, &ap)?
-            && start.elapsed() < timeout
-        {
-            thread::sleep(Duration::from_millis(10));
+            let start = Instant::now();
+            while !self.is_ap_enabled(interface.get_arm_debug_interface()?, &ap)?
+                && start.elapsed() < Duration::from_millis(300)
+            {
+                thread::sleep(Duration::from_millis(10));
+            }
         }
 
         // Halt the core in case it didn't stop at a breakpoint
@@ -358,11 +374,37 @@ impl MCX {
         interface.write_word_32(Dhcsr::get_mmio_address(), dhcsr.into())?;
         interface.flush()?;
 
+        let mut reset_observed = false;
+        if self.is_variant(Self::VARIANT_N) {
+            let start = Instant::now();
+            loop {
+                let dhcsr = Dhcsr(interface.read_word_32(Dhcsr::get_mmio_address())?);
+                reset_observed |= dhcsr.s_reset_st();
+                if !dhcsr.s_reset_st() && dhcsr.s_halt() {
+                    break;
+                }
+                if start.elapsed() > Self::AP_ENABLE_TIMEOUT {
+                    tracing::error!(
+                        "MCXN reset recovery did not halt the core; a power cycle may be required"
+                    );
+                    return Err(ArmError::Timeout);
+                }
+                thread::sleep(Duration::from_millis(10));
+            }
+        }
+
         // Clear watch points
         interface.write_word_32(0xE000_1020, 0x0)?;
         interface.write_word_32(0xE000_1028, 0x0)?;
         interface.write_word_32(0xE000_1030, 0x0)?;
         interface.write_word_32(0xE000_1038, 0x0)?;
+        if self.is_variant(Self::VARIANT_N) {
+            // MCX N reset sequences also use comparators 2 and 3.
+            interface.write_word_32(0xE000_1040, 0x0)?;
+            interface.write_word_32(0xE000_1048, 0x0)?;
+            interface.write_word_32(0xE000_1050, 0x0)?;
+            interface.write_word_32(0xE000_1058, 0x0)?;
+        }
         interface.flush()?;
 
         // Clear XPSR to avoid undefined instruction fault caused by IT/ICI
@@ -375,11 +417,38 @@ impl MCX {
         interface.write_word_32(0xE000_EDF4, 0x0001_001C)?;
         interface.flush()?;
 
-        Ok(())
+        Ok(reset_observed)
     }
 }
 
 impl ArmDebugSequence for MCX {
+    fn trace_start(
+        &self,
+        interface: &mut dyn ArmDebugInterface,
+        components: &[CoresightComponent],
+        sink: &TraceSink,
+    ) -> Result<(), ArmError> {
+        if self.is_variant(Self::VARIANT_N)
+            && matches!(sink, TraceSink::Swo(_) | TraceSink::Tpiu(_))
+        {
+            let dp = interface.current_debug_port().ok_or_else(|| {
+                ArmDebugSequenceError::SequenceSpecific(
+                    "No debug port selected for MCXN trace".into(),
+                )
+            })?;
+            let ap = FullyQualifiedApAddress::v1_with_dp(dp, 0);
+            let mut memory = interface.memory_interface(&ap)?;
+            self.configure_trace_clock(memory.as_mut())?;
+            // Both sink types use serial wire output. TraceStart in all MCXN
+            // DFPs selects PIO0_2 PORT0_PCR2 mux to SWO.
+            memory.write_word_32(0x4011_6088, 0x0000_1140)?;
+            memory.flush()?;
+        }
+
+        // Retain generic CoreSight funnel routing, including for MCXA.
+        DefaultArmSequence(()).trace_start(interface, components, sink)
+    }
+
     /// Compare flash with the FMU's MISR instead of reading the image back.
     ///
     /// Restricted to `VARIANT_FMU_MISR`, the parts whose reference manual places the FMU
@@ -428,7 +497,8 @@ impl ArmDebugSequence for MCX {
 
             // Wait for Power-Up request to be acknowledged
             let start = Instant::now();
-            let timeout = if self.is_variant(Self::VARIANT_N0) {
+            let timeout = if self.is_variant(Self::VARIANT_N) && !self.is_variant(Self::VARIANT_N23)
+            {
                 Duration::from_millis(1000)
             } else {
                 Duration::from_millis(500)
@@ -518,7 +588,7 @@ impl ArmDebugSequence for MCX {
             interface.write_word_32(0xE000_1028, 0xF000_0412)?;
             interface.write_word_32(0xE000_1030, 0x4009_1040)?;
             interface.write_word_32(0xE000_1038, 0xF000_0403)?;
-        } else if self.is_variant(Self::VARIANT_N0) {
+        } else if self.is_variant(Self::VARIANT_N) && !self.is_variant(Self::VARIANT_N23) {
             interface.write_word_32(0xE000_1020, 0x0000_0000)?;
             interface.write_word_32(0xE000_1028, 0x0000_0412)?;
             interface.write_word_32(0xE000_1030, 0x00FF_FFFF)?;
@@ -534,6 +604,18 @@ impl ArmDebugSequence for MCX {
             interface.write_word_32(0x4000_0140, 0x401)?;
             interface.write_word_32(0x4000_0220, 0xE000)?;
             interface.write_word_32(0x4000_0140, 0xE000)?;
+        } else if self.is_variant(Self::VARIANT_N23) {
+            // MCXN23x ResetSystem watches both non-secure and secure flash.
+            // Follow the DFP here; MCXN23xSRM 10.3.5.4 instead describes a
+            // watchpoint on SYSCON at 0x5000_0040.
+            interface.write_word_32(0xE000_1020, 0x0000_0000)?;
+            interface.write_word_32(0xE000_1028, 0xF000_0412)?;
+            interface.write_word_32(0xE000_1030, 0x000F_FFFF)?;
+            interface.write_word_32(0xE000_1038, 0xF000_0403)?;
+            interface.write_word_32(0xE000_1040, 0x1000_0000)?;
+            interface.write_word_32(0xE000_1048, 0xF000_0412)?;
+            interface.write_word_32(0xE000_1050, 0x100F_FFFF)?;
+            interface.write_word_32(0xE000_1058, 0xF000_0403)?;
         } else {
             // MCXA3's ResetSystem sequence watches the whole flash address range,
             // rather than the SYSCON accesses used by the other MCXA variants.
@@ -547,14 +629,31 @@ impl ArmDebugSequence for MCX {
         }
         interface.flush()?;
 
+        if self.is_variant(Self::VARIANT_N) {
+            // Clear sticky reset status so recovery cannot mistake an earlier
+            // reset for evidence that this request reached the target.
+            interface.read_word_32(Dhcsr::get_mmio_address())?;
+        }
         let mut aircr = Aircr(0);
         aircr.vectkey();
         aircr.set_sysresetreq(true);
-        let _ = interface.write_word_32(Aircr::get_mmio_address(), aircr.into());
+        let reset = interface.write_word_32(Aircr::get_mmio_address(), aircr.into());
+        let reset = if self.is_variant(Self::VARIANT_N) {
+            reset.and_then(|_| interface.flush())
+        } else {
+            reset
+        };
 
         let _ = self.configure_trace_clock(interface);
 
-        let _ = self.wait_for_stop_after_reset(interface);
+        let recovery = self.wait_for_stop_after_reset(interface);
+        if self.is_variant(Self::VARIANT_N) {
+            // A reset can lose its transport ACK. Only tolerate that failure
+            // when DHCSR proves a reset occurred and recovery completed.
+            if !recovery? {
+                reset?;
+            }
+        }
 
         Ok(())
     }
@@ -574,38 +673,12 @@ impl ArmDebugSequence for MCX {
         core.write_word_32(Demcr::get_mmio_address(), demcr.into())?;
         core.flush()?;
 
-        let reset_vector = if self.is_variant(Self::VARIANT_N0) {
-            tracing::info!("reading reset vector via flash controller");
-
-            // Flash controller addresses for MCXN947
-            const FLASH_BASE: u64 = 0x40034000;
-            const FLASH_STARTA: u64 = FLASH_BASE + 0x10;
-            const FLASH_STOPA: u64 = FLASH_BASE + 0x14;
-            const FLASH_DATAW0: u64 = FLASH_BASE + 0x80;
-            const FLASH_CMD: u64 = FLASH_BASE;
-            const FLASH_INT_CLR_STATUS: u64 = FLASH_BASE + 0xFE8;
-
-            // Program Flash Word Start/Stop Address to 0x0
-            core.write_word_32(FLASH_STARTA, 0x0)?;
-            core.write_word_32(FLASH_STOPA, 0x0)?;
-
-            // Clear data words
-            for i in 0..8 {
-                core.write_word_32(FLASH_DATAW0 + (i * 4), 0x0)?;
-            }
-
-            // Clear flash controller status
-            core.write_word_32(FLASH_INT_CLR_STATUS, 0x0000_000F)?;
-
-            // Read single flash word command
-            core.write_word_32(FLASH_CMD, 0x0000_0003)?;
-
-            core.flush()?;
-
-            // Try to read reset vector via AHB
-            let reset_vector = core.read_word_32(0x0000_0004)?;
-
-            // Check if we need to use secure address space
+        let reset_vector = if self.is_variant(Self::VARIANT_N) {
+            // Do not copy the DFP's flash-controller preparation at 0x4003_4000:
+            // MCXNP184M150F70RM 31.6.1.1 maps that address to the PLU, not flash.
+            // Both MCXN SRMs document AHBSC.MISC_CTRL(_DP)_REG at FFCh/FF8h.
+            // Select the address space before reading flash: a non-secure read
+            // can fault when secure checking is restrictive.
             let enable_secure_check1 = core.read_word_32(0x4012_0FFC)? & 0xC;
             let enable_secure_check2 = core.read_word_32(0x4012_0FF8)? & 0xC;
 
@@ -613,7 +686,7 @@ impl ArmDebugSequence for MCX {
                 tracing::info!("reading reset vector from secure address space");
                 core.read_word_32(0x1000_0004)?
             } else {
-                reset_vector
+                core.read_word_32(0x0000_0004)?
             }
         } else {
             core.read_word_32(0x0000_0004)?
@@ -673,11 +746,12 @@ impl ArmDebugSequence for MCX {
 
         let can_read_pins = probe.swj_pins(n_reset, n_reset, 0)? != 0xFFFF_FFFF;
 
-        let reset_duration = if self.is_variant(Self::VARIANT_N0) {
-            Duration::from_millis(100)
-        } else {
-            Duration::from_millis(50)
-        };
+        let reset_duration =
+            if self.is_variant(Self::VARIANT_N) && !self.is_variant(Self::VARIANT_N23) {
+                Duration::from_millis(100)
+            } else {
+                Duration::from_millis(50)
+            };
         thread::sleep(reset_duration);
 
         let mut assert_n_reset = || probe.swj_pins(n_reset, n_reset, 0);
@@ -688,11 +762,12 @@ impl ArmDebugSequence for MCX {
             while assert_n_reset()? & n_reset == 0 && !timeout_occurred() {}
         } else {
             assert_n_reset()?;
-            let recovery_time = if self.is_variant(Self::VARIANT_N0) {
-                Duration::from_millis(200)
-            } else {
-                Duration::from_millis(100)
-            };
+            let recovery_time =
+                if self.is_variant(Self::VARIANT_N) && !self.is_variant(Self::VARIANT_N23) {
+                    Duration::from_millis(200)
+                } else {
+                    Duration::from_millis(100)
+                };
             thread::sleep(recovery_time);
         }
 
