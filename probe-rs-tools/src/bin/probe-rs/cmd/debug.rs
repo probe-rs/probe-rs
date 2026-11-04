@@ -439,16 +439,25 @@ impl Cmd {
 
         // Prompt 0 is the default debug CLI prompt.
         let mut current_prompt = debug_client.current_prompt;
-        let (mut rl, writer) =
-            Readline::new(Prompt::new(format!("{}> ", debug_client.current_prompt())).to_string())
-                .context("the debug CLI needs an interactive terminal; from a script, use `probe-rs gdb` or `probe-rs dap-server`")?;
-        let _prompt_logs = crate::util::logging::install_prompt_writer(writer.clone());
-        debug_client.writer = Some(writer);
 
-        let readline_result = if server_result.is_some() {
-            // Server already finished; no point driving the readline loop.
+        let readline_result = if server_result.is_some() || !debug_client.running() {
+            // The session ended during the `-c` commands (e.g. `-c quit`): there is no
+            // console to run, so no terminal is needed. Disconnect as the console would.
+            if server_result.is_none() {
+                debug_client.disconnect(true).await;
+            }
             command_result
         } else {
+            let (mut rl, writer) = Readline::new(
+                Prompt::new(format!("{}> ", debug_client.current_prompt())).to_string(),
+            )
+            .context(
+                "the interactive console needs a terminal; to run commands without one, \
+                 end them with `-c quit`",
+            )?;
+            let _prompt_logs = crate::util::logging::install_prompt_writer(writer.clone());
+            debug_client.writer = Some(writer);
+
             let readline_fut = async {
                 let mut result = command_result;
                 while result.is_ok() && debug_client.running() {
@@ -491,23 +500,25 @@ impl Cmd {
                 debug_client.disconnect(true).await;
                 result
             };
-            tokio::pin!(readline_fut);
+            let mut readline_fut = Box::pin(readline_fut);
 
             // Whichever future resolves first decides the readline
             // result: either the readline loop exited normally or the
             // debug session terminated. In the latter case any trailing
             // output has already been rendered by the readline loop via
             // its `msg_receiver` arm, so we just record the result.
-            tokio::select! {
+            let result = tokio::select! {
                 res = &mut readline_fut => res,
                 res = &mut server => {
                     server_result = Some(res);
                     Ok(())
                 }
-            }
-        };
+            };
+            drop(readline_fut);
 
-        rl.flush()?;
+            rl.flush()?;
+            result
+        };
 
         // If the server is still running, wait for it to finish (the
         // readline side has sent a `disconnect` request above).
