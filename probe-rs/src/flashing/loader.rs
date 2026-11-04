@@ -123,10 +123,10 @@ impl FlasherOps for Flasher {
         (phase_layout, fill_size, erase_size, program_size)
     }
     fn compute_verify_size(&mut self) -> u64 {
-        let encoding = self.flash_algorithm.transfer_encoding;
         self.regions
-            .iter_mut()
-            .map(|r| r.data.program_size_estimate(encoding, true))
+            .iter()
+            .flat_map(|r| r.flash_layout().pages())
+            .map(|p| p.size() as u64)
             .sum()
     }
     fn verify(
@@ -1217,9 +1217,10 @@ impl FlashLoader {
                 .progress
                 .add_progress_bar(ProgressOperation::Program, Some(program_size));
             if options.verify {
+                let verify_size = flasher.compute_verify_size();
                 options
                     .progress
-                    .add_progress_bar(ProgressOperation::Verify, Some(program_size));
+                    .add_progress_bar(ProgressOperation::Verify, Some(verify_size));
             }
 
             phases.push(phase_layout);
