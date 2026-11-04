@@ -444,7 +444,8 @@ impl Flasher {
         // Flash all necessary pages.
         self.do_program(session, progress, enable_double_buffering)?;
 
-        if verify && !self.verify(session, progress, !restore_unwritten_bytes)? {
+        // The fills now hold the restored data or the erased value, so the full page must match.
+        if verify && !self.verify(session, progress, false)? {
             return Err(FlashError::Verify);
         }
 
