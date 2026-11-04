@@ -441,7 +441,7 @@ impl Cmd {
         let mut current_prompt = debug_client.current_prompt;
         let (mut rl, writer) =
             Readline::new(Prompt::new(format!("{}> ", debug_client.current_prompt())).to_string())
-                .unwrap();
+                .context("the debug CLI needs an interactive terminal; from a script, use `probe-rs gdb` or `probe-rs dap-server`")?;
         let _prompt_logs = crate::util::logging::install_prompt_writer(writer.clone());
         debug_client.writer = Some(writer);
 
