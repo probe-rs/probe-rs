@@ -84,16 +84,17 @@ pub async fn connect(
 ) -> Result<RpcClient, ClientError> {
     let (destination, port) = parse_ssh_connect(host)?;
 
-    let mut child = Command::new("ssh")
+    let mut command = Command::new("ssh");
+    command
         .arg(&destination)
         .arg("-W")
         .arg(format!("127.0.0.1:{port}"))
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
-        .kill_on_drop(true)
-        .spawn()
-        .map_err(ClientError::SshSpawn)?;
+        .kill_on_drop(true);
+    ignore_stop_signals(&mut command);
+    let mut child = command.spawn().map_err(ClientError::SshSpawn)?;
 
     let stdout = child.stdout.take().expect("stdout is piped");
     let stdin = child.stdin.take().expect("stdin is piped");
@@ -140,6 +141,33 @@ pub async fn connect(
     tokio::spawn(report_exit(exited, tail));
 
     Ok(client)
+}
+
+/// Keep the stop signals of the terminal and of a process supervisor away from
+/// ssh. probe-rs handles them, and needs the connection to cancel the command
+/// on the server.
+fn ignore_stop_signals(command: &mut Command) {
+    #[cfg(unix)]
+    // SAFETY: `signal` is async-signal-safe. ssh keeps a SIGINT and a SIGTERM
+    // that it inherits as ignored, and can still read a password from the
+    // terminal. A separate process group would stop ssh when it reads the
+    // terminal.
+    unsafe {
+        command.pre_exec(|| {
+            libc::signal(libc::SIGINT, libc::SIG_IGN);
+            libc::signal(libc::SIGTERM, libc::SIG_IGN);
+            Ok(())
+        });
+    }
+
+    #[cfg(windows)]
+    {
+        // A new process group starts with Ctrl+C disabled, and does not get the
+        // Ctrl+Break that a supervisor sends to the group of probe-rs. A Ctrl+Break
+        // from the keyboard still reaches ssh.
+        const CREATE_NEW_PROCESS_GROUP: u32 = 0x0000_0200;
+        command.creation_flags(CREATE_NEW_PROCESS_GROUP);
+    }
 }
 
 /// Wait for ssh in a task that owns the child, because [`Child::wait`] needs
