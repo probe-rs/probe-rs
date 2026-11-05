@@ -319,8 +319,13 @@ impl CmsisDapDevice {
             CmsisDapDevice::Tcp { device, .. } => Ok(device.write(&buf[1..])?),
             #[cfg(test)]
             CmsisDapDevice::Fake(probe) => {
-                probe.lock().unwrap().write(&buf[1..]);
-                Ok(buf.len() - 1)
+                if probe.lock().unwrap().write(&buf[1..]) {
+                    Ok(buf.len() - 1)
+                } else {
+                    Err(SendError::UsbError(std::io::Error::other(
+                        "the write failed",
+                    )))
+                }
             }
         }
     }

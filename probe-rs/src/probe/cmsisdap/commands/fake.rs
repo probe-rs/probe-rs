@@ -14,6 +14,8 @@ pub(crate) enum Reply {
     Held(Vec<u8>),
     /// The command has no reply.
     None,
+    /// The command does not reach the probe: its write fails.
+    WriteFails,
 }
 
 type Responder = Box<dyn FnMut(&[u8]) -> Reply + Send>;
@@ -63,7 +65,8 @@ impl FakeProbe {
         }))
     }
 
-    pub(crate) fn write(&mut self, command: &[u8]) {
+    /// Takes a command, and returns whether it reached the probe.
+    pub(crate) fn write(&mut self, command: &[u8]) -> bool {
         self.sent.push(command.to_vec());
         self.owed_at_write.push(self.owed());
         let abort = command.first() == Some(&CommandId::TransferAbort.id());
@@ -81,8 +84,10 @@ impl FakeProbe {
             Reply::Now(reply) if !self.late.is_empty() => self.late.push_back(reply),
             Reply::Now(reply) => self.ready.push_back(reply),
             Reply::None => {}
+            Reply::WriteFails => return false,
         }
         self.most_owed = self.most_owed.max(self.owed());
+        true
     }
 
     /// How many replies the probe owes.
