@@ -10,8 +10,12 @@ use probe_rs_target::{FlashProperties, NvmRegion, RawFlashAlgorithm, SectorDescr
 
 use super::builder::FlashBuilder;
 use super::{FlashError, FlashLayout, FlashProgress};
+use crate::flashing::compare::{
+    CompareContext, CompareOutcome, Outside, ReadBackCore, RegionCompare, run_chain,
+};
 use crate::flashing::flasher::FlashData;
 use crate::flashing::host_sequence::DebugFlashSequence;
+use crate::flashing::progress::ProgressOperation;
 use crate::memory::MemoryInterface;
 use crate::session::Session;
 
@@ -354,7 +358,7 @@ impl HostSideFlasher {
         })
     }
 
-    /// Verify all regions and report the verify progress.
+    /// Checks each sector of each region. The fill bytes of a page must hold the page data.
     fn verify_regions(
         &self,
         session: &mut Session,
@@ -362,15 +366,20 @@ impl HostSideFlasher {
     ) -> Result<bool, FlashError> {
         progress.started_verifying();
 
-        let result = (|| {
-            for r in &self.regions {
-                if !self.verify_layout(session, r.flash_layout(), progress)? {
-                    return Ok(false);
-                }
-            }
-
-            Ok(true)
-        })();
+        let result = self
+            .compare(
+                session,
+                progress,
+                ProgressOperation::Verify,
+                Outside::Any,
+                false,
+            )
+            .map(|outcomes| {
+                outcomes
+                    .iter()
+                    .flatten()
+                    .all(|outcome| *outcome == CompareOutcome::Match)
+            });
 
         match result.is_ok() {
             true => progress.finished_verifying(),
@@ -380,30 +389,70 @@ impl HostSideFlasher {
         result
     }
 
-    fn verify_layout(
-        &self,
-        session: &mut Session,
-        layout: &FlashLayout,
-        progress: &mut FlashProgress<'_>,
-    ) -> Result<bool, FlashError> {
-        for page in layout.pages() {
-            let start = Instant::now();
-            let verified = self
-                .flash_sequence
-                .verify(session, page.address(), page.data())
-                .map_err(FlashError::Core)?;
+    /// Returns `true` if a compare can skip sectors.
+    pub(super) fn can_compare(&self) -> bool {
+        self.flash_sequence.supports_sector_erase()
+    }
 
-            if !verified {
-                tracing::error!(
-                    "Host-side: Verification failed at address 0x{:08X}",
-                    page.address()
-                );
-                return Ok(false);
-            }
-            progress.page_verified(page.size() as u64, start.elapsed());
+    /// Compares the flash with the image, and removes the sectors that need no change.
+    pub(super) fn compare_and_prune(
+        &mut self,
+        session: &mut Session,
+        progress: &mut FlashProgress<'_>,
+        keep_unwritten_bytes: bool,
+    ) -> Result<(), FlashError> {
+        // Without restored bytes, a full flash leaves the erased value outside the image.
+        let outside = if keep_unwritten_bytes {
+            Outside::Any
+        } else {
+            Outside::Erased(self.flash_algorithm.flash_properties.erased_byte_value)
+        };
+
+        progress.started(ProgressOperation::Compare);
+        let result = self.run_with_flash(session, |this, session| {
+            this.compare(session, progress, ProgressOperation::Compare, outside, true)
+        });
+        match result.is_ok() {
+            true => progress.finished(ProgressOperation::Compare),
+            false => progress.failed(ProgressOperation::Compare),
         }
 
-        Ok(true)
+        for (region, outcomes) in self.regions.iter_mut().zip(result?) {
+            region.data.layout_mut().prune(&outcomes);
+        }
+
+        Ok(())
+    }
+
+    /// Compares each sector of each region with its expected content.
+    ///
+    /// Returns one result for each sector, for each region.
+    fn compare(
+        &self,
+        session: &mut Session,
+        progress: &mut FlashProgress<'_>,
+        operation: ProgressOperation,
+        outside: Outside,
+        ignore_fills: bool,
+    ) -> Result<Vec<Vec<CompareOutcome>>, FlashError> {
+        let regions = self
+            .regions
+            .iter()
+            .map(|region| {
+                RegionCompare::new(&region.region, region.flash_layout(), outside, ignore_fills)
+            })
+            .collect::<Vec<_>>();
+
+        let mut chain = session
+            .target()
+            .debug_sequence
+            .flash_compare()
+            .into_iter()
+            .collect::<Vec<_>>();
+        chain.push(Arc::new(ReadBackCore));
+
+        let context = CompareContext::without_algorithm(session, self.core_index);
+        run_chain(&chain, regions, context, progress, operation)
     }
 }
 
