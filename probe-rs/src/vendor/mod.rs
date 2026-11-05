@@ -39,6 +39,7 @@ pub mod sifli;
 pub mod silabs;
 pub mod st;
 pub mod ti;
+pub mod tridentiot;
 pub mod vorago;
 pub mod wch;
 pub mod whxy;
@@ -111,6 +112,7 @@ static VENDORS: LazyLock<RecursiveRwLock<Vec<&'static dyn Vendor>>> = LazyLock::
         &gigadevice::GigaDevice,
         &nsing::Nsing,
         &whxy::Whxy,
+        &tridentiot::TridentIot,
     ];
 
     RecursiveRwLock::new(vendors)
