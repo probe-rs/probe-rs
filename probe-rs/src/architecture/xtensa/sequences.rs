@@ -4,7 +4,7 @@ use std::{fmt::Debug, sync::Arc, time::Duration};
 
 use crate::architecture::xtensa::Xtensa;
 use crate::architecture::xtensa::communication_interface::XtensaCommunicationInterface;
-use crate::flashing::DebugFlashSequence;
+use crate::flashing::{DebugFlashSequence, FlashCompare};
 use crate::semihosting::{SemihostingCommand, UnknownCommandDetails};
 
 /// A interface to operate debug sequences for Xtensa targets.
@@ -76,11 +76,10 @@ pub trait XtensaDebugSequence: Send + Sync + Debug {
         None
     }
 
-    /// Return the fast flash verification implementation if one exists.
+    /// Return the flash compare method of this target, if it has one.
     ///
-    /// Override this for a target whose flash controller can compute a signature over a
-    /// range of flash. The default returns `None`.
-    fn flash_verify_sequence(&self) -> Option<Arc<dyn crate::flashing::FlashVerify>> {
+    /// See [`FlashCompare`] for the rules.
+    fn flash_compare(&self) -> Option<Arc<dyn FlashCompare>> {
         None
     }
 }

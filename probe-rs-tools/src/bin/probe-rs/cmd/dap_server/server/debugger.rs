@@ -962,6 +962,7 @@ impl Debugger {
 
         let mut flash_progress_state = ProgressState::default();
         let describe_op = |operation| match operation {
+            Operation::Compare => "Comparing",
             Operation::Fill => "Reading Old Pages",
             Operation::Erase => "Erasing Sectors",
             Operation::Program => "Programming Pages",
