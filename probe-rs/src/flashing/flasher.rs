@@ -6,8 +6,8 @@ use super::{FlashAlgorithm, FlashBuilder, FlashError, FlashPage, FlashProgress};
 use crate::config::NvmRegion;
 use crate::error::Error;
 use crate::flashing::compare::{
-    CmsisVerifyCompare, CompareContext, CompareOutcome, FlashCompare, FlashVerifyCompare, Outside,
-    ReadBackCore, ReadFlashCompare, RegionCompare,
+    CmsisVerifyCompare, CompareContext, CompareOutcome, FlashCompare, Outside, ReadBackCore,
+    ReadFlashCompare, RegionCompare, SectorCheck, run_chain,
 };
 use crate::flashing::encoder::FlashEncoder;
 use crate::flashing::{FlashLayout, FlashSector, ProgressOperation};
@@ -169,6 +169,8 @@ pub struct Flasher {
     pub(super) core_index: usize,
     pub(super) flash_algorithm: FlashAlgorithm,
     pub(super) loaded: bool,
+    /// The algorithm code in target RAM is the code of this flasher.
+    pub(super) code_valid: bool,
     pub(super) regions: Vec<LoadedRegion>,
     pub(super) read_flasher_rtt: bool,
 }
@@ -193,6 +195,7 @@ impl Flasher {
             core_index,
             flash_algorithm,
             loaded: false,
+            code_valid: false,
             regions: Vec::new(),
             read_flasher_rtt: false,
         })
@@ -208,6 +211,14 @@ impl Flasher {
         if !self.loaded {
             self.load(session)?;
             self.loaded = true;
+            self.code_valid = true;
+        } else if !self.code_valid {
+            // No reset: it can clear state such as an FPGA configuration.
+            let mut core = session.core(self.core_index).map_err(FlashError::Core)?;
+            core.halt(Duration::from_millis(500))
+                .map_err(FlashError::Core)?;
+            Self::write_code(&self.flash_algorithm, &mut core)?;
+            self.code_valid = true;
         }
 
         Ok(())
@@ -235,6 +246,11 @@ impl Flasher {
 
         // TODO: Possible special preparation of the target such as enabling faster clocks for the flash e.g.
 
+        Self::write_code(algo, &mut core)
+    }
+
+    /// Writes the algorithm code into target RAM, and checks it.
+    fn write_code(algo: &FlashAlgorithm, core: &mut Core<'_>) -> Result<(), FlashError> {
         // Load flash algorithm code into target RAM.
         tracing::debug!("Downloading algorithm code to {:#010x}", algo.load_address);
 
@@ -549,12 +565,40 @@ impl Flasher {
             .all(|outcome| *outcome == CompareOutcome::Match))
     }
 
+    /// Compares the flash with the image, and removes the sectors that need no change.
+    pub(super) fn compare_and_prune(
+        &mut self,
+        session: &mut Session,
+        progress: &mut FlashProgress<'_>,
+        keep_unwritten_bytes: bool,
+    ) -> Result<(), FlashError> {
+        // Without restored bytes, a full flash leaves the erased value outside the image.
+        let outside = if keep_unwritten_bytes {
+            Outside::Any
+        } else {
+            Outside::Erased(self.flash_algorithm.flash_properties.erased_byte_value)
+        };
+
+        progress.started(ProgressOperation::Compare);
+        let result = self.compare(session, progress, ProgressOperation::Compare, outside, true);
+        match result.is_ok() {
+            true => progress.finished(ProgressOperation::Compare),
+            false => progress.failed(ProgressOperation::Compare),
+        }
+
+        for (region, outcomes) in self.regions.iter_mut().zip(result?) {
+            region.data.layout_mut().prune(&outcomes);
+        }
+
+        Ok(())
+    }
+
     /// Returns the compare backends of this flasher, in the order to try them.
     fn compare_chain(&self, session: &Session) -> Vec<Arc<dyn FlashCompare>> {
         let mut chain: Vec<Arc<dyn FlashCompare>> = Vec::new();
 
-        if let Some(sequence) = session.target().debug_sequence.flash_verify_sequence() {
-            chain.push(Arc::new(FlashVerifyCompare(sequence)));
+        if let Some(backend) = session.target().debug_sequence.flash_compare() {
+            chain.push(backend);
         }
         if self.flash_algorithm.pc_verify.is_some() {
             chain.push(Arc::new(CmsisVerifyCompare));
@@ -585,21 +629,14 @@ impl Flasher {
             .map(|region| (region.region.clone(), region.data.layout().clone()))
             .collect::<Vec<_>>();
 
-        let mut regions = layouts
+        let regions = layouts
             .iter()
             .map(|(region, layout)| RegionCompare::new(region, layout, outside, ignore_fills))
             .collect::<Vec<_>>();
 
         let chain = self.compare_chain(session);
-        let mut context = CompareContext::new(session, self);
-        for backend in &chain {
-            for region in &mut regions {
-                region.run(backend.as_ref(), &mut context, progress, operation)?;
-            }
-        }
-        context.finish()?;
-
-        Ok(regions.into_iter().map(RegionCompare::finish).collect())
+        let context = CompareContext::new(session, self);
+        run_chain(&chain, regions, context, progress, operation)
     }
 
     /// Perform an erase of all sectors given in `flash_layout`.
@@ -1327,6 +1364,60 @@ impl<'op, 'p, O: Operation> ActiveFlasher<'op, 'p, O> {
 }
 
 impl ActiveFlasher<'_, '_, Verify> {
+    /// Runs `BlankCheck` if the check and the algorithm allow it, and `compare` if the sector is
+    /// not blank.
+    pub(super) fn compare_after_blank_check(
+        &mut self,
+        check: &SectorCheck<'_>,
+        compare: impl FnOnce(&mut Self) -> Result<CompareOutcome, FlashError>,
+    ) -> Result<CompareOutcome, FlashError> {
+        let Outside::Erased(erased) = check.outside else {
+            return compare(self);
+        };
+        if self.flash_algorithm.pc_blank_check.is_none() {
+            return compare(self);
+        }
+
+        // On some targets, a read of erased flash faults.
+        let size = check.sector.end - check.sector.start;
+        if self.is_blank(check.sector.start, size)? {
+            let expected_erased = check
+                .expected
+                .iter()
+                .all(|(_, data)| data.iter().all(|&byte| byte == erased));
+            let outcome = if expected_erased {
+                CompareOutcome::Match
+            } else {
+                CompareOutcome::Empty
+            };
+            return Ok(outcome);
+        }
+
+        compare(self)
+    }
+
+    /// Returns `true` if `BlankCheck` finds `size` bytes at `address` erased.
+    fn is_blank(&mut self, address: u64, size: u64) -> Result<bool, FlashError> {
+        let algo = self.flash_algorithm;
+        let blank_check = algo
+            .pc_blank_check
+            .expect("the compare calls BlankCheck only if the algorithm has it");
+
+        let result = self.call_function_and_wait(
+            &Registers {
+                pc: blank_check,
+                r0: Some(address),
+                r1: Some(size),
+                r2: Some(algo.flash_properties.erased_byte_value.into()),
+                r3: None,
+            },
+            false,
+            Duration::from_secs(10),
+        )?;
+
+        Ok(result == 0)
+    }
+
     /// Returns `true` if CMSIS `Verify` finds `data` at `address`.
     pub(super) fn cmsis_verify(&mut self, address: u64, data: &[u8]) -> Result<bool, FlashError> {
         let algo = self.flash_algorithm;

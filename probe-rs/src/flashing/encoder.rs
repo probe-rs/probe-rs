@@ -51,7 +51,13 @@ impl ZlibEncoder {
     fn new(flash: FlashLayout, ignore_fills: bool) -> Self {
         let mut compressed_pages = vec![];
 
-        let page_size = flash.pages()[0].data().len();
+        // A compare can remove all pages.
+        let Some(page_size) = flash.pages().first().map(|page| page.data().len()) else {
+            return Self {
+                flash,
+                compressed_pages,
+            };
+        };
 
         let mut compress_image = |image: &[u8], start_addr: u64| {
             compressed_pages.extend(Self::compress_image(image, start_addr, page_size));
@@ -277,5 +283,13 @@ mod tests {
             .map(|page| (page.address(), page.size()))
             .collect::<Vec<_>>();
         assert_eq!(chunks, vec![(0x10, 0x3f0), (0x400, 0x400), (0x800, 0x110)]);
+    }
+
+    #[cfg(feature = "flate2")]
+    #[test]
+    fn miniz_encodes_a_layout_without_pages() {
+        let encoder = FlashEncoder::new(TransferEncoding::Miniz, FlashLayout::default(), true);
+
+        assert!(encoder.pages().is_empty());
     }
 }
