@@ -220,6 +220,174 @@ impl FlasherOps for HostSideFlasher {
     }
 }
 
+/// One way to download data to the target.
+///
+/// A method runs all its steps in one [`download`](Self::download) call, and decides its own
+/// resets.
+trait DownloadMethod {
+    /// Returns `true` if this method writes flash that a chip erase cannot erase.
+    fn blocks_chip_erase(&self, session: &Session) -> bool;
+
+    /// Adds the progress bars of a download, and returns the flash layout, if any.
+    fn add_progress_bars(&mut self, options: &mut DownloadOptions) -> Option<FlashLayout>;
+
+    /// Adds the progress bar of a verify.
+    fn add_verify_progress_bar(&mut self, progress: &mut FlashProgress<'_>);
+
+    /// Runs all steps of the download.
+    ///
+    /// If `chip_erase_pending` is `true`, a flash method runs the chip erase before its own steps.
+    fn download(
+        &mut self,
+        session: &mut Session,
+        options: &mut DownloadOptions,
+        chip_erase_pending: &mut bool,
+    ) -> Result<(), FlashError>;
+
+    /// Returns [`FlashError::Verify`] if the target does not hold the data of this method.
+    fn verify(
+        &mut self,
+        session: &mut Session,
+        progress: &mut FlashProgress<'_>,
+    ) -> Result<(), FlashError>;
+}
+
+/// Downloads to flash through a [`FlasherOps`] implementation.
+struct FlashDownload(Box<dyn FlasherOps>);
+
+impl DownloadMethod for FlashDownload {
+    fn blocks_chip_erase(&self, session: &Session) -> bool {
+        !self.0.is_chip_erase_supported(session)
+    }
+
+    fn add_progress_bars(&mut self, options: &mut DownloadOptions) -> Option<FlashLayout> {
+        let (phase_layout, fill_size, erase_size, program_size) =
+            self.0.compute_init_sizes(options.keep_unwritten_bytes);
+
+        if options.keep_unwritten_bytes && fill_size > 0 {
+            options
+                .progress
+                .add_progress_bar(ProgressOperation::Fill, Some(fill_size));
+        }
+        if !options.do_chip_erase {
+            options
+                .progress
+                .add_progress_bar(ProgressOperation::Erase, Some(erase_size));
+        }
+        options
+            .progress
+            .add_progress_bar(ProgressOperation::Program, Some(program_size));
+        if options.verify {
+            let verify_size = self.0.compute_verify_size();
+            options
+                .progress
+                .add_progress_bar(ProgressOperation::Verify, Some(verify_size));
+        }
+
+        Some(phase_layout)
+    }
+
+    fn add_verify_progress_bar(&mut self, progress: &mut FlashProgress<'_>) {
+        let program_size = self.0.compute_verify_size();
+        progress.add_progress_bar(ProgressOperation::Verify, Some(program_size));
+    }
+
+    fn download(
+        &mut self,
+        session: &mut Session,
+        options: &mut DownloadOptions,
+        chip_erase_pending: &mut bool,
+    ) -> Result<(), FlashError> {
+        let flasher = &mut self.0;
+        tracing::debug!("Flashing ranges for algo: {}", flasher.algorithm_name());
+
+        if *chip_erase_pending {
+            tracing::debug!("    Doing chip erase...");
+            flasher.run_erase_all(session, &mut options.progress)?;
+            *chip_erase_pending = false;
+        }
+
+        let mut do_use_double_buffering = flasher.double_buffering_supported();
+        if do_use_double_buffering && options.disable_double_buffering {
+            tracing::info!(
+                "Disabled double-buffering support for loader via passed option, though target supports it."
+            );
+            do_use_double_buffering = false;
+        }
+
+        // Program the data.
+        flasher.program(
+            session,
+            &mut options.progress,
+            options.keep_unwritten_bytes,
+            do_use_double_buffering,
+            options.skip_erase || options.do_chip_erase,
+            options.verify,
+        )
+    }
+
+    fn verify(
+        &mut self,
+        session: &mut Session,
+        progress: &mut FlashProgress<'_>,
+    ) -> Result<(), FlashError> {
+        tracing::debug!("Verifying ranges for algo: {}", self.0.algorithm_name());
+        if !self.0.verify(session, progress, true)? {
+            return Err(FlashError::Verify);
+        }
+
+        Ok(())
+    }
+}
+
+/// Downloads the RAM data of a flash loader.
+struct RamDownload<'a> {
+    loader: &'a FlashLoader,
+}
+
+impl DownloadMethod for RamDownload<'_> {
+    fn blocks_chip_erase(&self, _session: &Session) -> bool {
+        false
+    }
+
+    fn add_progress_bars(&mut self, options: &mut DownloadOptions) -> Option<FlashLayout> {
+        let ram_size: u64 = self
+            .loader
+            .memory_map
+            .iter()
+            .filter_map(MemoryRegion::as_ram_region)
+            .flat_map(|region| self.loader.builder.data_in_range(&region.range))
+            .map(|(_, data)| data.len() as u64)
+            .sum();
+        if ram_size > 0 {
+            options
+                .progress
+                .add_progress_bar(ProgressOperation::Ram, Some(ram_size));
+        }
+
+        None
+    }
+
+    fn add_verify_progress_bar(&mut self, _progress: &mut FlashProgress<'_>) {}
+
+    fn download(
+        &mut self,
+        session: &mut Session,
+        options: &mut DownloadOptions,
+        _chip_erase_pending: &mut bool,
+    ) -> Result<(), FlashError> {
+        self.loader.download_ram(session, options)
+    }
+
+    fn verify(
+        &mut self,
+        session: &mut Session,
+        _progress: &mut FlashProgress<'_>,
+    ) -> Result<(), FlashError> {
+        self.loader.verify_ram(session)
+    }
+}
+
 /// A trait representing a firmware image format.
 ///
 /// This trait can create a new [ImageLoader], which can be used to load firmware images for flashing.
@@ -836,23 +1004,15 @@ impl FlashLoader {
         session: &mut Session,
         progress: &mut FlashProgress<'_>,
     ) -> Result<(), FlashError> {
-        let mut algos = self.prepare_plan(session, false, &[])?;
+        let mut plan = self.prepare_plan(session, false, &[])?;
 
-        for flasher in algos.iter_mut() {
-            let program_size = flasher.compute_verify_size();
-            progress.add_progress_bar(ProgressOperation::Verify, Some(program_size));
+        for method in plan.iter_mut() {
+            method.add_verify_progress_bar(progress);
         }
 
-        // Iterate all flash algorithms we need to use and do the verification.
-        for mut flasher in algos {
-            tracing::debug!("Verifying ranges for algo: {}", flasher.algorithm_name());
-
-            if !flasher.verify(session, progress, true)? {
-                return Err(FlashError::Verify);
-            }
+        for mut method in plan {
+            method.verify(session, progress)?;
         }
-
-        self.verify_ram(session)?;
 
         Ok(())
     }
@@ -866,7 +1026,7 @@ impl FlashLoader {
         mut options: DownloadOptions,
     ) -> Result<(), FlashError> {
         tracing::debug!("Committing FlashLoader!");
-        let mut algos = self.prepare_plan(
+        let mut plan = self.prepare_plan(
             session,
             options.keep_unwritten_bytes,
             &options.preferred_algos,
@@ -882,41 +1042,22 @@ impl FlashLoader {
             return Ok(());
         }
 
-        self.initialize(&mut algos, session, &mut options)?;
+        Self::initialize(&mut plan, session, &mut options);
 
-        let mut do_chip_erase = options.do_chip_erase;
-        let mut did_chip_erase = false;
-
-        // Iterate all flash algorithms we need to use and do the flashing.
-        for mut flasher in algos {
-            tracing::debug!("Flashing ranges for algo: {}", flasher.algorithm_name());
-
-            if do_chip_erase {
-                tracing::debug!("    Doing chip erase...");
-                flasher.run_erase_all(session, &mut options.progress)?;
-                do_chip_erase = false;
-                did_chip_erase = true;
-            }
-
-            let mut do_use_double_buffering = flasher.double_buffering_supported();
-            if do_use_double_buffering && options.disable_double_buffering {
-                tracing::info!(
-                    "Disabled double-buffering support for loader via passed option, though target supports it."
-                );
-                do_use_double_buffering = false;
-            }
-
-            // Program the data.
-            flasher.program(
-                session,
-                &mut options.progress,
-                options.keep_unwritten_bytes,
-                do_use_double_buffering,
-                options.skip_erase || did_chip_erase,
-                options.verify,
-            )?;
+        let mut chip_erase_pending = options.do_chip_erase;
+        for mut method in plan {
+            method.download(session, &mut options, &mut chip_erase_pending)?;
         }
 
+        Ok(())
+    }
+
+    /// Writes the RAM data, and verifies it if `options.verify` is set.
+    fn download_ram(
+        &self,
+        session: &mut Session,
+        options: &mut DownloadOptions,
+    ) -> Result<(), FlashError> {
         tracing::debug!("Committing RAM!");
 
         if let BootInfo::FromRam { cores_to_reset, .. } = self.boot_info() {
@@ -958,7 +1099,6 @@ impl FlashLoader {
         let mut ram_write_result = Ok(());
         let mut ram_progress_start: Option<Instant> = None;
 
-        // Commit RAM last, because NVM flashing overwrites RAM
         'ram_regions: for region in self
             .memory_map
             .iter()
@@ -1068,7 +1208,7 @@ impl FlashLoader {
         session: &mut Session,
         restore_unwritten_bytes: bool,
         opt_preferred_algos: &[String],
-    ) -> Result<Vec<Box<dyn FlasherOps>>, FlashError> {
+    ) -> Result<Vec<Box<dyn DownloadMethod + '_>>, FlashError> {
         tracing::debug!("Contents of builder:");
         for (&address, data) in &self.builder.data {
             tracing::debug!(
@@ -1169,21 +1309,26 @@ impl FlashLoader {
             }
         }
 
-        Ok(algos)
+        let mut plan = algos
+            .into_iter()
+            .map(|flasher| Box::new(FlashDownload(flasher)) as Box<dyn DownloadMethod>)
+            .collect::<Vec<_>>();
+
+        // Commit RAM last, because NVM flashing overwrites RAM.
+        plan.push(Box::new(RamDownload { loader: self }));
+
+        Ok(plan)
     }
 
     fn initialize(
-        &self,
-        algos: &mut [Box<dyn FlasherOps>],
-        session: &mut Session,
+        plan: &mut [Box<dyn DownloadMethod + '_>],
+        session: &Session,
         options: &mut DownloadOptions,
-    ) -> Result<(), FlashError> {
-        let mut phases = vec![];
-
-        for flasher in algos.iter() {
-            // If the first flash algo doesn't support erase all, disable chip erase.
+    ) {
+        for method in plan.iter() {
+            // If a flash algo doesn't support erase all, disable chip erase.
             // TODO: we could sort by support but it's unlikely to make a difference.
-            if options.do_chip_erase && !flasher.is_chip_erase_supported(session) {
+            if options.do_chip_erase && method.blocks_chip_erase(session) {
                 options.do_chip_erase = false;
                 tracing::warn!(
                     "Chip erase was the selected method to erase the sectors but this chip does not support chip erases (yet)."
@@ -1198,50 +1343,12 @@ impl FlashLoader {
                 .add_progress_bar(ProgressOperation::Erase, None);
         }
 
-        // Iterate all flash algorithms to initialize a few things.
-        for flasher in algos.iter_mut() {
-            let (phase_layout, fill_size, erase_size, program_size) =
-                flasher.compute_init_sizes(options.keep_unwritten_bytes);
-
-            if options.keep_unwritten_bytes && fill_size > 0 {
-                options
-                    .progress
-                    .add_progress_bar(ProgressOperation::Fill, Some(fill_size));
-            }
-            if !options.do_chip_erase {
-                options
-                    .progress
-                    .add_progress_bar(ProgressOperation::Erase, Some(erase_size));
-            }
-            options
-                .progress
-                .add_progress_bar(ProgressOperation::Program, Some(program_size));
-            if options.verify {
-                let verify_size = flasher.compute_verify_size();
-                options
-                    .progress
-                    .add_progress_bar(ProgressOperation::Verify, Some(verify_size));
-            }
-
-            phases.push(phase_layout);
-        }
-
-        let ram_size: u64 = self
-            .memory_map
-            .iter()
-            .filter_map(MemoryRegion::as_ram_region)
-            .flat_map(|region| self.builder.data_in_range(&region.range))
-            .map(|(_, data)| data.len() as u64)
-            .sum();
-        if ram_size > 0 {
-            options
-                .progress
-                .add_progress_bar(ProgressOperation::Ram, Some(ram_size));
-        }
+        let phases = plan
+            .iter_mut()
+            .filter_map(|method| method.add_progress_bars(options))
+            .collect();
 
         options.progress.initialized(phases);
-
-        Ok(())
     }
 
     fn verify_ram(&self, session: &mut Session) -> Result<(), FlashError> {
