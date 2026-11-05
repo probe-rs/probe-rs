@@ -379,6 +379,10 @@ pub fn open_v2_device(
                         swo_ep,
                         max_packet_size,
                         usb_timeout: DEFAULT_USB_TIMEOUT,
+                        packet_count_limit: xds110_packet_count_limit(
+                            vid,
+                            device_info.product_string().unwrap_or(""),
+                        ),
                     }));
                 }
                 Err(e) => {
@@ -540,10 +544,18 @@ pub fn open_device_from_selector(
                     device_info.product_id(),
                     device_info.release_number(),
                 )?;
+                if is_xds110(device_info.vendor_id(), &s) {
+                    tracing::warn!(
+                        "{s} is in its CMSIS-DAP v1 (HID) configuration, which is slow. \
+                         Switch it to CMSIS-DAP v2 with xdsdfu from CCS \
+                         (<CCS>/ccs/ccs_base/common/uscif/xds110): xdsdfu -m, then xdsdfu -c 4 -r"
+                    );
+                }
                 Ok(CmsisDapDevice::V1 {
                     handle: device,
                     report_size: hid_report_size(device_info),
                     usb_timeout: DEFAULT_USB_TIMEOUT,
+                    packet_count_limit: xds110_packet_count_limit(device_info.vendor_id(), &s),
                 })
             }
             _ => {
@@ -575,6 +587,22 @@ fn is_known_cmsis_dap_dev(device: &DeviceInfo) -> bool {
     KNOWN_DAPS
         .iter()
         .any(|&(vid, pid)| device.vendor_id() == vid && device.product_id() == pid)
+}
+
+/// Limit the number of running commands on TI XDS110 devices
+///
+/// The TI XDS110 FW reports that it can support 64 commands at a time
+/// However, there is race condition in the command processing that can
+/// result in replies being dropped. This has been observed on the XDS110-ET
+/// probes which are high speed instead of full speed USB.
+/// Limiting the number of commands has proven to work around this limitation.
+fn xds110_packet_count_limit(vendor_id: u16, product: &str) -> Option<u8> {
+    is_xds110(vendor_id, product).then_some(1)
+}
+
+/// A TI XDS110, as CMSIS-DAP v1 (TI vendor ID) or 2.0 (1cbe vendor ID).
+fn is_xds110(vendor_id: u16, product: &str) -> bool {
+    matches!(vendor_id, 0x0451 | 0x1cbe) && product.contains("XDS110")
 }
 
 /// Manual override of HID report size

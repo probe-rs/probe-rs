@@ -194,6 +194,8 @@ pub enum CmsisDapDevice {
         handle: hidapi::HidDevice,
         report_size: usize,
         usb_timeout: Duration,
+        /// Number of commands the probe can have running at one time
+        packet_count_limit: Option<u8>,
     },
 
     /// CMSIS-DAP v2 over WinUSB/Bulk.
@@ -212,6 +214,8 @@ pub enum CmsisDapDevice {
         max_packet_size: usize,
         swo_ep: Option<Endpoint<Bulk, In>>,
         usb_timeout: Duration,
+        /// Number of commands the probe can have running at one time
+        packet_count_limit: Option<u8>,
     },
 
     /// CMSIS-DAP over TCP, with the framing of OpenOCD's TCP backend.
@@ -529,6 +533,22 @@ impl CmsisDapDevice {
 
     fn check_packet_size(&mut self) -> Result<(), CmsisDapError> {
         send_command_once(self, &PacketSizeCommand {}).map(drop)
+    }
+
+    /// Number of commands this probe can have running at once
+    pub(super) fn packet_count_limit(&self) -> Option<u8> {
+        match self {
+            #[cfg(feature = "cmsisdap_v1")]
+            CmsisDapDevice::V1 {
+                packet_count_limit, ..
+            } => *packet_count_limit,
+            CmsisDapDevice::V2 {
+                packet_count_limit, ..
+            } => *packet_count_limit,
+            CmsisDapDevice::Tcp { .. } => None,
+            #[cfg(test)]
+            CmsisDapDevice::Fake(_) => None,
+        }
     }
 
     /// Check if SWO streaming is supported by this device.

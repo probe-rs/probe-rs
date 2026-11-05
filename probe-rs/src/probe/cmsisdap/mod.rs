@@ -248,10 +248,19 @@ impl CmsisDap {
         }
 
         let ProbeInfo {
-            packet_count,
+            mut packet_count,
             capabilities: caps,
             swo_buffer_size,
         } = info?;
+
+        if let Some(limit) = device.packet_count_limit()
+            && limit < packet_count
+        {
+            tracing::info!(
+                "Probe misreports its command queue, sending {limit} at a time (reported {packet_count})"
+            );
+            packet_count = limit;
+        }
 
         Ok(Self {
             device,
