@@ -10,6 +10,7 @@ use crate::rpc::{
     utils::{
         run_loop::{ReturnReason, RunLoop, RunLoopPoller, VectorCatchConfig},
         semihosting::SemihostingFileManager,
+        semihosting_mappings::Mappings,
     },
 };
 use anyhow::Context;
@@ -21,7 +22,6 @@ use probe_rs_rpc::monitor::{
     ChannelInfo, MonitorExitReason, MonitorMode, MonitorRequest, RttEvent, SemihostingEvent,
     SemihostingExitError, SerialEvent, SerialWriteRequest, SerialWriteResponse,
 };
-use probe_rs_rpc::semihosting_options::SemihostingOptions;
 use probe_rs_rpc::{MonitorEndpoint, RpcError, RttTopic, SemihostingTopic, SerialTopic};
 use tokio::sync::mpsc::{self, error::SendError};
 
@@ -125,7 +125,7 @@ fn monitor_impl(
     let shared_session = ctx.shared_session(request.sessid);
 
     let mut semihosting_sink = MonitorEventHandler::new(
-        ctx.semihosting_options(request.options.semihosting_options)?,
+        Mappings::new(&ctx.semihosting_options(request.options.semihosting_options)?)?,
         |event| _ = sender.send_semihosting_event(event),
     );
 
@@ -351,9 +351,9 @@ struct MonitorEventHandler<F: FnMut(SemihostingEvent)> {
 }
 
 impl<F: FnMut(SemihostingEvent)> MonitorEventHandler<F> {
-    pub fn new(semihosting_options: SemihostingOptions, sender: F) -> Self {
+    pub fn new(mappings: Mappings, sender: F) -> Self {
         Self {
-            semihosting_file_manager: SemihostingFileManager::new(semihosting_options),
+            semihosting_file_manager: SemihostingFileManager::new(mappings),
             sender,
         }
     }

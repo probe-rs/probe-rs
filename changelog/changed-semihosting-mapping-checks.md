@@ -1,0 +1,1 @@
+Semihosting mappings are checked at the start, and a target cannot leave a directory that a prefix or regex mapping exposes, also not through a symbolic link. A prefix mapping to a host path must end with a slash, a regex mapping must start with a directory, and `tcp:` and `unix:` need an exact mapping.

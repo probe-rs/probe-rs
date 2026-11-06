@@ -441,6 +441,8 @@ pub(crate) fn parse_semihosting_options(arg: &[String]) -> anyhow::Result<Semiho
             _ => unreachable!("splitn produces at most 2 items."),
         }
     }
+    // Report a bad mapping at the start, and not when the target uses it.
+    crate::rpc::utils::semihosting_mappings::Mappings::new(&options)?;
     Ok(options)
 }
 

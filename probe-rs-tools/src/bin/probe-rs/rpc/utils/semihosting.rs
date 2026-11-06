@@ -6,15 +6,17 @@ use probe_rs::{
     },
 };
 use probe_rs_rpc::monitor::SemihostingEvent;
-use probe_rs_rpc::semihosting_options::{Mapping, SemihostingOptions};
 #[cfg(target_family = "unix")]
 use std::os::unix::net::UnixStream;
 use std::{
     fs::File,
-    io::{Read, Seek, SeekFrom, Write},
+    io::{self, Read, Seek, SeekFrom, Write},
     net::TcpStream,
     num::NonZeroU32,
+    path::{Component, Path, PathBuf},
 };
+
+use crate::rpc::utils::semihosting_mappings::{HostTarget, Mappings};
 
 enum FileHandle {
     Stdout,
@@ -25,71 +27,16 @@ enum FileHandle {
     UnixStream(UnixStream),
 }
 
-use regex::Regex;
-
-enum FileVariant {
-    File(String),
-    TcpStream(String),
-    UnixStream(String),
-}
-
-fn map_file(options: &SemihostingOptions, value: &str) -> anyhow::Result<Option<String>> {
-    for item in options.mappings() {
-        match item {
-            Mapping::Exact(from, to) => {
-                if value == from {
-                    return Ok(Some(to.clone()));
-                }
-            }
-            Mapping::Prefix(prefix, to) => {
-                if let Some(rest) = value.strip_prefix(prefix) {
-                    return Ok(Some(to.clone() + rest));
-                }
-            }
-            Mapping::Regex(re, to) => {
-                let re = Regex::new(re)?;
-                if let Some(captures) = re.captures(value) {
-                    let mut ret = String::new();
-                    captures.expand(to, &mut ret);
-                    return Ok(Some(ret));
-                }
-            }
-        }
-    }
-
-    Ok(None)
-}
-
-fn find_file(options: &SemihostingOptions, value: &str) -> anyhow::Result<Option<FileVariant>> {
-    let Some(v) = map_file(options, value)? else {
-        return Ok(None);
-    };
-
-    if let Some(r) = v.strip_prefix("file:") {
-        return Ok(Some(FileVariant::File(r.into())));
-    }
-
-    if let Some(r) = v.strip_prefix("tcp:") {
-        return Ok(Some(FileVariant::TcpStream(r.into())));
-    }
-
-    if let Some(r) = v.strip_prefix("unix:") {
-        return Ok(Some(FileVariant::UnixStream(r.into())));
-    }
-
-    Ok(Some(FileVariant::File(v)))
-}
-
 pub struct SemihostingFileManager {
     file_handles: Vec<Option<FileHandle>>,
-    semihosting_options: SemihostingOptions,
+    mappings: Mappings,
 }
 
 impl SemihostingFileManager {
-    pub fn new(semihosting_options: SemihostingOptions) -> Self {
+    pub fn new(mappings: Mappings) -> Self {
         Self {
             file_handles: vec![],
-            semihosting_options,
+            mappings,
         }
     }
 
@@ -189,35 +136,32 @@ impl SemihostingFileManager {
 
     fn open_file(&self, path: &str, mode: &str) -> Option<FileHandle> {
         let mut options = File::options();
-        match mode {
-            "r" | "rb" => options
-                .read(true)
-                .write(false)
-                .truncate(false)
-                .create(false),
-            "r+" | "r+b" => options.read(true).write(true).truncate(false).create(false),
-            "w" | "wb" => options.read(false).write(true).truncate(true).create(true),
-            "w+" | "w+b" => options.read(true).write(true).truncate(true).create(true),
-            "a" | "ab" => options
-                .read(false)
-                .append(true)
-                .truncate(false)
-                .create(true),
-            "a+" | "a+b" => options.read(true).append(true).truncate(false).create(true),
-            mode => {
-                tracing::error!(
-                    "Target wanted to open file {path} with invalid mode {mode}. Continuing..."
-                );
-                return None;
-            }
-        };
-
+        let flags = OpenFlags::from_mode(mode)?;
         options
+            .read(flags.read)
+            .write(flags.write)
+            .append(flags.append)
+            .truncate(flags.truncate)
+            .create(flags.create)
             .open(path)
             .inspect_err(|err| {
                 tracing::warn!(
                     "Target wanted to open file {path} with mode {mode}, \
                     but it failed with {err:?}. Continuing..."
+                )
+            })
+            .map(FileHandle::File)
+            .ok()
+    }
+
+    fn open_beneath(&self, root: &Path, path: &str, mode: &str) -> Option<FileHandle> {
+        let flags = OpenFlags::from_mode(mode)?;
+        open_beneath(root, path, flags)
+            .inspect_err(|err| {
+                tracing::warn!(
+                    "Target wanted to open file {path:?} in {} with mode {mode}, \
+                    but it failed with {err:?}. Continuing...",
+                    root.display(),
                 )
             })
             .map(FileHandle::File)
@@ -234,15 +178,18 @@ impl SemihostingFileManager {
 
         let f = if path == ":tt" {
             self.open_tt(request.mode())
-        } else if let Some(path) = find_file(&self.semihosting_options, &path)? {
-            match path {
-                FileVariant::File(path) => self.open_file(&path, request.mode()),
-                FileVariant::TcpStream(addr) => self.open_tcp_stream(&addr),
-                FileVariant::UnixStream(path) => self.open_unix_stream(&path),
+        } else if let Some(target) = self.mappings.resolve(&path) {
+            match target {
+                HostTarget::File(path) => self.open_file(&path, request.mode()),
+                HostTarget::Beneath { root, path } => {
+                    self.open_beneath(&root, &path, request.mode())
+                }
+                HostTarget::Tcp(addr) => self.open_tcp_stream(&addr),
+                HostTarget::Unix(path) => self.open_unix_stream(&path),
             }
         } else {
             tracing::warn!(
-                "Target wanted to open file {path} which is not configured \
+                "Target wanted to open file {path:?} which is not configured \
                 for access via semihosting. Continuing..."
             );
             None
@@ -432,6 +379,106 @@ impl SemihostingFileManager {
     }
 }
 
+/// How to open a file for a semihosting mode.
+struct OpenFlags {
+    read: bool,
+    write: bool,
+    append: bool,
+    truncate: bool,
+    create: bool,
+}
+
+impl OpenFlags {
+    fn from_mode(mode: &str) -> Option<Self> {
+        let (read, write, append, truncate, create) = match mode {
+            "r" | "rb" => (true, false, false, false, false),
+            "r+" | "r+b" => (true, true, false, false, false),
+            "w" | "wb" => (false, true, false, true, true),
+            "w+" | "w+b" => (true, true, false, true, true),
+            "a" | "ab" => (false, false, true, false, true),
+            "a+" | "a+b" => (true, false, true, false, true),
+            mode => {
+                tracing::error!("Target wanted to open a file with invalid mode {mode}.");
+                return None;
+            }
+        };
+
+        Some(Self {
+            read,
+            write,
+            append,
+            truncate,
+            create,
+        })
+    }
+}
+
+/// Opens a regular file beneath `root`.
+fn open_beneath(root: &Path, path: &str, flags: OpenFlags) -> io::Result<File> {
+    let path = resolve_beneath(root, path)?;
+
+    let mut options = File::options();
+    options
+        .read(flags.read)
+        .write(flags.write)
+        .append(flags.append)
+        .truncate(flags.truncate)
+        .create(flags.create);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt as _;
+        // The open must not wait for the other end of a FIFO.
+        options.custom_flags(libc::O_NONBLOCK);
+    }
+
+    let file = options.open(path)?;
+    if !file.metadata()?.is_file() {
+        return Err(io::Error::other("not a regular file"));
+    }
+
+    Ok(file)
+}
+
+/// Returns the path of `path` beneath `root`. A symbolic link cannot lead out of `root`.
+///
+/// The open comes after this check, and `w` truncates at the open, so the check cannot use the open
+/// file. Semihosting has no call that creates a link or renames a file, so the target cannot change
+/// a link between the check and the open.
+fn resolve_beneath(root: &Path, path: &str) -> io::Result<PathBuf> {
+    let root = root.canonicalize()?;
+
+    let mut resolved = root.clone();
+    for component in Path::new(path).components() {
+        let Component::Normal(name) = component else {
+            return Err(io::Error::new(
+                io::ErrorKind::PermissionDenied,
+                "the path leaves the root",
+            ));
+        };
+        resolved.push(name);
+
+        match std::fs::symlink_metadata(&resolved) {
+            Ok(metadata) if metadata.file_type().is_symlink() => {
+                // This also refuses a dangling link, which an open could use to create a file
+                // outside of the root.
+                resolved = resolved.canonicalize()?;
+                if !resolved.starts_with(&root) {
+                    return Err(io::Error::new(
+                        io::ErrorKind::PermissionDenied,
+                        "a symbolic link leaves the root",
+                    ));
+                }
+            }
+            Ok(_) => {}
+            // A new file. The open fails if a parent directory is missing.
+            Err(error) if error.kind() == io::ErrorKind::NotFound => {}
+            Err(error) => return Err(error),
+        }
+    }
+
+    Ok(resolved)
+}
+
 struct FileHandleLog {
     action: &'static str,
     handle: u32,
@@ -465,7 +512,6 @@ impl FileHandleLog {
 #[cfg(test)]
 mod test {
     use super::*;
-    use std::path::PathBuf;
 
     const CONTENTS: &[u8] = b"0123456789";
     const APPENDED: &[u8] = b"0123456789ab";
@@ -485,7 +531,7 @@ mod test {
         }
 
         fn open(&self, mode: &str) -> Option<File> {
-            let manager = SemihostingFileManager::new(SemihostingOptions::new());
+            let manager = SemihostingFileManager::new(Mappings::default());
             match manager.open_file(self.path.to_str().unwrap(), mode)? {
                 FileHandle::File(file) => Some(file),
                 _ => panic!("open_file did not return a file"),
@@ -497,19 +543,100 @@ mod test {
         }
     }
 
-    #[test]
-    fn invalid_regex_mapping_is_an_error() {
-        // A remote client can send a regex that `add_file_regex` did not check.
-        let options: SemihostingOptions =
-            serde_json::from_value(serde_json::json!({ "mappings": [{ "Regex": ["(", "x"] }] }))
-                .unwrap();
+    fn flags(mode: &str) -> OpenFlags {
+        OpenFlags::from_mode(mode).unwrap()
+    }
 
-        assert!(map_file(&options, "in.txt").is_err());
+    /// Creates a directory with `root/` and `outside.txt` next to each other.
+    #[cfg(unix)]
+    fn root_with_outside_file() -> (tempfile::TempDir, PathBuf, PathBuf) {
+        let dir = tempfile::TempDir::new().unwrap();
+        let root = dir.path().join("root");
+        std::fs::create_dir(&root).unwrap();
+        let outside = dir.path().join("outside.txt");
+        std::fs::write(&outside, CONTENTS).unwrap();
+        (dir, root, outside)
+    }
+
+    #[test]
+    fn open_beneath_refuses_a_path_that_leaves_the_root() {
+        let dir = tempfile::TempDir::new().unwrap();
+
+        assert!(open_beneath(dir.path(), "../outside.txt", flags("w")).is_err());
+        assert!(!dir.path().parent().unwrap().join("outside.txt").exists());
+    }
+
+    #[test]
+    fn open_beneath_creates_and_reads_files() {
+        let dir = tempfile::TempDir::new().unwrap();
+
+        let mut file = open_beneath(dir.path(), "new.txt", flags("w")).unwrap();
+        file.write_all(CONTENTS).unwrap();
+        drop(file);
+
+        let mut read_back = Vec::new();
+        open_beneath(dir.path(), "new.txt", flags("r"))
+            .unwrap()
+            .read_to_end(&mut read_back)
+            .unwrap();
+        assert_eq!(read_back, CONTENTS);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_symlink_at_the_last_component_cannot_leave_the_root() {
+        let (_dir, root, outside) = root_with_outside_file();
+        std::os::unix::fs::symlink(&outside, root.join("link")).unwrap();
+
+        assert!(open_beneath(&root, "link", flags("w")).is_err());
+        assert_eq!(std::fs::read(&outside).unwrap(), CONTENTS);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_dangling_symlink_cannot_create_a_file_outside_the_root() {
+        let (dir, root, _outside) = root_with_outside_file();
+        let created = dir.path().join("created.txt");
+        std::os::unix::fs::symlink(&created, root.join("link")).unwrap();
+
+        assert!(open_beneath(&root, "link", flags("w")).is_err());
+        assert!(!created.exists());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_symlink_at_a_parent_component_cannot_leave_the_root() {
+        let (dir, root, _outside) = root_with_outside_file();
+        std::os::unix::fs::symlink(dir.path(), root.join("link")).unwrap();
+
+        assert!(open_beneath(&root, "link/outside.txt", flags("r")).is_err());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_symlink_inside_the_root_works() {
+        let (_dir, root, _outside) = root_with_outside_file();
+        std::fs::write(root.join("file.txt"), CONTENTS).unwrap();
+        std::os::unix::fs::symlink("file.txt", root.join("link")).unwrap();
+
+        assert!(open_beneath(&root, "link", flags("r")).is_ok());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_fifo_does_not_block_the_open() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let path = dir.path().join("fifo");
+        let path = std::ffi::CString::new(path.to_str().unwrap()).unwrap();
+        // SAFETY: `path` is a valid C string.
+        assert_eq!(unsafe { libc::mkfifo(path.as_ptr(), 0o600) }, 0);
+
+        assert!(open_beneath(dir.path(), "fifo", flags("r")).is_err());
     }
 
     #[test]
     fn handle_zero_is_invalid() {
-        let mut manager = SemihostingFileManager::new(SemihostingOptions::new());
+        let mut manager = SemihostingFileManager::new(Mappings::default());
 
         assert!(manager.get_file_handle("read from", 0).is_none());
         assert!(manager.take_file_handle(0).is_none());
