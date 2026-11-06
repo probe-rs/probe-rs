@@ -108,6 +108,11 @@ use probe_rs_rpc::{
     WriteMemory16Endpoint, WriteMemory32Endpoint, WriteMemory64Endpoint,
 };
 use probe_rs_rpc::{FlashLoader, Key, RttClient, Session};
+#[cfg(feature = "remote")]
+use probe_rs_rpc::{
+    ServerProofEndpoint,
+    server_proof::{ServerProofRequest, server_proof},
+};
 
 /// Host and optional authentication token identifying a remote probe-rs RPC
 /// server. `None` selects a local, in-process server.
@@ -347,12 +352,20 @@ pub async fn connect_unix(path: &str) -> Result<RpcClient, ClientError> {
         TransportError::Message(format!("Failed to connect to Unix socket: {err:?}"))
     })?;
 
+    // SAFETY: `geteuid` has no preconditions, and cannot fail.
+    let this_user = unsafe { libc::geteuid() };
+    let server_is_verified = stream
+        .peer_cred()
+        .is_ok_and(|peer| peer.uid() == this_user || peer.uid() == 0);
+
     let (reader, writer) = stream.into_split();
 
     let tx = UnixStreamTx::new(writer);
     let rx = UnixStreamRx::new(reader);
 
-    RpcClient::new_from_wire(tx, rx).ensure_compatible().await
+    let mut client = RpcClient::new_from_wire(tx, rx).ensure_compatible().await?;
+    client.server_is_verified = server_is_verified;
+    Ok(client)
 }
 
 #[cfg(feature = "remote")]
@@ -423,6 +436,8 @@ pub struct RpcClient {
     client: HostClient<WireError>,
     upload_cache: Arc<Mutex<UploadCache>>,
     is_localhost: bool,
+    /// The connection proved that the peer is the server that the user wants.
+    server_is_verified: bool,
     closer: Option<Closer>,
 }
 
@@ -459,6 +474,7 @@ impl RpcClient {
             ),
             upload_cache: Arc::new(Mutex::new(UploadCache::default())),
             is_localhost: false,
+            server_is_verified: false,
             closer: None,
         }
     }
@@ -486,6 +502,60 @@ impl RpcClient {
         self.is_localhost
     }
 
+    /// Returns `true` if this client can trust the server with its files.
+    ///
+    /// This is true for a local server, for a unix socket with a peer of this user or root, and for
+    /// an `ssh://` connection after a server proof. ssh verifies only the host, and any local user
+    /// of that host can listen on the port. It is not true for `ws://` and `wss://`, because the
+    /// client does not verify a certificate, and an attacker can relay a proof.
+    ///
+    /// The proof is only as strong as the token. A fake server on the port chooses the challenge
+    /// that the client hashes with the token at login, so it can guess a weak token offline.
+    pub fn server_is_trusted(&self) -> bool {
+        self.is_localhost || self.server_is_verified
+    }
+
+    /// Asks the server to prove that it knows `token`.
+    #[cfg(feature = "remote")]
+    async fn verify_server_proof(&self, challenge: &str, token: &str) -> bool {
+        let mut nonce = [0; 32];
+        if getrandom::fill(&mut nonce).is_err() {
+            return false;
+        }
+
+        match self
+            .send_resp::<ServerProofEndpoint, _>(&ServerProofRequest {
+                nonce: nonce.to_vec(),
+            })
+            .await
+        {
+            // ssh connects to the server from its own host.
+            Ok(proof) => proof == server_proof(&nonce, challenge, true, token),
+            Err(error) => {
+                tracing::debug!("The server did not prove itself: {error:?}");
+                false
+            }
+        }
+    }
+
+    /// Runs the server proof of an `ssh://` connection, and records the result. Only the ssh
+    /// transport calls this: on other transports, a proof does not show who the server is.
+    #[doc(hidden)]
+    #[cfg(feature = "remote")]
+    pub async fn with_server_proof(mut self, challenge: &str, token: Option<&str>) -> Self {
+        // Without a token, there is no shared secret to prove.
+        self.server_is_verified = match token {
+            Some(token) if !token.is_empty() => self.verify_server_proof(challenge, token).await,
+            _ => false,
+        };
+        if !self.server_is_verified {
+            tracing::debug!("The server is not verified.");
+        }
+        self
+    }
+
+    /// Creates a client of an in-process server. The client trusts the server with its files, so
+    /// the wire must lead to a server of this process.
     pub fn new_local_from_wire(
         tx: impl PostcardSender + Send + Sync + 'static,
         rx: impl PostcardReceiver + Send + 'static,
