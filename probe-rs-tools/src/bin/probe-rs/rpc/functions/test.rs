@@ -12,7 +12,7 @@ use crate::rpc::{
     functions::{
         RpcContext, RpcSpawnContext, WireTxImpl,
         convert::lift,
-        monitor::{MonitorSender, RttPoller, discard_serial_input, with_serial_forwarding},
+        monitor::{MonitorSender, RttPoller, SerialPoller},
     },
     utils::{
         run_loop::{ReturnReason, RunLoop, VectorCatchConfig},
@@ -58,14 +58,12 @@ fn list_tests_impl(
         cancellation_token: ctx.cancellation_token(),
     };
 
-    let mut poller = request.rtt_client.map(|client| RttPoller {
-        rtt_client: shared_session.object_storage().cell(client),
-        clear_control_block: true,
-        sender: |message| {
+    let mut poller = request.rtt_client.map(|client| {
+        RttPoller::new(&ctx, client, true, |message| {
             sender
                 .send_rtt_event(message)
                 .context("Failed to send RTT event")
-        },
+        })
     });
     run_loop.start_poller(&shared_session, &mut poller)?;
 
@@ -137,10 +135,10 @@ fn run_test_impl(
         .map(|rtt_client| ctx.object_mut_blocking(rtt_client).core_id())
         .unwrap_or(0);
 
-    let target_serial = shared_session.target_serial();
-    if let Some(serial) = &target_serial {
+    let serial_poller = SerialPoller::new(&ctx, request.sessid, &sender);
+    if let Some(serial) = &serial_poller {
         // Drop the output from before this test.
-        discard_serial_input(serial);
+        serial.discard_input();
     }
 
     let expected_outcome = request.test.expected_outcome;
@@ -153,15 +151,14 @@ fn run_test_impl(
         cancellation_token: ctx.cancellation_token(),
     };
 
-    let mut poller = request.rtt_client.map(|client| RttPoller {
-        rtt_client: shared_session.object_storage().cell(client),
-        clear_control_block: true,
-        sender: |message| {
+    let rtt_poller = request.rtt_client.map(|client| {
+        RttPoller::new(&ctx, client, true, |message| {
             sender
                 .send_rtt_event(message)
                 .context("Failed to send RTT event")
-        },
+        })
     });
+    let mut poller = (rtt_poller, serial_poller);
     run_loop.start_poller(&shared_session, &mut poller)?;
 
     {
@@ -170,20 +167,18 @@ fn run_test_impl(
         core.reset_and_halt(Duration::from_millis(500))?;
     }
 
-    let return_reason = with_serial_forwarding(target_serial.as_ref(), &sender, || {
-        run_loop.run_until(
-            &shared_session,
-            VectorCatchConfig {
-                catch_hardfault: true,
-                catch_reset: true,
-                catch_svc: true,
-                catch_hlt: true,
-            },
-            poller,
-            Some(timeout),
-            |halt_reason, core| run_handler.handle_halt(halt_reason, core),
-        )
-    })?;
+    let return_reason = run_loop.run_until(
+        &shared_session,
+        VectorCatchConfig {
+            catch_hardfault: true,
+            catch_reset: true,
+            catch_svc: true,
+            catch_hlt: true,
+        },
+        poller,
+        Some(timeout),
+        |halt_reason, core| run_handler.handle_halt(halt_reason, core),
+    )?;
     match return_reason {
         ReturnReason::Timeout => Ok(TestResult::Failed(format!(
             "Test timed out after {timeout:?}"

@@ -7,8 +7,10 @@ use std::{
 };
 
 use probe_rs::config::Registry;
-use tokio::sync::Mutex;
+use tokio::sync::{Mutex, mpsc};
 use tokio_util::sync::CancellationToken;
+
+use crate::rpc::functions::{rtt_client::RttDownStream, write_queue::Streams};
 
 pub use probe_rs_rpc::{FlashLoader, Key, RttClient, Session, TempFileHandle};
 
@@ -131,6 +133,10 @@ pub struct ConnectionState {
     target_serials: Arc<parking_lot::Mutex<HashMap<Key<Session>, WeakTargetSerial>>>,
     /// The paths of the temporary files that this connection created.
     uploads: Arc<parking_lot::Mutex<HashSet<String>>>,
+    /// The RTT down channels that run loops write, keyed by RTT client.
+    rtt_down: Streams<Key<RttClient>, RttDownStream>,
+    /// The write queues of the serial ports that run loops write, keyed by session.
+    serial_writes: Streams<Key<Session>, mpsc::Sender<Vec<u8>>>,
     token: CancellationToken,
 }
 
@@ -142,12 +148,26 @@ impl ConnectionState {
             debug_states: Arc::new(Mutex::new(HashMap::new())),
             target_serials: Arc::new(parking_lot::Mutex::new(HashMap::new())),
             uploads: Arc::new(parking_lot::Mutex::new(HashSet::new())),
+            rtt_down: Streams::new(),
+            serial_writes: Streams::new(),
             token: CancellationToken::new(),
         }
     }
 
     pub async fn store_object<M: ObjectMarker>(&mut self, obj: M::Object) -> Key<M> {
         self.object_storage.lock().await.store_object(obj)
+    }
+
+    pub async fn session(
+        &self,
+        sid: Key<Session>,
+    ) -> impl DerefMut<Target = probe_rs::Session> + Send + use<> {
+        // MUST be two separate statements so that the lock is released.
+        let locked_cell = self.object_storage.lock().await.cell(sid);
+        let guard = locked_cell.obj.clone().lock_owned().await;
+        tokio::sync::OwnedMutexGuard::map(guard, |e: &mut (dyn Any + Send)| {
+            &mut e.downcast_mut::<SessionEntry>().unwrap().session
+        })
     }
 
     pub async fn object_mut<M: ObjectMarker>(
@@ -204,7 +224,6 @@ impl ConnectionState {
     pub fn shared_session(&self, sid: Key<Session>) -> SessionState<'_> {
         SessionState {
             object_storage: self.object_storage.as_ref(),
-            target_serials: self.target_serials.as_ref(),
             session: sid,
         }
     }
@@ -214,7 +233,6 @@ impl ConnectionState {
 #[derive(Clone)]
 pub struct SessionState<'a> {
     object_storage: &'a Mutex<ObjectStorage>,
-    target_serials: &'a parking_lot::Mutex<HashMap<Key<Session>, WeakTargetSerial>>,
     session: Key<Session>,
 }
 
@@ -231,10 +249,5 @@ impl SessionState<'_> {
         tokio::sync::OwnedMutexGuard::map(guard, |e: &mut (dyn Any + Send)| {
             &mut e.downcast_mut::<SessionEntry>().unwrap().session
         })
-    }
-
-    /// Returns the serial port to the target.
-    pub fn target_serial(&self) -> Option<SharedTargetSerial> {
-        self.target_serials.lock().get(&self.session)?.upgrade()
     }
 }
