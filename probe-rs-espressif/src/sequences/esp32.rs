@@ -67,6 +67,12 @@ impl ESP32 {
     const DPORT_APPCPU_CTRL_B_REG: u64 = 0x3FF0_0030;
     const DPORT_APPCPU_CLKGATE_EN: u32 = 1 << 0;
 
+    const GPIO_STRAP_REG: u64 = 0x3FF4_4038;
+    const GPIO_STRAP_MTDI: u32 = 1 << 5;
+
+    const EFUSE_BLK0_RDATA4_REG: u64 = 0x3FF5_A010;
+    const EFUSE_RD_XPD_SDIO_FORCE: u32 = 1 << 16;
+
     /// Creates a new debug sequence handle for the ESP32.
     pub fn create() -> Arc<dyn XtensaDebugSequence> {
         tracing::warn!(
@@ -108,6 +114,23 @@ impl ESP32 {
         Ok(())
     }
 
+    fn warn_on_1v8_flash_supply(
+        &self,
+        interface: &mut XtensaCommunicationInterface,
+    ) -> Result<(), crate::Error> {
+        // MTDI is also JTAG TDI. Its level at the last chip reset selects the flash supply
+        // voltage unless the eFuses override it. A reset from the debugger does not latch it again.
+        let strap = interface.read_word_32(Self::GPIO_STRAP_REG)?;
+        let efuse = interface.read_word_32(Self::EFUSE_BLK0_RDATA4_REG)?;
+        if strap & Self::GPIO_STRAP_MTDI != 0 && efuse & Self::EFUSE_RD_XPD_SDIO_FORCE == 0 {
+            tracing::warn!(
+                "MTDI (GPIO12, JTAG TDI) was high at the last chip reset, so the flash is powered at 1.8 V. A 3.3 V flash does not respond in this state. Keep TDI low during a power-on or EN reset, or burn the flash voltage eFuses with `espefuse set-flash-voltage 3.3V`."
+            );
+        }
+
+        Ok(())
+    }
+
     fn configure_memory_access(
         &self,
         interface: &mut XtensaCommunicationInterface<'_>,
@@ -140,6 +163,7 @@ impl XtensaDebugSequence for ESP32 {
     fn on_connect(&self, interface: &mut XtensaCommunicationInterface) -> Result<(), Error> {
         self.configure_memory_access(interface)?;
         self.disable_wdts(interface)?;
+        self.warn_on_1v8_flash_supply(interface)?;
 
         Ok(())
     }
