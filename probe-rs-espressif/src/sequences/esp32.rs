@@ -1,7 +1,10 @@
 //! Sequence for the ESP32.
 
 use std::{
-    sync::Arc,
+    sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+    },
     time::{Duration, Instant},
 };
 
@@ -52,7 +55,9 @@ enum ResetFailure {
 
 /// The debug sequence implementation for the ESP32.
 #[derive(Debug)]
-pub struct ESP32 {}
+pub struct ESP32 {
+    flash_supply_checked: AtomicBool,
+}
 
 impl ESP32 {
     const RTC_SLOW_MEM: u64 = 0x5000_0000;
@@ -78,7 +83,9 @@ impl ESP32 {
         tracing::warn!(
             "Be careful not to reset your ESP32 while connected to the debugger! Depending on the specific device, this may render it temporarily inoperable or permanently damage it."
         );
-        Arc::new(Self {})
+        Arc::new(Self {
+            flash_supply_checked: AtomicBool::new(false),
+        })
     }
 
     fn disable_wdts(
@@ -120,8 +127,12 @@ impl ESP32 {
     ) -> Result<(), crate::Error> {
         // MTDI is also JTAG TDI. Its level at the last chip reset selects the flash supply
         // voltage unless the eFuses override it. A reset from the debugger does not latch it again.
+        if self.flash_supply_checked.load(Ordering::Relaxed) {
+            return Ok(());
+        }
         let strap = interface.read_word_32(Self::GPIO_STRAP_REG)?;
         let efuse = interface.read_word_32(Self::EFUSE_BLK0_RDATA4_REG)?;
+        self.flash_supply_checked.store(true, Ordering::Relaxed);
         if strap & Self::GPIO_STRAP_MTDI != 0 && efuse & Self::EFUSE_RD_XPD_SDIO_FORCE == 0 {
             tracing::warn!(
                 "MTDI (GPIO12, JTAG TDI) was high at the last chip reset, so the flash is powered at 1.8 V. A 3.3 V flash does not respond in this state. Keep TDI low during a power-on or EN reset, or burn the flash voltage eFuses with `espefuse set-flash-voltage 3.3V`."
