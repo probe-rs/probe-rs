@@ -39,7 +39,10 @@ use crate::rpc::{
 };
 use crate::util::probe_config::ConfiguredLister;
 use probe_rs_rpc::semihosting_options::SemihostingOptions;
-use probe_rs_rpc::transport::memory::{WireRx, WireTx};
+use probe_rs_rpc::transport::{
+    MAX_REQUEST_LEN,
+    memory::{WireRx, WireTx},
+};
 
 use anyhow::anyhow;
 use futures_util::FutureExt;
@@ -672,7 +675,7 @@ impl RpcApp {
                 server: Server::new(
                     server_to_client_tx,
                     client_to_server_rx,
-                    vec![0u8; 1024 * 1024].into_boxed_slice(), // 1MB buffer
+                    vec![0u8; MAX_REQUEST_LEN].into_boxed_slice(),
                     dispatcher,
                     vkk,
                 ),
