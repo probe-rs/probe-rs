@@ -1,6 +1,5 @@
 use tokio_util::sync::CancellationToken;
 
-use std::marker::PhantomData;
 use std::thread;
 use std::time::{Duration, Instant};
 
@@ -42,10 +41,6 @@ pub enum HaltAction<R> {
     /// The core runs again.
     Resume,
     /// The core stays halted until the reply to a pending call comes.
-    #[expect(
-        dead_code,
-        reason = "The semihosting handler uses it in a later change"
-    )]
     Wait,
 }
 
@@ -94,27 +89,6 @@ pub trait HaltHandler {
     fn wait(&mut self, timeout: Duration) -> Option<Self::Reply> {
         thread::sleep(timeout);
         None
-    }
-}
-
-/// A handler that answers each halt immediately.
-struct PredicateHandler<F, R> {
-    predicate: F,
-    _output: PhantomData<R>,
-}
-
-impl<F, R> HaltHandler for PredicateHandler<F, R>
-where
-    F: FnMut(HaltReason, &mut Core) -> Result<Option<R>>,
-{
-    type Output = R;
-    type Reply = std::convert::Infallible;
-
-    fn on_halt(&mut self, reason: HaltReason, core: &mut Core<'_>) -> Result<HaltAction<R>> {
-        Ok(match (self.predicate)(reason, core)? {
-            Some(output) => HaltAction::Return(output),
-            None => HaltAction::Resume,
-        })
     }
 }
 
@@ -202,33 +176,6 @@ impl RunLoop {
     /// * If the predicate returns `Err(e)` the run loop will return `Err(e)`.
     ///
     /// The function will also return on timeout with `Ok(ReturnReason::Timeout)` or if the user presses CTRL + C with `Ok(ReturnReason::Cancelled)`.
-    pub fn run_until<F, R>(
-        &mut self,
-        shared_session: &SessionState<'_>,
-        vector_catch: VectorCatchConfig,
-        poller: impl RunLoopPoller,
-        timeout: Option<Duration>,
-        predicate: F,
-    ) -> Result<ReturnReason<R>>
-    where
-        F: FnMut(HaltReason, &mut Core) -> Result<Option<R>>,
-    {
-        self.run_with_handler(
-            shared_session,
-            vector_catch,
-            poller,
-            timeout,
-            PredicateHandler {
-                predicate,
-                _output: PhantomData,
-            },
-        )
-    }
-
-    /// Like [`Self::run_until`], with a handler that can answer a halt later.
-    ///
-    /// While a call is pending, the core stays halted and the session is not locked, so that other
-    /// requests can use the session. The run loop keeps polling the other cores and RTT.
     pub fn run_with_handler<H: HaltHandler>(
         &mut self,
         shared_session: &SessionState<'_>,

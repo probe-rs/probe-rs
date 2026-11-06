@@ -39,7 +39,6 @@ use crate::rpc::{
 };
 use crate::util::probe_config::ConfiguredLister;
 use probe_rs_rpc::file::FileAccess;
-use probe_rs_rpc::semihosting_options::SemihostingOptions;
 use probe_rs_rpc::transport::{
     MAX_REQUEST_LEN,
     memory::{WireRx, WireTx},
@@ -89,7 +88,6 @@ pub struct RpcSpawnContext {
     sender: PostcardSender<WireTxImpl>,
     probe_broker: Arc<ProbeBroker>,
     lister: Arc<dyn ProbeLister + Send + Sync>,
-    host_files: HostFiles,
 }
 
 pub(crate) trait MultiTopicWriter {
@@ -182,19 +180,12 @@ impl RpcSpawnContext {
         Lister::with_lister(Box::new(ArcLister(self.lister.clone())))
     }
 
-    /// Returns the semihosting options of a request, or an error if they map paths and the
-    /// server does not give access to its files.
-    pub(crate) fn semihosting_options(
+    /// Returns the replies to host calls, if the call uses them.
+    pub(crate) fn host_replies(
         &self,
-        options: SemihostingOptions,
-    ) -> anyhow::Result<SemihostingOptions> {
-        if self.host_files == HostFiles::Deny && !options.mappings().is_empty() {
-            anyhow::bail!(
-                "This server does not give semihosting access to its files. \
-                Remove the semihosting file mappings."
-            );
-        }
-        Ok(options)
+        host_calls: bool,
+    ) -> anyhow::Result<Option<crate::rpc::HostReplies>> {
+        host_calls.then(|| self.state.host_replies()).transpose()
     }
 
     pub(crate) async fn set_session(
@@ -356,7 +347,6 @@ impl SpawnContext for RpcContext {
             sender: self.sender.clone().unwrap(),
             probe_broker: self.probe_broker.clone(),
             lister: self.lister.clone(),
-            host_files: self.host_files,
         }
     }
 }
@@ -502,6 +492,15 @@ async fn server_proof(
     ))
 }
 
+async fn host_reply_handler(
+    ctx: &mut RpcContext,
+    _header: VarHeader,
+    reply: probe_rs_rpc::host_calls::HostReply,
+    _sender: &PostcardSender<WireTxImpl>,
+) {
+    ctx.state.deliver_host_reply(reply);
+}
+
 async fn cancel_handler(
     ctx: &mut RpcContext,
     _header: VarHeader,
@@ -643,6 +642,7 @@ postcard_rpc::define_dispatch! {
         | TopicTy                   | kind      | handler                       |
         | ----------                | ----      | -------                       |
         | CancelTopic               | async     | cancel_handler                |
+        | HostReplyTopic            | async     | host_reply_handler            |
     };
     topics_out: {
         list: TOPICS_OUT_LIST;
@@ -846,7 +846,6 @@ mod tests {
             sender: PostcardSender::new(WireTx::new(wire_tx), VarKeyKind::Key4),
             probe_broker: Arc::new(ProbeBroker::new()),
             lister: Arc::new(LimitedLister::new(ProbeAccess::All)),
-            host_files: HostFiles::Allow,
         };
 
         ctx.run_blocking::<RttTopic, _, _, _>((), |_, (), sender| {
@@ -862,17 +861,6 @@ mod tests {
 
         drop(ctx);
         assert_eq!(frames.await.unwrap(), EVENTS);
-    }
-
-    fn context_with_host_files(host_files: HostFiles) -> RpcSpawnContext {
-        let (wire_tx, _) = channel::<Vec<u8>>(1);
-        RpcSpawnContext {
-            state: ConnectionState::new(),
-            sender: PostcardSender::new(WireTx::new(wire_tx), VarKeyKind::Key4),
-            probe_broker: Arc::new(ProbeBroker::new()),
-            lister: Arc::new(LimitedLister::new(ProbeAccess::All)),
-            host_files,
-        }
     }
 
     #[test]
@@ -1010,22 +998,35 @@ mod tests {
     }
 
     #[test]
-    fn remote_server_rejects_semihosting_file_mappings() {
-        let mut mapped = SemihostingOptions::new();
-        mapped
-            .add_file("in.txt".to_owned(), "/etc/passwd".to_owned())
-            .unwrap();
+    fn a_stale_host_reply_is_dropped() {
+        use probe_rs_rpc::host_calls::{HostReply, HostValue};
+        let reply = |id| HostReply {
+            id,
+            result: Ok(HostValue::Done),
+        };
 
-        let remote = context_with_host_files(HostFiles::Deny);
-        assert!(remote.semihosting_options(mapped.clone()).is_err());
-        assert!(
-            remote
-                .semihosting_options(SemihostingOptions::new())
-                .is_ok()
-        );
+        let state = ConnectionState::new();
+        // No call runs.
+        state.deliver_host_reply(reply(0));
 
-        let local = context_with_host_files(HostFiles::Allow);
-        assert!(local.semihosting_options(mapped).is_ok());
+        let first = state.host_replies().unwrap();
+        let old_id = first.next_id();
+        // A second call cannot take the replies of a running one.
+        assert!(state.host_replies().is_err());
+        drop(first);
+
+        let second = state.host_replies().unwrap();
+        let new_id = second.next_id();
+        assert!(new_id > old_id);
+
+        state.deliver_host_reply(reply(old_id));
+        assert!(second.receiver().try_recv().is_err());
+
+        state.deliver_host_reply(reply(new_id));
+        assert_eq!(second.receiver().try_recv().unwrap().id, new_id);
+
+        drop(second);
+        state.deliver_host_reply(reply(new_id));
     }
 
     /// The client can go away while a task publishes events. The server must
@@ -1040,7 +1041,6 @@ mod tests {
             sender: PostcardSender::new(WireTx::new(wire_tx), VarKeyKind::Key4),
             probe_broker: Arc::new(ProbeBroker::new()),
             lister: Arc::new(LimitedLister::new(ProbeAccess::All)),
-            host_files: HostFiles::Allow,
         };
         let result = tokio::spawn(async move {
             ctx.run_blocking::<RttTopic, _, _, _>((), |_, (), sender| {
@@ -1075,7 +1075,6 @@ mod tests {
             sender: PostcardSender::new(WireTx::new(wire_tx), VarKeyKind::Key4),
             probe_broker: Arc::new(ProbeBroker::new()),
             lister: Arc::new(LimitedLister::new(ProbeAccess::All)),
-            host_files: HostFiles::Allow,
         };
         let token = ctx.cancellation_token();
 

@@ -40,6 +40,7 @@ impl Cmd {
             Some(path) => parse_metadata(path).await?,
             None => (FileMetadata::default(), None),
         };
+        cli::check_semihosting_options(&client, &self.monitor_options)?;
 
         // Show the output of the serial port to the target.
         let probe_options = ProbeOptions {
