@@ -150,6 +150,18 @@ impl ConnectionState {
         self.object_storage.lock().await.store_object(obj)
     }
 
+    pub async fn session(
+        &self,
+        sid: Key<Session>,
+    ) -> impl DerefMut<Target = probe_rs::Session> + Send + use<> {
+        // MUST be two separate statements so that the lock is released.
+        let locked_cell = self.object_storage.lock().await.cell(sid);
+        let guard = locked_cell.obj.clone().lock_owned().await;
+        tokio::sync::OwnedMutexGuard::map(guard, |e: &mut (dyn Any + Send)| {
+            &mut e.downcast_mut::<SessionEntry>().unwrap().session
+        })
+    }
+
     pub async fn object_mut<M: ObjectMarker>(
         &self,
         key: Key<M>,

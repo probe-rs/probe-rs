@@ -1,11 +1,11 @@
-use std::{any::Any, ops::DerefMut, panic::AssertUnwindSafe, sync::Arc};
 use std::{collections::HashMap, convert::Infallible, future::Future};
+use std::{ops::DerefMut, panic::AssertUnwindSafe, sync::Arc};
 
 use crate::rpc::debug_state::ServerDebugState;
 use crate::rpc::functions::file::{append_temp_file, create_temp_file};
 use crate::rpc::probe_broker::ProbeBroker;
 use crate::rpc::{
-    ConnectionState, Key, Session, SessionEntry, SessionState,
+    ConnectionState, Key, Session, SessionState,
     functions::{
         breakpoints::{resolve_source_breakpoints, resolve_source_locations},
         chip::{chip_info, list_families, load_chip_family},
@@ -162,6 +162,25 @@ impl RpcSpawnContext {
 
     pub fn cancellation_token(&self) -> CancellationToken {
         self.state.token.clone()
+    }
+
+    pub async fn session(
+        &self,
+        sid: Key<Session>,
+    ) -> impl DerefMut<Target = probe_rs::Session> + Send + use<> {
+        self.state.session(sid).await
+    }
+
+    pub async fn object_mut<M: crate::rpc::ObjectMarker>(
+        &self,
+        key: Key<M>,
+    ) -> impl DerefMut<Target = M::Object> + Send + use<M> {
+        self.state.object_mut(key).await
+    }
+
+    /// Returns the serial port to the target of a session.
+    pub fn target_serial(&self, sid: Key<Session>) -> Option<crate::rpc::SharedTargetSerial> {
+        self.state.target_serial(sid)
     }
 
     pub(crate) fn registry_blocking(&self) -> impl DerefMut<Target = Registry> + Send + use<> {
@@ -410,16 +429,7 @@ impl RpcContext {
         &self,
         sid: Key<Session>,
     ) -> impl DerefMut<Target = probe_rs::Session> + Send + use<> {
-        let locked_cell = self.state.object_storage.lock().await.cell(sid);
-        let guard = locked_cell.obj.clone().lock_owned().await;
-        tokio::sync::OwnedMutexGuard::map(guard, |e: &mut (dyn Any + Send)| {
-            &mut e.downcast_mut::<SessionEntry>().unwrap().session
-        })
-    }
-
-    /// Returns the serial port to the target of a session.
-    pub fn target_serial(&self, sid: Key<Session>) -> Option<crate::rpc::SharedTargetSerial> {
-        self.state.target_serial(sid)
+        self.state.session(sid).await
     }
 
     pub fn debug_states(&self) -> DebugStatesMap {
@@ -558,8 +568,8 @@ postcard_rpc::define_dispatch! {
         | VerifyEndpoint                   | async | verify                     |
         | BootEndpoint                     | async | boot                       |
         | MonitorEndpoint                  | spawn | monitor                    |
-        | RttDownEndpoint                  | async | write_rtt_down             |
-        | SerialWriteEndpoint              | async | write_serial               |
+        | RttDownEndpoint                  | spawn | write_rtt_down             |
+        | SerialWriteEndpoint              | spawn | write_serial               |
         | GetRttChannelsEndpoint           | async | get_rtt_channels           |
         | PollRttUpEndpoint                | async | poll_rtt_up                |
         | CleanUpRttEndpoint               | async | clean_up_rtt               |
