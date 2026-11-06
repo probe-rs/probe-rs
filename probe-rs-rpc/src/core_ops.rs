@@ -170,6 +170,8 @@ pub enum WireInstructionSet {
     A64,
     RV32,
     RV32C,
+    RV32E,
+    RV32EC,
     RV64,
     RV64C,
     Xtensa,
