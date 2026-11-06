@@ -315,6 +315,8 @@ impl RunLoop {
         let mut deadline = timeout.map(|timeout| start + timeout);
         // The end of the time that the deadline already moved for.
         let mut paused_until = start;
+        // When each core last made a semihosting call that the handler answered.
+        let mut last_call = vec![None; pending.len()];
 
         loop {
             let mut next_poll;
@@ -339,6 +341,7 @@ impl RunLoop {
                     )? {
                         CoreCheck::Continue => None,
                         CoreCheck::Resumed(halted) => {
+                            last_call[self.core_id] = Some(Instant::now());
                             paused += halted;
                             None
                         }
@@ -429,6 +432,7 @@ impl RunLoop {
                         }
                         Ok(check @ (CoreCheck::Continue | CoreCheck::Resumed(_))) => {
                             if let CoreCheck::Resumed(halted) = check {
+                                last_call[idx] = Some(Instant::now());
                                 paused += halted;
                             }
                             *wakeup = Instant::now() + duration;
@@ -471,6 +475,26 @@ impl RunLoop {
                 && Instant::now() >= deadline
             {
                 return Ok(ReturnReason::Timeout);
+            }
+
+            // Firmware that made a semihosting call often makes the next one soon, so a core is
+            // polled again after about as long as its last call is old. This costs a few polls per
+            // call, no more than RTT output, which polls with no delay while data comes.
+            let now = Instant::now();
+            for (idx, last) in last_call.iter_mut().enumerate() {
+                let interval = if idx == self.core_id {
+                    DEFAULT_POLL_INTERVAL
+                } else {
+                    WATCH_POLL_INTERVAL
+                };
+                let Some(delay) = last.and_then(|at| backoff_delay(now - at, interval)) else {
+                    *last = None;
+                    continue;
+                };
+                next_poll = next_poll.min(delay);
+                if idx != self.core_id {
+                    next_wakeup[idx] = next_wakeup[idx].min(now + delay);
+                }
             }
 
             // If the polling frequency is too high, the USB connection to the probe
@@ -606,6 +630,12 @@ fn earliest_wait(pending: &[Option<PendingHalt>]) -> Option<Instant> {
     pending.iter().flatten().map(|halt| halt.since).min()
 }
 
+/// Returns the delay of the next poll of a core whose last semihosting call is `since` old, or
+/// `None` if its normal poll `interval` applies again.
+fn backoff_delay(since: Duration, interval: Duration) -> Option<Duration> {
+    (since < interval).then(|| since.max(Duration::from_millis(1)))
+}
+
 /// Takes `reply` if it belongs to `core_id`. Drops a stale reply.
 fn take_reply_of<H: HaltHandler>(
     reply: &mut Option<H::Reply>,
@@ -707,5 +737,33 @@ where
         } else {
             NoopPoller.exit(core)
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn the_backoff_grows_with_the_age_of_the_call() {
+        let delay = |since_ms| {
+            backoff_delay(Duration::from_millis(since_ms), DEFAULT_POLL_INTERVAL)
+                .map(|delay| delay.as_millis())
+        };
+
+        assert_eq!(delay(0), Some(1));
+        assert_eq!(delay(1), Some(1));
+        assert_eq!(delay(40), Some(40));
+        assert_eq!(delay(99), Some(99));
+        // The normal poll interval applies again.
+        assert_eq!(delay(100), None);
+    }
+
+    #[test]
+    fn the_backoff_of_another_core_ends_at_its_own_interval() {
+        let since = Duration::from_millis(200);
+
+        assert_eq!(backoff_delay(since, DEFAULT_POLL_INTERVAL), None);
+        assert_eq!(backoff_delay(since, WATCH_POLL_INTERVAL), Some(since));
     }
 }
