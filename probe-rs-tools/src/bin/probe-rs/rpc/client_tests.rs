@@ -1,6 +1,6 @@
 use std::io::Write;
 
-use probe_rs_rpc_client::RpcClient;
+use probe_rs_rpc_client::{ClientError, RpcClient, SemihostingOptions};
 use tempfile::NamedTempFile;
 
 use std::sync::Arc;
@@ -130,4 +130,29 @@ async fn a_local_server_is_trusted_and_has_no_proof() {
         .with_server_proof("challenge", Some("token"))
         .await;
     assert!(!client.server_is_trusted());
+}
+
+#[tokio::test]
+async fn host_files_need_a_trusted_server_or_an_opt_in() {
+    let mut options = SemihostingOptions::new();
+    options
+        .add_file("in.txt".to_owned(), "host.txt".to_owned())
+        .unwrap();
+    let host_files = probe_rs_rpc_client::HostFiles::new(&options).unwrap();
+
+    let unverified = client_after_login();
+    assert!(matches!(
+        unverified.check_host_files(&host_files),
+        Err(ClientError::UnverifiedServer)
+    ));
+    assert!(
+        unverified
+            .check_host_files(&host_files.clone().allow_unverified_server(true))
+            .is_ok()
+    );
+
+    let verified = client_after_login()
+        .with_server_proof("challenge", Some("token"))
+        .await;
+    assert!(verified.check_host_files(&host_files).is_ok());
 }

@@ -3,10 +3,14 @@ use std::{
     collections::{HashMap, HashSet},
     marker::PhantomData,
     ops::{Deref, DerefMut},
-    sync::{Arc, Weak},
+    sync::{
+        Arc, Weak,
+        atomic::{AtomicU64, Ordering},
+    },
 };
 
 use probe_rs::config::Registry;
+use probe_rs_rpc::host_calls::HostReply;
 use tokio::sync::Mutex;
 use tokio_util::sync::CancellationToken;
 
@@ -116,6 +120,36 @@ impl ObjectStorage {
     }
 }
 
+struct HostReplySlot {
+    /// The first call of the current monitor or test call.
+    first_id: u64,
+    sender: std::sync::mpsc::SyncSender<HostReply>,
+}
+
+/// Receives the replies to host calls. Dropping it stops the delivery.
+pub struct HostReplies {
+    slot: Arc<parking_lot::Mutex<Option<HostReplySlot>>>,
+    next_id: Arc<AtomicU64>,
+    receiver: std::sync::mpsc::Receiver<HostReply>,
+}
+
+impl HostReplies {
+    pub fn receiver(&self) -> &std::sync::mpsc::Receiver<HostReply> {
+        &self.receiver
+    }
+
+    /// Returns the id for the next call. It is unique on the connection.
+    pub fn next_id(&self) -> u64 {
+        self.next_id.fetch_add(1, Ordering::Relaxed)
+    }
+}
+
+impl Drop for HostReplies {
+    fn drop(&mut self) {
+        *self.slot.lock() = None;
+    }
+}
+
 /// State associated with a single connection.
 #[derive(Clone)]
 pub struct ConnectionState {
@@ -129,6 +163,9 @@ pub struct ConnectionState {
     /// The serial ports to the target, keyed by session. They are here as well as in the
     /// session, so that their users do not wait for the session lock. The session owns them.
     target_serials: Arc<parking_lot::Mutex<HashMap<Key<Session>, WeakTargetSerial>>>,
+    /// Where a reply to a semihosting host call goes.
+    host_replies: Arc<parking_lot::Mutex<Option<HostReplySlot>>>,
+    next_host_call_id: Arc<AtomicU64>,
     /// The paths of the temporary files that this connection created.
     uploads: Arc<parking_lot::Mutex<HashSet<String>>>,
     token: CancellationToken,
@@ -141,6 +178,8 @@ impl ConnectionState {
             registry: Arc::new(Mutex::new(Registry::from_builtin_families())),
             debug_states: Arc::new(Mutex::new(HashMap::new())),
             target_serials: Arc::new(parking_lot::Mutex::new(HashMap::new())),
+            host_replies: Arc::new(parking_lot::Mutex::new(None)),
+            next_host_call_id: Arc::new(AtomicU64::new(0)),
             uploads: Arc::new(parking_lot::Mutex::new(HashSet::new())),
             token: CancellationToken::new(),
         }
@@ -201,6 +240,38 @@ impl ConnectionState {
     /// Returns the serial port to the target of a session.
     pub fn target_serial(&self, sid: Key<Session>) -> Option<SharedTargetSerial> {
         self.target_serials.lock().get(&sid)?.upgrade()
+    }
+
+    /// Starts to accept replies to host calls, for the duration of a monitor or test call.
+    ///
+    /// A connection has one client that answers host calls, so only one call at a time can use
+    /// them.
+    pub fn host_replies(&self) -> anyhow::Result<HostReplies> {
+        let mut slot = self.host_replies.lock();
+        if slot.is_some() {
+            anyhow::bail!("Another monitor or test call of this connection uses semihosting files");
+        }
+        // The window is one call. Room for more stops a stale reply from taking its place.
+        let (sender, receiver) = std::sync::mpsc::sync_channel(8);
+        *slot = Some(HostReplySlot {
+            first_id: self.next_host_call_id.load(Ordering::Relaxed),
+            sender,
+        });
+        Ok(HostReplies {
+            slot: self.host_replies.clone(),
+            next_id: self.next_host_call_id.clone(),
+            receiver,
+        })
+    }
+
+    /// Passes a reply to the running monitor or test call. This never blocks. A reply to an earlier
+    /// call is stale, for example from a test that timed out.
+    pub fn deliver_host_reply(&self, reply: HostReply) {
+        if let Some(slot) = &*self.host_replies.lock()
+            && reply.id >= slot.first_id
+        {
+            _ = slot.sender.try_send(reply);
+        }
     }
 
     /// Records the path of a temporary file that this connection created.

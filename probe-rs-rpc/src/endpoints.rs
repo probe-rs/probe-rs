@@ -24,6 +24,7 @@ use crate::flash::{
     LoadRegionRequest, NewFlashLoaderRequest, NewFlashLoaderResponse, ProgressEvent, VerifyRequest,
     VerifyResponse,
 };
+use crate::host_calls::{HostCall, HostReply};
 use crate::info::{InfoEvent, TargetInfoRequest, TargetMetadataRequest, TargetMetadataResponse};
 use crate::memory::{ReadBytesRequest, ReadMemoryRequest, WriteMemoryRequest};
 use crate::monitor::{
@@ -166,7 +167,8 @@ topics! {
     direction = TopicDirection::ToServer;
     | TopicTy     | MessageTy     | Path     |
     | -------     | ---------     | ----     |
-    | CancelTopic | ()            | "cancel" |
+    | CancelTopic    | ()        | "cancel"     |
+    | HostReplyTopic | HostReply | "host_reply" |
 }
 
 topics! {
@@ -179,4 +181,5 @@ topics! {
     | RttTopic            | RttEvent         | "rtt"            |     |
     | SemihostingTopic    | SemihostingEvent | "semihosting"    |     |
     | SerialTopic         | SerialEvent      | "serial"         |     |
+    | HostCallTopic       | HostCall         | "host_call"      |     |
 }
