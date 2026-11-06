@@ -35,7 +35,7 @@ pub enum ReturnReason<R> {
 }
 
 /// Default interval between status polls of the primary core when RTT does not request a faster poll.
-const DEFAULT_POLL_INTERVAL: Duration = Duration::from_millis(100);
+pub(crate) const DEFAULT_POLL_INTERVAL: Duration = Duration::from_millis(100);
 
 /// Interval between status polls of other cores. Longer than the primary interval to limit probe traffic.
 const WATCH_POLL_INTERVAL: Duration = Duration::from_millis(250);
@@ -347,6 +347,33 @@ impl RunLoopPoller for NoopPoller {
 
     fn exit(&mut self, _core: &mut impl MemoryInterface) -> Result<()> {
         Ok(())
+    }
+}
+
+/// Runs two pollers through the memory interface that the first one selects.
+impl<A, B> RunLoopPoller for (A, B)
+where
+    A: RunLoopPoller,
+    B: RunLoopPoller,
+{
+    fn start(&mut self, core: &mut impl MemoryInterface) -> Result<()> {
+        self.0.start(core)?;
+        self.1.start(core)
+    }
+
+    fn memory_port(&mut self, core: &Core) -> Option<usize> {
+        self.0.memory_port(core)
+    }
+
+    fn poll(&mut self, core: &mut impl MemoryInterface) -> Result<Duration> {
+        let next = self.0.poll(core)?;
+        Ok(next.min(self.1.poll(core)?))
+    }
+
+    fn exit(&mut self, core: &mut impl MemoryInterface) -> Result<()> {
+        let first = self.0.exit(core);
+        let second = self.1.exit(core);
+        first.and(second)
     }
 }
 

@@ -1,11 +1,15 @@
+use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 
 use crate::rpc::{
-    ObjectStorageSlot, SharedTargetSerial,
+    Key, ObjectStorageSlot, RttClient, Session, SharedTargetSerial,
     functions::{
         MultiTopicPublisher, MultiTopicWriter, RpcContext, RpcSpawnContext, WireTxImpl,
         core_ops::convert,
+        rtt_client::{RttDownStream, write_queued},
+        write_queue::{Published, QUEUE_DEPTH, accept},
     },
     utils::{
         run_loop::{ReturnReason, RunLoop, RunLoopPoller, VectorCatchConfig},
@@ -24,6 +28,7 @@ use probe_rs_rpc::monitor::{
 };
 use probe_rs_rpc::{MonitorEndpoint, RpcError, RttTopic, SemihostingTopic, SerialTopic};
 use tokio::sync::mpsc::{self, error::SendError};
+use tokio_util::sync::DropGuard;
 
 fn prepare_monitor_mode(
     mode: &MonitorMode,
@@ -69,11 +74,8 @@ impl MonitorSender {
         self.rtt.blocking_send(event)
     }
 
-    pub(crate) fn send_serial_event(
-        &self,
-        event: SerialEvent,
-    ) -> Result<(), SendError<SerialEvent>> {
-        self.serial.blocking_send(event)
+    fn serial_events(&self) -> mpsc::Sender<SerialEvent> {
+        self.serial.clone()
     }
 }
 
@@ -139,42 +141,44 @@ fn monitor_impl(
         cancellation_token: ctx.cancellation_token(),
     };
 
-    let target_serial = shared_session.target_serial();
-    if let (MonitorMode::Run(_), Some(serial)) = (&request.mode, &target_serial) {
+    let serial_poller = SerialPoller::new(&ctx, request.sessid, &sender);
+    if let (MonitorMode::Run(_), Some(serial)) = (&request.mode, &serial_poller) {
         // The port is open from attach. Drop the output from before this boot.
-        discard_serial_input(serial);
+        serial.discard_input();
     }
 
-    let mut rtt_poller = client_key.map(|client| RttPoller {
-        rtt_client: shared_session.object_storage().cell(client),
-        clear_control_block: request.mode.should_clear_rtt_header(),
-        sender: |message| {
-            sender
-                .send_rtt_event(message)
-                .context("Failed to send RTT event")
-        },
+    let rtt_poller = client_key.map(|client| {
+        RttPoller::new(
+            &ctx,
+            client,
+            request.mode.should_clear_rtt_header(),
+            |message| {
+                sender
+                    .send_rtt_event(message)
+                    .context("Failed to send RTT event")
+            },
+        )
     });
-    run_loop.start_poller(&shared_session, &mut rtt_poller)?;
+    let mut poller = (rtt_poller, serial_poller);
+    run_loop.start_poller(&shared_session, &mut poller)?;
 
     {
         let mut session = shared_session.session_blocking();
         prepare_monitor_mode(&request.mode, &mut session, run_loop.core_id)?;
     }
 
-    let exit_reason = with_serial_forwarding(target_serial.as_ref(), &sender, || {
-        run_loop.run_until(
-            &shared_session,
-            VectorCatchConfig {
-                catch_hardfault: request.options.catch_hardfault,
-                catch_reset: request.options.catch_reset,
-                catch_svc: request.options.catch_svc,
-                catch_hlt: request.options.catch_hlt,
-            },
-            rtt_poller,
-            None,
-            |halt_reason, core| semihosting_sink.handle_halt(halt_reason, core),
-        )
-    })?;
+    let exit_reason = run_loop.run_until(
+        &shared_session,
+        VectorCatchConfig {
+            catch_hardfault: request.options.catch_hardfault,
+            catch_reset: request.options.catch_reset,
+            catch_svc: request.options.catch_svc,
+            catch_hlt: request.options.catch_hlt,
+        },
+        poller,
+        None,
+        |halt_reason, core| semihosting_sink.handle_halt(halt_reason, core),
+    )?;
 
     match exit_reason {
         ReturnReason::Predicate(reason) => Ok(reason),
@@ -184,13 +188,45 @@ fn monitor_impl(
     }
 }
 
+/// Sends the data of the RTT up channels, and runs a worker for the writes to the down channels.
 pub struct RttPoller<S>
 where
     S: FnMut(RttEvent) -> anyhow::Result<()>,
 {
-    pub rtt_client: ObjectStorageSlot<crate::util::rtt::client::RttClient>,
-    pub clear_control_block: bool,
-    pub sender: S,
+    ctx: RpcSpawnContext,
+    client: Key<RttClient>,
+    rtt_client: ObjectStorageSlot<crate::util::rtt::client::RttClient>,
+    clear_control_block: bool,
+    sender: S,
+    down_writes: Option<DownWrites>,
+}
+
+/// The published down channels of an [`RttPoller`]. Its drop stops the worker.
+struct DownWrites {
+    stream: Arc<RttDownStream>,
+    _published: Published<Key<RttClient>, RttDownStream>,
+    _stop: DropGuard,
+}
+
+impl<S> RttPoller<S>
+where
+    S: FnMut(RttEvent) -> anyhow::Result<()>,
+{
+    pub fn new(
+        ctx: &RpcSpawnContext,
+        client: Key<RttClient>,
+        clear_control_block: bool,
+        sender: S,
+    ) -> Self {
+        Self {
+            ctx: ctx.clone(),
+            client,
+            rtt_client: ctx.state.object_storage.blocking_lock().cell(client),
+            clear_control_block,
+            sender,
+            down_writes: None,
+        }
+    }
 }
 
 impl<S> RunLoopPoller for RttPoller<S>
@@ -201,6 +237,17 @@ where
         if self.clear_control_block {
             let mut rtt_client = self.rtt_client.get_blocking();
             rtt_client.clear_control_block(core)?;
+        }
+        let (stream, writes) = RttDownStream::new();
+        let stream = Arc::new(stream);
+        if let Some(published) = self.ctx.state.rtt_down.publish(self.client, stream.clone()) {
+            let stop = self.ctx.cancellation_token().child_token();
+            tokio::spawn(write_queued(self.ctx.state.clone(), writes, stop.clone()));
+            self.down_writes = Some(DownWrites {
+                stream,
+                _published: published,
+                _stop: stop.drop_guard(),
+            });
         }
         Ok(())
     }
@@ -236,6 +283,13 @@ where
             .with_context(|| "Failed to send RTT discovery")?;
         }
         rtt_client.warn_if_control_block_is_missing();
+        if let Some(down_writes) = &self.down_writes
+            && rtt_client.is_attached()
+        {
+            down_writes
+                .stream
+                .set_channels(rtt_client.down_channels().len());
+        }
 
         let mut next_poll = Duration::from_millis(100);
         for channel in 0..rtt_client.up_channels().len() {
@@ -255,6 +309,8 @@ where
     }
 
     fn exit(&mut self, core: &mut impl MemoryInterface) -> anyhow::Result<()> {
+        // The run loop holds the session, so the worker writes nothing after the clean-up.
+        self.down_writes = None;
         let mut rtt_client = self.rtt_client.get_blocking();
         rtt_client.clean_up(core)?;
         Ok(())
@@ -266,41 +322,122 @@ const SERIAL_READ_TIMEOUT: Duration = Duration::from_millis(10);
 /// After the stop, the data that arrives in this time is still sent.
 const SERIAL_TAIL_TIME: Duration = Duration::from_millis(50);
 
-/// Runs `f` and sends the data from the serial port to the target while `f` runs. The serial port
-/// does not need the session, so a thread reads it next to `f`.
-pub(crate) fn with_serial_forwarding<R>(
-    serial: Option<&SharedTargetSerial>,
-    sender: &MonitorSender,
-    f: impl FnOnce() -> R,
-) -> R {
-    /// Sets the flag when `f` returns or panics, so that the thread stops.
-    struct StopOnDrop<'a>(&'a AtomicBool);
-    impl Drop for StopOnDrop<'_> {
-        fn drop(&mut self) {
-            self.0.store(true, Ordering::Relaxed);
-        }
-    }
-
-    let stop = AtomicBool::new(false);
-    std::thread::scope(|scope| {
-        if let Some(serial) = serial {
-            scope.spawn(|| forward_serial(serial, &stop, sender));
-        }
-        let _stop = StopOnDrop(&stop);
-        f()
-    })
+/// Forwards the serial port to the target while a run loop runs. The serial port does not need
+/// the session, so a thread reads it, and a worker writes the data that the client sends.
+pub(crate) struct SerialPoller {
+    ctx: RpcSpawnContext,
+    sessid: Key<Session>,
+    serial: SharedTargetSerial,
+    events: mpsc::Sender<SerialEvent>,
+    forwarding: Option<SerialForwarding>,
 }
 
-/// Drops the data that the serial port to the target received before the target boots.
-pub(crate) fn discard_serial_input(serial: &SharedTargetSerial) {
-    if let Err(error) = serial.discard_input() {
-        tracing::debug!("Failed to discard the input of the serial port to the target: {error}");
+impl SerialPoller {
+    /// Returns `None` if the session has no serial port to the target.
+    pub(crate) fn new(
+        ctx: &RpcSpawnContext,
+        sessid: Key<Session>,
+        sender: &MonitorSender,
+    ) -> Option<Self> {
+        Some(Self {
+            ctx: ctx.clone(),
+            sessid,
+            serial: ctx.target_serial(sessid)?,
+            events: sender.serial_events(),
+            forwarding: None,
+        })
+    }
+
+    /// Drops the data that the serial port received before the target boots.
+    pub(crate) fn discard_input(&self) {
+        if let Err(error) = self.serial.discard_input() {
+            tracing::debug!(
+                "Failed to discard the input of the serial port to the target: {error}"
+            );
+        }
+    }
+}
+
+impl RunLoopPoller for SerialPoller {
+    fn start(&mut self, _core: &mut impl MemoryInterface) -> anyhow::Result<()> {
+        let stop = Arc::new(AtomicBool::new(false));
+        let reader = thread::spawn({
+            let serial = self.serial.clone();
+            let stop = stop.clone();
+            let events = self.events.clone();
+            move || forward_serial(&serial, &stop, &events)
+        });
+
+        let (queue, writes) = mpsc::channel(QUEUE_DEPTH);
+        let published = self
+            .ctx
+            .state
+            .serial_writes
+            .publish(self.sessid, Arc::new(queue));
+        // Without a published queue, nothing sends to `writes`, so the writer ends at once.
+        let writer = thread::spawn({
+            let serial = self.serial.clone();
+            let stop = stop.clone();
+            move || write_serial_queued(&serial, &stop, writes)
+        });
+
+        self.forwarding = Some(SerialForwarding {
+            stop,
+            threads: vec![reader, writer],
+            published,
+        });
+        Ok(())
+    }
+
+    fn poll(&mut self, _core: &mut impl MemoryInterface) -> anyhow::Result<Duration> {
+        Ok(Duration::MAX)
+    }
+
+    fn exit(&mut self, _core: &mut impl MemoryInterface) -> anyhow::Result<()> {
+        // The run loop holds the session here. The thread sends the data that arrives shortly
+        // after, so the poller waits for it only when it drops.
+        if let Some(forwarding) = &mut self.forwarding {
+            forwarding.stop();
+        }
+        Ok(())
+    }
+}
+
+/// The threads of a [`SerialPoller`]. Its drop stops them.
+struct SerialForwarding {
+    stop: Arc<AtomicBool>,
+    threads: Vec<JoinHandle<()>>,
+    published: Option<Published<Key<Session>, mpsc::Sender<Vec<u8>>>>,
+}
+
+impl SerialForwarding {
+    fn stop(&mut self) {
+        self.stop.store(true, Ordering::Relaxed);
+        // The writer ends when the last sender of its queue drops.
+        self.published = None;
+    }
+}
+
+impl Drop for SerialForwarding {
+    fn drop(&mut self) {
+        self.stop();
+        // The monitor sends its reply after the last serial event, and the session must not end
+        // while a thread uses its serial port.
+        for thread in self.threads.drain(..) {
+            if thread.join().is_err() {
+                tracing::debug!("A thread of the serial port to the target panicked");
+            }
+        }
     }
 }
 
 /// Sends the data from the serial port to the target until `stop` is set, then sends the data
 /// that arrives shortly after.
-fn forward_serial(serial: &SharedTargetSerial, stop: &AtomicBool, sender: &MonitorSender) {
+fn forward_serial(
+    serial: &SharedTargetSerial,
+    stop: &AtomicBool,
+    events: &mpsc::Sender<SerialEvent>,
+) {
     let mut buf = [0; 4096];
     let mut stop_at = None;
 
@@ -318,8 +455,8 @@ fn forward_serial(serial: &SharedTargetSerial, stop: &AtomicBool, sender: &Monit
             }
         };
         if len > 0
-            && sender
-                .send_serial_event(SerialEvent::Output {
+            && events
+                .blocking_send(SerialEvent::Output {
                     bytes: buf[..len].to_vec(),
                 })
                 .is_err()
@@ -329,12 +466,39 @@ fn forward_serial(serial: &SharedTargetSerial, stop: &AtomicBool, sender: &Monit
     }
 }
 
-/// Writes data to the serial port to the target.
+/// Writes the queued writes until the queue closes. A write waits for flow control until the
+/// target takes all of it, or until `stop` is set.
+fn write_serial_queued(
+    serial: &SharedTargetSerial,
+    stop: &AtomicBool,
+    mut writes: mpsc::Receiver<Vec<u8>>,
+) {
+    while let Some(data) = writes.blocking_recv() {
+        let mut written = 0;
+        while written < data.len() && !stop.load(Ordering::Relaxed) {
+            match serial.write(&data[written..]) {
+                Ok(len) => written += len,
+                Err(error) => {
+                    tracing::warn!("Failed to write to the serial port to the target: {error}");
+                    break;
+                }
+            }
+        }
+    }
+}
+
+/// Writes data to the serial port to the target. While a run loop runs, the write goes to the
+/// queue of the run loop, and the reply only says that the write is accepted.
 pub async fn write_serial(
     ctx: &mut RpcContext,
     _header: VarHeader,
     request: SerialWriteRequest,
 ) -> SerialWriteResponse {
+    if let Some(queue) = ctx.state.serial_writes.get(request.sessid) {
+        let len = request.data.len();
+        return accept(&queue, request.data, len);
+    }
+
     let serial = ctx
         .target_serial(request.sessid)
         .ok_or_else(|| RpcError::from("The session has no serial port to the target"))?;
@@ -409,5 +573,67 @@ impl<F: FnMut(SemihostingEvent)> MonitorEventHandler<F> {
                 ))),
             ))),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::{Arc, atomic::AtomicBool};
+    use std::time::Duration;
+
+    use probe_rs::probe::target_serial::{SerialSettings, TargetSerial, TargetSerialError};
+    use tokio::sync::mpsc;
+
+    use super::write_serial_queued;
+    use crate::rpc::SharedTargetSerial;
+
+    /// Takes at most two bytes for each write, like a port under flow control.
+    #[derive(Debug, Default)]
+    struct SlowPort(parking_lot::Mutex<Vec<u8>>);
+
+    impl TargetSerial for SlowPort {
+        fn default_settings(&self) -> SerialSettings {
+            SerialSettings::default()
+        }
+
+        fn open(&mut self, _settings: &SerialSettings) -> Result<(), TargetSerialError> {
+            Ok(())
+        }
+
+        fn read(&self, _buf: &mut [u8], _timeout: Duration) -> Result<usize, TargetSerialError> {
+            Ok(0)
+        }
+
+        fn discard_input(&self) -> Result<(), TargetSerialError> {
+            Ok(())
+        }
+
+        fn write(&self, data: &[u8]) -> Result<usize, TargetSerialError> {
+            let len = data.len().min(2);
+            self.0.lock().extend_from_slice(&data[..len]);
+            Ok(len)
+        }
+    }
+
+    /// Runs the writer on two queued writes until the queue closes.
+    fn write(stop: bool) -> Vec<u8> {
+        let port = Arc::new(SlowPort::default());
+        let serial: SharedTargetSerial = port.clone();
+        let (queue, writes) = mpsc::channel(8);
+        queue.try_send(b"hello".to_vec()).unwrap();
+        queue.try_send(b" world".to_vec()).unwrap();
+        drop(queue);
+        write_serial_queued(&serial, &AtomicBool::new(stop), writes);
+        port.0.lock().clone()
+    }
+
+    #[test]
+    fn a_queued_serial_write_is_written_in_full_and_in_order() {
+        assert_eq!(write(false), b"hello world");
+    }
+
+    #[test]
+    fn a_stopped_serial_writer_drops_its_queue() {
+        assert!(write(true).is_empty());
     }
 }
