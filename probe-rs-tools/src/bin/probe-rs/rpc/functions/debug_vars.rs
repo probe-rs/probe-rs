@@ -322,6 +322,10 @@ pub async fn load_svd(
     _header: VarHeader,
     request: LoadSvdRequest,
 ) -> LoadSvdResponse {
+    if let Some(path) = &request.path {
+        ctx.check_file_access(path)?;
+    }
+
     let parsed = request
         .path
         .as_deref()

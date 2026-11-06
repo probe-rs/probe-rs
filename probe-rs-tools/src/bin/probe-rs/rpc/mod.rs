@@ -1,6 +1,6 @@
 use std::{
     any::Any,
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     marker::PhantomData,
     ops::{Deref, DerefMut},
     sync::Arc,
@@ -125,6 +125,8 @@ pub struct ConnectionState {
     /// The serial ports to the target, keyed by session. They are not in the session, so that
     /// their users do not wait for the session lock.
     target_serials: Arc<parking_lot::Mutex<HashMap<Key<Session>, SharedTargetSerial>>>,
+    /// The paths of the temporary files that this connection created.
+    uploads: Arc<parking_lot::Mutex<HashSet<String>>>,
     token: CancellationToken,
 }
 
@@ -135,6 +137,7 @@ impl ConnectionState {
             registry: Arc::new(Mutex::new(Registry::from_builtin_families())),
             debug_states: Arc::new(Mutex::new(HashMap::new())),
             target_serials: Arc::new(parking_lot::Mutex::new(HashMap::new())),
+            uploads: Arc::new(parking_lot::Mutex::new(HashSet::new())),
             token: CancellationToken::new(),
         }
     }
@@ -180,6 +183,16 @@ impl ConnectionState {
     /// Returns the serial port to the target of a session.
     pub fn target_serial(&self, sid: Key<Session>) -> Option<SharedTargetSerial> {
         self.target_serials.lock().get(&sid).cloned()
+    }
+
+    /// Records the path of a temporary file that this connection created.
+    pub fn add_upload(&self, path: String) {
+        self.uploads.lock().insert(path);
+    }
+
+    /// Returns `true` if this connection created the temporary file at `path`.
+    pub fn is_upload(&self, path: &str) -> bool {
+        self.uploads.lock().contains(path)
     }
 
     pub fn shared_session(&self, sid: Key<Session>) -> SessionState<'_> {
