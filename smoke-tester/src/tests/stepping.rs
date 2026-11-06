@@ -181,11 +181,18 @@ fn test_reset_after_step(_definition: &DutDefinition, core: &mut Core) -> TestRe
     core.write_core_reg(pc, code_load_address)?;
     core.step()?;
     core.reset()?;
-    assert!(
-        !core.status()?.is_halted(),
-        "Core is halted after a reset following a step"
-    );
+    // The program in flash may hit a BKPT with halting debug still enabled after reset(), so a
+    // halt on a breakpoint is accepted. Any other halt reason means the core stayed halted.
+    let status = core.status()?;
     let dhcsr = Dhcsr(core.read_word_32(Dhcsr::ADDRESS_OFFSET)?);
+    if let CoreStatus::Halted(reason) = status {
+        let pc_value: u64 = core.read_core_reg(pc)?;
+        assert!(
+            matches!(reason, HaltReason::Breakpoint(_)),
+            "Core halted after a reset following a step: {reason:?}, PC {pc_value:#010x}, DHCSR {:#010x}",
+            dhcsr.0
+        );
+    }
     assert!(
         !dhcsr.c_step() && !dhcsr.c_maskints(),
         "DHCSR after reset following a step: {:#010x}",
