@@ -1,0 +1,452 @@
+name: STM32WL3 Series
+manufacturer:
+  id: 0x20
+  cc: 0x0
+generated_from_pack: true
+pack_file_release: 1.2.0
+variants:
+- name: STM32WL30K8
+  package_variants:
+  - STM32WL30K8Vx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: Main_Flash
+    range:
+      start: 0x10040000
+      end: 0x10050000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32wl3x_64k
+- name: STM32WL30KB
+  package_variants:
+  - STM32WL30KBVx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: Main_Flash
+    range:
+      start: 0x10040000
+      end: 0x10060000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32wl3x_256k
+- name: STM32WL31C8
+  package_variants:
+  - STM32WL31C8Vx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: Main_Flash
+    range:
+      start: 0x10040000
+      end: 0x10050000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32wl3x_64k
+- name: STM32WL31CB
+  package_variants:
+  - STM32WL31CBVx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: Main_Flash
+    range:
+      start: 0x10040000
+      end: 0x10060000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32wl3x_256k
+- name: STM32WL31K8
+  package_variants:
+  - STM32WL31K8Vx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: Main_Flash
+    range:
+      start: 0x10040000
+      end: 0x10050000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32wl3x_64k
+- name: STM32WL31KB
+  package_variants:
+  - STM32WL31KBVx
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: Main_Flash
+    range:
+      start: 0x10040000
+      end: 0x10060000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32wl3x_256k
+- name: STM32WL33C8
+  package_variants:
+  - STM32WL33C8Vx
+  - STM32WL33C8VxX
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: Main_Flash
+    range:
+      start: 0x10040000
+      end: 0x10050000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32wl3x_64k
+- name: STM32WL33CB
+  package_variants:
+  - STM32WL33CBVx
+  - STM32WL33CBVxX
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: Main_Flash
+    range:
+      start: 0x10040000
+      end: 0x10060000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32wl3x_256k
+- name: STM32WL33CC
+  package_variants:
+  - STM32WL33CCVx
+  - STM32WL33CCVxX
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: Main_Flash
+    range:
+      start: 0x10040000
+      end: 0x10080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32wl3x_256k
+- name: STM32WL33K8
+  package_variants:
+  - STM32WL33K8Vx
+  - STM32WL33K8VxX
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: Main_Flash
+    range:
+      start: 0x10040000
+      end: 0x10050000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32wl3x_64k
+- name: STM32WL33KB
+  package_variants:
+  - STM32WL33KBVx
+  - STM32WL33KBVxX
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: Main_Flash
+    range:
+      start: 0x10040000
+      end: 0x10060000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32wl3x_256k
+- name: STM32WL33KC
+  package_variants:
+  - STM32WL33KCVx
+  - STM32WL33KCVxX
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: Main_Flash
+    range:
+      start: 0x10040000
+      end: 0x10080000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32wl3x_256k
+- name: STM32WL3RK8
+  package_variants:
+  - STM32WL3RK8Vx
+  - STM32WL3RK8VxX
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: Main_Flash
+    range:
+      start: 0x10040000
+      end: 0x10050000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32wl3x_64k
+- name: STM32WL3RKB
+  package_variants:
+  - STM32WL3RKBVx
+  - STM32WL3RKBVxX
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: Main_Flash
+    range:
+      start: 0x10040000
+      end: 0x10060000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32wl3x_256k
+flash_algorithms:
+- name: stm32wl3x_64k
+  description: STM32WL3x_64K Flash
+  default: true
+  instructions: AkkAIMJDCmBIYHBHCBAAQAAgcEeBsAAgAJDBQxBIAWABRgg5IiIKYAFoAJEAmtIHDtEBaACRAJrSBwnRAWgAkQCa0gcE0QFoAJEAmtIH69AAkQwhAJgIQEEeiEEBsHBHCBAAQIGwACEAkcpDEkkKYBJKgBiACAhhCEYIOBEiAmAIaACQAJrSBw7RCGgAkACa0gcJ0QhoAJAAmtIHBNEIaACQAJrSB+vQAJAMIQCYCEBBHohBAbBwRwgQAEAAAPzv8LWBsAAkAJQLRg8zDyWrQzDQASUtBEADwAtoQORDTR7pBjpJJNQMYAhhFmiOY1ZozmOWaA5k1mhOZA5GCD7MJzdgDmgAlgCe9gcO0Q5oAJYAnvYHCdEOaACWAJ72BwTRDmgAlgCe9gfr0BA7AB0QMhAtB9IAIAGw8L0gOwgwIDIAK/fQDGAIYRVojWNVaM1jlWgNZNVoTWQNRgg9zCYuYA9oAJcAn/8HDtEPaACXAJ//BwnRD2gAlwCf/wcE0Q9oAJcAn/8H69AMYAcdD2EXaY9jV2nPY5dpD2TXaU9kLmANaACVAJ3tB8fRDWgAlQCd7QfC0Q1oAJUAne0HvdENaACVAJ3tB+vQt+fARggQAEAAAAAA
+  load_address: 0x20000008
+  pc_init: 0x1
+  pc_uninit: 0x11
+  pc_program_page: 0xc1
+  pc_erase_sector: 0x65
+  pc_erase_all: 0x15
+  data_section_offset: 0x1d0
+  flash_properties:
+    address_range:
+      start: 0x10040000
+      end: 0x10050000
+    page_size: 0x200
+    erased_byte_value: 0xff
+    program_page_timeout: 400
+    erase_sector_timeout: 400
+    sectors:
+    - size: 0x800
+      address: 0x0
+- name: stm32wl3x_256k
+  description: STM32WL3x_256K Flash
+  default: true
+  instructions: AkkAIMJDCmBIYHBHCBAAQAAgcEeBsAAgAJDBQxBIAWABRgg5IiIKYAFoAJEAmtIHDtEBaACRAJrSBwnRAWgAkQCa0gcE0QFoAJEAmtIH69AAkQwhAJgIQEEeiEEBsHBHCBAAQIGwACEAkcpDEkkKYBJKgBiACAhhCEYIOBEiAmAIaACQAJrSBw7RCGgAkACa0gcJ0QhoAJAAmtIHBNEIaACQAJrSB+vQAJAMIQCYCEBBHohBAbBwRwgQAEAAAPzv8LWBsAAkAJQLRg8zDyWrQzDQASXtB0ADQBnAC+RDTR7pBjpJJNQMYAhhFmiOY1ZozmOWaA5k1mhOZA5GCD7MJzdgDmgAlgCe9gcO0Q5oAJYAnvYHCdEOaACWAJ72BwTRDmgAlgCe9gfr0BA7AB0QMhAtB9IAIAGw8L0gOwgwIDIAK/fQDGAIYRVojWNVaM1jlWgNZNVoTWQNRgg9zCYuYA9oAJcAn/8HDtEPaACXAJ//BwnRD2gAlwCf/wcE0Q9oAJcAn/8H69AMYAcdD2EXaY9jV2nPY5dpD2TXaU9kLmANaACVAJ3tB8fRDWgAlQCd7QfC0Q1oAJUAne0HvdENaACVAJ3tB+vQt+fARggQAEAAAAAA
+  load_address: 0x20000008
+  pc_init: 0x1
+  pc_uninit: 0x11
+  pc_program_page: 0xc1
+  pc_erase_sector: 0x65
+  pc_erase_all: 0x15
+  data_section_offset: 0x1d0
+  flash_properties:
+    address_range:
+      start: 0x10040000
+      end: 0x10080000
+    page_size: 0x400
+    erased_byte_value: 0xff
+    program_page_timeout: 400
+    erase_sector_timeout: 400
+    sectors:
+    - size: 0x800
+      address: 0x0

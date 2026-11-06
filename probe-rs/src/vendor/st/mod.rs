@@ -12,6 +12,7 @@ use crate::{
             stm32_armv8::Stm32Armv8,
             stm32h7::{Stm32h7, Stm32h7Line},
             stm32n6::Stm32n6,
+            stm32wl3::Stm32Wl3,
         },
     },
 };
@@ -39,7 +40,7 @@ impl Vendor for St {
             || chip.name.starts_with("STM32L1")
             || chip.name.starts_with("STM32L4")
             || chip.name.starts_with("STM32WB")
-            || chip.name.starts_with("STM32WL")
+            || (chip.name.starts_with("STM32WL") && !chip.name.starts_with("STM32WL3"))
         {
             DebugSequence::Arm(Stm32Armv7::create())
         } else if chip.name.starts_with("STM32H7S") || chip.name.starts_with("STM32H7R") {
@@ -57,6 +58,8 @@ impl Vendor for St {
             DebugSequence::Arm(Stm32Armv8::create())
         } else if chip.name.starts_with("STM32N6") {
             DebugSequence::Arm(Stm32n6::create())
+        } else if chip.name.starts_with("STM32WL3") {
+            DebugSequence::Arm(Stm32Wl3::create())
         } else {
             return None;
         };
