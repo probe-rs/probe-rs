@@ -85,6 +85,11 @@ pub trait HaltHandler {
         Ok(())
     }
 
+    /// The run loop ended. Waits for work that the handler did not wait for, until `token` fires.
+    fn drain(&mut self, _token: &CancellationToken) -> Result<()> {
+        Ok(())
+    }
+
     /// Waits for at most `timeout`. Returns early with a reply, if it comes.
     fn wait(&mut self, timeout: Duration) -> Option<Self::Reply> {
         thread::sleep(timeout);
@@ -280,7 +285,11 @@ impl RunLoop {
                 tracing::warn!("Failed to end the pending call of core {core_id}: {error:?}");
             }
         }
+        drop(session);
 
+        let drained = handler.drain(&self.cancellation_token);
+
+        let mut session = shared_session.session_blocking();
         // Always clean up after RTT but don't overwrite the original result.
         let mut core = session.core(self.core_id)?;
         let poller_exit_result = match poller.memory_port(&core) {
@@ -296,6 +305,7 @@ impl RunLoop {
         if result.is_ok() {
             // If the result is Ok, we return the potential error during cleanup.
             poller_exit_result?;
+            drained?;
         }
 
         result

@@ -197,7 +197,14 @@ impl HandleTable {
                 if bytes.len() > MAX_CHUNK as usize {
                     return Err(HostError::InvalidInput);
                 }
-                let written = self.handle(handle)?.stream().write(&bytes)?;
+                // The server can post a write to a file, and then a short write is a lost one.
+                let written = match self.handle(handle)? {
+                    Handle::File(file) => {
+                        file.write_all(&bytes)?;
+                        bytes.len()
+                    }
+                    stream => stream.stream().write(&bytes)?,
+                };
                 Ok(HostValue::Written(written as u32))
             }
             HostRequest::Seek { handle, pos } => {
@@ -237,8 +244,12 @@ impl HandleTable {
             tracing::warn!("The target wanted to open {path:?}, but it failed: {error}");
             HostError::from(error)
         })?;
-        let kind = match handle {
-            Handle::File(_) => FileKind::File,
+        // An exact mapping can name a FIFO or a device. Its timing is visible to the target, like
+        // that of a socket, so the server must not post writes to it or read ahead.
+        let kind = match &handle {
+            Handle::File(file) if file.metadata().is_ok_and(|metadata| metadata.is_file()) => {
+                FileKind::File
+            }
             _ => FileKind::Stream,
         };
 

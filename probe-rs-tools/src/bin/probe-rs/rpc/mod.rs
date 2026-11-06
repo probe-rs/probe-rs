@@ -251,8 +251,10 @@ impl ConnectionState {
         if slot.is_some() {
             anyhow::bail!("Another monitor or test call of this connection uses semihosting files");
         }
-        // The window is one call. Room for more stops a stale reply from taking its place.
-        let (sender, receiver) = std::sync::mpsc::sync_channel(8);
+        // A full channel drops a reply, so it holds every reply that the client can owe. Room for as
+        // many more stops stale replies from taking their place.
+        let (sender, receiver) =
+            std::sync::mpsc::sync_channel(2 * crate::rpc::utils::semihosting::MAX_OPEN_REPLIES);
         *slot = Some(HostReplySlot {
             first_id: self.next_host_call_id.load(Ordering::Relaxed),
             sender,
