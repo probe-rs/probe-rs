@@ -30,6 +30,7 @@ use probe_rs_debug::{
     registers::{DebugRegister, DebugRegisters},
 };
 use probe_rs_rpc::breakpoints::SourceBreakpointLocation;
+use probe_rs_rpc::flash::BootInfo;
 use probe_rs_rpc::rtt_config::DataFormat;
 use serde::{Serialize, de::DeserializeOwned};
 use serde_json::Value;
@@ -1422,9 +1423,8 @@ impl DebugAdapter {
         Ok(())
     }
 
-    /// Session-level `restart`: reset-and-halt (reapplying breakpoints on
-    /// Riscv/Xtensa via `backend.core_architecture`, which is cached), then
-    /// optionally resume via `continue_impl_async`, emitting the
+    /// Session-level `restart`: start the loaded image and halt at its entry,
+    /// then optionally resume via `continue_impl_async`, emitting the
     /// `stopped`/`continued` DAP events. The per-core `reset_and_halt_core`
     /// remains for the REPL path until cluster 6.8.
     pub(crate) async fn restart_async(
@@ -1432,18 +1432,9 @@ impl DebugAdapter {
         session_data: &mut SessionData,
         core_index: usize,
         request: Option<&Request>,
+        boot_info: &BootInfo,
     ) -> Result<()> {
-        let core_info = self
-            .reset_and_halt_core_async(
-                &mut session_data.backend,
-                session_data
-                    .core_data
-                    .iter_mut()
-                    .find(|c| c.core_index == core_index)
-                    .ok_or_else(|| {
-                        DebuggerError::Other(anyhow!("No core data for core {core_index}"))
-                    })?,
-            )
+        self.prepare_boot_async(session_data, core_index, boot_info)
             .await?;
 
         if let Some(request) = request {
@@ -1484,8 +1475,9 @@ impl DebugAdapter {
                 self.send_event("stopped", event_body)?;
             }
         } else if self.configuration_is_done() {
+            let program_counter = session_data.backend.program_counter(core_index).await;
             let description = CoreStatus::Halted(HaltReason::External)
-                .short_long_status(&session_data.backend, Some(core_info.pc), false)
+                .short_long_status(&session_data.backend, program_counter, false)
                 .await
                 .1;
             let event_body = Some(StoppedEventBody {
@@ -1757,6 +1749,41 @@ impl DebugAdapter {
         Ok(true) // TODO this isn't very useful?
     }
 
+    /// Re-apply the core's hardware breakpoints on RISC-V / Xtensa, whose
+    /// reset clears them.
+    ///
+    /// A no-op on the other architectures, which keep theirs across a reset.
+    async fn reapply_hw_breakpoints_after_reset(
+        backend: &mut RpcBackend,
+        core_data: &CoreData,
+    ) -> Result<()> {
+        let core_index = core_data.core_index;
+        let arch = backend
+            .core_metadata
+            .get(core_index)
+            .map(|m| m.architecture)
+            .ok_or_else(|| {
+                probe_rs::Error::Other(format!("No core metadata for core {core_index}"))
+            })
+            .map_err(DebuggerError::ProbeRs)?;
+        if ![Architecture::Riscv, Architecture::Xtensa].contains(&arch) {
+            return Ok(());
+        }
+
+        let addrs: Vec<u64> = core_data.breakpoints.iter().map(|bp| bp.address).collect();
+        if addrs.is_empty() {
+            return Ok(());
+        }
+
+        backend
+            .set_hw_breakpoints(core_index, addrs)
+            .await
+            .map_err(|e| {
+                DebuggerError::Other(anyhow!("Failed to re-apply breakpoints after reset: {e}"))
+            })?;
+        Ok(())
+    }
+
     /// Reset and halt the core (REPL `reset` / DAP `restart`), re-applying
     /// hardware breakpoints on RISC-V / Xtensa.
     pub(crate) async fn reset_and_halt_core_async(
@@ -1771,31 +1798,46 @@ impl DebugAdapter {
             .await
             .map_err(DebuggerError::ProbeRs)?;
 
-        let arch = backend
-            .core_metadata
-            .get(core_index)
-            .map(|m| m.architecture)
-            .ok_or_else(|| {
-                probe_rs::Error::Other(format!("No core metadata for core {core_index}"))
-            })
-            .map_err(DebuggerError::ProbeRs)?;
-        if [Architecture::Riscv, Architecture::Xtensa].contains(&arch) {
-            let addrs: Vec<u64> = core_data.breakpoints.iter().map(|bp| bp.address).collect();
-            if !addrs.is_empty() {
-                backend
-                    .set_hw_breakpoints(core_index, addrs)
-                    .await
-                    .map_err(|e| {
-                        DebuggerError::Other(anyhow!(
-                            "Failed to re-apply breakpoints after reset: {e}"
-                        ))
-                    })?;
-            }
-        }
+        Self::reapply_hw_breakpoints_after_reset(backend, core_data).await?;
 
         core_data.last_known_status = CoreStatus::Unknown;
         self.all_cores_halted = false;
         Ok(core_info)
+    }
+
+    /// Start the loaded image, leaving the core halted at its entry.
+    ///
+    /// The server decides what that is: a reset for an image that boots from
+    /// flash, or pointing the core at the entry for one that runs from RAM, so
+    /// that a reset does not discard it. The latter needs a halted core, which
+    /// the callers halt just before this runs.
+    async fn prepare_boot_async(
+        &mut self,
+        session_data: &mut SessionData,
+        core_index: usize,
+        boot_info: &BootInfo,
+    ) -> Result<()> {
+        // Borrow the two fields separately, so the breakpoint helper below can
+        // take the backend mutably while it reads the core's breakpoints.
+        let backend = &mut session_data.backend;
+        let core_data = session_data
+            .core_data
+            .iter_mut()
+            .find(|c| c.core_index == core_index)
+            .ok_or_else(|| DebuggerError::Other(anyhow!("No core data for core {core_index}")))?;
+
+        core_data.invalidate_stack_frame_cache();
+
+        backend
+            .prepare_boot(boot_info.clone(), core_index)
+            .await
+            .map_err(DebuggerError::ProbeRs)?;
+
+        Self::reapply_hw_breakpoints_after_reset(backend, core_data).await?;
+
+        core_data.last_known_status = CoreStatus::Unknown;
+        self.all_cores_halted = false;
+        Ok(())
     }
 
     pub(crate) async fn step_impl_async(

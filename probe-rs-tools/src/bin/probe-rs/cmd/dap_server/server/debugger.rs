@@ -19,7 +19,7 @@ use crate::cmd::dap_server::{
 };
 use anyhow::{Context, anyhow};
 use probe_rs::CoreStatus;
-use probe_rs_rpc::flash::{Operation, ProgressEvent as WireProgressEvent};
+use probe_rs_rpc::flash::{BootInfo, Operation, ProgressEvent as WireProgressEvent};
 use probe_rs_rpc_client::{ResolvedUpload, RpcClient};
 use std::{collections::HashMap, path::Path, time::Duration};
 use time::UtcOffset;
@@ -106,6 +106,16 @@ pub struct Debugger {
     binary_timestamp: Option<Duration>,
 
     // TODO: Store somewhere else
+    /// How the image on the target wants to be started.
+    ///
+    /// Whoever writes the image sets this: the CLI before this server starts
+    /// (see [`crate::cmd::debug`]), or a flash here. It then stays until the
+    /// next write, because the target still holds that image.
+    ///
+    /// [`BootInfo::Other`] when no write is known here, which means: reset.
+    pub(crate) boot_info: BootInfo,
+
+    // TODO: Store somewhere else
     /// Timestamp of the SVD file that the server parsed last
     svd_timestamp: Option<Duration>,
 
@@ -137,6 +147,7 @@ impl Debugger {
             config: configuration::SessionConfig::default(),
             timestamp_offset,
             binary_timestamp: None,
+            boot_info: BootInfo::Other,
             svd_timestamp: None,
             debug_logger: DebugLogger::new(log_file)?,
             uploaded_files: None,
@@ -470,6 +481,9 @@ impl Debugger {
         // uploaded firmware does not linger on disk after they disconnect (and is
         // not visible to the next client that connects).
         self.uploaded_files = None;
+        // Same for the boot info: what this client wrote is not something the
+        // next client should be told about.
+        self.boot_info = BootInfo::Other;
         result
     }
 
@@ -693,7 +707,7 @@ impl Debugger {
                 // Store timestamp of flashed binary
                 self.binary_timestamp = get_file_timestamp(&path_to_elf);
 
-                Self::flash(
+                self.boot_info = Self::flash(
                     &self.config,
                     &path_to_elf,
                     debug_adapter,
@@ -742,9 +756,10 @@ impl Debugger {
         }
 
         if requested_target_session_type == TargetSessionType::LaunchRequest {
-            // This will effectively do a `reset` and `halt` of the core, which is what we want until after the `configuration_done` request.
+            // Start the image and halt at its entry, where the core stays
+            // until `configuration_done`.
             debug_adapter
-                .restart_async(&mut session_data, core_index, None)
+                .restart_async(&mut session_data, core_index, None, &self.boot_info)
                 .await
                 .context("Failed to restart core")?;
         }
@@ -838,8 +853,14 @@ impl Debugger {
                         ))
                     })?;
 
-                Self::flash_resolved(&self.config, &upload, debug_adapter, request, session_data)
-                    .await?;
+                self.boot_info = Self::flash_resolved(
+                    &self.config,
+                    &upload,
+                    debug_adapter,
+                    request,
+                    session_data,
+                )
+                .await?;
 
                 // Publish the new server-owned DWARF only after flashing
                 // succeeds, then recompute source breakpoints through RPC.
@@ -895,7 +916,7 @@ impl Debugger {
         // core halted, and attach to the RTT of the old program for nothing.
         // After completing optional flashing and other config, we can run the debug adapter's restart logic.
         debug_adapter
-            .restart_async(session_data, core_index, Some(request))
+            .restart_async(session_data, core_index, Some(request), &self.boot_info)
             .await
             .context("Failed to restart core")?;
 
@@ -904,6 +925,8 @@ impl Debugger {
 
     /// Flash the given binary, and report the progress to the
     /// debug adapter.
+    ///
+    /// Returns how the written image wants to be started.
     //
     // The actual flashing is delegated to [`RpcBackend::flash_binary_resolved`]
     // so local and remote RPC sessions share this DAP-level progress plumbing.
@@ -913,7 +936,7 @@ impl Debugger {
         debug_adapter: &mut DebugAdapter,
         launch_attach_request: &Request,
         session_data: &mut SessionData,
-    ) -> Result<(), DebuggerError> {
+    ) -> Result<BootInfo, DebuggerError> {
         let upload = session_data
             .backend
             .session_interface()
@@ -940,7 +963,7 @@ impl Debugger {
         debug_adapter: &mut DebugAdapter,
         launch_attach_request: &Request,
         session_data: &mut SessionData,
-    ) -> Result<(), DebuggerError> {
+    ) -> Result<BootInfo, DebuggerError> {
         debug_adapter.log_to_console(format!(
             "FLASHING: Starting write of {} to device memory",
             upload.canonical_path.display()
