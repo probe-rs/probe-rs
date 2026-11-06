@@ -2,9 +2,12 @@
 //!
 //! The RPC server takes [`format::FormatOptions`]. These types convert to it.
 
-use std::num::ParseIntError;
+use std::{num::ParseIntError, path::PathBuf};
 
 use probe_rs_rpc::format;
+use probe_rs_rpc_client::RpcClient;
+
+use crate::util::flash::IdfFiles;
 use serde::{Deserialize, Serialize};
 
 fn parse_u32(input: &str) -> Result<u32, ParseIntError> {
@@ -142,24 +145,51 @@ pub enum FormatKind {
     Uf2,
 }
 
-impl From<FormatOptions> for format::FormatOptions {
-    fn from(options: FormatOptions) -> Self {
-        Self {
-            binary_format: options.binary_format.into(),
+impl FormatOptions {
+    /// Returns the options for the RPC server. The client uploads the ESP-IDF files.
+    pub async fn to_rpc(&self, client: &RpcClient) -> anyhow::Result<format::FormatOptions> {
+        let mut options = self.without_files();
+        let idf_files = self.idf_files();
+        if let Some(bootloader) = idf_files.bootloader {
+            options.idf_options.idf_bootloader = Some(client.upload_file(&bootloader).await?);
+        }
+        if let Some(partition_table) = idf_files.partition_table {
+            options.idf_options.idf_partition_table =
+                Some(client.upload_file(&partition_table).await?);
+        }
+        Ok(options)
+    }
+
+    /// Returns the options for the RPC server, with no ESP-IDF files.
+    pub fn without_files(&self) -> format::FormatOptions {
+        format::FormatOptions {
+            binary_format: self.binary_format.into(),
             bin_options: format::BinaryFormatOptions {
-                base_address: options.bin_options.base_address,
-                skip: options.bin_options.skip,
+                base_address: self.bin_options.base_address,
+                skip: self.bin_options.skip,
             },
             idf_options: format::IdfFormatOptions {
-                idf_bootloader: options.idf_options.idf_bootloader,
-                idf_partition_table: options.idf_options.idf_partition_table,
-                idf_target_app_partition: options.idf_options.idf_target_app_partition,
-                idf_flash_mode: options.idf_options.idf_flash_mode.map(Into::into),
-                idf_flash_freq: options.idf_options.idf_flash_freq.map(Into::into),
+                idf_bootloader: None,
+                idf_partition_table: None,
+                idf_target_app_partition: self.idf_options.idf_target_app_partition.clone(),
+                idf_flash_mode: self.idf_options.idf_flash_mode.map(Into::into),
+                idf_flash_freq: self.idf_options.idf_flash_freq.map(Into::into),
             },
             elf_options: format::ElfFormatOptions {
-                skip_section: options.elf_options.skip_section,
+                skip_section: self.elf_options.skip_section.clone(),
             },
+        }
+    }
+
+    /// Returns the ESP-IDF files, on this host.
+    pub fn idf_files(&self) -> IdfFiles {
+        IdfFiles {
+            bootloader: self.idf_options.idf_bootloader.as_ref().map(PathBuf::from),
+            partition_table: self
+                .idf_options
+                .idf_partition_table
+                .as_ref()
+                .map(PathBuf::from),
         }
     }
 }
@@ -227,11 +257,18 @@ mod tests {
         });
 
         let cli: FormatOptions = serde_json::from_value(json.clone()).unwrap();
-        let wire: format::FormatOptions = serde_json::from_value(json).unwrap();
+        let mut wire: format::FormatOptions = serde_json::from_value(json).unwrap();
+        // The client uploads the files, and sends the uploads.
+        wire.idf_options.idf_bootloader = None;
+        wire.idf_options.idf_partition_table = None;
 
         assert_eq!(
-            serde_json::to_value(format::FormatOptions::from(cli)).unwrap(),
+            serde_json::to_value(cli.without_files()).unwrap(),
             serde_json::to_value(wire).unwrap()
         );
+
+        let idf_files = cli.idf_files();
+        assert_eq!(idf_files.bootloader, Some(PathBuf::from("boot.bin")));
+        assert_eq!(idf_files.partition_table, Some(PathBuf::from("parts.csv")));
     }
 }

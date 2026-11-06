@@ -322,11 +322,12 @@ pub async fn load_svd(
     _header: VarHeader,
     request: LoadSvdRequest,
 ) -> LoadSvdResponse {
-    let parsed = request
+    let path = request
         .path
-        .as_deref()
-        .map(|path| crate::rpc::svd::parse_svd_file(std::path::Path::new(path)))
-        .transpose();
+        .as_ref()
+        .map(|path| path.checked(ctx))
+        .transpose()?;
+    let parsed = path.map(crate::rpc::svd::parse_svd_file).transpose();
 
     ctx.with_server_debug_state_mut(request.sessid, |state| match parsed {
         Ok(svd_variables) => {

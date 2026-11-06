@@ -201,10 +201,11 @@ async fn main_try(client: &mut RpcClient, opt: CliOptions) -> Result<(), Operati
     ));
     let session = cli::attach_probe(client, opt.probe_options, None, false).await?;
 
+    let format = opt.format_options.to_rpc(&session.client()).await?;
     cli::flash(
         &session,
         &path,
-        opt.format_options.into(),
+        format,
         opt.download_options,
         None,
         image_instr_set,
