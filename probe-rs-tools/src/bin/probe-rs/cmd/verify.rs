@@ -35,10 +35,11 @@ impl Cmd {
         } else {
             Some(CliProgressBars::new())
         };
+        let format = self.format_options.to_rpc(&session.client()).await?;
         let loader = session
             .build_flash_loader(
                 self.path.to_path_buf(),
-                self.format_options.into(),
+                format,
                 None,
                 self.read_flasher_rtt,
                 None,

@@ -32,10 +32,11 @@ impl Cmd {
     pub async fn run(self, client: RpcClient) -> anyhow::Result<()> {
         let session = cli::attach_probe(&client, self.probe_options, None, false).await?;
 
+        let format = self.format_options.to_rpc(&session.client()).await?;
         let boot_info = cli::flash(
             &session,
             &self.path,
-            self.format_options.into(),
+            format,
             self.download_options,
             None,
             None,

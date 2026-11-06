@@ -269,10 +269,11 @@ impl Cmd {
         let decoders = DecoderSettings::new(&file_meta, &self.monitor_options, Some(utc_offset));
 
         // Flash firmware
+        let format = self.format_options.to_rpc(&session.client()).await?;
         let boot_info = cli::flash(
             &session,
             &self.path,
-            self.format_options.into(),
+            format,
             self.download_options,
             Some(rtt_client.handle()),
             None,
