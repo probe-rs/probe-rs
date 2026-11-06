@@ -799,9 +799,9 @@ impl RpcClient {
         E::Request: Serialize + Schema,
         E::Response: DeserializeOwned + Schema,
     {
-        /// More than one, because a late call of an earlier request can still come. The window of
-        /// the server is one call, so this queue does not drop a call.
-        const HOST_CALL_DEPTH: usize = 4;
+        /// More than the window of the server: 16 posted writes and one other call. So this queue
+        /// does not drop a call.
+        const HOST_CALL_DEPTH: usize = 32;
         /// The output that waits for `on_msg`. If the terminal is too slow, output gets dropped.
         /// Otherwise a full subscription stalls every message of the connection.
         const EVENT_QUEUE_DEPTH: usize = 4096;

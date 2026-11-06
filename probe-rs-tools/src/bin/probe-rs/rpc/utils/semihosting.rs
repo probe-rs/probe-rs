@@ -6,7 +6,7 @@
 use std::{
     collections::{HashMap, VecDeque},
     num::NonZeroU32,
-    time::Duration,
+    time::{Duration, Instant},
 };
 
 use anyhow::bail;
@@ -19,10 +19,12 @@ use probe_rs::{
 };
 use probe_rs_rpc::{
     host_calls::{
-        FileKind, HostCall, HostReply, HostRequest, HostValue, MAX_CHUNK, MAX_OPEN_FILES, OpenMode,
+        FileKind, HostCall, HostError, HostReply, HostRequest, HostValue, MAX_CHUNK,
+        MAX_OPEN_FILES, OpenMode,
     },
     monitor::SemihostingEvent,
 };
+use tokio_util::sync::CancellationToken;
 
 use crate::rpc::{
     HostReplies,
@@ -37,11 +39,109 @@ const EINTR: i32 = 4;
 const EMFILE: i32 = 24;
 const ENAMETOOLONG: i32 = 36;
 
+/// The posted writes that the client did not answer yet. The limits keep the client queue short, and
+/// limit the data that the target believes written.
+const MAX_POSTED_WRITES: usize = 16;
+const MAX_POSTED_BYTES: u32 = 512 * 1024;
+
+/// The replies that the client can owe at once: the posted writes and one call in flight.
+pub const MAX_OPEN_REPLIES: usize = MAX_POSTED_WRITES + 1;
+
 #[derive(Clone, Copy)]
 enum TargetHandle {
     Stdout,
     Stderr,
-    Client { handle: u32, kind: FileKind },
+    Client {
+        handle: u32,
+        kind: FileKind,
+        read_ahead: bool,
+    },
+}
+
+/// What the run loop gets from [`SemihostingHandler::wait`].
+pub enum HostEvent {
+    Reply(HostReply),
+    /// A posted write finished, so the blocked write of a core can continue.
+    Credit(usize),
+}
+
+/// The writes that the server sent without waiting. The target has already seen success, so a failure
+/// latches on the handle.
+#[derive(Default)]
+struct PostedWrites {
+    /// Call id to client handle and length.
+    calls: HashMap<u64, (u32, u32)>,
+    bytes: u32,
+    failed: HashMap<u32, HostError>,
+}
+
+impl PostedWrites {
+    fn has_credit(&self) -> bool {
+        self.calls.len() < MAX_POSTED_WRITES && self.bytes + MAX_CHUNK <= MAX_POSTED_BYTES
+    }
+
+    fn add(&mut self, id: u64, handle: u32, len: u32) {
+        self.calls.insert(id, (handle, len));
+        self.bytes += len;
+    }
+
+    /// Records a reply. Returns `false` if the reply is not for a posted write.
+    fn complete(&mut self, reply: &HostReply) -> bool {
+        let Some((handle, len)) = self.calls.remove(&reply.id) else {
+            return false;
+        };
+        self.bytes -= len;
+
+        let failure = match &reply.result {
+            Ok(HostValue::Written(written)) if *written == len => None,
+            Ok(_) => Some(HostError::Other),
+            Err(error) => Some(*error),
+        };
+        if let Some(error) = failure {
+            self.failed.entry(handle).or_insert(error);
+        }
+        true
+    }
+
+    fn is_empty(&self) -> bool {
+        self.calls.is_empty()
+    }
+}
+
+/// The data that the client read ahead for one handle, and the file position of its start.
+#[derive(Default)]
+struct ReadBuffer {
+    data: VecDeque<u8>,
+    /// A `u64`, because sequential reads can go past 4 GiB.
+    position: u64,
+}
+
+impl ReadBuffer {
+    /// Takes up to `len` bytes.
+    fn take(&mut self, len: u32) -> Vec<u8> {
+        let len = self.data.len().min(len as usize);
+        self.position += len as u64;
+        self.data.drain(..len).collect()
+    }
+
+    /// Moves to `position` without a call to the client. Returns `false` if the data does not reach it.
+    fn seek(&mut self, position: u32) -> bool {
+        let Some(skip) = u64::from(position).checked_sub(self.position) else {
+            return false;
+        };
+        if skip > self.data.len() as u64 {
+            return false;
+        }
+        self.data.drain(..skip as usize);
+        self.position = position.into();
+        true
+    }
+
+    /// Replaces the data after a seek on the client.
+    fn reset(&mut self, position: u32) {
+        self.data.clear();
+        self.position = position.into();
+    }
 }
 
 /// The handles that the target sees. A handle is its index plus one.
@@ -72,6 +172,19 @@ impl HandleTable {
             .and_then(|index| self.0.get_mut(index))
         {
             *entry = None;
+        }
+    }
+
+    /// Stops the read-ahead of the client handle `client`.
+    fn stop_read_ahead(&mut self, client: u32) {
+        for entry in self.0.iter_mut().flatten() {
+            if let TargetHandle::Client {
+                handle, read_ahead, ..
+            } = entry
+                && *handle == client
+            {
+                *read_ahead = false;
+            }
         }
     }
 
@@ -111,6 +224,7 @@ enum PendingCall {
         request: ReadRequest,
         handle: u32,
         kind: FileKind,
+        read_ahead: bool,
         filled: u32,
         asked: u32,
     },
@@ -120,6 +234,12 @@ enum PendingCall {
         kind: FileKind,
         written: u32,
         sent: u32,
+    },
+    /// A posted write that waits for credit. It is not in the queue, because it sends no call.
+    PostWrite {
+        request: WriteRequest,
+        handle: u32,
+        written: u32,
     },
 }
 
@@ -136,6 +256,11 @@ pub struct SemihostingHandler<'a> {
     queue: VecDeque<usize>,
     /// The call that the client works on, and its core.
     in_flight: Option<(u64, usize)>,
+    posted: PostedWrites,
+    /// The cores that wait for credit.
+    credit_waiters: VecDeque<usize>,
+    /// The data that the client read ahead, by client handle.
+    read_buffers: HashMap<u32, ReadBuffer>,
 }
 
 impl<'a> SemihostingHandler<'a> {
@@ -148,7 +273,65 @@ impl<'a> SemihostingHandler<'a> {
             pending: HashMap::new(),
             queue: VecDeque::new(),
             in_flight: None,
+            posted: PostedWrites::default(),
+            credit_waiters: VecDeque::new(),
+            read_buffers: HashMap::new(),
         }
+    }
+
+    /// Fails a call on a handle with a failed posted write.
+    fn take_failure(&mut self, handle: u32) -> bool {
+        if let Some(error) = self.posted.failed.remove(&handle) {
+            self.errno = error.errno();
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Sends the chunks of a write without waiting. Returns the call if it runs out of credit.
+    fn post_write(
+        &mut self,
+        request: WriteRequest,
+        handle: u32,
+        mut written: u32,
+        core: &mut Core<'_>,
+    ) -> anyhow::Result<Option<PendingCall>> {
+        while written < request.bytes_to_write() {
+            if !self.posted.has_credit() {
+                return Ok(Some(PendingCall::PostWrite {
+                    request,
+                    handle,
+                    written,
+                }));
+            }
+
+            let Some(replies) = &self.replies else {
+                bail!("A write to the client waits, but the client has no file mappings");
+            };
+            let id = replies.next_id();
+            let bytes = request.read_chunk(core, written, MAX_CHUNK)?;
+            let len = bytes.len() as u32;
+            self.posted.add(id, handle, len);
+            _ = self.sender.send_host_call(HostCall {
+                id,
+                request: HostRequest::Write { handle, bytes },
+            });
+            written += len;
+        }
+
+        request.finish(core, written)?;
+        Ok(None)
+    }
+
+    /// Queues a call, or makes it wait for credit.
+    fn wait_for(&mut self, core_id: usize, call: PendingCall) {
+        if matches!(call, PendingCall::PostWrite { .. }) {
+            self.credit_waiters.push_back(core_id);
+        } else {
+            self.queue.push_back(core_id);
+        }
+        self.pending.insert(core_id, call);
     }
 
     pub fn can_handle(command: SemihostingCommand) -> bool {
@@ -178,12 +361,11 @@ impl<'a> SemihostingHandler<'a> {
             SemihostingCommand::Open(request) => self.on_open(request, core)?,
             SemihostingCommand::Close(request) => self.on_close(request, core)?,
             SemihostingCommand::Write(request) => self.on_write(request, core)?,
-            SemihostingCommand::Read(request) => self.on_read(request)?,
-            SemihostingCommand::Seek(request) => self
-                .client_handle(request.file_handle())
-                .map(|(handle, _)| PendingCall::Seek { request, handle }),
+            SemihostingCommand::Read(request) => self.on_read(request, core)?,
+            SemihostingCommand::Seek(request) => self.on_seek(request, core)?,
             SemihostingCommand::FileLength(request) => self
                 .client_handle(request.file_handle())
+                .filter(|(handle, _)| !self.take_failure(*handle))
                 .map(|(handle, _)| PendingCall::FileLength { request, handle }),
             SemihostingCommand::WriteConsole(request) => {
                 self.send_output("stdout", request.read(core)?.into_bytes());
@@ -205,8 +387,7 @@ impl<'a> SemihostingHandler<'a> {
 
         Ok(match call {
             Some(call) => {
-                self.pending.insert(core_id, call);
-                self.queue.push_back(core_id);
+                self.wait_for(core_id, call);
                 HaltAction::Wait
             }
             None => HaltAction::Resume,
@@ -225,7 +406,7 @@ impl<'a> SemihostingHandler<'a> {
     /// Returns the client handle of a target handle. Sets the errno if there is none.
     fn client_handle(&mut self, handle: u32) -> Option<(u32, FileKind)> {
         match self.handles.get(handle) {
-            Some(TargetHandle::Client { handle, kind }) => Some((handle, kind)),
+            Some(TargetHandle::Client { handle, kind, .. }) => Some((handle, kind)),
             _ => {
                 self.errno = EBADF;
                 None
@@ -315,7 +496,19 @@ impl<'a> SemihostingHandler<'a> {
         core: &mut Core<'_>,
     ) -> anyhow::Result<Option<PendingCall>> {
         let stream = match self.handles.get(request.file_handle()) {
-            Some(TargetHandle::Client { handle, kind }) => {
+            Some(TargetHandle::Client {
+                handle,
+                kind,
+                read_ahead,
+            }) => {
+                if self.take_failure(handle) {
+                    return Ok(None);
+                }
+                // The firmware can see the timing of a stream, so only a file gets posted writes. A
+                // write to a file that is open for reading fails, and must fail at once.
+                if kind == FileKind::File && !read_ahead {
+                    return self.post_write(request, handle, 0, core);
+                }
                 return Ok(Some(PendingCall::Write {
                     request,
                     handle,
@@ -339,24 +532,82 @@ impl<'a> SemihostingHandler<'a> {
         Ok(None)
     }
 
-    fn on_read(&mut self, request: ReadRequest) -> anyhow::Result<Option<PendingCall>> {
-        Ok(self
-            .client_handle(request.file_handle())
-            .map(|(handle, kind)| PendingCall::Read {
-                request,
-                handle,
-                kind,
-                filled: 0,
-                asked: 0,
-            }))
+    fn on_read(
+        &mut self,
+        request: ReadRequest,
+        core: &mut Core<'_>,
+    ) -> anyhow::Result<Option<PendingCall>> {
+        let Some(TargetHandle::Client {
+            handle,
+            kind,
+            read_ahead,
+        }) = self.handles.get(request.file_handle())
+        else {
+            self.errno = EBADF;
+            return Ok(None);
+        };
+        if self.take_failure(handle) {
+            return Ok(None);
+        }
+        // A read-ahead would grow the buffer with each empty read.
+        if request.bytes_to_read() == 0 {
+            request.finish(core, 0)?;
+            return Ok(None);
+        }
+
+        let mut filled = 0;
+        if let Some(buffer) = self.read_buffers.get_mut(&handle) {
+            let bytes = buffer.take(request.bytes_to_read());
+            request.write_chunk_to_target(core, 0, &bytes)?;
+            filled = bytes.len() as u32;
+        }
+        if filled > 0 && filled == request.bytes_to_read() {
+            request.finish(core, filled)?;
+            return Ok(None);
+        }
+
+        Ok(Some(PendingCall::Read {
+            request,
+            handle,
+            kind,
+            read_ahead,
+            filled,
+            asked: 0,
+        }))
+    }
+
+    fn on_seek(
+        &mut self,
+        request: SeekRequest,
+        core: &mut Core<'_>,
+    ) -> anyhow::Result<Option<PendingCall>> {
+        let Some((handle, _)) = self.client_handle(request.file_handle()) else {
+            return Ok(None);
+        };
+        if self.take_failure(handle) {
+            return Ok(None);
+        }
+
+        if let Some(buffer) = self.read_buffers.get_mut(&handle)
+            && buffer.seek(request.position())
+        {
+            request.success(core)?;
+            return Ok(None);
+        }
+
+        Ok(Some(PendingCall::Seek { request, handle }))
     }
 
     /// Returns the core that a reply belongs to. Any other reply is stale, for example from a call
     /// that ended early.
-    pub fn reply_core(&self, reply: &HostReply) -> Option<usize> {
-        self.in_flight
-            .filter(|(id, _)| *id == reply.id)
-            .map(|(_, core)| core)
+    pub fn reply_core(&self, event: &HostEvent) -> Option<usize> {
+        match event {
+            HostEvent::Reply(reply) => self
+                .in_flight
+                .filter(|(id, _)| *id == reply.id)
+                .map(|(_, core)| core),
+            HostEvent::Credit(core) => Some(*core),
+        }
     }
 
     /// Sends the next call of `core`, if no other call is in flight.
@@ -384,6 +635,7 @@ impl<'a> SemihostingHandler<'a> {
             PendingCall::Read {
                 request,
                 handle,
+                read_ahead,
                 filled,
                 asked,
                 ..
@@ -391,7 +643,7 @@ impl<'a> SemihostingHandler<'a> {
                 *asked = (request.bytes_to_read() - *filled).min(MAX_CHUNK);
                 HostRequest::Read {
                     handle: *handle,
-                    len: *asked,
+                    len: if *read_ahead { MAX_CHUNK } else { *asked },
                 }
             }
             PendingCall::Write {
@@ -408,6 +660,9 @@ impl<'a> SemihostingHandler<'a> {
                     bytes,
                 }
             }
+            PendingCall::PostWrite { .. } => {
+                unreachable!("a posted write that waits for credit is not in the queue")
+            }
         };
 
         let Some(replies) = &self.replies else {
@@ -423,10 +678,15 @@ impl<'a> SemihostingHandler<'a> {
     /// Writes the result of a reply to the target. A multi-chunk transfer stays pending.
     pub fn on_reply<R>(
         &mut self,
-        reply: HostReply,
+        event: HostEvent,
         core: &mut Core<'_>,
     ) -> anyhow::Result<HaltAction<R>> {
         let core_id = core.id();
+        let reply = match event {
+            HostEvent::Reply(reply) => reply,
+            HostEvent::Credit(_) => return self.continue_post_write(core),
+        };
+
         self.in_flight = None;
         let Some(call) = self.pending.get_mut(&core_id) else {
             bail!("A reply came for core {core_id}, which has no pending call");
@@ -434,9 +694,17 @@ impl<'a> SemihostingHandler<'a> {
 
         let mut finished = true;
         match (call, reply.result) {
-            (PendingCall::Open { request, .. }, Ok(HostValue::Opened { handle, kind })) => {
-                let handle = self.handles.add(TargetHandle::Client { handle, kind });
-                request.respond_with_handle(core, handle)?;
+            (PendingCall::Open { request, mode, .. }, Ok(HostValue::Opened { handle, kind })) => {
+                let read_ahead = kind == FileKind::File && *mode == OpenMode::Read;
+                if read_ahead {
+                    self.read_buffers.insert(handle, ReadBuffer::default());
+                }
+                let target_handle = self.handles.add(TargetHandle::Client {
+                    handle,
+                    kind,
+                    read_ahead,
+                });
+                request.respond_with_handle(core, target_handle)?;
             }
             (
                 PendingCall::Close {
@@ -446,15 +714,29 @@ impl<'a> SemihostingHandler<'a> {
                 },
                 result,
             ) => {
-                let request = *request;
-                self.handles.remove_client(*target, *handle);
+                let (request, target, handle) = (*request, *target, *handle);
+                self.read_buffers.remove(&handle);
+                // A write failed after the target saw success, and this is the last call that can
+                // report it.
+                if let Some(error) = self.posted.failed.remove(&handle) {
+                    self.errno = error.errno();
+                    self.handles.remove_client(target, handle);
+                    self.forget(core_id);
+                    return Ok(HaltAction::Resume);
+                }
+                self.handles.remove_client(target, handle);
                 match result {
                     Ok(HostValue::Done) => request.success(core)?,
                     Ok(_) => bail!("The client sent a wrong reply"),
                     Err(error) => self.errno = error.errno(),
                 }
             }
-            (PendingCall::Seek { request, .. }, Ok(HostValue::Done)) => request.success(core)?,
+            (PendingCall::Seek { request, handle }, Ok(HostValue::Done)) => {
+                if let Some(buffer) = self.read_buffers.get_mut(handle) {
+                    buffer.reset(request.position());
+                }
+                request.success(core)?
+            }
             (PendingCall::FileLength { request, .. }, Ok(HostValue::Length(length))) => {
                 // A larger value does not fit the return value, which then looks like an error.
                 match i32::try_from(length) {
@@ -465,23 +747,32 @@ impl<'a> SemihostingHandler<'a> {
             (
                 PendingCall::Read {
                     request,
+                    handle,
                     kind,
+                    read_ahead,
                     filled,
                     asked,
-                    ..
                 },
                 Ok(HostValue::Read(bytes)),
             ) => {
                 let read = bytes.len() as u32;
-                if read > *asked {
+                let requested = if *read_ahead { MAX_CHUNK } else { *asked };
+                if read > requested {
                     bail!("The client sent more data than the target asked for");
                 }
-                request.write_chunk_to_target(core, *filled, &bytes)?;
-                *filled += read;
+
+                let for_target = read.min(*asked);
+                request.write_chunk_to_target(core, *filled, &bytes[..for_target as usize])?;
+                *filled += for_target;
+                if let Some(buffer) = self.read_buffers.get_mut(handle) {
+                    buffer.position += u64::from(for_target);
+                    buffer.data.extend(&bytes[for_target as usize..]);
+                }
 
                 // A stream returns what it has. Another read could block for a long time.
-                let more =
-                    read == *asked && *filled < request.bytes_to_read() && *kind == FileKind::File;
+                let more = read == requested
+                    && *filled < request.bytes_to_read()
+                    && *kind == FileKind::File;
                 if more {
                     finished = false;
                 } else {
@@ -527,6 +818,58 @@ impl<'a> SemihostingHandler<'a> {
         Ok(HaltAction::Resume)
     }
 
+    /// Credit came for the posted write of `core`.
+    fn continue_post_write<R>(&mut self, core: &mut Core<'_>) -> anyhow::Result<HaltAction<R>> {
+        let core_id = core.id();
+        if !matches!(
+            self.pending.get(&core_id),
+            Some(PendingCall::PostWrite { .. })
+        ) {
+            // The run loop checked that the core still waits at the call.
+            bail!("Credit came for core {core_id}, which has no waiting write");
+        }
+        let Some(PendingCall::PostWrite {
+            request,
+            handle,
+            written,
+        }) = self.pending.remove(&core_id)
+        else {
+            unreachable!("the call is a waiting write");
+        };
+
+        Ok(match self.post_write(request, handle, written, core)? {
+            Some(call) => {
+                self.wait_for(core_id, call);
+                HaltAction::Wait
+            }
+            None => HaltAction::Resume,
+        })
+    }
+
+    /// Waits for the posted writes, so that a failure reaches the user.
+    pub fn drain(&mut self, token: &CancellationToken) -> anyhow::Result<()> {
+        // Without file mappings, nothing was posted.
+        let Some(replies) = &self.replies else {
+            return Ok(());
+        };
+        while !self.posted.is_empty() && !token.is_cancelled() {
+            if let Ok(reply) = replies.receiver().recv_timeout(Duration::from_millis(100)) {
+                self.posted.complete(&reply);
+            }
+        }
+
+        if !self.posted.is_empty() {
+            tracing::warn!(
+                "{} semihosting writes were not confirmed before the end.",
+                self.posted.calls.len()
+            );
+        }
+        if let Some(error) = self.posted.failed.values().next() {
+            bail!("A semihosting write failed after the target continued: {error:?}");
+        }
+        Ok(())
+    }
+
     /// The call of a core ends without a reply. The core runs after this.
     pub fn abort_pending(&mut self, core: &mut Core<'_>) -> anyhow::Result<()> {
         if let Some(call) = self.pending.get(&core.id()) {
@@ -539,20 +882,49 @@ impl<'a> SemihostingHandler<'a> {
 
     /// Forgets the call of a core. Its reply is stale after this.
     pub fn forget(&mut self, core_id: usize) {
-        self.pending.remove(&core_id);
+        let call = self.pending.remove(&core_id);
         self.queue.retain(|core| *core != core_id);
+        self.credit_waiters.retain(|core| *core != core_id);
         if self.in_flight.is_some_and(|(_, core)| core == core_id) {
             self.in_flight = None;
+            // The client read for a lost reply, so the buffer no longer knows the position of the
+            // client. Later reads and seeks of the handle go to the client.
+            if let Some(PendingCall::Read {
+                handle,
+                read_ahead: true,
+                ..
+            }) = call
+            {
+                self.read_buffers.remove(&handle);
+                self.handles.stop_read_ahead(handle);
+            }
         }
     }
 
-    /// Waits for a reply for at most `timeout`.
-    pub fn wait(&mut self, timeout: Duration) -> Option<HostReply> {
-        match &self.replies {
-            Some(replies) => replies.receiver().recv_timeout(timeout).ok(),
-            None => {
-                std::thread::sleep(timeout);
-                None
+    /// Waits for an event for at most `timeout`. A reply to a posted write only returns if a core
+    /// waits for its credit.
+    pub fn wait(&mut self, timeout: Duration) -> Option<HostEvent> {
+        let Some(replies) = &self.replies else {
+            std::thread::sleep(timeout);
+            return None;
+        };
+        // Credit that a core did not use, because it left its call, goes to the next one.
+        if self.posted.has_credit()
+            && let Some(core) = self.credit_waiters.pop_front()
+        {
+            return Some(HostEvent::Credit(core));
+        }
+        let deadline = Instant::now() + timeout;
+        loop {
+            let remaining = deadline.saturating_duration_since(Instant::now());
+            let reply = replies.receiver().recv_timeout(remaining).ok()?;
+            if !self.posted.complete(&reply) {
+                return Some(HostEvent::Reply(reply));
+            }
+            if self.posted.has_credit()
+                && let Some(core) = self.credit_waiters.pop_front()
+            {
+                return Some(HostEvent::Credit(core));
             }
         }
     }
@@ -565,6 +937,9 @@ fn finish_with_progress(call: &PendingCall, core: &mut Core<'_>) -> anyhow::Resu
             request, filled, ..
         } if *filled > 0 => request.finish(core, *filled)?,
         PendingCall::Write {
+            request, written, ..
+        }
+        | PendingCall::PostWrite {
             request, written, ..
         } if *written > 0 => request.finish(core, *written)?,
         _ => {}
@@ -613,7 +988,7 @@ where
     ) -> anyhow::Result<HaltAction<R>>,
 {
     type Output = R;
-    type Reply = HostReply;
+    type Reply = HostEvent;
 
     fn on_halt(
         &mut self,
@@ -623,12 +998,12 @@ where
         (self.on_halt)(reason, core, &mut self.host)
     }
 
-    fn reply_core(&self, reply: &HostReply) -> Option<usize> {
-        self.host.reply_core(reply)
+    fn reply_core(&self, event: &HostEvent) -> Option<usize> {
+        self.host.reply_core(event)
     }
 
-    fn on_reply(&mut self, reply: HostReply, core: &mut Core<'_>) -> anyhow::Result<HaltAction<R>> {
-        self.host.on_reply(reply, core)
+    fn on_reply(&mut self, event: HostEvent, core: &mut Core<'_>) -> anyhow::Result<HaltAction<R>> {
+        self.host.on_reply(event, core)
     }
 
     fn continue_pending(&mut self, core: &mut Core<'_>) -> anyhow::Result<()> {
@@ -643,7 +1018,11 @@ where
         self.host.abort_pending(core)
     }
 
-    fn wait(&mut self, timeout: Duration) -> Option<HostReply> {
+    fn drain(&mut self, token: &CancellationToken) -> anyhow::Result<()> {
+        self.host.drain(token)
+    }
+
+    fn wait(&mut self, timeout: Duration) -> Option<HostEvent> {
         self.host.wait(timeout)
     }
 }
@@ -655,7 +1034,120 @@ mod test {
     const CLIENT: TargetHandle = TargetHandle::Client {
         handle: 7,
         kind: FileKind::File,
+        read_ahead: false,
     };
+
+    fn written(id: u64, count: u32) -> HostReply {
+        HostReply {
+            id,
+            result: Ok(HostValue::Written(count)),
+        }
+    }
+
+    #[test]
+    fn posted_writes_are_limited_by_count_and_bytes() {
+        let mut posted = PostedWrites::default();
+        for id in 0..MAX_POSTED_WRITES as u64 {
+            assert!(posted.has_credit());
+            posted.add(id, 1, 1);
+        }
+        assert!(!posted.has_credit());
+        assert!(posted.complete(&written(0, 1)));
+        assert!(posted.has_credit());
+
+        let mut posted = PostedWrites::default();
+        posted.add(0, 1, MAX_POSTED_BYTES - MAX_CHUNK + 1);
+        assert!(!posted.has_credit());
+    }
+
+    #[test]
+    fn a_failed_posted_write_latches_on_its_handle() {
+        let mut posted = PostedWrites::default();
+        posted.add(0, 1, 10);
+        posted.add(1, 1, 10);
+        posted.add(2, 2, 10);
+
+        assert!(posted.complete(&HostReply {
+            id: 0,
+            result: Err(HostError::NotFound),
+        }));
+        // A short write loses data too. The first failure stays.
+        assert!(posted.complete(&written(1, 5)));
+        assert!(posted.complete(&written(2, 10)));
+
+        assert_eq!(posted.failed.get(&1), Some(&HostError::NotFound));
+        assert_eq!(posted.failed.get(&2), None);
+        assert!(posted.is_empty());
+    }
+
+    #[test]
+    fn a_reply_to_another_call_is_not_a_posted_write() {
+        let mut posted = PostedWrites::default();
+        posted.add(0, 1, 10);
+
+        assert!(!posted.complete(&written(1, 10)));
+        assert!(!posted.is_empty());
+    }
+
+    #[test]
+    fn a_read_buffer_serves_reads_and_forward_seeks() {
+        let mut buffer = ReadBuffer::default();
+        buffer.data.extend(b"0123456789");
+
+        assert_eq!(buffer.take(2), b"01");
+        assert!(buffer.seek(5));
+        assert_eq!(buffer.take(2), b"56");
+        assert_eq!(buffer.take(100), b"789");
+        assert!(buffer.take(1).is_empty());
+
+        // Earlier data is gone, and later data needs the client.
+        assert!(!buffer.seek(3));
+        assert!(!buffer.seek(11));
+        assert!(buffer.seek(10));
+    }
+
+    #[test]
+    fn a_seek_on_the_client_replaces_the_buffer() {
+        let mut buffer = ReadBuffer::default();
+        buffer.data.extend(b"0123");
+
+        buffer.reset(100);
+
+        assert!(buffer.take(1).is_empty());
+        assert!(buffer.seek(100));
+    }
+
+    #[test]
+    fn the_buffer_reads_past_4_gib() {
+        let mut buffer = ReadBuffer::default();
+        buffer.reset(u32::MAX - 1);
+        buffer.data.extend(b"0123");
+
+        assert_eq!(buffer.take(4), b"0123");
+
+        // A seek of the target cannot reach this far, so it goes to the client.
+        assert!(!buffer.seek(u32::MAX));
+    }
+
+    #[test]
+    fn a_handle_can_stop_its_read_ahead() {
+        let mut table = HandleTable::default();
+        let handle = table.add(TargetHandle::Client {
+            handle: 7,
+            kind: FileKind::File,
+            read_ahead: true,
+        });
+
+        table.stop_read_ahead(7);
+
+        assert!(matches!(
+            table.get(handle.get()),
+            Some(TargetHandle::Client {
+                read_ahead: false,
+                ..
+            })
+        ));
+    }
 
     #[test]
     fn handle_zero_is_invalid() {
@@ -676,6 +1168,7 @@ mod test {
         let reopened = TargetHandle::Client {
             handle: 8,
             kind: FileKind::File,
+            read_ahead: false,
         };
         assert_eq!(table.add(reopened).get(), handle);
 

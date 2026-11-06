@@ -1029,6 +1029,31 @@ mod tests {
         state.deliver_host_reply(reply(new_id));
     }
 
+    /// The client can owe every posted write and one more call, and the server reads replies only
+    /// between polls. A full channel would drop a reply, and leak its credit.
+    #[test]
+    fn the_reply_channel_holds_every_open_reply() {
+        use crate::rpc::utils::semihosting::MAX_OPEN_REPLIES;
+        use probe_rs_rpc::host_calls::{HostReply, HostValue};
+
+        let state = ConnectionState::new();
+        let replies = state.host_replies().unwrap();
+        let ids: Vec<_> = (0..MAX_OPEN_REPLIES).map(|_| replies.next_id()).collect();
+        for &id in &ids {
+            state.deliver_host_reply(HostReply {
+                id,
+                result: Ok(HostValue::Written(1)),
+            });
+        }
+
+        let received: Vec<_> = replies
+            .receiver()
+            .try_iter()
+            .map(|reply| reply.id)
+            .collect();
+        assert_eq!(received, ids);
+    }
+
     /// The client can go away while a task publishes events. The server must
     /// not panic.
     #[tokio::test]
