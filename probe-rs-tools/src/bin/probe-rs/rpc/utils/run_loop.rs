@@ -118,18 +118,29 @@ where
     }
 }
 
+/// A halt that the run loop saw.
+#[derive(Clone, Copy)]
+struct Halt {
+    reason: HaltReason,
+    /// When the run loop saw the halt.
+    at: Instant,
+}
+
 /// The halt of a core with a pending call.
 #[derive(Clone, Copy)]
 struct PendingHalt {
     reason: HaltReason,
     pc: u64,
+    /// When the run loop saw the halt.
+    since: Instant,
 }
 
 impl PendingHalt {
-    fn read(reason: HaltReason, core: &mut Core<'_>) -> Result<Self> {
+    fn read(halt: Halt, core: &mut Core<'_>) -> Result<Self> {
         Ok(Self {
-            reason,
+            reason: halt.reason,
             pc: core.read_core_reg(core.program_counter())?,
+            since: halt.at,
         })
     }
 
@@ -144,6 +155,9 @@ impl PendingHalt {
 enum CoreCheck<R> {
     /// The run loop continues.
     Continue,
+    /// The run loop continues. The handler answered a halt, and the core runs again after it was
+    /// halted for this time.
+    Resumed(Duration),
     /// The run loop returns this, if the core is the primary one.
     Stop(Result<ReturnReason<R>>),
     /// A pending call failed. The run loop returns this on every core.
@@ -351,9 +365,15 @@ impl RunLoop {
         let start = Instant::now();
         let mut next_wakeup = vec![start; pending.len()];
         let mut reply = None;
+        let mut deadline = timeout.map(|timeout| start + timeout);
+        // The end of the time that the deadline already moved for.
+        let mut paused_until = start;
 
         loop {
             let mut next_poll;
+            // The time that cores were halted for a call that the handler answered at once.
+            let mut paused = Duration::ZERO;
+            let waiting_since = earliest_wait(pending);
 
             {
                 let mut session = shared_session.session_blocking();
@@ -371,6 +391,10 @@ impl RunLoop {
                         core_reply,
                     )? {
                         CoreCheck::Continue => None,
+                        CoreCheck::Resumed(halted) => {
+                            paused += halted;
+                            None
+                        }
                         CoreCheck::Stop(reason) => Some(reason),
                         CoreCheck::PendingFailed(error) => Some(Err(error)),
                     };
@@ -456,7 +480,10 @@ impl RunLoop {
                         Ok(CoreCheck::Stop(Err(error))) | Err(error) if was_pending => {
                             return Err(error);
                         }
-                        Ok(CoreCheck::Continue) => {
+                        Ok(check @ (CoreCheck::Continue | CoreCheck::Resumed(_))) => {
+                            if let CoreCheck::Resumed(halted) = check {
+                                paused += halted;
+                            }
                             *wakeup = Instant::now() + duration;
                             next_poll = next_poll.min(duration);
                         }
@@ -475,8 +502,26 @@ impl RunLoop {
                 }
             }
 
-            if let Some(timeout) = timeout
-                && start.elapsed() >= timeout
+            // The clock stops while a core is halted for a semihosting call, from the halt to the
+            // resume. A slow file system or network must not use up the time of a test, but a test
+            // that hangs while it prints still times out. The session is not locked during a wait,
+            // so other requests and a cancel still work. A call of any core stops the clock, and
+            // overlapping calls count once.
+            let now = Instant::now();
+            if let Some(since) = waiting_since
+                .into_iter()
+                .chain(earliest_wait(pending))
+                .min()
+            {
+                paused += now.saturating_duration_since(since.max(paused_until));
+                paused_until = now;
+            }
+            if let Some(deadline) = &mut deadline {
+                *deadline += paused;
+            }
+
+            if let Some(deadline) = deadline
+                && Instant::now() >= deadline
             {
                 return Ok(ReturnReason::Timeout);
             }
@@ -524,7 +569,12 @@ impl RunLoop {
         let action = handler.on_reply(reply, core);
         Ok(action
             .and_then(|action| {
-                self.apply_action(action, halt.reason, core, next_poll, handler, pending)
+                // The wait for the reply already moved the deadline.
+                let halt = Halt {
+                    reason: halt.reason,
+                    at: Instant::now(),
+                };
+                self.apply_action(action, halt, core, next_poll, handler, pending)
             })
             .unwrap_or_else(CoreCheck::PendingFailed))
     }
@@ -539,10 +589,18 @@ impl RunLoop {
         pending: &mut Option<PendingHalt>,
     ) -> Result<CoreCheck<H::Output>> {
         match status {
-            probe_rs::CoreStatus::Halted(reason) => match handler.on_halt(reason, core) {
-                Ok(action) => self.apply_action(action, reason, core, next_poll, handler, pending),
-                Err(error) => Ok(CoreCheck::Stop(Err(error))),
-            },
+            probe_rs::CoreStatus::Halted(reason) => {
+                let halt = Halt {
+                    reason,
+                    at: Instant::now(),
+                };
+                match handler.on_halt(reason, core) {
+                    Ok(action) => {
+                        self.apply_action(action, halt, core, next_poll, handler, pending)
+                    }
+                    Err(error) => Ok(CoreCheck::Stop(Err(error))),
+                }
+            }
             probe_rs::CoreStatus::Running
             | probe_rs::CoreStatus::Sleeping
             | probe_rs::CoreStatus::Unknown => {
@@ -557,7 +615,7 @@ impl RunLoop {
     fn apply_action<H: HaltHandler>(
         &self,
         action: HaltAction<H::Output>,
-        reason: HaltReason,
+        halt: Halt,
         core: &mut Core<'_>,
         next_poll: &mut Duration,
         handler: &mut H,
@@ -574,11 +632,11 @@ impl RunLoop {
                 // from semihosting. The core is not expected to be halted for other reasons.
                 *next_poll = Duration::ZERO;
                 core.run()?;
-                Ok(CoreCheck::Continue)
+                Ok(CoreCheck::Resumed(halt.at.elapsed()))
             }
             HaltAction::Wait => {
                 if pending.is_none() {
-                    match PendingHalt::read(reason, core) {
+                    match PendingHalt::read(halt, core) {
                         Ok(halt) => *pending = Some(halt),
                         Err(error) => {
                             // The handler took the call, but the run loop cannot wait for it.
@@ -594,6 +652,11 @@ impl RunLoop {
             }
         }
     }
+}
+
+/// Returns when the earliest of the pending calls began.
+fn earliest_wait(pending: &[Option<PendingHalt>]) -> Option<Instant> {
+    pending.iter().flatten().map(|halt| halt.since).min()
 }
 
 /// Takes `reply` if it belongs to `core_id`. Drops a stale reply.
