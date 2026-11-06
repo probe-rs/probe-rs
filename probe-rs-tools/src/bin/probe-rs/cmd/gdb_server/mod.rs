@@ -178,13 +178,14 @@ impl GdbSessionContext {
         for wire_core in &metadata.cores {
             let core_type = from_wire_core_type(wire_core.core_type);
             let meta = session.core(wire_core.index as usize).metadata().await?;
+            let instruction_set = from_wire_instruction_set(meta.instruction_set);
             let registers = CoreRegisters::for_core_type(
                 core_type,
                 meta.fpu_support,
                 meta.floating_point_register_count
                     .map(|count| count as usize),
+                Some(instruction_set),
             );
-            let instruction_set = from_wire_instruction_set(meta.instruction_set);
 
             let name = target
                 .as_ref()

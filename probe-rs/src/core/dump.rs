@@ -359,6 +359,7 @@ impl CoreDump {
             self.core_type,
             self.fpu_support,
             self.floating_point_register_count,
+            Some(self.instruction_set),
         )
     }
 }
