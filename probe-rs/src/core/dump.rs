@@ -108,6 +108,7 @@ impl Processor for RiscvProcessor {
         InstructionSet::Riscv {
             xlen: Xlen::X32,
             c: false,
+            f: false,
         }
     }
     fn core_type(&self) -> CoreType {

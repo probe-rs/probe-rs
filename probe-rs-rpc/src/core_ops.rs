@@ -168,7 +168,7 @@ pub enum WireInstructionSet {
     Thumb2,
     A32,
     A64,
-    Riscv { xlen: WireXlen, c: bool },
+    Riscv { xlen: WireXlen, c: bool, f: bool },
     Xtensa,
 }
 

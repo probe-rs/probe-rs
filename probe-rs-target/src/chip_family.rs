@@ -120,6 +120,9 @@ pub enum InstructionSet {
         xlen: Xlen,
         /// The C extension: compressed 16-bit instructions.
         c: bool,
+        /// The F extension: single-precision floating point. Also set for the D and Q extensions,
+        /// which depend on F.
+        f: bool,
     },
     /// Xtensa instruction set
     Xtensa,
@@ -132,7 +135,12 @@ enum SerializedInstructionSet {
     Thumb2,
     A32,
     A64,
-    Riscv { xlen: Xlen, c: bool },
+    Riscv {
+        xlen: Xlen,
+        c: bool,
+        #[serde(default)]
+        f: bool,
+    },
     Xtensa,
     RV32,
     RV32C,
@@ -142,12 +150,12 @@ enum SerializedInstructionSet {
 
 impl From<SerializedInstructionSet> for InstructionSet {
     fn from(value: SerializedInstructionSet) -> Self {
-        let riscv = |xlen, c| InstructionSet::Riscv { xlen, c };
+        let riscv = |xlen, c| InstructionSet::Riscv { xlen, c, f: false };
         match value {
             SerializedInstructionSet::Thumb2 => InstructionSet::Thumb2,
             SerializedInstructionSet::A32 => InstructionSet::A32,
             SerializedInstructionSet::A64 => InstructionSet::A64,
-            SerializedInstructionSet::Riscv { xlen, c } => riscv(xlen, c),
+            SerializedInstructionSet::Riscv { xlen, c, f } => InstructionSet::Riscv { xlen, c, f },
             SerializedInstructionSet::Xtensa => InstructionSet::Xtensa,
             SerializedInstructionSet::RV32 => riscv(Xlen::X32, false),
             SerializedInstructionSet::RV32C => riscv(Xlen::X32, true),
@@ -174,6 +182,8 @@ impl InstructionSet {
                 Some(InstructionSet::Riscv {
                     xlen,
                     c: features.contains('c'),
+                    // G is IMAFD.
+                    f: features.contains('f') || features.contains('g'),
                 })
             }
         }
@@ -208,12 +218,13 @@ impl InstructionSet {
 
         match (*self, instr_set) {
             (
-                InstructionSet::Riscv { xlen, c },
+                InstructionSet::Riscv { xlen, c, f },
                 InstructionSet::Riscv {
                     xlen: image_xlen,
                     c: image_c,
+                    f: image_f,
                 },
-            ) => xlen == image_xlen && (c || !image_c),
+            ) => xlen == image_xlen && (c || !image_c) && (f || !image_f),
             _ => false,
         }
     }
@@ -568,6 +579,35 @@ impl ChipFamily {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn riscv_target_triples() {
+        let riscv = |xlen, c, f| Some(InstructionSet::Riscv { xlen, c, f });
+        let from = InstructionSet::from_target_triple;
+        assert_eq!(
+            from("riscv32imac-unknown-none-elf"),
+            riscv(Xlen::X32, true, false)
+        );
+        assert_eq!(
+            from("riscv32imafc-unknown-none-elf"),
+            riscv(Xlen::X32, true, true)
+        );
+        assert_eq!(
+            from("riscv64gc-unknown-none-elf"),
+            riscv(Xlen::X64, true, true)
+        );
+    }
+
+    #[test]
+    fn riscv_f_compatibility() {
+        let riscv = |f| InstructionSet::Riscv {
+            xlen: Xlen::X32,
+            c: true,
+            f,
+        };
+        assert!(riscv(true).is_compatible(riscv(false)));
+        assert!(!riscv(false).is_compatible(riscv(true)));
+    }
 
     fn family_with_region_port(port: &str) -> ChipFamily {
         family(&["ahb-ap"], port)

@@ -317,17 +317,10 @@ impl<'state, X: XlenMode> RiscvCore<'state, X> {
 
         interface.ensure_debug_on_sw_breakpoint()?;
 
-        if !state.misa_read {
-            // Determine FPU presence from MISA extensions (F, D, or Q)
-            let misa_val = interface
-                .read_csr(Misa::get_mmio_address() as u16)
-                .unwrap_or(0);
-            let isa_extensions = (misa_val & 0x3ff_ffff) as u32;
-            let fp_mask = (1 << 3) | (1 << 5) | (1 << 16);
-            state.fp_present = isa_extensions & fp_mask != 0;
-            // The E bit is set on RV32E cores, which only have x0-x15.
-            state.rv32e = isa_extensions & (1 << 4) != 0;
-            state.misa_read = true;
+        // `registers` cannot read `misa`, so read it here. A failed read is retried when the
+        // instruction set is needed again.
+        if let Err(error) = state.instruction_set::<X>(&mut interface) {
+            tracing::debug!("Could not read misa: {error}");
         }
 
         Ok(Self {
@@ -846,7 +839,11 @@ impl<X: XlenMode> CoreInterface for RiscvCore<'_, X> {
     }
 
     fn registers(&self) -> &'static CoreRegisters {
-        X::registers(self.state.fp_present, self.state.rv32e)
+        let fp_present = matches!(
+            self.state.instruction_set,
+            Some(InstructionSet::Riscv { f: true, .. })
+        );
+        X::registers(fp_present, self.state.rv32e)
     }
 
     fn program_counter(&self) -> &'static CoreRegister {
@@ -882,12 +879,7 @@ impl<X: XlenMode> CoreInterface for RiscvCore<'_, X> {
     }
 
     fn instruction_set(&mut self) -> Result<InstructionSet, Error> {
-        // Check if the Bit at position 2 (signifies letter C, for compressed) is set.
-        let misa_val = self.interface.read_csr(0x301)?;
-        Ok(InstructionSet::Riscv {
-            xlen: X::XLEN,
-            c: misa_val & (1 << 2) != 0,
-        })
+        Ok(self.state.instruction_set::<X>(&mut self.interface)?)
     }
 
     fn floating_point_register_count(&mut self) -> Result<usize, Error> {
@@ -899,7 +891,10 @@ impl<X: XlenMode> CoreInterface for RiscvCore<'_, X> {
     }
 
     fn fpu_support(&mut self) -> Result<bool, Error> {
-        Ok(self.state.fp_present)
+        Ok(matches!(
+            self.instruction_set()?,
+            InstructionSet::Riscv { f: true, .. }
+        ))
     }
 
     fn reset_catch_set(&mut self) -> Result<(), Error> {
@@ -945,14 +940,12 @@ pub struct RiscvCoreState {
     /// The semihosting command that was decoded at the current program counter
     semihosting_command: Option<SemihostingCommand>,
 
-    /// Whether the core has FPU support (F, D, or Q extensions present)
-    fp_present: bool,
+    /// The instruction set from `misa`, or `None` if `misa` was not read yet.
+    instruction_set: Option<InstructionSet>,
 
-    /// Whether the core is RV32E (misa E extension), with only 16 integer registers.
+    /// Whether the core is RV32E (misa E extension), with only 16 integer registers. Set together
+    /// with `instruction_set`.
     rv32e: bool,
-
-    /// Whether the MISA CSR has been read.
-    misa_read: bool,
 }
 
 impl RiscvCoreState {
@@ -962,10 +955,34 @@ impl RiscvCoreState {
             hw_breakpoints: None,
             pc_written: false,
             semihosting_command: None,
-            fp_present: false,
+            instruction_set: None,
             rv32e: false,
-            misa_read: false,
         }
+    }
+
+    /// Returns the instruction set of the core. Reads `misa` only until a read succeeds.
+    fn instruction_set<X: XlenMode>(
+        &mut self,
+        interface: &mut RiscvCommunicationInterface,
+    ) -> Result<InstructionSet, RiscvError> {
+        if let Some(instruction_set) = self.instruction_set {
+            return Ok(instruction_set);
+        }
+
+        let misa_val = interface.read_csr(Misa::get_mmio_address() as u16)?;
+        let isa_extensions = (misa_val & 0x3ff_ffff) as u32;
+        // FPU presence from the F, D, or Q extensions
+        let fp_mask = (1 << 3) | (1 << 5) | (1 << 16);
+        let instruction_set = InstructionSet::Riscv {
+            xlen: X::XLEN,
+            c: isa_extensions & (1 << 2) != 0,
+            f: isa_extensions & fp_mask != 0,
+        };
+        // The E bit is set on RV32E cores, which only have x0-x15.
+        self.rv32e = isa_extensions & (1 << 4) != 0;
+        self.instruction_set = Some(instruction_set);
+
+        Ok(instruction_set)
     }
 }
 

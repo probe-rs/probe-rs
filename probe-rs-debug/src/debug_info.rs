@@ -2688,6 +2688,7 @@ mod test {
         let rv32 = Some(InstructionSet::Riscv {
             xlen: Xlen::X32,
             c: false,
+            f: false,
         });
 
         assert_eq!(
