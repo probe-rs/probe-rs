@@ -36,7 +36,7 @@ impl FlashCompare for CmsisVerifyCompare {
     ) -> Result<(), FlashError> {
         let mut active = context.algorithm()?;
         for check in checks {
-            check.outcome = Some(Self::compare_check(&mut active, check)?);
+            check.set_outcome(Self::compare_check(&mut active, check)?);
         }
 
         Ok(())

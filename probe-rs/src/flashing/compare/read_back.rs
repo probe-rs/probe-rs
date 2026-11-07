@@ -25,7 +25,7 @@ impl FlashCompare for ReadBackCore {
             let outcome = check.compare_read_back(|address, data| {
                 core.read(address, data).map_err(FlashError::Core)
             })?;
-            check.outcome = Some(outcome);
+            check.set_outcome(outcome);
         }
 
         Ok(())
