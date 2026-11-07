@@ -17,10 +17,10 @@ use crate::rpc::{
     utils::{
         run_loop::{ReturnReason, RunLoop, VectorCatchConfig},
         semihosting::SemihostingFileManager,
+        semihosting_mappings::Mappings,
     },
 };
 use probe_rs_rpc::monitor::SemihostingEvent;
-use probe_rs_rpc::semihosting_options::SemihostingOptions;
 use probe_rs_rpc::{ListTestsEndpoint, RunTestEndpoint};
 
 pub async fn list_tests(
@@ -44,7 +44,7 @@ fn list_tests_impl(
 ) -> anyhow::Result<Tests> {
     let shared_session = ctx.shared_session(request.sessid);
     let mut list_handler = ListEventHandler::new(
-        ctx.semihosting_options(request.semihosting_options)?,
+        Mappings::new(&ctx.semihosting_options(request.semihosting_options)?)?,
         |event| _ = sender.send_semihosting_event(event),
     );
 
@@ -124,7 +124,7 @@ fn run_test_impl(
 ) -> anyhow::Result<TestResult> {
     tracing::info!("Running test {}", request.test.name);
 
-    let semihosting_options = ctx.semihosting_options(request.semihosting_options)?;
+    let mappings = Mappings::new(&ctx.semihosting_options(request.semihosting_options)?)?;
 
     let timeout = request.test.timeout.map(|t| Duration::from_secs(t as u64));
     let timeout = timeout.unwrap_or(Duration::from_secs(60));
@@ -149,7 +149,7 @@ fn run_test_impl(
     }
 
     let expected_outcome = request.test.expected_outcome;
-    let mut run_handler = RunEventHandler::new(request.test, semihosting_options, |event| {
+    let mut run_handler = RunEventHandler::new(request.test, mappings, |event| {
         _ = sender.send_semihosting_event(event)
     });
 
@@ -237,9 +237,9 @@ struct ListEventHandler<F: FnMut(SemihostingEvent)> {
 impl<F: FnMut(SemihostingEvent)> ListEventHandler<F> {
     const SEMIHOSTING_USER_LIST: u32 = 0x100;
 
-    fn new(semihosting_options: SemihostingOptions, sender: F) -> Self {
+    fn new(mappings: Mappings, sender: F) -> Self {
         Self {
-            semihosting_file_manager: SemihostingFileManager::new(semihosting_options),
+            semihosting_file_manager: SemihostingFileManager::new(mappings),
             cmdline_requested: false,
             sender,
         }
@@ -325,10 +325,10 @@ struct RunEventHandler<F: FnMut(SemihostingEvent)> {
 }
 
 impl<F: FnMut(SemihostingEvent)> RunEventHandler<F> {
-    fn new(test: Test, semihosting_options: SemihostingOptions, sender: F) -> Self {
+    fn new(test: Test, mappings: Mappings, sender: F) -> Self {
         Self {
             test,
-            semihosting_file_manager: SemihostingFileManager::new(semihosting_options),
+            semihosting_file_manager: SemihostingFileManager::new(mappings),
             cmdline_requested: false,
             sender,
         }
