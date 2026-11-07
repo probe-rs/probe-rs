@@ -4,7 +4,7 @@ use tokio::net::unix::{OwnedReadHalf, OwnedWriteHalf};
 use tokio::sync::Mutex;
 
 use crate::transport::{
-    LENGTH_PREFIX_LEN, frame,
+    LENGTH_PREFIX_LEN, MAX_REPLY_LEN, frame,
     memory::{PostcardReceiver, PostcardSender},
 };
 
@@ -37,12 +37,19 @@ impl PostcardSender for UnixStreamTx {
 
 pub struct UnixStreamRx {
     reader: Mutex<OwnedReadHalf>,
+    max_len: usize,
 }
 
 impl UnixStreamRx {
     pub fn new(reader: OwnedReadHalf) -> Self {
+        Self::with_max_len(reader, MAX_REPLY_LEN)
+    }
+
+    /// Creates a receiver that fails at a message of more than `max_len` bytes.
+    pub fn with_max_len(reader: OwnedReadHalf, max_len: usize) -> Self {
         Self {
             reader: Mutex::new(reader),
+            max_len,
         }
     }
 }
@@ -63,6 +70,9 @@ impl PostcardReceiver for UnixStreamRx {
         };
 
         let length = u32::from_le_bytes(length_buf) as usize;
+        if length > self.max_len {
+            return Err(WireRxErrorKind::ConnectionClosed);
+        }
 
         let mut msg = vec![0u8; length];
         reader

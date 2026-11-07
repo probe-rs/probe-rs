@@ -20,7 +20,7 @@ use futures_util::{
 };
 use postcard_rpc::server::WireRxErrorKind;
 use probe_rs::probe::list::Lister;
-use probe_rs_rpc::transport::{frame, websocket::WebsocketRx};
+use probe_rs_rpc::transport::{MAX_LOGIN_LEN, MAX_REQUEST_LEN, frame, websocket::WebsocketRx};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha512};
 use tokio::task::LocalSet;
@@ -328,13 +328,16 @@ async fn serve_socket(
 ) -> bool {
     // The time of the first ping after the last frame from the client. Any frame is an answer.
     let unanswered_ping = std::cell::Cell::new(None);
-    let mut reader = WebsocketRx::new(reader.map(|message| {
-        unanswered_ping.set(None);
-        message.map(|message| match message {
-            ws::Message::Binary(binary) => binary,
-            _ => Bytes::new(),
-        })
-    }));
+    let mut reader = WebsocketRx::with_max_len(
+        reader.map(|message| {
+            unanswered_ping.set(None);
+            message.map(|message| match message {
+                ws::Message::Binary(binary) => binary,
+                _ => Bytes::new(),
+            })
+        }),
+        MAX_LOGIN_LEN,
+    );
 
     let challenge_response = match tokio::time::timeout(client_timeout, reader.next()).await {
         Ok(Some(Ok(challenge_response))) => challenge_response,
@@ -368,6 +371,7 @@ async fn serve_socket(
     };
 
     tracing::info!("User {} connected", user.name);
+    reader.set_max_len(MAX_REQUEST_LEN);
 
     let (server, tx, mut rx) = RpcApp::create_server(
         SERVER_DEPTH,
@@ -463,8 +467,11 @@ async fn serve_socket(
 
 #[cfg(unix)]
 async fn handle_unix_rpc(stream: tokio::net::UnixStream, probe_broker: Arc<ProbeBroker>) {
-    use probe_rs_rpc::transport::memory::{PostcardReceiver, PostcardSender};
-    use probe_rs_rpc::transport::unix::{UnixStreamRx, UnixStreamTx};
+    use probe_rs_rpc::transport::{
+        MAX_REQUEST_LEN,
+        memory::{PostcardReceiver, PostcardSender},
+        unix::{UnixStreamRx, UnixStreamTx},
+    };
 
     tracing::info!("Unix socket client connected");
 
@@ -490,7 +497,7 @@ async fn handle_unix_rpc(stream: tokio::net::UnixStream, probe_broker: Arc<Probe
     };
 
     let receiver = async {
-        let mut reader = UnixStreamRx::new(reader);
+        let mut reader = UnixStreamRx::with_max_len(reader, MAX_REQUEST_LEN);
 
         // Forward messages from the client to the server.
         loop {
@@ -551,6 +558,47 @@ mod tests {
             _ = server => panic!("the server stopped"),
             messages = tokio::time::timeout(Duration::from_secs(5), client) => {
                 messages.expect("the websocket stayed open")
+            }
+        };
+
+        assert!(
+            messages
+                .iter()
+                .any(|message| matches!(message, Ok(Message::Close(_)))),
+            "no close frame, the client got: {messages:?}"
+        );
+    }
+
+    /// A client must not make the server buffer data before it logs in.
+    #[tokio::test]
+    async fn a_too_long_login_closes_the_websocket() {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let server = serve_websockets(
+            listener,
+            ServerConfig::default(),
+            Arc::new(ProbeBroker::new()),
+            TIMEOUT,
+            PIECE_LEN,
+        );
+
+        let client = async {
+            let (mut ws, _) = tokio_tungstenite::connect_async(format!("ws://{address}/worker"))
+                .await
+                .unwrap();
+            // Only the length comes, so a server that waits for the rest stays silent.
+            let length = (MAX_LOGIN_LEN as u32 + 1).to_le_bytes();
+            ws.send(Message::Binary(Bytes::copy_from_slice(&length)))
+                .await
+                .unwrap();
+
+            ws.collect::<Vec<_>>().await
+        };
+
+        let messages = tokio::select! {
+            _ = server => panic!("the server stopped"),
+            messages = tokio::time::timeout(TIMEOUT / 2, client) => {
+                messages.expect("the server waited for the message")
             }
         };
 
