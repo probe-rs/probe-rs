@@ -24,14 +24,11 @@ use crate::flashing::{FlashError, FlashLayout, FlashProgress, ProgressOperation}
 /// One erase sector, and the content that it must hold.
 #[derive(Debug)]
 pub struct SectorCheck<'a> {
-    /// The address range of the erase sector.
-    pub sector: Range<u64>,
-    /// The image data in the sector, as `(address, data)` pairs in ascending address order.
-    pub expected: Vec<(u64, &'a [u8])>,
-    /// The content of the bytes that `expected` does not cover.
-    pub outside: Outside,
-    /// The result. `None` means that no backend has one yet.
-    pub outcome: Option<CompareOutcome>,
+    sector: Range<u64>,
+    expected: Vec<(u64, &'a [u8])>,
+    outside: Outside,
+    /// `None` means that no backend has a result yet.
+    outcome: Option<CompareOutcome>,
     /// The bytes that this check adds to the progress.
     progress_size: u64,
 }
@@ -46,6 +43,32 @@ impl<'a> SectorCheck<'a> {
             outcome: None,
             progress_size: 0,
         }
+    }
+
+    /// Returns the address range of the erase sector.
+    pub fn sector(&self) -> Range<u64> {
+        self.sector.clone()
+    }
+
+    /// Returns the image data in the sector, as `(address, data)` pairs in ascending address
+    /// order.
+    pub fn expected(&self) -> &[(u64, &'a [u8])] {
+        &self.expected
+    }
+
+    /// Returns the content of the bytes that [`expected`](Self::expected) does not cover.
+    pub fn outside(&self) -> Outside {
+        self.outside
+    }
+
+    /// Returns the result, or `None` if no backend has one yet.
+    pub fn outcome(&self) -> Option<CompareOutcome> {
+        self.outcome
+    }
+
+    /// Sets the result.
+    pub fn set_outcome(&mut self, outcome: CompareOutcome) {
+        self.outcome = Some(outcome);
     }
 
     /// Returns the full content of the sector, if the check defines it.
@@ -152,9 +175,8 @@ pub enum CompareCost {
 ///
 /// - Never give [`CompareOutcome::Match`] or [`CompareOutcome::Empty`] when it is not true.
 /// - [`CompareOutcome::Mismatch`] in place of [`CompareOutcome::Empty`] is correct.
-/// - Leave [`SectorCheck::outcome`] at `None` for a sector that this method cannot check, so that
-///   the next method gets it. Return errors.
-/// - Only set [`SectorCheck::outcome`]. Other backends can use the rest of the check.
+/// - Do not set a result for a sector that this method cannot check, so that the next method
+///   gets it. Return errors.
 /// - Do not read erased flash on a target where such a read faults.
 pub trait FlashCompare: Send + Sync + Debug {
     /// Returns how much data this method moves over the debug link.
@@ -162,7 +184,8 @@ pub trait FlashCompare: Send + Sync + Debug {
 
     /// Sets the result of each check.
     ///
-    /// Each check holds `None` on entry. All checks are in `region`.
+    /// No check has a result on entry. All checks are in `region`, so that a method can decide
+    /// from the region if it can check them.
     fn compare(
         &self,
         context: &mut CompareContext<'_>,

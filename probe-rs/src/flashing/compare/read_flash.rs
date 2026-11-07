@@ -23,7 +23,7 @@ impl FlashCompare for ReadFlashCompare {
         for check in checks {
             let outcome =
                 check.compare_read_back(|address, data| active.read_flash(address, data))?;
-            check.outcome = Some(outcome);
+            check.set_outcome(outcome);
         }
 
         Ok(())

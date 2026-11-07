@@ -415,7 +415,7 @@ impl FlashCompare for SaciCompare {
                     break;
                 }
             }
-            check.outcome = Some(outcome);
+            check.set_outcome(outcome);
         }
 
         Ok(())

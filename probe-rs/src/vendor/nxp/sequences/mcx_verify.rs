@@ -191,7 +191,11 @@ impl FlashCompare for McxMisrCompare {
         }
 
         for check in checks {
-            check.outcome = Self::compare_check(&mut core, check).map_err(FlashError::Core)?;
+            if let Some(outcome) =
+                Self::compare_check(&mut core, check).map_err(FlashError::Core)?
+            {
+                check.set_outcome(outcome);
+            }
         }
 
         Ok(())
