@@ -981,10 +981,7 @@ impl<'op, 'p, O: Operation> ActiveFlasher<'op, 'p, O> {
                 // check_for_semihosting fn will walk off the beginning of the algo
                 Some(match self.instruction_set {
                     InstructionSet::Thumb2 => algo.load_address + 1,
-                    InstructionSet::RV32
-                    | InstructionSet::RV32C
-                    | InstructionSet::RV64
-                    | InstructionSet::RV64C => algo.load_address + 4,
+                    InstructionSet::Riscv { .. } => algo.load_address + 4,
                     _ => algo.load_address,
                 }),
             ),

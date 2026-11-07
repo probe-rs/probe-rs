@@ -168,11 +168,14 @@ pub enum WireInstructionSet {
     Thumb2,
     A32,
     A64,
-    RV32,
-    RV32C,
-    RV64,
-    RV64C,
+    Riscv { xlen: WireXlen, c: bool },
     Xtensa,
+}
+
+#[derive(Debug, Serialize, Deserialize, Schema, Copy, Clone, PartialEq, Eq)]
+pub enum WireXlen {
+    X32,
+    X64,
 }
 
 #[derive(Serialize, Deserialize, Schema, Clone, Copy)]

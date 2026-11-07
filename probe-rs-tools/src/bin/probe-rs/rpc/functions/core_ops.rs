@@ -12,6 +12,7 @@ use probe_rs_rpc::core_ops::{
     WireCoreMetadata, WireCoreStatus, WireCoreType, WireExitErrorDetails, WireHaltReason,
     WireInstructionSet, WireRegisterId, WireRegisterReadResult, WireRegisterValue,
     WireSemihostingCommand, WireSemihostingUiEvent, WireSteppingMode, WireVectorCatchCondition,
+    WireXlen,
 };
 use probe_rs_rpc::rtt_config::DataFormat;
 
@@ -459,10 +460,11 @@ pub(crate) mod convert {
         WireBreakpointCause, WireCoreInformation, WireCoreStatus, WireCoreType,
         WireExitErrorDetails, WireHaltReason, WireInstructionSet, WireRegisterId,
         WireRegisterValue, WireSemihostingCommand, WireSteppingMode, WireVectorCatchCondition,
+        WireXlen,
     };
     use probe_rs::{
         CoreInformation, CoreStatus, HaltReason, InstructionSet, RegisterId, RegisterValue,
-        VectorCatchCondition,
+        VectorCatchCondition, Xlen,
         semihosting::{ExitErrorDetails, SemihostingCommand, UnknownCommandDetails},
     };
     use probe_rs_debug::SteppingMode;
@@ -657,10 +659,13 @@ pub(crate) mod convert {
             InstructionSet::Thumb2 => WireInstructionSet::Thumb2,
             InstructionSet::A32 => WireInstructionSet::A32,
             InstructionSet::A64 => WireInstructionSet::A64,
-            InstructionSet::RV32 => WireInstructionSet::RV32,
-            InstructionSet::RV32C => WireInstructionSet::RV32C,
-            InstructionSet::RV64 => WireInstructionSet::RV64,
-            InstructionSet::RV64C => WireInstructionSet::RV64C,
+            InstructionSet::Riscv { xlen, c } => WireInstructionSet::Riscv {
+                xlen: match xlen {
+                    Xlen::X32 => WireXlen::X32,
+                    Xlen::X64 => WireXlen::X64,
+                },
+                c,
+            },
             InstructionSet::Xtensa => WireInstructionSet::Xtensa,
         }
     }
@@ -670,10 +675,13 @@ pub(crate) mod convert {
             WireInstructionSet::Thumb2 => InstructionSet::Thumb2,
             WireInstructionSet::A32 => InstructionSet::A32,
             WireInstructionSet::A64 => InstructionSet::A64,
-            WireInstructionSet::RV32 => InstructionSet::RV32,
-            WireInstructionSet::RV32C => InstructionSet::RV32C,
-            WireInstructionSet::RV64 => InstructionSet::RV64,
-            WireInstructionSet::RV64C => InstructionSet::RV64C,
+            WireInstructionSet::Riscv { xlen, c } => InstructionSet::Riscv {
+                xlen: match xlen {
+                    WireXlen::X32 => Xlen::X32,
+                    WireXlen::X64 => Xlen::X64,
+                },
+                c,
+            },
             WireInstructionSet::Xtensa => InstructionSet::Xtensa,
         }
     }
