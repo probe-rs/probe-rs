@@ -2,7 +2,7 @@
 
 use crate::{
     CoreInterface, CoreRegister, CoreStatus, CoreType, Error, HaltReason, InstructionSet,
-    MemoryInterface, MemoryMappedRegister,
+    MemoryInterface, MemoryMappedRegister, Xlen,
     architecture::riscv::sequences::RiscvDebugSequence,
     core::{
         Architecture, BreakpointCause, CoreInformation, CoreRegisters, RegisterId, RegisterValue,
@@ -68,6 +68,8 @@ mod sealed {
 /// all XLEN-dependent differences so that [`RiscvCore`] can be a single generic
 /// struct rather than two near-duplicate types.
 pub trait XlenMode: sealed::Sealed + 'static {
+    /// The register width of this core.
+    const XLEN: Xlen;
     /// Configure the communication interface for this XLEN (e.g. set 64-bit mode).
     fn configure_interface(interface: &mut RiscvCommunicationInterface);
     /// The `CoreType` reported by this core.
@@ -86,10 +88,6 @@ pub trait XlenMode: sealed::Sealed + 'static {
     fn csr_to_register_value(v: u64) -> RegisterValue;
     /// Unwrap a `RegisterValue` into a `u64` for writing to a CSR.
     fn register_value_to_csr(v: RegisterValue) -> Result<u64, Error>;
-    /// The `InstructionSet` variant for this XLEN when compressed instructions are present.
-    fn compressed_instruction_set() -> InstructionSet;
-    /// The `InstructionSet` variant for this XLEN without compressed instructions.
-    fn uncompressed_instruction_set() -> InstructionSet;
     /// Extract `(trigger_type, mcontrol_low32)` from a raw `tdata1` value.
     ///
     /// `mcontrol_low32` is the low 32 bits of `tdata1`, which is compatible with
@@ -127,6 +125,8 @@ impl sealed::Sealed for Xlen32 {}
 impl sealed::Sealed for Xlen64 {}
 
 impl XlenMode for Xlen32 {
+    const XLEN: Xlen = Xlen::X32;
+
     fn configure_interface(_interface: &mut RiscvCommunicationInterface) {}
 
     fn core_type() -> CoreType {
@@ -166,13 +166,6 @@ impl XlenMode for Xlen32 {
         Ok(u64::from(u))
     }
 
-    fn compressed_instruction_set() -> InstructionSet {
-        InstructionSet::RV32C
-    }
-    fn uncompressed_instruction_set() -> InstructionSet {
-        InstructionSet::RV32
-    }
-
     fn unpack_tdata1(raw: u64) -> (u32, u32) {
         debug_assert!(
             raw <= u32::MAX as u64,
@@ -208,6 +201,8 @@ impl XlenMode for Xlen32 {
 }
 
 impl XlenMode for Xlen64 {
+    const XLEN: Xlen = Xlen::X64;
+
     fn configure_interface(interface: &mut RiscvCommunicationInterface) {
         interface.set_xlen_64(true);
     }
@@ -243,13 +238,6 @@ impl XlenMode for Xlen64 {
 
     fn register_value_to_csr(v: RegisterValue) -> Result<u64, Error> {
         v.try_into()
-    }
-
-    fn compressed_instruction_set() -> InstructionSet {
-        InstructionSet::RV64C
-    }
-    fn uncompressed_instruction_set() -> InstructionSet {
-        InstructionSet::RV64
     }
 
     fn unpack_tdata1(raw: u64) -> (u32, u32) {
@@ -593,7 +581,7 @@ impl<X: XlenMode> CoreInterface for RiscvCore<'_, X> {
             // single step and manually advance the dpc.
             let mut debug_pc = self.read_core_reg(RegisterId(0x7b1))?;
             // Advance the dpc by the size of the EBREAK (ebreak or c.ebreak) instruction.
-            if self.instruction_set()? == X::compressed_instruction_set() {
+            if let InstructionSet::Riscv { c: true, .. } = self.instruction_set()? {
                 // We may have been halted by either an EBREAK or a C.EBREAK instruction.
                 // We need to read back the instruction to determine how many bytes to skip.
                 let instruction = self.read_word_32(debug_pc.try_into().unwrap())?;
@@ -896,11 +884,10 @@ impl<X: XlenMode> CoreInterface for RiscvCore<'_, X> {
     fn instruction_set(&mut self) -> Result<InstructionSet, Error> {
         // Check if the Bit at position 2 (signifies letter C, for compressed) is set.
         let misa_val = self.interface.read_csr(0x301)?;
-        if misa_val & (1 << 2) != 0 {
-            Ok(X::compressed_instruction_set())
-        } else {
-            Ok(X::uncompressed_instruction_set())
-        }
+        Ok(InstructionSet::Riscv {
+            xlen: X::XLEN,
+            c: misa_val & (1 << 2) != 0,
+        })
     }
 
     fn floating_point_register_count(&mut self) -> Result<usize, Error> {

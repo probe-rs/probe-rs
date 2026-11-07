@@ -9,7 +9,7 @@ use capstone::{
     arch::riscv::ArchMode as riscvArchMode, prelude::*,
 };
 use itertools::Itertools;
-use probe_rs::{Core, CoreInterface, CoreType, Error, InstructionSet, MemoryInterface};
+use probe_rs::{Core, CoreInterface, CoreType, Error, InstructionSet, MemoryInterface, Xlen};
 use probe_rs_debug::{ColumnType, DebugInfo, SourceLocation};
 
 pub(crate) fn disassemble_target_memory(
@@ -25,8 +25,9 @@ pub(crate) fn disassemble_target_memory(
     let endianness = core.endianness()?;
     match instruction_set {
         InstructionSet::Thumb2
-        | InstructionSet::RV32C
-        | InstructionSet::RV32
+        | InstructionSet::Riscv {
+            xlen: Xlen::X32, ..
+        }
         | InstructionSet::A32
         | InstructionSet::A64 => (),
         _ => return Err(DebuggerError::Unimplemented), // e.g. Xtensa.
@@ -401,32 +402,19 @@ fn get_capstone_le(
             .mode(aarch64ArchMode::Arm)
             .endian(Endian::Little)
             .build(),
-        InstructionSet::RV32 => Capstone::new()
-            .riscv()
-            .mode(riscvArchMode::RiscV32)
-            .endian(Endian::Little)
-            .build(),
-        InstructionSet::RV32C => Capstone::new()
-            .riscv()
-            .mode(riscvArchMode::RiscV32)
-            .endian(Endian::Little)
-            .extra_mode(std::iter::once(
-                capstone::arch::riscv::ArchExtraMode::RiscVC,
-            ))
-            .build(),
-        InstructionSet::RV64 => Capstone::new()
-            .riscv()
-            .mode(riscvArchMode::RiscV64)
-            .endian(Endian::Little)
-            .build(),
-        InstructionSet::RV64C => Capstone::new()
-            .riscv()
-            .mode(riscvArchMode::RiscV64)
-            .endian(Endian::Little)
-            .extra_mode(std::iter::once(
-                capstone::arch::riscv::ArchExtraMode::RiscVC,
-            ))
-            .build(),
+        InstructionSet::Riscv { xlen, c } => {
+            let mode = match xlen {
+                Xlen::X32 => riscvArchMode::RiscV32,
+                Xlen::X64 => riscvArchMode::RiscV64,
+            };
+            let mut capstone_builder = Capstone::new().riscv().mode(mode).endian(Endian::Little);
+            if c {
+                capstone_builder = capstone_builder.extra_mode(std::iter::once(
+                    capstone::arch::riscv::ArchExtraMode::RiscVC,
+                ));
+            }
+            capstone_builder.build()
+        }
         InstructionSet::Xtensa => return Err(DebuggerError::Unimplemented),
     }
     .map_err(|err| anyhow!("Error creating capstone: {err:?}"))?;

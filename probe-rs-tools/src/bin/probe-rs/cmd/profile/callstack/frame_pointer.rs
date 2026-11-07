@@ -1,6 +1,7 @@
 use probe_rs::InstructionSet;
 use probe_rs::MemoryInterface;
 use probe_rs::RegisterValue;
+use probe_rs::Xlen;
 use probe_rs_debug::unwind_program_counter_register;
 
 use super::FunctionAddress;
@@ -178,16 +179,14 @@ fn read_frame_record_for_core(
                 |fr| AdjustedFrameRecord::new_from_frame_record_64(fr, instruction_set, last_pc),
             )
         }
-        InstructionSet::RV32 | InstructionSet::RV32C => {
-            read_arm_riscv_32_frame_record(memory, frame_pointer, RISCV32_FRAME_RECORD_OFFSET).map(
-                |fr| AdjustedFrameRecord::new_from_frame_record_32(fr, instruction_set, last_pc),
-            )
-        }
-        InstructionSet::RV64 | InstructionSet::RV64C => {
-            read_arm_riscv_64_frame_record(memory, frame_pointer, RISCV64_FRAME_RECORD_OFFSET).map(
-                |fr| AdjustedFrameRecord::new_from_frame_record_64(fr, instruction_set, last_pc),
-            )
-        }
+        InstructionSet::Riscv {
+            xlen: Xlen::X32, ..
+        } => read_arm_riscv_32_frame_record(memory, frame_pointer, RISCV32_FRAME_RECORD_OFFSET)
+            .map(|fr| AdjustedFrameRecord::new_from_frame_record_32(fr, instruction_set, last_pc)),
+        InstructionSet::Riscv {
+            xlen: Xlen::X64, ..
+        } => read_arm_riscv_64_frame_record(memory, frame_pointer, RISCV64_FRAME_RECORD_OFFSET)
+            .map(|fr| AdjustedFrameRecord::new_from_frame_record_64(fr, instruction_set, last_pc)),
         InstructionSet::Xtensa => {
             read_xtensa_frame_record(memory, frame_pointer, XTENSA_FRAME_RECORD_OFFSET).map(|fr| {
                 AdjustedFrameRecord::new_from_frame_record_32(fr, instruction_set, last_pc)

@@ -90,7 +90,7 @@ mod session;
 #[cfg(any(test, feature = "test"))]
 pub mod test;
 
-pub use crate::config::{CoreType, Endian, InstructionSet, Target};
+pub use crate::config::{CoreType, Endian, InstructionSet, Target, Xlen};
 #[cfg(feature = "coredump")]
 pub use crate::core::dump::{CoreDump, CoreDumpError};
 pub use crate::core::registers::RegisterDataType;

@@ -1,7 +1,7 @@
 use crate::architecture::riscv::registers::RISCV_CORE_REGISTERS;
 use crate::architecture::xtensa::arch::{Register as XtensaRegister, SpecialRegister};
 use crate::architecture::xtensa::registers::XTENSA_CORE_REGISTERS;
-use crate::{Core, CoreRegisters, CoreType, Error, InstructionSet, MemoryInterface};
+use crate::{Core, CoreRegisters, CoreType, Error, InstructionSet, MemoryInterface, Xlen};
 use crate::{RegisterId, RegisterValue};
 use object::elf::PT_NOTE;
 use object::read::elf::ProgramHeader;
@@ -105,7 +105,10 @@ impl Processor for XtensaProcessor {
 struct RiscvProcessor;
 impl Processor for RiscvProcessor {
     fn instruction_set(&self) -> InstructionSet {
-        InstructionSet::RV32
+        InstructionSet::Riscv {
+            xlen: Xlen::X32,
+            c: false,
+        }
     }
     fn core_type(&self) -> CoreType {
         CoreType::Riscv

@@ -25,7 +25,7 @@ pub use chip::{
     XtensaFpuProperties, XtensaWindowProperties,
 };
 pub use chip_family::{
-    Architecture, ChipFamily, CoreType, Endian, InstructionSet, TargetDescriptionSource,
+    Architecture, ChipFamily, CoreType, Endian, InstructionSet, TargetDescriptionSource, Xlen,
 };
 pub use flash_algorithm::{RawFlashAlgorithm, TransferEncoding};
 pub use flash_properties::FlashProperties;
