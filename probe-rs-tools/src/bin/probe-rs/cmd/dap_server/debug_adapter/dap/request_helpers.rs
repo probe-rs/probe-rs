@@ -402,7 +402,7 @@ fn get_capstone_le(
             .mode(aarch64ArchMode::Arm)
             .endian(Endian::Little)
             .build(),
-        InstructionSet::Riscv { xlen, c } => {
+        InstructionSet::Riscv { xlen, c, .. } => {
             let mode = match xlen {
                 Xlen::X32 => riscvArchMode::RiscV32,
                 Xlen::X64 => riscvArchMode::RiscV64,
