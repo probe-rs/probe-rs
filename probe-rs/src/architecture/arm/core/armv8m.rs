@@ -2,7 +2,7 @@
 
 use super::{
     CortexMState, Dfsr,
-    cortex_m::{IdPfr1, Mvfr0, exit_halt},
+    cortex_m::{IdPfr1, Mvfr0, clear_step_before_reset, exit_halt},
     registers::armv8m::{
         V8M_BASE_SEC_FP_REGISTERS, V8M_BASE_SEC_REGISTERS, V8M_MAIN_FP_REGISTERS,
         V8M_MAIN_REGISTERS, V8M_MAIN_SEC_FP_REGISTERS, V8M_MAIN_SEC_REGISTERS,
@@ -258,6 +258,8 @@ impl CoreInterface for Armv8m<'_> {
         self.state.clear_pending_step();
         self.state.pc_written = false;
 
+        clear_step_before_reset(&mut *self.memory, false)?;
+
         self.sequence
             .reset_system(&mut *self.memory, crate::CoreType::Armv8m, None)?;
         // Invalidate cached state: chip reset clears FP_CTRL and core status
@@ -272,6 +274,8 @@ impl CoreInterface for Armv8m<'_> {
         self.reset_catch_set()?;
         self.state.clear_pending_step();
         self.state.pc_written = false;
+
+        clear_step_before_reset(&mut *self.memory, true)?;
 
         self.sequence
             .reset_system(&mut *self.memory, crate::CoreType::Armv8m, None)?;

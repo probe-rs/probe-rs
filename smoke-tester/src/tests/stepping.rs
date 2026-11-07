@@ -3,7 +3,8 @@ use std::time::Duration;
 use linkme::distributed_slice;
 use probe_rs::{
     Architecture, BreakpointCause, Core, CoreStatus, Error, HaltReason, MemoryInterface,
-    config::MemoryRegion, probe::DebugProbeError,
+    MemoryMappedRegister, architecture::arm::armv7m::Dhcsr, config::MemoryRegion,
+    probe::DebugProbeError,
 };
 
 use crate::{CORE_TESTS, TestResult, dut_definition::DutDefinition, skip_test};
@@ -154,6 +155,61 @@ fn test_stepping(_definition: &DutDefinition, core: &mut Core) -> TestResult {
     // Register r2 should be 1 to indicate end of test.
     let r2_val: u64 = core.read_core_reg(registers.core_register(2))?;
     assert_eq!(1, r2_val);
+
+    Ok(())
+}
+
+#[smoke_tester_macros::test(core)]
+fn test_reset_after_step(_definition: &DutDefinition, core: &mut Core) -> TestResult {
+    if !core.core_type().is_cortex_m() {
+        skip_test!("Only implemented for Cortex-M");
+    }
+
+    let ram_region = core
+        .memory_regions()
+        .filter_map(MemoryRegion::as_ram_region)
+        .find(|r| r.is_executable());
+
+    let Some(ram_region) = ram_region else {
+        skip_test!("No RAM configured for core, unable to test reset after a step");
+    };
+
+    let code_load_address = ram_region.range.start;
+    let pc = core.registers().pc().unwrap();
+
+    core.write_8(code_load_address, TEST_CODE)?;
+    core.write_core_reg(pc, code_load_address)?;
+    core.step()?;
+    core.reset()?;
+    // The program in flash may hit a BKPT with halting debug still enabled after reset(), so a
+    // halt on a breakpoint is accepted. Any other halt reason means the core stayed halted.
+    let status = core.status()?;
+    let dhcsr = Dhcsr(core.read_word_32(Dhcsr::ADDRESS_OFFSET)?);
+    if let CoreStatus::Halted(reason) = status {
+        let pc_value: u64 = core.read_core_reg(pc)?;
+        assert!(
+            matches!(reason, HaltReason::Breakpoint(_)),
+            "Core halted after a reset following a step: {reason:?}, PC {pc_value:#010x}, DHCSR {:#010x}",
+            dhcsr.0
+        );
+    }
+    assert!(
+        !dhcsr.c_step() && !dhcsr.c_maskints(),
+        "DHCSR after reset following a step: {:#010x}",
+        dhcsr.0
+    );
+
+    core.halt(Duration::from_millis(100))?;
+    core.write_8(code_load_address, TEST_CODE)?;
+    core.write_core_reg(pc, code_load_address)?;
+    core.step()?;
+    core.reset_and_halt(Duration::from_millis(500))?;
+    let dhcsr = Dhcsr(core.read_word_32(Dhcsr::ADDRESS_OFFSET)?);
+    assert!(
+        !dhcsr.c_step() && !dhcsr.c_maskints() && dhcsr.c_debugen(),
+        "DHCSR after reset_and_halt following a step: {:#010x}",
+        dhcsr.0
+    );
 
     Ok(())
 }
