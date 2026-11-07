@@ -6,8 +6,8 @@ use super::{FlashAlgorithm, FlashBuilder, FlashError, FlashPage, FlashProgress};
 use crate::config::NvmRegion;
 use crate::error::Error;
 use crate::flashing::compare::{
-    CmsisVerifyCompare, CompareContext, CompareOutcome, FlashCompare, FlashVerifyCompare, Outside,
-    ReadBackCore, ReadFlashCompare, RegionCompare,
+    CmsisVerifyCompare, CompareContext, CompareOutcome, FlashCompare, Outside, ReadBackCore,
+    ReadFlashCompare, RegionCompare, run_chain,
 };
 use crate::flashing::encoder::FlashEncoder;
 use crate::flashing::{FlashLayout, FlashSector, ProgressOperation};
@@ -553,8 +553,8 @@ impl Flasher {
     fn compare_chain(&self, session: &Session) -> Vec<Arc<dyn FlashCompare>> {
         let mut chain: Vec<Arc<dyn FlashCompare>> = Vec::new();
 
-        if let Some(sequence) = session.target().debug_sequence.flash_verify_sequence() {
-            chain.push(Arc::new(FlashVerifyCompare(sequence)));
+        if let Some(backend) = session.target().debug_sequence.flash_compare() {
+            chain.push(backend);
         }
         if self.flash_algorithm.pc_verify.is_some() {
             chain.push(Arc::new(CmsisVerifyCompare));
@@ -585,21 +585,14 @@ impl Flasher {
             .map(|region| (region.region.clone(), region.data.layout().clone()))
             .collect::<Vec<_>>();
 
-        let mut regions = layouts
+        let regions = layouts
             .iter()
             .map(|(region, layout)| RegionCompare::new(region, layout, outside, ignore_fills))
             .collect::<Vec<_>>();
 
         let chain = self.compare_chain(session);
-        let mut context = CompareContext::new(session, self);
-        for backend in &chain {
-            for region in &mut regions {
-                region.run(backend.as_ref(), &mut context, progress, operation)?;
-            }
-        }
-        context.finish()?;
-
-        Ok(regions.into_iter().map(RegionCompare::finish).collect())
+        let context = CompareContext::new(session, self);
+        run_chain(&chain, regions, context, progress, operation)
     }
 
     /// Perform an erase of all sectors given in `flash_layout`.
