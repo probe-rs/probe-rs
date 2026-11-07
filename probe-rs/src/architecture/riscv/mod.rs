@@ -86,10 +86,8 @@ pub trait XlenMode: sealed::Sealed + 'static {
     fn csr_to_register_value(v: u64) -> RegisterValue;
     /// Unwrap a `RegisterValue` into a `u64` for writing to a CSR.
     fn register_value_to_csr(v: RegisterValue) -> Result<u64, Error>;
-    /// The `InstructionSet` variant for this XLEN when compressed instructions are present.
-    fn compressed_instruction_set() -> InstructionSet;
-    /// The `InstructionSet` variant for this XLEN without compressed instructions.
-    fn uncompressed_instruction_set() -> InstructionSet;
+    /// The `InstructionSet` variant for this XLEN, from the C and E extension bits of `misa`.
+    fn instruction_set(compressed: bool, rv32e: bool) -> InstructionSet;
     /// Extract `(trigger_type, mcontrol_low32)` from a raw `tdata1` value.
     ///
     /// `mcontrol_low32` is the low 32 bits of `tdata1`, which is compatible with
@@ -134,7 +132,7 @@ impl XlenMode for Xlen32 {
     }
 
     fn registers(fp_present: bool, rv32e: bool) -> &'static CoreRegisters {
-        // RV32E has no standard F extension, so it takes precedence over fp_present
+        // The RV32E register file has no FP registers; no known RV32E core has F.
         if rv32e {
             &RISCV_RV32E_CORE_REGISTERS
         } else if fp_present {
@@ -166,11 +164,13 @@ impl XlenMode for Xlen32 {
         Ok(u64::from(u))
     }
 
-    fn compressed_instruction_set() -> InstructionSet {
-        InstructionSet::RV32C
-    }
-    fn uncompressed_instruction_set() -> InstructionSet {
-        InstructionSet::RV32
+    fn instruction_set(compressed: bool, rv32e: bool) -> InstructionSet {
+        match (rv32e, compressed) {
+            (true, true) => InstructionSet::RV32EC,
+            (true, false) => InstructionSet::RV32E,
+            (false, true) => InstructionSet::RV32C,
+            (false, false) => InstructionSet::RV32,
+        }
     }
 
     fn unpack_tdata1(raw: u64) -> (u32, u32) {
@@ -245,11 +245,13 @@ impl XlenMode for Xlen64 {
         v.try_into()
     }
 
-    fn compressed_instruction_set() -> InstructionSet {
-        InstructionSet::RV64C
-    }
-    fn uncompressed_instruction_set() -> InstructionSet {
-        InstructionSet::RV64
+    // probe-rs has no RV64E register file, so the E bit is ignored.
+    fn instruction_set(compressed: bool, _rv32e: bool) -> InstructionSet {
+        if compressed {
+            InstructionSet::RV64C
+        } else {
+            InstructionSet::RV64
+        }
     }
 
     fn unpack_tdata1(raw: u64) -> (u32, u32) {
@@ -593,7 +595,7 @@ impl<X: XlenMode> CoreInterface for RiscvCore<'_, X> {
             // single step and manually advance the dpc.
             let mut debug_pc = self.read_core_reg(RegisterId(0x7b1))?;
             // Advance the dpc by the size of the EBREAK (ebreak or c.ebreak) instruction.
-            if self.instruction_set()? == X::compressed_instruction_set() {
+            if self.instruction_set()?.get_minimum_instruction_size() == 2 {
                 // We may have been halted by either an EBREAK or a C.EBREAK instruction.
                 // We need to read back the instruction to determine how many bytes to skip.
                 let instruction = self.read_word_32(debug_pc.try_into().unwrap())?;
@@ -894,13 +896,12 @@ impl<X: XlenMode> CoreInterface for RiscvCore<'_, X> {
     }
 
     fn instruction_set(&mut self) -> Result<InstructionSet, Error> {
-        // Check if the Bit at position 2 (signifies letter C, for compressed) is set.
+        // Bit 2 is the letter C (compressed), bit 4 is the letter E (RV32E base).
         let misa_val = self.interface.read_csr(0x301)?;
-        if misa_val & (1 << 2) != 0 {
-            Ok(X::compressed_instruction_set())
-        } else {
-            Ok(X::uncompressed_instruction_set())
-        }
+        Ok(X::instruction_set(
+            misa_val & (1 << 2) != 0,
+            misa_val & (1 << 4) != 0,
+        ))
     }
 
     fn floating_point_register_count(&mut self) -> Result<usize, Error> {

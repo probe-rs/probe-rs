@@ -27,6 +27,8 @@ pub(crate) fn disassemble_target_memory(
         InstructionSet::Thumb2
         | InstructionSet::RV32C
         | InstructionSet::RV32
+        | InstructionSet::RV32E
+        | InstructionSet::RV32EC
         | InstructionSet::A32
         | InstructionSet::A64 => (),
         _ => return Err(DebuggerError::Unimplemented), // e.g. Xtensa.
@@ -401,12 +403,13 @@ fn get_capstone_le(
             .mode(aarch64ArchMode::Arm)
             .endian(Endian::Little)
             .build(),
-        InstructionSet::RV32 => Capstone::new()
+        // Capstone has no RV32E mode; it decodes the same instructions as RV32I.
+        InstructionSet::RV32 | InstructionSet::RV32E => Capstone::new()
             .riscv()
             .mode(riscvArchMode::RiscV32)
             .endian(Endian::Little)
             .build(),
-        InstructionSet::RV32C => Capstone::new()
+        InstructionSet::RV32C | InstructionSet::RV32EC => Capstone::new()
             .riscv()
             .mode(riscvArchMode::RiscV32)
             .endian(Endian::Little)

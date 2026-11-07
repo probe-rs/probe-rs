@@ -178,7 +178,10 @@ fn read_frame_record_for_core(
                 |fr| AdjustedFrameRecord::new_from_frame_record_64(fr, instruction_set, last_pc),
             )
         }
-        InstructionSet::RV32 | InstructionSet::RV32C => {
+        InstructionSet::RV32
+        | InstructionSet::RV32C
+        | InstructionSet::RV32E
+        | InstructionSet::RV32EC => {
             read_arm_riscv_32_frame_record(memory, frame_pointer, RISCV32_FRAME_RECORD_OFFSET).map(
                 |fr| AdjustedFrameRecord::new_from_frame_record_32(fr, instruction_set, last_pc),
             )

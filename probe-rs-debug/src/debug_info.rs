@@ -1664,11 +1664,11 @@ pub fn unwind_program_counter_register(
                         "PC=(unwound (LR - 2) & !0b1) (dwarf Undefined)",
                     )
                 }
-                Some(InstructionSet::RV32C) => (
+                Some(InstructionSet::RV32C | InstructionSet::RV32EC) => (
                     Some(RegisterValue::U32(return_address - 2)),
                     "PC=(unwound x1 - 2) (dwarf Undefined)",
                 ),
-                Some(InstructionSet::RV32) => (
+                Some(InstructionSet::RV32 | InstructionSet::RV32E) => (
                     Some(RegisterValue::U32(return_address - 4)),
                     "PC=(unwound x1 - 4) (dwarf Undefined)",
                 ),

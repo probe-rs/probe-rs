@@ -26,8 +26,8 @@ use crate::rpc::{
     },
 };
 use probe_rs::{
-    Architecture, CoreInformation, CoreRegisters, CoreStatus, CoreType, Error, RegisterId,
-    RegisterValue, VectorCatchCondition,
+    Architecture, CoreInformation, CoreRegisters, CoreStatus, CoreType, Error, InstructionSet,
+    RegisterId, RegisterValue, VectorCatchCondition,
 };
 use probe_rs_debug::{
     ColumnType, DebugRegisters, ObjectRef, SourceLocation as DebugSourceLocation, StackFrame,
@@ -130,6 +130,7 @@ pub struct CorePerAttachInfo {
     pub architecture: Architecture,
     pub fpu_support: bool,
     pub fp_register_count: Option<usize>,
+    pub instruction_set: Option<InstructionSet>,
 }
 
 impl CorePerAttachInfo {
@@ -155,6 +156,7 @@ impl CorePerAttachInfo {
             architecture,
             fpu_support: false,
             fp_register_count: None,
+            instruction_set: None,
         }
     }
 
@@ -165,6 +167,7 @@ impl CorePerAttachInfo {
             fp_register_count: metadata
                 .floating_point_register_count
                 .map(|count| count as usize),
+            instruction_set: Some(from_wire_instruction_set(metadata.instruction_set)),
         }
     }
 }
@@ -204,6 +207,7 @@ impl RpcBackend {
                     *core_type,
                     info.fpu_support,
                     info.fp_register_count,
+                    info.instruction_set,
                 );
                 CoreMetadata {
                     architecture: info.architecture,
@@ -938,7 +942,40 @@ mod test {
     use probe_rs::{Architecture, CoreRegisters, CoreType, RegisterRole};
 
     use super::CorePerAttachInfo;
-    use probe_rs_rpc::core_ops::WireCoreMetadata;
+    use probe_rs_rpc::core_ops::{WireCoreMetadata, WireInstructionSet};
+
+    #[test]
+    fn rv32e_metadata_selects_rv32e_register_file() {
+        let names = |instruction_set| {
+            let info = CorePerAttachInfo::from_wire(
+                Architecture::Riscv,
+                WireCoreMetadata {
+                    // FPU support pins the precedence of RV32E over the FPU.
+                    fpu_support: true,
+                    floating_point_register_count: None,
+                    instruction_set,
+                },
+            );
+            CoreRegisters::for_core_type(
+                CoreType::Riscv,
+                info.fpu_support,
+                info.fp_register_count,
+                info.instruction_set,
+            )
+            .all_registers()
+            .map(|register| register.name())
+            .collect::<Vec<_>>()
+        };
+
+        // Control: an RV32I core keeps x16.
+        assert!(names(WireInstructionSet::RV32C).contains(&"x16"));
+        // RV32E and RV32EC select x0-x15.
+        for instruction_set in [WireInstructionSet::RV32E, WireInstructionSet::RV32EC] {
+            let names = names(instruction_set);
+            assert!(!names.contains(&"x16"));
+            assert!(names.contains(&"x15"));
+        }
+    }
 
     #[test]
     fn live_fpu_metadata_selects_floating_point_registers() {
@@ -947,7 +984,7 @@ mod test {
             WireCoreMetadata {
                 fpu_support: true,
                 floating_point_register_count: Some(32),
-                instruction_set: probe_rs_rpc::core_ops::WireInstructionSet::Thumb2,
+                instruction_set: WireInstructionSet::Thumb2,
             },
         );
 
@@ -955,6 +992,7 @@ mod test {
             CoreType::Armv7em,
             info.fpu_support,
             info.fp_register_count,
+            info.instruction_set,
         );
 
         assert_eq!(info.fp_register_count, Some(32));
@@ -972,7 +1010,7 @@ mod test {
             WireCoreMetadata {
                 fpu_support: false,
                 floating_point_register_count: None,
-                instruction_set: probe_rs_rpc::core_ops::WireInstructionSet::Thumb2,
+                instruction_set: WireInstructionSet::Thumb2,
             },
         );
 
@@ -980,6 +1018,7 @@ mod test {
             CoreType::Armv7em,
             info.fpu_support,
             info.fp_register_count,
+            info.instruction_set,
         );
 
         assert!(

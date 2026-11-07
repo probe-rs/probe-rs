@@ -117,6 +117,10 @@ pub enum InstructionSet {
     RV32,
     /// RISC-V 32-bit compressed instruction sets (RV32C) - covers all ISA variants that allow compressed 16-bit instructions.
     RV32C,
+    /// RISC-V 32-bit embedded base (RV32E), with only the registers x0-x15. Uses 32-bit instructions only.
+    RV32E,
+    /// RISC-V 32-bit embedded base (RV32E) with compressed 16-bit instructions (RV32EC).
+    RV32EC,
     /// RISC-V 64-bit uncompressed instruction sets (RV64) - covers all ISA variants that use 32-bit instructions in 64-bit mode.
     RV64,
     /// RISC-V 64-bit compressed instruction sets (RV64C) - covers all ISA variants that allow compressed 16-bit instructions in 64-bit mode.
@@ -135,7 +139,14 @@ impl InstructionSet {
             "xtensa" => Some(InstructionSet::Xtensa),
             other => {
                 if let Some(features) = other.strip_prefix("riscv32") {
-                    if features.contains('c') {
+                    // The base ISA letter comes first, for example `riscv32emc`.
+                    if features.starts_with('e') {
+                        if features.contains('c') {
+                            Some(InstructionSet::RV32EC)
+                        } else {
+                            Some(InstructionSet::RV32E)
+                        }
+                    } else if features.contains('c') {
                         Some(InstructionSet::RV32C)
                     } else {
                         Some(InstructionSet::RV32)
@@ -164,6 +175,8 @@ impl InstructionSet {
             InstructionSet::A64 => 4,
             InstructionSet::RV32 => 4,
             InstructionSet::RV32C => 2,
+            InstructionSet::RV32E => 4,
+            InstructionSet::RV32EC => 2,
             // RV64 uses 32-bit base instructions; compressed mode allows 16-bit instructions
             InstructionSet::RV64 => 4,
             InstructionSet::RV64C => 2,
@@ -184,7 +197,12 @@ impl InstructionSet {
 
         matches!(
             (self, instr_set),
-            (InstructionSet::RV32C, InstructionSet::RV32)
+            // RV32E code uses a subset of the RV32I registers, so RV32I cores also run it.
+            (
+                InstructionSet::RV32C,
+                InstructionSet::RV32 | InstructionSet::RV32E | InstructionSet::RV32EC
+            ) | (InstructionSet::RV32, InstructionSet::RV32E)
+                | (InstructionSet::RV32EC, InstructionSet::RV32E)
                 | (InstructionSet::RV64C, InstructionSet::RV64)
         )
     }
@@ -530,6 +548,41 @@ impl ChipFamily {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn rv32e_target_triples() {
+        let from = InstructionSet::from_target_triple;
+        assert_eq!(
+            from("riscv32e-unknown-none-elf"),
+            Some(InstructionSet::RV32E)
+        );
+        assert_eq!(
+            from("riscv32emc-unknown-none-elf"),
+            Some(InstructionSet::RV32EC)
+        );
+        assert_eq!(
+            from("riscv32imc-unknown-none-elf"),
+            Some(InstructionSet::RV32C)
+        );
+        assert_eq!(
+            from("riscv32imafc-unknown-none-elf"),
+            Some(InstructionSet::RV32C)
+        );
+    }
+
+    #[test]
+    fn rv32e_compatibility() {
+        use InstructionSet::*;
+        // An RV32I core runs RV32E code, but an RV32E core cannot run RV32I code.
+        assert!(RV32C.is_compatible(RV32EC));
+        assert!(RV32C.is_compatible(RV32E));
+        assert!(RV32.is_compatible(RV32E));
+        assert!(RV32EC.is_compatible(RV32E));
+        assert!(!RV32EC.is_compatible(RV32C));
+        assert!(!RV32E.is_compatible(RV32));
+        assert!(!RV32E.is_compatible(RV32EC));
+        assert!(!RV32.is_compatible(RV32EC));
+    }
 
     fn family_with_region_port(port: &str) -> ChipFamily {
         family(&["ahb-ap"], port)
