@@ -76,6 +76,48 @@ variants:
   flash_algorithms:
   - cc27xx-flash
 
+- name: CC2755P10
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    range:
+      start: 0x0
+      end: 0xe8000
+    cores:
+    - main
+    access:
+      boot: true
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20028800
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x4e020000
+      end: 0x4e020800
+    cores:
+    - main
+    access:
+      boot: false
+      execute: false
+  - !Nvm
+    range:
+      start: 0x4e040000
+      end: 0x4e040800 # SCFG is actually 0x400, but this is handled in the sequence, see comment below
+    cores:
+    - main
+    access:
+      boot: false
+      execute: false
+  flash_algorithms:
+  - cc27xx-flash
+
 flash_algorithms:
 - name: cc23xx-flash
   description: Host-side flash programming via SACI commands for CC23xx devices
