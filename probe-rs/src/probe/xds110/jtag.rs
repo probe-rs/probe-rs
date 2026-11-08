@@ -1,17 +1,18 @@
 //! JTAG batches, run with `OCD_SCAN_REQUEST`.
 //!
 //! The firmware runs IR and DR scans, run-test and stable clocks. It moves the TAP on the
-//! quickest path, which is the path of [`TapState::path_to`]. Other moves are path moves.
+//! quickest path, which is the path of [`TapState::path_to`]. Other moves are path moves, or
+//! goto-state commands in cJTAG mode.
 
 use bitvec::vec::BitVec;
 
 use super::{MAX_DATA_BLOCK, OCD_SCAN_REQUEST, Xds110};
 use crate::probe::{
     BatchExecutionError, DebugProbeError, HandleId, JtagBatch, JtagChainAccess, JtagChainState,
-    JtagOp, JtagProbe, Results, TapState, jtag::distribute_captures,
+    JtagOp, JtagProbe, Results, TapState, WireProtocol, jtag::distribute_captures,
 };
 
-const CMD_IR_SCAN: u8 = 1;
+pub(super) const CMD_IR_SCAN: u8 = 1;
 const CMD_DR_SCAN: u8 = 2;
 const CMD_RUNTEST: u8 = 3;
 const CMD_STABLECLOCKS: u8 = 4;
@@ -109,6 +110,10 @@ enum Step {
     },
     /// A path move, through the given states.
     Path(Vec<u8>),
+    /// A move on the quickest path.
+    Goto(XdsState),
+    /// A TAP reset in cJTAG mode, which activates the target again.
+    Reset,
 }
 
 fn run_test(clocks: u32, end: TapState) -> Step {
@@ -122,7 +127,11 @@ fn run_test(clocks: u32, end: TapState) -> Step {
     }
 }
 
-fn move_to(from: TapState, to: TapState) -> Option<Step> {
+fn move_to(from: TapState, to: TapState, cjtag: bool) -> Option<Step> {
+    if cjtag && to == TapState::TestLogicReset {
+        // The TAP stays parked in Test-Logic-Reset.
+        return (from != to).then_some(Step::Reset);
+    }
     if to == TapState::TestLogicReset
         || (from == to && to == TapState::RunTestIdle)
         || from == TapState::RunTestIdle
@@ -133,6 +142,9 @@ fn move_to(from: TapState, to: TapState) -> Option<Step> {
     }
     if from == to {
         return None;
+    }
+    if cjtag {
+        return Some(Step::Goto(XdsState::from(to)));
     }
     let mut state = XdsState::from(from);
     Some(Step::Path(
@@ -160,6 +172,7 @@ fn scan_bits(ops: &[(&HandleId, &JtagOp)]) -> usize {
 fn encode_batch(
     start: TapState,
     batch: &JtagBatch,
+    cjtag: bool,
 ) -> Result<(TapState, Vec<Step>), DebugProbeError> {
     let ops: Vec<_> = batch.iter().map(|(id, op)| (id, op)).collect();
     let mut state = start;
@@ -173,7 +186,7 @@ fn encode_batch(
                 let starts_scan = matches!(target, TapState::ShiftIr | TapState::ShiftDr)
                     && scan_bits(&ops[index + 1..]) > 0;
                 if !starts_scan {
-                    steps.extend(move_to(state, *target));
+                    steps.extend(move_to(state, *target, cjtag));
                 }
                 state = *target;
                 index += 1;
@@ -214,7 +227,7 @@ fn encode_batch(
 
                 let bits = data.len();
                 if bits == 0 {
-                    steps.extend(move_to(state, end));
+                    steps.extend(move_to(state, end, cjtag));
                     state = end;
                     continue;
                 }
@@ -309,7 +322,9 @@ impl JtagProbe for Xds110 {
         batch: &JtagBatch,
     ) -> Result<Results, BatchExecutionError<DebugProbeError>> {
         let failed = |error| BatchExecutionError::new_from_debug_probe(error, Results::new());
-        let (state, steps) = encode_batch(self.jtag_state.tap_state, batch).map_err(failed)?;
+        let cjtag = self.protocol == WireProtocol::CJtag;
+        let (state, steps) =
+            encode_batch(self.jtag_state.tap_state, batch, cjtag).map_err(failed)?;
         self.tms_state = None;
 
         let mut request = ScanRequest::default();
@@ -342,6 +357,16 @@ impl JtagProbe for Xds110 {
                     payload.extend_from_slice(&path);
                     self.command(&payload).map_err(failed)?;
                 }
+                Step::Goto(state) => {
+                    self.run_scan_request(&mut request, &mut captured)
+                        .map_err(failed)?;
+                    self.goto_state(state).map_err(failed)?;
+                }
+                Step::Reset => {
+                    self.run_scan_request(&mut request, &mut captured)
+                        .map_err(failed)?;
+                    self.cjtag_activate().map_err(failed)?;
+                }
             }
         }
         self.run_scan_request(&mut request, &mut captured)
@@ -364,7 +389,7 @@ mod tests {
         let _handle = batch.exchange(BitSequence::from_u64(35, 0x1_2345_6789));
         batch.enter(TapState::RunTestIdle);
 
-        let (state, steps) = encode_batch(TapState::RunTestIdle, &batch).unwrap();
+        let (state, steps) = encode_batch(TapState::RunTestIdle, &batch, false).unwrap();
         assert_eq!(state, TapState::RunTestIdle);
         assert_eq!(
             steps,
@@ -384,7 +409,7 @@ mod tests {
         let _handle = batch.exchange(BitSequence::from_u64(6, 0x04));
         batch.enter(TapState::PauseIr);
 
-        let (state, steps) = encode_batch(TapState::RunTestIdle, &batch).unwrap();
+        let (state, steps) = encode_batch(TapState::RunTestIdle, &batch, false).unwrap();
         assert_eq!(state, TapState::PauseIr);
         assert_eq!(
             steps,
@@ -401,7 +426,7 @@ mod tests {
         let mut batch = JtagBatch::new();
         batch.enter(TapState::PauseIr);
 
-        let (_, steps) = encode_batch(TapState::PauseDr, &batch).unwrap();
+        let (_, steps) = encode_batch(TapState::PauseDr, &batch, false).unwrap();
         use XdsState::{CaptureIr, Exit1Ir, Exit2Dr, PauseIr, SelectDr, SelectIr, UpdateDr};
         assert_eq!(
             steps,
@@ -422,7 +447,7 @@ mod tests {
         let _handle = batch.exchange(BitSequence::new());
         batch.enter(TapState::RunTestIdle);
 
-        let (state, steps) = encode_batch(TapState::RunTestIdle, &batch).unwrap();
+        let (state, steps) = encode_batch(TapState::RunTestIdle, &batch, false).unwrap();
         assert_eq!(state, TapState::RunTestIdle);
         assert!(
             steps
@@ -437,12 +462,35 @@ mod tests {
     }
 
     #[test]
+    fn cjtag_moves_are_gotos() {
+        let mut batch = JtagBatch::new();
+        batch.enter(TapState::PauseIr);
+
+        let (_, steps) = encode_batch(TapState::PauseDr, &batch, true).unwrap();
+        assert_eq!(steps, vec![Step::Goto(XdsState::PauseIr)]);
+    }
+
+    #[test]
+    fn a_cjtag_tap_reset_activates_the_target_once() {
+        let mut batch = JtagBatch::new();
+        batch.enter(TapState::TestLogicReset);
+        batch.clock(5);
+        batch.enter(TapState::TestLogicReset);
+        batch.enter(TapState::RunTestIdle);
+
+        let (state, steps) = encode_batch(TapState::PauseDr, &batch, true).unwrap();
+        assert_eq!(state, TapState::RunTestIdle);
+        assert_eq!(steps.iter().filter(|step| **step == Step::Reset).count(), 1);
+        assert_eq!(steps.first(), Some(&Step::Reset));
+    }
+
+    #[test]
     fn clocks_in_idle_are_run_test() {
         let mut batch = JtagBatch::new();
         batch.enter(TapState::RunTestIdle);
         batch.clock(100);
 
-        let (_, steps) = encode_batch(TapState::TestLogicReset, &batch).unwrap();
+        let (_, steps) = encode_batch(TapState::TestLogicReset, &batch, false).unwrap();
         assert_eq!(steps.len(), 2);
         assert_eq!(steps[1], run_test(100, TapState::RunTestIdle));
     }

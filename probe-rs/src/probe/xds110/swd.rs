@@ -84,10 +84,14 @@ impl Xds110 {
 
     /// Sends a sequence on SWDIO/TMS, which leaves the probe in JTAG mode.
     fn run_sequence(&mut self, bits: impl Iterator<Item = bool>) -> Result<(), DebugProbeError> {
+        // The bits can pass Test-Logic-Reset or Update-IR and still end in the same state.
+        self.jtag_state.loaded_ir = None;
+        if self.protocol == WireProtocol::CJtag {
+            self.jtag_state.tap_state = self.cjtag_sequence(bits)?;
+            return Ok(());
+        }
         let state = self.tms_sequence(bits)?;
         if self.protocol == WireProtocol::Jtag {
-            // The bits can pass Test-Logic-Reset or Update-IR and still end in the same state.
-            self.jtag_state.loaded_ir = None;
             self.jtag_state.tap_state = match state.stable() {
                 Some(state) => state,
                 None => {
