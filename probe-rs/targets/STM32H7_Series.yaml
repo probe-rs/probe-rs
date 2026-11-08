@@ -4178,6 +4178,7 @@ variants:
     cores:
     - cm7
     - cm4
+    is_alias: true
   - !Ram
     name: DTCM
     range:
@@ -4293,6 +4294,7 @@ variants:
     cores:
     - cm7
     - cm4
+    is_alias: true
   - !Ram
     name: DTCM
     range:
@@ -4409,6 +4411,7 @@ variants:
     cores:
     - cm7
     - cm4
+    is_alias: true
   - !Ram
     name: DTCM
     range:
@@ -4525,6 +4528,7 @@ variants:
     cores:
     - cm7
     - cm4
+    is_alias: true
   - !Ram
     name: DTCM
     range:
@@ -4640,6 +4644,7 @@ variants:
     cores:
     - cm7
     - cm4
+    is_alias: true
   - !Ram
     name: DTCM
     range:
@@ -4755,6 +4760,7 @@ variants:
     cores:
     - cm7
     - cm4
+    is_alias: true
   - !Ram
     name: DTCM
     range:
@@ -4870,6 +4876,7 @@ variants:
     cores:
     - cm7
     - cm4
+    is_alias: true
   - !Ram
     name: DTCM
     range:
@@ -4985,6 +4992,7 @@ variants:
     cores:
     - cm7
     - cm4
+    is_alias: true
   - !Ram
     name: DTCM
     range:
@@ -5100,6 +5108,7 @@ variants:
     cores:
     - cm7
     - cm4
+    is_alias: true
   - !Ram
     name: DTCM
     range:
@@ -5215,6 +5224,7 @@ variants:
     cores:
     - cm7
     - cm4
+    is_alias: true
   - !Ram
     name: DTCM
     range:
@@ -5330,6 +5340,7 @@ variants:
     cores:
     - cm7
     - cm4
+    is_alias: true
   - !Ram
     name: DTCM
     range:
@@ -5445,6 +5456,7 @@ variants:
     cores:
     - cm7
     - cm4
+    is_alias: true
   - !Ram
     name: DTCM
     range:
@@ -5560,6 +5572,7 @@ variants:
     cores:
     - cm7
     - cm4
+    is_alias: true
   - !Ram
     name: DTCM
     range:
@@ -5675,6 +5688,7 @@ variants:
     cores:
     - cm7
     - cm4
+    is_alias: true
   - !Ram
     name: DTCM
     range:
@@ -5790,6 +5804,7 @@ variants:
     cores:
     - cm7
     - cm4
+    is_alias: true
   - !Ram
     name: DTCM
     range:
@@ -5905,6 +5920,7 @@ variants:
     cores:
     - cm7
     - cm4
+    is_alias: true
   - !Ram
     name: DTCM
     range:
@@ -6020,6 +6036,7 @@ variants:
     cores:
     - cm7
     - cm4
+    is_alias: true
   - !Ram
     name: DTCM
     range:
@@ -7038,6 +7055,7 @@ variants:
     cores:
     - cm7
     - cm4
+    is_alias: true
   - !Ram
     name: DTCM
     range:
@@ -7154,6 +7172,7 @@ variants:
     cores:
     - cm7
     - cm4
+    is_alias: true
   - !Ram
     name: DTCM
     range:
@@ -7269,6 +7288,7 @@ variants:
     cores:
     - cm7
     - cm4
+    is_alias: true
   - !Ram
     name: DTCM
     range:
@@ -7384,6 +7404,7 @@ variants:
     cores:
     - cm7
     - cm4
+    is_alias: true
   - !Ram
     name: DTCM
     range:
@@ -7499,6 +7520,7 @@ variants:
     cores:
     - cm7
     - cm4
+    is_alias: true
   - !Ram
     name: DTCM
     range:
@@ -7614,6 +7636,7 @@ variants:
     cores:
     - cm7
     - cm4
+    is_alias: true
   - !Ram
     name: DTCM
     range:
@@ -7729,6 +7752,7 @@ variants:
     cores:
     - cm7
     - cm4
+    is_alias: true
   - !Ram
     name: DTCM
     range:
@@ -7844,6 +7868,7 @@ variants:
     cores:
     - cm7
     - cm4
+    is_alias: true
   - !Ram
     name: DTCM
     range:
@@ -7959,6 +7984,7 @@ variants:
     cores:
     - cm7
     - cm4
+    is_alias: true
   - !Ram
     name: DTCM
     range:
