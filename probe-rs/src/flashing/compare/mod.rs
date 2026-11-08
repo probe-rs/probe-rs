@@ -8,6 +8,7 @@ mod cmsis_verify;
 mod context;
 mod read_back;
 mod read_flash;
+mod signature;
 
 pub use context::CompareContext;
 
@@ -19,6 +20,7 @@ use std::time::Instant;
 use cmsis_verify::CmsisVerifyCompare;
 use read_back::ReadBackCore;
 use read_flash::ReadFlashCompare;
+use signature::AlgorithmSignatures;
 
 use crate::Session;
 use crate::config::NvmRegion;
@@ -280,6 +282,9 @@ impl<'a> CompareChain<'a> {
         let algorithm = flasher.flash_algorithm();
 
         let mut backends: Vec<Arc<dyn FlashCompare>> = Vec::new();
+        if let Some(backend) = AlgorithmSignatures::new(algorithm) {
+            backends.push(Arc::new(backend));
+        }
         backends.extend(session.target().debug_sequence.flash_compare());
         if algorithm.pc_verify.is_some() {
             backends.push(Arc::new(CmsisVerifyCompare));

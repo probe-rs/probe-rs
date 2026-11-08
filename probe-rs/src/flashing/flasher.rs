@@ -826,6 +826,15 @@ impl<'op, 'p, O: Operation> ActiveFlasher<'op, 'p, O> {
         self.flash_algorithm
     }
 
+    /// Returns the address and size of a RAM buffer that a function of the algorithm can use.
+    pub(super) fn scratch_buffer(&self) -> (u64, usize) {
+        let algo = self.flash_algorithm;
+        (
+            algo.page_buffers[0],
+            algo.flash_properties.page_size as usize,
+        )
+    }
+
     /// Checks if the flash algorithm defines a vendor-specific entry point with the given name.
     pub fn has_vendor_function(&self, function: &str) -> bool {
         self.flash_algorithm.vendor_functions.contains_key(function)
@@ -840,6 +849,16 @@ impl<'op, 'p, O: Operation> ActiveFlasher<'op, 'p, O> {
         &mut self,
         function: &str,
         inputs: [Option<u64>; 4],
+    ) -> Result<u32, FlashError> {
+        self.call_vendor_function_with_timeout(function, inputs, INIT_TIMEOUT)
+    }
+
+    /// Calls a vendor-specific entry point, and waits at most `timeout` for it to return.
+    pub(super) fn call_vendor_function_with_timeout(
+        &mut self,
+        function: &str,
+        inputs: [Option<u64>; 4],
+        timeout: Duration,
     ) -> Result<u32, FlashError> {
         let algo = &self.flash_algorithm;
 
@@ -859,7 +878,7 @@ impl<'op, 'p, O: Operation> ActiveFlasher<'op, 'p, O> {
                     r3: inputs[3],
                 },
                 false,
-                INIT_TIMEOUT,
+                timeout,
             )
             .map_err(|error| FlashError::VendorFunctionFailed {
                 name: function.to_string(),
