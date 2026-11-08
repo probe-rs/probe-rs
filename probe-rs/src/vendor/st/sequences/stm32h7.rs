@@ -6,9 +6,10 @@ use probe_rs_target::CoreType;
 
 use crate::architecture::arm::{
     ArmDebugInterface, ArmError, FullyQualifiedApAddress,
+    ap::{ApClass, ApRegister, IDR},
     component::{TraceFunnel, TraceSink},
     memory::{ArmMemoryInterface, CoresightComponent, PeripheralType, romtable::RomTableError},
-    sequences::ArmDebugSequence,
+    sequences::{ArmDebugSequence, DefaultArmSequence},
 };
 
 /// Supported lines for custom sequences on STM32H7xx devices.
@@ -174,7 +175,47 @@ fn find_trace_funnel(
         })
 }
 
+/// Whether `core_ap` is a memory AP. The AP of the CM4 of the dual-core parts is missing while the
+/// CM4 is not booted, for example with the BCM4 option bit cleared.
+fn core_ap_present(
+    interface: &mut dyn ArmDebugInterface,
+    core_ap: &FullyQualifiedApAddress,
+) -> bool {
+    let idr = interface.read_raw_ap_register(core_ap, IDR::ADDRESS);
+    matches!(idr.map(IDR::try_from), Ok(Ok(idr)) if idr.CLASS() == ApClass::MemAp)
+}
+
 impl ArmDebugSequence for Stm32h7 {
+    fn on_attach(
+        &self,
+        interface: &mut dyn ArmDebugInterface,
+        core_ap: &FullyQualifiedApAddress,
+        core_type: CoreType,
+        target: &mut crate::Target,
+    ) -> Result<(), ArmError> {
+        if !core_ap_present(interface, core_ap) {
+            return Err(ArmError::CoreDisabled);
+        }
+
+        DefaultArmSequence(()).on_attach(interface, core_ap, core_type, target)
+    }
+
+    fn debug_core_start(
+        &self,
+        interface: &mut dyn ArmDebugInterface,
+        core_ap: &FullyQualifiedApAddress,
+        core_type: CoreType,
+        debug_base: Option<u64>,
+        cti_base: Option<u64>,
+    ) -> Result<(), ArmError> {
+        if !core_ap_present(interface, core_ap) {
+            tracing::debug!("STM32H7: no AP at {core_ap:?}, the core is not booted");
+            return Ok(());
+        }
+
+        DefaultArmSequence(()).debug_core_start(interface, core_ap, core_type, debug_base, cti_base)
+    }
+
     fn debug_device_unlock(
         &self,
         interface: &mut dyn ArmDebugInterface,
