@@ -41,6 +41,24 @@ const DEFAULT_POLL_INTERVAL: Duration = Duration::from_millis(100);
 const WATCH_POLL_INTERVAL: Duration = Duration::from_millis(250);
 
 impl RunLoop {
+    /// Starts `poller`. Call this before resetting the target: the reset can start cores that
+    /// probe-rs does not halt, and they may write what the poller clears.
+    pub fn start_poller(
+        &self,
+        shared_session: &SessionState<'_>,
+        poller: &mut impl RunLoopPoller,
+    ) -> Result<()> {
+        let mut session = shared_session.session_blocking();
+        let mut core = session.core(self.core_id)?;
+        match poller.memory_port(&core) {
+            Some(index) => {
+                drop(core);
+                poller.start(&mut session.memory_access_port(index)?)
+            }
+            None => poller.start(&mut core),
+        }
+    }
+
     /// Attaches to RTT and runs the primary core until it, or another enabled core, halts.
     ///
     /// Vector catch, the initial resume, and the poller run only on [`Self::core_id`]. Other cores
@@ -76,7 +94,6 @@ impl RunLoop {
         {
             let mut session = shared_session.session_blocking();
             let mut core = session.core(self.core_id)?;
-            let memory_port = poller.memory_port(&core);
             let needs_vector_catch = catch_hardfault || catch_reset || catch_svc || catch_hlt;
 
             if needs_vector_catch {
@@ -119,15 +136,6 @@ impl RunLoop {
                         }
                     }
                 }
-            }
-
-            match memory_port {
-                Some(index) => {
-                    drop(core);
-                    poller.start(&mut session.memory_access_port(index)?)?;
-                    core = session.core(self.core_id)?;
-                }
-                None => poller.start(&mut core)?,
             }
 
             if core.core_halted()? {
