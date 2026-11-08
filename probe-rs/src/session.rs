@@ -243,7 +243,7 @@ impl Session {
             _ => unreachable!("DAP path only used for ARM or RISC-V-over-mem-AP targets"),
         };
 
-        if probe.protocol() == Some(WireProtocol::Jtag) && !target.jtag_reaches_any_core() {
+        if probe.protocol().is_some_and(WireProtocol::is_jtag) && !target.jtag_reaches_any_core() {
             return Err(Error::NoCoreOnJtagScanChain(target.name.clone()));
         }
 
@@ -276,7 +276,7 @@ impl Session {
         }
 
         probe.attach_to_unspecified()?;
-        if probe.protocol() == Some(WireProtocol::Jtag)
+        if probe.protocol().is_some_and(WireProtocol::is_jtag)
             && let Some(mut chain) = probe.try_as_jtag_chain()
             && let Ok(_) = chain.scan_chain()
             && !chain.chain().is_empty()

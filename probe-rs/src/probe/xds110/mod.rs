@@ -515,6 +515,7 @@ impl DebugProbe for Xds110 {
                 self.jtag_state.tap_state = crate::probe::TapState::TestLogicReset;
                 self.goto_state(jtag::XdsState::Reset)
             }
+            WireProtocol::CJtag => Err(DebugProbeError::UnsupportedProtocol(self.protocol)),
         }
     }
 
@@ -548,6 +549,9 @@ impl DebugProbe for Xds110 {
     }
 
     fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError> {
+        if protocol == WireProtocol::CJtag {
+            return Err(DebugProbeError::UnsupportedProtocol(protocol));
+        }
         self.protocol = protocol;
         Ok(())
     }
@@ -566,7 +570,7 @@ impl DebugProbe for Xds110 {
     ) -> Result<Box<dyn ArmDebugInterface + 'probe>, (Box<dyn DebugProbe>, ArmError)> {
         let settings = SwdProbe::swd_settings(self.as_ref());
         Ok(match self.protocol {
-            WireProtocol::Jtag => {
+            WireProtocol::Jtag | WireProtocol::CJtag => {
                 ArmCommunicationInterface::create_jtag(self, settings, sequence, false)
             }
             WireProtocol::Swd => {

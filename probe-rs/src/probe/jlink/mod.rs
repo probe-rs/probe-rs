@@ -2,6 +2,7 @@
 
 mod bits;
 pub mod capabilities;
+mod cjtag;
 mod config;
 mod connection;
 mod error;
@@ -20,6 +21,7 @@ use nusb::{DeviceInfo, MaybeFuture, descriptors::TransferType, transfer::Directi
 
 use self::bits::BitIter;
 use self::capabilities::{Capabilities, Capability};
+use self::cjtag::CJtag;
 use self::error::JlinkError;
 use self::interface::{Interface, Interfaces};
 use self::speed::SpeedConfig;
@@ -201,6 +203,7 @@ impl ProbeFactory for JLinkFactory {
             jtag_state: JtagChainState::default(),
             reset_line: ResetLine::default(),
             force_legacy_jtag_command: false,
+            cjtag: CJtag::new(),
 
             jtag_tms_bits: vec![],
             jtag_tdi_bits: vec![],
@@ -368,6 +371,9 @@ enum Command {
 
     ReadConfig = 0xF2,
     WriteConfig = 0xF3,
+
+    /// Undocumented, observed in the traffic of the J-Link DLL (V8.44).
+    CJtagConfig = 0x0E,
 }
 
 /// A J-Link probe.
@@ -407,6 +413,9 @@ pub struct JLink {
     jtag_response: BitVec,
     jtag_state: JtagChainState,
     force_legacy_jtag_command: bool,
+
+    /// 2-pin cJTAG (OScan1) instead of 4-pin JTAG.
+    cjtag: CJtag,
 
     /// max number of bits in a transfer chunk, when using JTAG
     jtag_chunk_size: usize,
@@ -685,14 +694,20 @@ impl JLink {
 
     fn select_protocol_interface(&mut self) -> Result<(), DebugProbeError> {
         if self.caps.contains(Capability::SelectIf) {
-            let jlink_interface = match self.protocol {
-                WireProtocol::Swd => Interface::Swd,
-                WireProtocol::Jtag => Interface::Jtag,
-            };
+            let jlink_interface = self.jtag_interface(self.protocol);
 
             self.select_interface(jlink_interface)?;
         }
         Ok(())
+    }
+
+    /// The J-Link interface for `protocol`.
+    fn jtag_interface(&self, protocol: WireProtocol) -> Interface {
+        match protocol {
+            WireProtocol::Swd => Interface::Swd,
+            WireProtocol::Jtag => Interface::Jtag,
+            WireProtocol::CJtag => Interface::CJtag,
+        }
     }
 
     /// Selects the interface to use for talking to the target MCU.
@@ -796,10 +811,17 @@ impl JLink {
         tdi: bool,
         capture: bool,
     ) -> Result<(), DebugProbeError> {
+        if self.interface == Interface::CJtag && !self.cjtag_keep(tms, capture) {
+            return Ok(());
+        }
+
         self.jtag_tms_bits.push(tms);
         self.jtag_tdi_bits.push(tdi);
         self.jtag_capture_tdo.push(capture);
 
+        if self.interface == Interface::CJtag {
+            self.cjtag_after_shift()?;
+        }
         if self.jtag_tms_bits.len() >= self.jtag_chunk_size {
             self.flush_jtag()?;
         }
@@ -812,7 +834,9 @@ impl JLink {
             return Ok(());
         }
 
-        self.require_interface_selected(Interface::Jtag)?;
+        if self.interface != Interface::CJtag {
+            self.require_interface_selected(Interface::Jtag)?;
+        }
 
         let mut has_status_byte = false;
         // There are 3 commands for doing a JTAG transfer. The older 2 are obsolete with hardware
@@ -1054,10 +1078,7 @@ impl JLink {
 impl DebugProbe for JLink {
     fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError> {
         if self.caps.contains(Capability::SelectIf) {
-            let jlink_interface = match protocol {
-                WireProtocol::Swd => Interface::Swd,
-                WireProtocol::Jtag => Interface::Jtag,
-            };
+            let jlink_interface = self.jtag_interface(protocol);
 
             if !self.interfaces.contains(jlink_interface) {
                 return Err(DebugProbeError::UnsupportedProtocol(protocol));
@@ -1142,7 +1163,7 @@ impl DebugProbe for JLink {
         }
 
         match self.protocol {
-            WireProtocol::Jtag => {
+            WireProtocol::Jtag | WireProtocol::CJtag => {
                 // try some JTAG stuff
 
                 tracing::debug!("Resetting JTAG chain using trst");
@@ -1161,6 +1182,10 @@ impl DebugProbe for JLink {
         // Set a default speed if not already set
         if self.speed_khz == 0 {
             self.set_speed(400)?;
+        }
+
+        if self.protocol == WireProtocol::CJtag {
+            self.cjtag_activate(false)?;
         }
 
         tracing::debug!("Attached successfully");
@@ -1245,7 +1270,7 @@ impl DebugProbe for JLink {
     ) -> Result<Box<dyn ArmDebugInterface + 'probe>, (Box<dyn DebugProbe>, ArmError)> {
         let settings = SwdProbe::swd_settings(self.as_ref());
         let iface = match self.protocol {
-            WireProtocol::Jtag => {
+            WireProtocol::Jtag | WireProtocol::CJtag => {
                 ArmCommunicationInterface::create_jtag(self, settings, sequence, true)
             }
             WireProtocol::Swd => {
@@ -1257,7 +1282,7 @@ impl DebugProbe for JLink {
 
     fn try_as_swd_probe(self: Box<Self>) -> Result<Box<dyn SwdProbe>, Box<dyn DebugProbe>> {
         match self.protocol {
-            WireProtocol::Jtag => Err(self.into_probe()),
+            WireProtocol::Jtag | WireProtocol::CJtag => Err(self.into_probe()),
             _ => Ok(self),
         }
     }
@@ -1292,7 +1317,7 @@ impl BitbangSwd for JLink {
     where
         S: IntoIterator<Item = IoSequenceItem>,
     {
-        if self.interface != Interface::Jtag {
+        if !matches!(self.interface, Interface::Jtag | Interface::CJtag) {
             return self.perform_swdio_transfer(swdio);
         }
 
@@ -1366,13 +1391,7 @@ impl BitbangJtag for JLink {
         cap: impl IntoIterator<Item = bool>,
     ) -> Result<(), DebugProbeError> {
         for ((tms, tdi), cap) in tms.into_iter().zip(tdi).zip(cap) {
-            self.jtag_tms_bits.push(tms);
-            self.jtag_tdi_bits.push(tdi);
-            self.jtag_capture_tdo.push(cap);
-
-            if self.jtag_tms_bits.len() >= self.jtag_chunk_size {
-                self.flush_jtag()?;
-            }
+            self.shift_jtag_bit(tms, tdi, cap)?;
         }
 
         Ok(())
@@ -1465,6 +1484,7 @@ impl TryFrom<Interface> for WireProtocol {
         match interface {
             Interface::Jtag => Ok(WireProtocol::Jtag),
             Interface::Swd => Ok(WireProtocol::Swd),
+            Interface::CJtag => Ok(WireProtocol::CJtag),
             unknown_interface => Err(JlinkError::UnknownInterface(unknown_interface)),
         }
     }

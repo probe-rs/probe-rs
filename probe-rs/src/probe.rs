@@ -93,7 +93,8 @@ pub(crate) fn register_probe_factory(factory: &'static dyn ProbeFactory) {
 
 /// The protocol that is to be used by the probe when communicating with the target.
 ///
-/// For ARM select `Swd` or `Jtag`, for RISC-V select `Jtag`.
+/// For ARM select `Swd` or `Jtag`, for RISC-V select `Jtag`. `CJtag` is JTAG over the two
+/// wires of IEEE 1149.7 (OScan1), for probes that translate it.
 #[derive(Copy, Clone, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
 pub enum WireProtocol {
     /// Serial Wire Debug is ARMs proprietary standard for communicating with ARM cores.
@@ -102,6 +103,16 @@ pub enum WireProtocol {
     /// JTAG is a standard which is supported by many chips independent of architecture.
     /// See [`Wikipedia`](https://en.wikipedia.org/wiki/JTAG) for more info.
     Jtag,
+    /// Compact JTAG (IEEE 1149.7) on two wires, TMSC and TCKC, in the OScan1 format. The probe
+    /// translates the JTAG operations, so the target sees JTAG.
+    CJtag,
+}
+
+impl WireProtocol {
+    /// Whether the protocol carries JTAG operations: JTAG or cJTAG.
+    pub fn is_jtag(self) -> bool {
+        matches!(self, WireProtocol::Jtag | WireProtocol::CJtag)
+    }
 }
 
 impl fmt::Display for WireProtocol {
@@ -109,6 +120,7 @@ impl fmt::Display for WireProtocol {
         match self {
             WireProtocol::Swd => f.write_str("SWD"),
             WireProtocol::Jtag => f.write_str("JTAG"),
+            WireProtocol::CJtag => f.write_str("cJTAG"),
         }
     }
 }
@@ -120,8 +132,9 @@ impl std::str::FromStr for WireProtocol {
         match &s.to_ascii_lowercase()[..] {
             "swd" => Ok(WireProtocol::Swd),
             "jtag" => Ok(WireProtocol::Jtag),
+            "cjtag" => Ok(WireProtocol::CJtag),
             _ => Err(format!(
-                "'{s}' is not a valid protocol. Choose either 'swd' or 'jtag'."
+                "'{s}' is not a valid protocol. Choose 'swd', 'jtag' or 'cjtag'."
             )),
         }
     }
@@ -442,7 +455,7 @@ impl Probe {
         // A debug port with SWJ pin switching that an earlier session left in SWD mode keeps
         // its JTAG TAPs off TDO, so the scan below would find an empty chain. The switch
         // sequence never enters a Capture or Update state, so JTAG-only TAPs ignore it.
-        if self.protocol() == Some(WireProtocol::Jtag)
+        if self.protocol().is_some_and(WireProtocol::is_jtag)
             && self.inner.try_as_jtag_chain_access_mut().is_some()
             && let Err(error) = self.with_debug_port_wire(switch_swd_to_jtag)
         {
@@ -452,7 +465,7 @@ impl Probe {
         // A JTAG consumer needs the padding parameters of a TAP. Select the first one, so that a
         // caller that does not know the chain can access the target. A chain that is not visible
         // yet is not an error here: a debug sequence may route the TAP later.
-        if self.protocol() == Some(WireProtocol::Jtag)
+        if self.protocol().is_some_and(WireProtocol::is_jtag)
             && let Some(mut chain) = self.try_as_jtag_chain()
             && let Err(error) = chain.select(0)
         {

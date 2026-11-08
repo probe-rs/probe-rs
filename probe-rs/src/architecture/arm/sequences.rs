@@ -573,7 +573,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
             // Make sure the debug port is in the correct mode based on what the probe
             // has selected via active_protocol
             match interface.active_protocol() {
-                Some(WireProtocol::Jtag) => {
+                Some(WireProtocol::Jtag | WireProtocol::CJtag) => {
                     if has_dormant {
                         tracing::debug!("Select Dormant State (from SWD)");
                         interface.swj_sequence(&BitSequence::from_u64(16, 0xE3BC))?;
@@ -1028,7 +1028,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
         dp: DpAddress,
     ) -> Result<(), ArmError> {
         match interface.active_protocol() {
-            Some(WireProtocol::Jtag) => {
+            Some(WireProtocol::Jtag | WireProtocol::CJtag) => {
                 tracing::debug!("JTAG: No special sequence needed to connect to debug port");
                 return Ok(());
             }

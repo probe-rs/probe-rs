@@ -687,12 +687,12 @@ mod tests {
     ) -> (Box<dyn ArmDebugInterface>, Arc<Mutex<FakeProbe>>) {
         let port = match protocol {
             WireProtocol::Swd => 1,
-            WireProtocol::Jtag => 2,
+            WireProtocol::Jtag | WireProtocol::CJtag => 2,
         };
         let (mut dap, probe) = firmware_dap(port, dpidr, answer);
         let sequence: Arc<dyn ArmDebugSequence> = match protocol {
             WireProtocol::Swd => crate::architecture::arm::sequences::DefaultArmSequence::create(),
-            WireProtocol::Jtag => Arc::new(KnownChain),
+            WireProtocol::Jtag | WireProtocol::CJtag => Arc::new(KnownChain),
         };
         dap.jtag_state.expected_scan_chain = Some(vec![probe_rs_target::ScanChainElement {
             name: None,

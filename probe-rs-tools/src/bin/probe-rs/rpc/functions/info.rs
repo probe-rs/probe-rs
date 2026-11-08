@@ -203,7 +203,7 @@ async fn try_show_info(
         probe.attach_to_unspecified()?;
     }
 
-    if protocol == WireProtocol::Jtag
+    if matches!(protocol, WireProtocol::Jtag | WireProtocol::CJtag)
         && let Some(taps) = read_jtag_scan_chain(&mut probe)
     {
         return show_jtag_scan_chain_info(ctx, probe, taps).await;
@@ -1138,6 +1138,7 @@ pub(crate) mod convert {
                 protocol: match request.protocol {
                     WireProtocol::Jtag => Some(ProbeRsWireProtocol::Jtag),
                     WireProtocol::Swd => Some(ProbeRsWireProtocol::Swd),
+                    WireProtocol::CJtag => Some(ProbeRsWireProtocol::CJtag),
                 },
                 non_interactive: true,
                 probe: Some(from_wire_debug_probe_selector(request.probe.selector())),

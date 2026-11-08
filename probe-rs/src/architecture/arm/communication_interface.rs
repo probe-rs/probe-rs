@@ -425,7 +425,7 @@ impl DapTransport for JtagTransport {
     }
 
     fn protocol(&self) -> Option<WireProtocol> {
-        Some(WireProtocol::Jtag)
+        self.probe.active_protocol()
     }
 
     fn wire(&mut self) -> Box<dyn DebugPortWire + '_> {
@@ -576,7 +576,7 @@ impl JtagDebugPortWire<'_> {
 
 impl DebugPortWire for JtagDebugPortWire<'_> {
     fn active_protocol(&self) -> Option<WireProtocol> {
-        Some(WireProtocol::Jtag)
+        self.probe.active_protocol()
     }
 
     fn swj_sequence(&mut self, bits: &BitSequence) -> Result<(), ArmError> {
@@ -673,7 +673,7 @@ pub(crate) fn probe_debug_port_wire<R>(
         .map(|swd| swd.swd_settings())
         .unwrap_or_default();
 
-    if probe.active_protocol() == Some(WireProtocol::Jtag)
+    if probe.active_protocol().is_some_and(WireProtocol::is_jtag)
         && let Some(jtag) = probe.try_as_jtag_chain_access_mut()
     {
         let mut wire = JtagDebugPortWire {
