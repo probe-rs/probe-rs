@@ -1,7 +1,7 @@
 //! Sequences for CC23xx/CC27xx devices.
 use std::ops::DerefMut;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
 
@@ -27,6 +27,7 @@ use crate::flashing::{
     SectorCheck,
 };
 use crate::probe::DebugProbeError;
+use crate::{Core, MemoryInterface, RegisterId};
 use probe_rs_target::CoreType;
 
 /// Marker struct for debug and flash sequencing on CC23xx/CC27xx family parts.
@@ -239,10 +240,117 @@ const CCFG_START: u64 = 0x4E02_0000;
 /// Address boundary for the SCFG region on CC23xx/CC27xx devices.
 const SCFG_START: u64 = 0x4E04_0000;
 
+/// The boot ROM's function table (driverlib hapi.h), the same on CC23xx and CC27xx.
+const HAPI_TABLE: u64 = 0x0F00_004C;
+/// `uint32_t flashSectorErase(uint32_t key, uint32_t sectorAddress)`
+const HAPI_SECTOR_ERASE: u64 = HAPI_TABLE + 4 * 3;
+/// `uint32_t flashProgram(uint32_t key, const uint8_t *data, uint32_t address, uint32_t nBytes)`
+const HAPI_PROGRAM: u64 = HAPI_TABLE + 4 * 5;
+const ROM: std::ops::Range<u32> = 0x0F00_0000..0x1000_0000;
+const FAPI_STATUS_SUCCESS: u32 = 0;
+
+/// VIMS cache control, turned off while programming as in driverlib's FlashProgram (CC27xx).
+const VIMS_CCHCTL: u64 = 0x4002_4424;
+const VIMS_CCHSTA: u64 = 0x4002_4428;
+const VIMS_CCHSTA_BUSY: u32 = 1 << 1;
+
+/// RAM for the ROM calls: a breakpoint to return to, the stack, then a sector.
+const RAM_RETURN: u64 = 0x2000_0000;
+const RAM_STACK_TOP: u64 = RAM_RETURN + 4 + 0x200;
+const RAM_BUFFER: u64 = RAM_STACK_TOP;
+const SECTOR_SIZE: usize = 0x800;
+const SCFG_SIZE: usize = 0x400;
+
+/// The boot ROM's flash functions, called on the core.
+#[derive(Debug, Clone, Copy)]
+struct RomFlash {
+    sector_erase: u32,
+    program: u32,
+}
+
+impl RomFlash {
+    /// Halts the core after a reset and finds the flash functions.
+    fn start(core: &mut Core<'_>) -> Result<Self, crate::Error> {
+        core.reset_and_halt(Duration::from_millis(500))?;
+
+        let rom = Self {
+            sector_erase: core.read_word_32(HAPI_SECTOR_ERASE)?,
+            program: core.read_word_32(HAPI_PROGRAM)?,
+        };
+        if !ROM.contains(&(rom.sector_erase & !1)) || !ROM.contains(&(rom.program & !1)) {
+            return Err(crate::Error::Other(format!(
+                "No flash functions in the boot ROM: {rom:x?}"
+            )));
+        }
+
+        core.write_word_32(VIMS_CCHCTL, 0)?;
+        let start = Instant::now();
+        while core.read_word_32(VIMS_CCHSTA)? & VIMS_CCHSTA_BUSY != 0 {
+            if start.elapsed() > Duration::from_millis(100) {
+                return Err(crate::Error::Timeout);
+            }
+        }
+
+        // bkpt; bkpt
+        core.write_word_32(RAM_RETURN, 0xBE00_BE00)?;
+
+        // Thread mode on the MSP, interrupts masked: the flash can't be read while it's busy.
+        // The calls keep these, and the stack pointer.
+        let extra = core.read_core_reg::<u32>(EXTRA)?;
+        core.write_core_reg(EXTRA, (extra & 0x00FF_FF00) | 1)?;
+        core.write_core_reg(XPSR, 0x0100_0000u32)?;
+        // The application's stack limit would fault the ROM's stack.
+        core.write_core_reg(MSPLIM_S, 0u32)?;
+        core.write_core_reg(core.stack_pointer(), RAM_STACK_TOP as u32)?;
+
+        Ok(rom)
+    }
+
+    /// Calls `function` with the flash key and `args`, and checks its status.
+    fn call(&self, core: &mut Core<'_>, function: u32, args: [u32; 3]) -> Result<(), crate::Error> {
+        core.write_core_reg(RegisterId(0), saci::cmd::FLASH_KEY)?;
+        for (n, arg) in args.into_iter().enumerate() {
+            core.write_core_reg(RegisterId(n as u16 + 1), arg)?;
+        }
+        core.write_core_reg(core.return_address(), RAM_RETURN as u32 | 1)?;
+        core.write_core_reg(core.program_counter(), function & !1)?;
+
+        core.run()?;
+        core.wait_for_core_halted(Duration::from_secs(5))?;
+
+        let status = core.read_core_reg::<u32>(RegisterId(0))?;
+        if status != FAPI_STATUS_SUCCESS {
+            return Err(crate::Error::Other(format!(
+                "Boot ROM flash function at {function:#010x} failed with status {status:#x}"
+            )));
+        }
+        Ok(())
+    }
+
+    fn erase_sector(&self, core: &mut Core<'_>, address: u64) -> Result<(), crate::Error> {
+        self.call(core, self.sector_erase, [address as u32, 0, 0])
+    }
+
+    fn program(&self, core: &mut Core<'_>, address: u64, data: &[u8]) -> Result<(), crate::Error> {
+        core.write(RAM_BUFFER, data)?;
+        self.call(
+            core,
+            self.program,
+            [RAM_BUFFER as u32, address as u32, data.len() as u32],
+        )
+    }
+}
+
+/// CONTROL, FAULTMASK, BASEPRI and PRIMASK.
+const EXTRA: RegisterId = RegisterId(0b1_0100);
+const XPSR: RegisterId = RegisterId(0b1_0000);
+const MSPLIM_S: RegisterId = RegisterId(0b1_1100);
+
 /// Host-side flash programming implementation for CC23xx/CC27xx devices.
 ///
-/// Implements DebugFlashSequence by issuing SACI commands through the SEC-AP
-/// rather than loading a flash algorithm into target RAM.
+/// On a CC27xx with the AHB-AP open, the boot ROM's flash functions are called on the core:
+/// sector erase, and only the sectors in the image change. Otherwise, SACI commands go through
+/// the SEC-AP: a chip erase, then the sectors of the image.
 ///
 /// The saci_flash_mode flag is shared with CC23xxCC27xx. While this struct is
 /// alive the flag is true, which tells debug_port_start to skip the EXIT_SACI
@@ -252,6 +360,8 @@ const SCFG_START: u64 = 0x4E04_0000;
 pub struct CC23xxCC27xxFlashSequence {
     /// Shared flag with CC23xxCC27xx to suppress EXIT_SACI during flash.
     saci_flash_mode: Arc<AtomicBool>,
+    /// The boot ROM's flash functions, when they are used instead of SACI.
+    rom: Mutex<Option<RomFlash>>,
 }
 
 impl CC23xxCC27xxFlashSequence {
@@ -264,7 +374,10 @@ impl CC23xxCC27xxFlashSequence {
     /// Drop resets it to false so normal debug sessions are unaffected afterward.
     pub fn new_with_flag(saci_flash_mode: Arc<AtomicBool>) -> Self {
         saci_flash_mode.store(true, Ordering::SeqCst);
-        Self { saci_flash_mode }
+        Self {
+            saci_flash_mode,
+            rom: Mutex::new(None),
+        }
     }
 
     /// Fallback constructor with no shared flag, for tests or standalone use.
@@ -301,6 +414,55 @@ impl CC23xxCC27xxFlashSequence {
             }
             thread::sleep(Duration::from_millis(50));
         }
+    }
+
+    fn rom(&self) -> Option<RomFlash> {
+        *self.rom.lock().unwrap()
+    }
+
+    /// Uses the boot ROM's flash functions if the core is reachable, on a CC27xx.
+    fn start_rom(&self, session: &mut Session) -> Result<bool, crate::Error> {
+        if session.target().cores[0].core_type != CoreType::Armv8m
+            || !saci::read_device_status(session.get_arm_interface()?)?.ahb_ap_available()
+        {
+            return Ok(false);
+        }
+
+        // A reset must leave SACI now.
+        self.saci_flash_mode.store(false, Ordering::SeqCst);
+        match RomFlash::start(&mut session.core(0)?) {
+            Ok(rom) => {
+                tracing::info!("CC23xx/CC27xx: flashing through the boot ROM's functions");
+                *self.rom.lock().unwrap() = Some(rom);
+                Ok(true)
+            }
+            Err(error) => {
+                tracing::warn!("CC23xx/CC27xx: boot ROM flash functions not usable: {error}");
+                self.saci_flash_mode.store(true, Ordering::SeqCst);
+                Ok(false)
+            }
+        }
+    }
+
+    /// Erases and programs the CCFG or the SCFG, whole, through the boot ROM.
+    ///
+    /// Left alone if it already holds `data`: until it is written again, an erased CCFG or
+    /// SCFG keeps the device from booting.
+    fn program_xcfg(
+        &self,
+        rom: RomFlash,
+        core: &mut Core<'_>,
+        address: u64,
+        data: &[u8],
+    ) -> Result<(), crate::Error> {
+        let mut current = vec![0; data.len()];
+        core.read(address, &mut current)?;
+        if current == data {
+            tracing::debug!("CC23xx/CC27xx: 0x{address:08X} unchanged");
+            return Ok(());
+        }
+        rom.erase_sector(core, address)?;
+        rom.program(core, address, data)
     }
 
     fn program_main(
@@ -388,8 +550,10 @@ impl Default for CC23xxCC27xxFlashSequence {
 ///
 /// For CCFG and SCFG, a match does not prove that the flash holds the image: the ROM checks the
 /// CRCs in CCFG, and only 0xE4 bytes of SCFG. A standalone verify can pass on a different, valid
-/// configuration. A download is not affected: these devices have no sector erase, so a compare
-/// never skips programming. A read-back is not possible: SACI mode has no AHB-AP.
+/// configuration. A download is not affected: SACI has no sector erase, so a compare never skips
+/// programming. A read-back is not possible: SACI mode has no AHB-AP. Outside SACI, the SCFG
+/// is read back here, as its region is larger than the sector, and the other checks are left
+/// to the read-back.
 #[derive(Debug)]
 pub struct SaciCompare;
 
@@ -405,13 +569,22 @@ impl FlashCompare for SaciCompare {
     fn compare(
         &self,
         context: &mut CompareContext<'_>,
-        _region: &NvmRegion,
+        region: &NvmRegion,
         checks: &mut [SectorCheck<'_>],
     ) -> Result<(), FlashError> {
         let interface = context
             .session()?
             .get_arm_interface()
             .map_err(|error| FlashError::Core(error.into()))?;
+        if saci::read_device_status(interface)
+            .map_err(|error| FlashError::Core(error.into()))?
+            .ahb_ap_available()
+        {
+            if region.range.start >= SCFG_START {
+                read_back_scfg(&mut context.core()?, checks).map_err(FlashError::Core)?;
+            }
+            return Ok(());
+        }
         for check in checks {
             let mut outcome = CompareOutcome::Match;
             for (address, data) in check.contiguous_ranges() {
@@ -425,6 +598,25 @@ impl FlashCompare for SaciCompare {
 
         Ok(())
     }
+}
+
+/// Compares the SCFG with a read-back, up to its end.
+fn read_back_scfg(core: &mut Core<'_>, checks: &mut [SectorCheck<'_>]) -> Result<(), crate::Error> {
+    let end = SCFG_START + SCFG_SIZE as u64;
+    for check in checks {
+        let mut outcome = CompareOutcome::Match;
+        for &(address, data) in check.expected() {
+            let len = data.len().min(end.saturating_sub(address) as usize);
+            let mut current = vec![0; len];
+            core.read(address, &mut current)?;
+            if current != data[..len] {
+                outcome = CompareOutcome::Mismatch;
+                break;
+            }
+        }
+        check.set_outcome(outcome);
+    }
+    Ok(())
 }
 
 /// Checks `data` at `address` with a SACI verify command.
@@ -497,6 +689,10 @@ fn saci_verify(
 
 impl DebugFlashSequence for CC23xxCC27xxFlashSequence {
     fn prepare_flash(&self, session: &mut Session) -> Result<(), crate::Error> {
+        if self.start_rom(session)? {
+            return Ok(());
+        }
+
         let interface = session.get_arm_interface()?;
 
         // Ensure the device is in SACI mode before any flash operation. Handles
@@ -512,6 +708,12 @@ impl DebugFlashSequence for CC23xxCC27xxFlashSequence {
 
     fn erase_all(&self, session: &mut Session) -> Result<(), crate::Error> {
         let interface = session.get_arm_interface()?;
+
+        // Only SACI erases the chip.
+        if self.rom.lock().unwrap().take().is_some() {
+            self.saci_flash_mode.store(true, Ordering::SeqCst);
+            self.reset_into_saci_mode(interface)?;
+        }
 
         tracing::info!("CC23xx/CC27xx: Chip erase via SACI FLASH_ERASE_CHIP (0x09)");
 
@@ -539,6 +741,17 @@ impl DebugFlashSequence for CC23xxCC27xxFlashSequence {
             address
         );
 
+        if let Some(rom) = self.rom() {
+            let core = &mut session.core(0)?;
+            return if address >= SCFG_START {
+                self.program_xcfg(rom, core, address, &data[..data.len().min(SCFG_SIZE)])
+            } else if address >= CCFG_START {
+                self.program_xcfg(rom, core, address, &data[..data.len().min(SECTOR_SIZE)])
+            } else {
+                rom.program(core, address, data)
+            };
+        }
+
         let interface = session.get_arm_interface()?;
 
         if address >= SCFG_START {
@@ -551,8 +764,19 @@ impl DebugFlashSequence for CC23xxCC27xxFlashSequence {
         Ok(())
     }
 
+    fn erase_sector(&self, session: &mut Session, address: u64) -> Result<(), crate::Error> {
+        let Some(rom) = self.rom() else {
+            return Err(crate::Error::NotImplemented("sector erase through SACI"));
+        };
+        // The CCFG and SCFG are erased when they are written.
+        if address >= CCFG_START {
+            return Ok(());
+        }
+        rom.erase_sector(&mut session.core(0)?, address)
+    }
+
     fn supports_sector_erase(&self) -> bool {
-        false
+        self.rom().is_some()
     }
 
     fn finish_flash(&self, session: &mut Session) -> Result<(), crate::Error> {
@@ -563,6 +787,13 @@ impl DebugFlashSequence for CC23xxCC27xxFlashSequence {
         // 1. Clear saci_flash_mode so the next debug_port_start exits SACI.
         // 2. Reset into SACI and reinitialize, so debug_port_start sends
         //    EXIT_SACI_HALT (device boots, AHB-AP available).
+        if self.rom.lock().unwrap().take().is_some() {
+            // The core was halted for the calls: reset it through the core, which knows.
+            tracing::info!("CC23xx/CC27xx: Flash complete, resetting");
+            session.core(0)?.reset()?;
+            return Ok(());
+        }
+
         tracing::info!("CC23xx/CC27xx: Flash complete, exiting SACI for normal debug access");
 
         // Clear the flag BEFORE reinitialize so debug_port_start sends
