@@ -15,7 +15,7 @@ permissions: {}
 
 jobs:
   # Find the open PR whose head is the tested commit. Keep the earlier comment if the report job did
-  # not run, for example on a draft PR.
+  # not run, for example on a PR without the ci:hil-test label.
   find:
     if: github.event.workflow_run.event == 'pull_request'
     runs-on: ubuntu-latest

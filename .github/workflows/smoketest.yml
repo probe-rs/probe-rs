@@ -1,6 +1,6 @@
 on:
   pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
+    types: [opened, synchronize, reopened, labeled]
   merge_group:
   workflow_dispatch:
 
@@ -11,8 +11,9 @@ env:
 
 jobs:
   build-smoke-tester:
-    # Skip the slow hardware tests on draft PRs.
-    if: ${{ !github.event.pull_request.draft }}
+    # The hardware tests are slow. A PR runs them only with the ci:hil-test label. Adding another label
+    # does not start a run.
+    if: ${{ github.event_name != 'pull_request' || (contains(github.event.pull_request.labels.*.name, 'ci:hil-test') && (github.event.action != 'labeled' || github.event.label.name == 'ci:hil-test')) }}
     runs-on: ubuntu-24.04-arm
     # A new run of the same PR, branch, or tag cancels this job.
     concurrency:
@@ -43,7 +44,7 @@ jobs:
           path: smoke_tester.tar.zst
 
   build-probe-rs:
-    if: ${{ !github.event.pull_request.draft }}
+    if: ${{ github.event_name != 'pull_request' || (contains(github.event.pull_request.labels.*.name, 'ci:hil-test') && (github.event.action != 'labeled' || github.event.label.name == 'ci:hil-test')) }}
     runs-on: ubuntu-latest
     # A new run of the same PR, branch, or tag cancels this job.
     concurrency:
