@@ -269,7 +269,7 @@ impl ProbeFactory for JLinkFactory {
         // `read_max_mem_block`'s return value does not directly correspond to the
         // maximum transfer size when performing JTAG IO, and it's not clear how to get the actual value.
         // The number of *bits* is encoded as a u16, so the maximum value is 65535
-        this.jtag_chunk_size = match selector.product_id {
+        let jtag_chunk_size = match selector.product_id {
             // 0x0101: J-Link EDU
             0x0101 => 65535,
             // 0x1051: J-Link OB-K22-SiFive: 504 bits
@@ -277,6 +277,10 @@ impl ProbeFactory for JLinkFactory {
             // Assume the lowest value is a safe default
             _ => 504,
         };
+        // The command must still fit the probe's buffer, as for SWD IO: the J-Link EDU Mini,
+        // also 0x0101, has 11608 bytes, takes 46424 bits and fails 46480 bits with status 6.
+        this.jtag_chunk_size =
+            jtag_chunk_size.min(this.max_mem_block_size.saturating_sub(4) / 2 * 8);
         this.config = this.read_device_config()?;
         this.connection_handle = if requires_connection_handle(selector) {
             Some(this.register_connection()?)
