@@ -4171,6 +4171,14 @@ variants:
       write: false
       boot: true
   - !Ram
+    name: RAM_D2
+    range:
+      start: 0x10000000
+      end: 0x10048000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
     name: DTCM
     range:
       start: 0x20000000
@@ -4277,6 +4285,14 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: RAM_D2
+    range:
+      start: 0x10000000
+      end: 0x10048000
+    cores:
+    - cm7
+    - cm4
   - !Ram
     name: DTCM
     range:
@@ -4386,6 +4402,14 @@ variants:
       write: false
       boot: true
   - !Ram
+    name: RAM_D2
+    range:
+      start: 0x10000000
+      end: 0x10048000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
     name: DTCM
     range:
       start: 0x20000000
@@ -4494,6 +4518,14 @@ variants:
       write: false
       boot: true
   - !Ram
+    name: RAM_D2
+    range:
+      start: 0x10000000
+      end: 0x10048000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
     name: DTCM
     range:
       start: 0x20000000
@@ -4600,6 +4632,14 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: RAM_D2
+    range:
+      start: 0x10000000
+      end: 0x10048000
+    cores:
+    - cm7
+    - cm4
   - !Ram
     name: DTCM
     range:
@@ -4708,6 +4748,14 @@ variants:
       write: false
       boot: true
   - !Ram
+    name: RAM_D2
+    range:
+      start: 0x10000000
+      end: 0x10048000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
     name: DTCM
     range:
       start: 0x20000000
@@ -4814,6 +4862,14 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: RAM_D2
+    range:
+      start: 0x10000000
+      end: 0x10048000
+    cores:
+    - cm7
+    - cm4
   - !Ram
     name: DTCM
     range:
@@ -4922,6 +4978,14 @@ variants:
       write: false
       boot: true
   - !Ram
+    name: RAM_D2
+    range:
+      start: 0x10000000
+      end: 0x10048000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
     name: DTCM
     range:
       start: 0x20000000
@@ -5028,6 +5092,14 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: RAM_D2
+    range:
+      start: 0x10000000
+      end: 0x10048000
+    cores:
+    - cm7
+    - cm4
   - !Ram
     name: DTCM
     range:
@@ -5136,6 +5208,14 @@ variants:
       write: false
       boot: true
   - !Ram
+    name: RAM_D2
+    range:
+      start: 0x10000000
+      end: 0x10048000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
     name: DTCM
     range:
       start: 0x20000000
@@ -5242,6 +5322,14 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: RAM_D2
+    range:
+      start: 0x10000000
+      end: 0x10048000
+    cores:
+    - cm7
+    - cm4
   - !Ram
     name: DTCM
     range:
@@ -5350,6 +5438,14 @@ variants:
       write: false
       boot: true
   - !Ram
+    name: RAM_D2
+    range:
+      start: 0x10000000
+      end: 0x10048000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
     name: DTCM
     range:
       start: 0x20000000
@@ -5456,6 +5552,14 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: RAM_D2
+    range:
+      start: 0x10000000
+      end: 0x10048000
+    cores:
+    - cm7
+    - cm4
   - !Ram
     name: DTCM
     range:
@@ -5564,6 +5668,14 @@ variants:
       write: false
       boot: true
   - !Ram
+    name: RAM_D2
+    range:
+      start: 0x10000000
+      end: 0x10048000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
     name: DTCM
     range:
       start: 0x20000000
@@ -5670,6 +5782,14 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: RAM_D2
+    range:
+      start: 0x10000000
+      end: 0x10048000
+    cores:
+    - cm7
+    - cm4
   - !Ram
     name: DTCM
     range:
@@ -5778,6 +5898,14 @@ variants:
       write: false
       boot: true
   - !Ram
+    name: RAM_D2
+    range:
+      start: 0x10000000
+      end: 0x10048000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
     name: DTCM
     range:
       start: 0x20000000
@@ -5884,6 +6012,14 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: RAM_D2
+    range:
+      start: 0x10000000
+      end: 0x10048000
+    cores:
+    - cm7
+    - cm4
   - !Ram
     name: DTCM
     range:
@@ -6895,6 +7031,14 @@ variants:
       write: false
       boot: true
   - !Ram
+    name: RAM_D2
+    range:
+      start: 0x10000000
+      end: 0x10048000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
     name: DTCM
     range:
       start: 0x20000000
@@ -7003,6 +7147,14 @@ variants:
       write: false
       boot: true
   - !Ram
+    name: RAM_D2
+    range:
+      start: 0x10000000
+      end: 0x10048000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
     name: DTCM
     range:
       start: 0x20000000
@@ -7109,6 +7261,14 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: RAM_D2
+    range:
+      start: 0x10000000
+      end: 0x10048000
+    cores:
+    - cm7
+    - cm4
   - !Ram
     name: DTCM
     range:
@@ -7217,6 +7377,14 @@ variants:
       write: false
       boot: true
   - !Ram
+    name: RAM_D2
+    range:
+      start: 0x10000000
+      end: 0x10048000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
     name: DTCM
     range:
       start: 0x20000000
@@ -7323,6 +7491,14 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: RAM_D2
+    range:
+      start: 0x10000000
+      end: 0x10048000
+    cores:
+    - cm7
+    - cm4
   - !Ram
     name: DTCM
     range:
@@ -7431,6 +7607,14 @@ variants:
       write: false
       boot: true
   - !Ram
+    name: RAM_D2
+    range:
+      start: 0x10000000
+      end: 0x10048000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
     name: DTCM
     range:
       start: 0x20000000
@@ -7537,6 +7721,14 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: RAM_D2
+    range:
+      start: 0x10000000
+      end: 0x10048000
+    cores:
+    - cm7
+    - cm4
   - !Ram
     name: DTCM
     range:
@@ -7645,6 +7837,14 @@ variants:
       write: false
       boot: true
   - !Ram
+    name: RAM_D2
+    range:
+      start: 0x10000000
+      end: 0x10048000
+    cores:
+    - cm7
+    - cm4
+  - !Ram
     name: DTCM
     range:
       start: 0x20000000
@@ -7751,6 +7951,14 @@ variants:
     access:
       write: false
       boot: true
+  - !Ram
+    name: RAM_D2
+    range:
+      start: 0x10000000
+      end: 0x10048000
+    cores:
+    - cm7
+    - cm4
   - !Ram
     name: DTCM
     range:
