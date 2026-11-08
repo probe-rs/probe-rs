@@ -327,10 +327,11 @@ impl CC23xxCC27xxFlashSequence {
 
     /// Program the CCFG sector using FLASH_PROG_CCFG_SECTOR
     ///
-    /// Pads data to exactly 512 words (2048 bytes) with 0xFF. Sets skip_user_rec=1.
+    /// Pads data to exactly 512 words (2048 bytes) with 0xFF. The user record is written too:
+    /// after the chip erase, it holds only what the image has there.
     fn program_ccfg(&self, interface: &mut dyn DapAccess, data: &[u8]) -> Result<(), ArmError> {
         // skip_user_rec = bit 0 of cmd_specific
-        let header = saci::make_header(saci::cmd::FLASH_PROG_CCFG_SECTOR, 0x0001);
+        let header = saci::make_header(saci::cmd::FLASH_PROG_CCFG_SECTOR, 0);
 
         // Pad to exactly 2048 bytes.
         let mut padded = vec![0xFFu8; 2048];
