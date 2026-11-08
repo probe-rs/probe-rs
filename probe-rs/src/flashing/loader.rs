@@ -324,6 +324,9 @@ trait DownloadMethod {
     /// Returns `true` if this method writes flash that a chip erase cannot erase.
     fn blocks_chip_erase(&self, session: &Session) -> bool;
 
+    /// Returns `true` if this method skips the parts of the target that hold the data already.
+    fn skips_unchanged(&self, options: &DownloadOptions) -> bool;
+
     /// Adds the progress bars of a download, and returns the flash layout, if any.
     fn add_progress_bars(&mut self, options: &mut DownloadOptions) -> Option<FlashLayout>;
 
@@ -448,6 +451,10 @@ impl DownloadMethod for FlashDownload {
         !self.flasher.is_chip_erase_supported(session)
     }
 
+    fn skips_unchanged(&self, options: &DownloadOptions) -> bool {
+        self.compares(options)
+    }
+
     fn add_progress_bars(&mut self, options: &mut DownloadOptions) -> Option<FlashLayout> {
         if self.compares(options) {
             let size = self.flasher.compute_verify_size();
@@ -544,6 +551,10 @@ struct RamDownload<'a> {
 impl DownloadMethod for RamDownload<'_> {
     fn blocks_chip_erase(&self, _session: &Session) -> bool {
         false
+    }
+
+    fn skips_unchanged(&self, _options: &DownloadOptions) -> bool {
+        true
     }
 
     fn add_progress_bars(&mut self, options: &mut DownloadOptions) -> Option<FlashLayout> {
@@ -1236,6 +1247,19 @@ impl FlashLoader {
             options.progress.failed_programming();
 
             return Ok(());
+        }
+
+        // A method that cannot skip single sectors writes all its data. Skip the download if the
+        // target holds the full image already.
+        if options.preverify && !plan.iter().all(|method| method.skips_unchanged(&options)) {
+            match self.verify(session, &mut options.progress) {
+                Ok(()) => {
+                    tracing::info!("The target holds the image already, skipping the download");
+                    return Ok(());
+                }
+                Err(FlashError::Verify) => {}
+                Err(error) => return Err(error),
+            }
         }
 
         Self::initialize(&mut plan, session, &mut options);
