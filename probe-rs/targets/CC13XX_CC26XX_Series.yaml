@@ -35,6 +35,34 @@ variants:
     scan_chain:
     - name: ICEPICK
       ir_len: 6
+- name: CC2650F128
+  cores:
+  - name: main
+    type: armv7m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    range:
+      start: 0x0
+      end: 0x20000
+    cores:
+    - main
+    access:
+      boot: true
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  flash_algorithms:
+  - cc26x0-flash
+  jtag:
+    force_scan_chain: true
+    scan_chain:
+    - name: ICEPICK
+      ir_len: 6
 - name: CC2652R
   cores:
   - name: main
@@ -423,6 +451,30 @@ flash_algorithms:
     erase_sector_timeout: 2000
     sectors:
     - size: 0x2000
+      address: 0x0
+  cores:
+  - main
+- name: cc26x0-flash
+  description: Flash algorithm for the cc26x0 family of devices
+  default: true
+  instructions: 8LUDr034BI1A8rQQwvIAAAB4ASgY0UDyqBZA8oRIACXB8gAGxPJgKAAhAfWAVLT1BD8L0DBoQmkIRpBHIUYAKMj4AFDx0BDgASAO4DBoT/bYccDyAQEUIoNpQPKcEMLyAACYRwAhyPgAEF34BIvwvUDytBHC8gABCXgBKRy/ASBwR4C1b0ZA8qgRwfIAAQloSWmIR0DyhEEAIsTyYCEKYIC9gLVvRkDytBBE8gADwvIAAEDysBwBeMTyAwPC8gAMMbHc+AAQWWAZaAkH/NRitgEhAXBRHgQpENJythloCQf81FpoQvAzAVlgGWgJB/zUASHM+AAgAXAAIIC9APA6+AtGAUZA8rQQwvIAAAB4ASgcvwEgcEeAtW9GQPKoEMHyAAAAaND4GMAQRhpG4EdA8oRBACLE8mAhCmCAvUDytBHC8gABCHgBKBy/ASBwR4C1b0ZA8rAQwvIAAAJoRPIAAMTyAwBCYAJoEgf81AAgYrYIcIC9gLVvRgDe/t7////F/////8X////FxcX/xcXF/wAAAAAA1NTU
+  load_address: 0x20000020
+  pc_init: 0xa3
+  pc_uninit: 0x13d
+  pc_program_page: 0x101
+  pc_erase_sector: 0x71
+  pc_erase_all: 0x1
+  data_section_offset: 0x198
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x20000
+    page_size: 0x1000
+    erased_byte_value: 0xff
+    program_page_timeout: 1000
+    erase_sector_timeout: 2000
+    sectors:
+    - size: 0x1000
       address: 0x0
   cores:
   - main
