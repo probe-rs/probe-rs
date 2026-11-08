@@ -165,6 +165,10 @@ impl McxMisrCompare {
 }
 
 impl FlashCompare for McxMisrCompare {
+    fn name(&self) -> &str {
+        "MCX MISR"
+    }
+
     fn cost(&self) -> CompareCost {
         CompareCost::Cheap
     }

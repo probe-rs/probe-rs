@@ -1,6 +1,6 @@
 //! ST-Link probe implementation.
 
-mod constants;
+pub(crate) mod constants;
 mod tools;
 mod usb_interface;
 
@@ -1264,6 +1264,21 @@ pub enum StlinkError {
     Usb(#[from] std::io::Error),
 }
 
+impl StlinkError {
+    /// Returns `true` if the probe works, and the target reported a fault of an access.
+    pub(crate) fn is_target_fault(&self) -> bool {
+        matches!(
+            self,
+            Self::CommandFailed(
+                Status::SwdApFault
+                    | Status::SwdDpFault
+                    | Status::SwdApStickyError
+                    | Status::SwdApStickyorunError
+            )
+        )
+    }
+}
+
 impl ProbeError for StlinkError {}
 
 #[derive(Debug)]
@@ -2046,6 +2061,20 @@ mod test {
         probe
             .select_ap(1)
             .expect("Selecting AP other than AP 0 should work");
+    }
+
+    #[test]
+    fn target_faults_are_the_fault_and_sticky_statuses() {
+        for status in [
+            Status::SwdApFault,
+            Status::SwdDpFault,
+            Status::SwdApStickyError,
+            Status::SwdApStickyorunError,
+        ] {
+            assert!(StlinkError::CommandFailed(status).is_target_fault());
+        }
+        assert!(!StlinkError::CommandFailed(Status::SwdApWait).is_target_fault());
+        assert!(!StlinkError::BanksNotAllowedOnDPRegister.is_target_fault());
     }
 
     #[test]

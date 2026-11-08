@@ -1,6 +1,7 @@
 //! Compare backend that reads the flash contents back through the core.
 
-use super::{CompareContext, CompareCost, FlashCompare, SectorCheck};
+use super::blank_check::read_after_blank_check;
+use super::{CompareContext, CompareCost, FlashCompare, Outside, SectorCheck};
 use crate::config::NvmRegion;
 use crate::flashing::FlashError;
 use crate::memory::MemoryInterface;
@@ -10,6 +11,10 @@ use crate::memory::MemoryInterface;
 pub(crate) struct ReadBackCore;
 
 impl FlashCompare for ReadBackCore {
+    fn name(&self) -> &str {
+        "core read-back"
+    }
+
     fn cost(&self) -> CompareCost {
         CompareCost::Costly
     }
@@ -20,6 +25,18 @@ impl FlashCompare for ReadBackCore {
         _region: &NvmRegion,
         checks: &mut [SectorCheck<'_>],
     ) -> Result<(), FlashError> {
+        let uses_blank_check = context
+            .flash_algorithm()
+            .is_some_and(|algorithm| algorithm.pc_blank_check.is_some())
+            && checks
+                .iter()
+                .any(|check| matches!(check.outside(), Outside::Erased(_)));
+
+        // `context.core()` calls `UnInit`, so `BlankCheck` and the read share the algorithm.
+        if uses_blank_check {
+            return read_after_blank_check(context, checks);
+        }
+
         let mut core = context.core()?;
         for check in checks {
             let outcome = check.compare_read_back(|address, data| {

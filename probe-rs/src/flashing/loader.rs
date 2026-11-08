@@ -11,6 +11,7 @@ use std::time::{Duration, Instant};
 use yaml_serde::Value;
 
 use super::builder::FlashBuilder;
+use super::compare::{self, CompareChain, CompareOutcome, Purpose};
 use super::host_flasher::HostSideFlasher;
 use super::{DownloadOptions, FileDownloadError, FlashError, Flasher};
 use crate::Target;
@@ -47,15 +48,30 @@ trait FlasherOps {
         skip_erasing: bool,
         verify: bool,
     ) -> Result<(), FlashError>;
-    /// Returns `(phase_layout, fill_size, erase_size, program_size)`.
-    fn compute_init_sizes(&mut self, keep_unwritten_bytes: bool) -> (FlashLayout, u64, u64, u64);
-    fn compute_verify_size(&mut self) -> u64;
+    /// Returns [`FlashError::Verify`] if the flash does not hold the image.
     fn verify(
         &mut self,
         session: &mut Session,
         progress: &mut FlashProgress<'_>,
-        ignore_filled: bool,
-    ) -> Result<bool, FlashError>;
+    ) -> Result<(), FlashError>;
+    /// Returns `(phase_layout, fill_size, erase_size, program_size)`.
+    fn compute_init_sizes(&mut self, keep_unwritten_bytes: bool) -> (FlashLayout, u64, u64, u64);
+    fn compute_verify_size(&mut self) -> u64;
+    /// Returns `true` if a download can skip single sectors of this flasher.
+    fn can_skip_sectors(&self) -> bool;
+    /// Compares each sector of each region with its expected content.
+    ///
+    /// Returns one result for each sector, for each region.
+    fn run_compare(
+        &mut self,
+        session: &mut Session,
+        progress: &mut FlashProgress<'_>,
+        purpose: Purpose,
+    ) -> Result<Vec<Vec<CompareOutcome>>, FlashError>;
+    /// Returns the flash layout of each region.
+    fn layouts_mut(&mut self) -> Vec<&mut FlashLayout>;
+    /// Returns `true` if the flasher has nothing to erase or program.
+    fn is_empty(&self) -> bool;
 }
 
 impl FlasherOps for Flasher {
@@ -102,7 +118,30 @@ impl FlasherOps for Flasher {
             restore_unwritten_bytes,
             enable_double_buffering,
             skip_erasing,
-            verify,
+        )?;
+
+        // The fills now hold the restored data or the erased value, so the full page must match.
+        if verify {
+            let purpose = Purpose::Verify {
+                ignore_fills: false,
+            };
+            compare::verify(
+                CompareChain::for_algorithm(session, self, purpose),
+                progress,
+            )?;
+        }
+
+        Ok(())
+    }
+    fn verify(
+        &mut self,
+        session: &mut Session,
+        progress: &mut FlashProgress<'_>,
+    ) -> Result<(), FlashError> {
+        let purpose = Purpose::Verify { ignore_fills: true };
+        compare::verify(
+            CompareChain::for_algorithm(session, self, purpose),
+            progress,
         )
     }
     fn compute_init_sizes(&mut self, keep_unwritten_bytes: bool) -> (FlashLayout, u64, u64, u64) {
@@ -129,13 +168,27 @@ impl FlasherOps for Flasher {
             .map(|p| p.size() as u64)
             .sum()
     }
-    fn verify(
+    fn can_skip_sectors(&self) -> bool {
+        true
+    }
+    fn run_compare(
         &mut self,
         session: &mut Session,
         progress: &mut FlashProgress<'_>,
-        ignore_filled: bool,
-    ) -> Result<bool, FlashError> {
-        Flasher::verify(self, session, progress, ignore_filled)
+        purpose: Purpose,
+    ) -> Result<Vec<Vec<CompareOutcome>>, FlashError> {
+        CompareChain::for_algorithm(session, self, purpose).run(progress)
+    }
+    fn layouts_mut(&mut self) -> Vec<&mut FlashLayout> {
+        self.regions
+            .iter_mut()
+            .map(|region| region.data.layout_mut())
+            .collect()
+    }
+    fn is_empty(&self) -> bool {
+        self.regions
+            .iter()
+            .all(|region| region.flash_layout().is_empty())
     }
 }
 
@@ -176,15 +229,42 @@ impl FlasherOps for HostSideFlasher {
         skip_erasing: bool,
         verify: bool,
     ) -> Result<(), FlashError> {
-        HostSideFlasher::program(
-            self,
-            session,
-            progress,
-            restore_unwritten_bytes,
-            enable_double_buffering,
-            skip_erasing,
-            verify,
-        )
+        // A vendor sequence can leave its programming mode in `finish_flash`, so the verify runs
+        // before it.
+        self.run_with_flash(session, |this, session| {
+            HostSideFlasher::program(
+                this,
+                session,
+                progress,
+                restore_unwritten_bytes,
+                enable_double_buffering,
+                skip_erasing,
+            )?;
+
+            // The fills now hold the restored data or the erased value, so the full page must
+            // match.
+            if verify {
+                let purpose = Purpose::Verify {
+                    ignore_fills: false,
+                };
+                compare::verify(CompareChain::for_host(session, this, purpose), progress)?;
+            }
+
+            Ok(())
+        })
+    }
+    fn verify(
+        &mut self,
+        session: &mut Session,
+        progress: &mut FlashProgress<'_>,
+    ) -> Result<(), FlashError> {
+        self.run_with_flash(session, |this, session| {
+            // A vendor hook can need whole pages, such as SACI on CC23xx.
+            let purpose = Purpose::Verify {
+                ignore_fills: false,
+            };
+            compare::verify(CompareChain::for_host(session, this, purpose), progress)
+        })
     }
     fn compute_init_sizes(&mut self, keep_unwritten_bytes: bool) -> (FlashLayout, u64, u64, u64) {
         // Host-side always sends raw pages and reads fill regions directly when requested.
@@ -210,13 +290,29 @@ impl FlasherOps for HostSideFlasher {
             .map(|p| p.size() as u64)
             .sum()
     }
-    fn verify(
+    fn can_skip_sectors(&self) -> bool {
+        HostSideFlasher::can_skip_sectors(self)
+    }
+    fn run_compare(
         &mut self,
         session: &mut Session,
         progress: &mut FlashProgress<'_>,
-        ignore_filled: bool,
-    ) -> Result<bool, FlashError> {
-        HostSideFlasher::verify(self, session, progress, ignore_filled)
+        purpose: Purpose,
+    ) -> Result<Vec<Vec<CompareOutcome>>, FlashError> {
+        self.run_with_flash(session, |this, session| {
+            CompareChain::for_host(session, this, purpose).run(progress)
+        })
+    }
+    fn layouts_mut(&mut self) -> Vec<&mut FlashLayout> {
+        self.regions
+            .iter_mut()
+            .map(|region| region.data.layout_mut())
+            .collect()
+    }
+    fn is_empty(&self) -> bool {
+        self.regions
+            .iter()
+            .all(|region| region.flash_layout().is_empty())
     }
 }
 
@@ -253,42 +349,126 @@ trait DownloadMethod {
 }
 
 /// Downloads to flash through a [`FlasherOps`] implementation.
-struct FlashDownload(Box<dyn FlasherOps>);
+struct FlashDownload {
+    flasher: Box<dyn FlasherOps>,
+    /// The progress bars of the download, with their sizes before the compare.
+    bars: Vec<(ProgressOperation, u64)>,
+}
+
+impl FlashDownload {
+    fn new(flasher: Box<dyn FlasherOps>) -> Self {
+        Self {
+            flasher,
+            bars: Vec::new(),
+        }
+    }
+
+    /// Returns `true` if the download compares the flash with the image before the erase.
+    fn compares(&self, options: &DownloadOptions) -> bool {
+        options.preverify
+            && !options.do_chip_erase
+            && !options.skip_erase
+            && self.flasher.can_skip_sectors()
+    }
+
+    /// Returns the progress bars of the download, with their sizes.
+    fn bar_sizes(&mut self, options: &DownloadOptions) -> Vec<(ProgressOperation, u64)> {
+        let (_, fill_size, erase_size, program_size) = self
+            .flasher
+            .compute_init_sizes(options.keep_unwritten_bytes);
+
+        let mut bars = Vec::new();
+        if options.keep_unwritten_bytes && fill_size > 0 {
+            bars.push((ProgressOperation::Fill, fill_size));
+        }
+        if !options.do_chip_erase {
+            bars.push((ProgressOperation::Erase, erase_size));
+        }
+        bars.push((ProgressOperation::Program, program_size));
+        if options.verify {
+            bars.push((
+                ProgressOperation::Verify,
+                self.flasher.compute_verify_size(),
+            ));
+        }
+        bars
+    }
+
+    /// Compares the flash with the image, and removes the sectors that need no change.
+    fn compare_and_prune(
+        &mut self,
+        session: &mut Session,
+        options: &mut DownloadOptions,
+    ) -> Result<(), FlashError> {
+        let purpose = Purpose::Prune {
+            keep_unwritten_bytes: options.keep_unwritten_bytes,
+        };
+        let progress = &mut options.progress;
+
+        progress.started(purpose.progress());
+        let result = self.flasher.run_compare(session, progress, purpose);
+        match result.is_ok() {
+            true => progress.finished(purpose.progress()),
+            false => progress.failed(purpose.progress()),
+        }
+
+        for (layout, outcomes) in self.flasher.layouts_mut().into_iter().zip(result?) {
+            layout.prune(&outcomes);
+        }
+
+        Ok(())
+    }
+
+    /// Reports the pruned work as done, so that each bar ends full.
+    ///
+    /// A flasher with no work left finishes its bars, so that the next flasher uses the next bars.
+    fn report_pruned(&mut self, options: &mut DownloadOptions) {
+        let after = self.bar_sizes(options);
+        let empty = self.flasher.is_empty();
+        for &(operation, before) in &self.bars {
+            let remaining = after
+                .iter()
+                .find(|(op, _)| *op == operation)
+                .map_or(0, |(_, size)| *size);
+            let pruned = before.saturating_sub(remaining);
+            if pruned > 0 {
+                options
+                    .progress
+                    .progressed(operation, pruned, Duration::ZERO);
+            }
+            if empty {
+                options.progress.finished(operation);
+            }
+        }
+    }
+}
 
 impl DownloadMethod for FlashDownload {
     fn blocks_chip_erase(&self, session: &Session) -> bool {
-        !self.0.is_chip_erase_supported(session)
+        !self.flasher.is_chip_erase_supported(session)
     }
 
     fn add_progress_bars(&mut self, options: &mut DownloadOptions) -> Option<FlashLayout> {
-        let (phase_layout, fill_size, erase_size, program_size) =
-            self.0.compute_init_sizes(options.keep_unwritten_bytes);
-
-        if options.keep_unwritten_bytes && fill_size > 0 {
+        if self.compares(options) {
+            let size = self.flasher.compute_verify_size();
             options
                 .progress
-                .add_progress_bar(ProgressOperation::Fill, Some(fill_size));
-        }
-        if !options.do_chip_erase {
-            options
-                .progress
-                .add_progress_bar(ProgressOperation::Erase, Some(erase_size));
-        }
-        options
-            .progress
-            .add_progress_bar(ProgressOperation::Program, Some(program_size));
-        if options.verify {
-            let verify_size = self.0.compute_verify_size();
-            options
-                .progress
-                .add_progress_bar(ProgressOperation::Verify, Some(verify_size));
+                .add_progress_bar(ProgressOperation::Compare, Some(size));
         }
 
+        self.bars = self.bar_sizes(options);
+        for &(operation, size) in &self.bars {
+            options.progress.add_progress_bar(operation, Some(size));
+        }
+
+        let (phase_layout, ..) = self
+            .flasher
+            .compute_init_sizes(options.keep_unwritten_bytes);
         Some(phase_layout)
     }
 
     fn add_verify_progress_bar(&mut self, progress: &mut FlashProgress<'_>) {
-        let program_size = self.0.compute_verify_size();
+        let program_size = self.flasher.compute_verify_size();
         progress.add_progress_bar(ProgressOperation::Verify, Some(program_size));
     }
 
@@ -298,8 +478,25 @@ impl DownloadMethod for FlashDownload {
         options: &mut DownloadOptions,
         chip_erase_pending: &mut bool,
     ) -> Result<(), FlashError> {
-        let flasher = &mut self.0;
-        tracing::debug!("Flashing ranges for algo: {}", flasher.algorithm_name());
+        tracing::debug!(
+            "Flashing ranges for algo: {}",
+            self.flasher.algorithm_name()
+        );
+
+        if self.compares(options) {
+            self.compare_and_prune(session, options)?;
+            self.report_pruned(options);
+            if self.flasher.is_empty() {
+                return Ok(());
+            }
+        } else if options.preverify && !self.flasher.can_skip_sectors() {
+            tracing::info!(
+                "{}: no sector erase, flashing all sectors",
+                self.flasher.algorithm_name()
+            );
+        }
+
+        let flasher = &mut self.flasher;
 
         if *chip_erase_pending {
             tracing::debug!("    Doing chip erase...");
@@ -331,12 +528,11 @@ impl DownloadMethod for FlashDownload {
         session: &mut Session,
         progress: &mut FlashProgress<'_>,
     ) -> Result<(), FlashError> {
-        tracing::debug!("Verifying ranges for algo: {}", self.0.algorithm_name());
-        if !self.0.verify(session, progress, true)? {
-            return Err(FlashError::Verify);
-        }
-
-        Ok(())
+        tracing::debug!(
+            "Verifying ranges for algo: {}",
+            self.flasher.algorithm_name()
+        );
+        self.flasher.verify(session, progress)
     }
 }
 
@@ -1044,6 +1240,14 @@ impl FlashLoader {
 
         Self::initialize(&mut plan, session, &mut options);
 
+        if !options.preverify {
+            tracing::debug!("No preverify: no compare, flashing all sectors");
+        } else if options.do_chip_erase {
+            tracing::info!("Chip erase: no compare, flashing all sectors");
+        } else if options.skip_erase {
+            tracing::info!("Erase skipped: no compare, programming all pages");
+        }
+
         let mut chip_erase_pending = options.do_chip_erase;
         for mut method in plan {
             method.download(session, &mut options, &mut chip_erase_pending)?;
@@ -1311,7 +1515,7 @@ impl FlashLoader {
 
         let mut plan = algos
             .into_iter()
-            .map(|flasher| Box::new(FlashDownload(flasher)) as Box<dyn DownloadMethod>)
+            .map(|flasher| Box::new(FlashDownload::new(flasher)) as Box<dyn DownloadMethod>)
             .collect::<Vec<_>>();
 
         // Commit RAM last, because NVM flashing overwrites RAM.
@@ -1363,7 +1567,7 @@ impl FlashLoader {
 
             let associated_region = session.target().memory_region_by_address(address).unwrap();
 
-            // We verified NVM regions before, in flasher.program().
+            // The flash download verified the NVM regions before.
             if !associated_region.is_ram() {
                 continue;
             }

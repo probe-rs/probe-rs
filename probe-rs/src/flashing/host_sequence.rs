@@ -36,9 +36,17 @@ use crate::session::Session;
 /// prepare_flash()
 ///   compare ...
 /// finish_flash()
+///
+/// [with preverify, before the full flash, when sector erase is supported — same bookends:]
+/// prepare_flash()
+///   compare ...
+/// finish_flash()
 /// ```
+///
+/// With preverify, the flash loader calls `prepare_flash` and `finish_flash` once more. Do not
+/// reset there if the target loses state on a reset.
 pub trait DebugFlashSequence: Send + Sync + Debug {
-    /// Called once before any erase/program/verify operations begin.
+    /// Called before erase/program/verify operations begin.
     ///
     /// Use this to enter a required programming mode or, for external-toolbox devices,
     /// to release the probe connection so that the toolbox can acquire exclusive hardware
@@ -76,6 +84,9 @@ pub trait DebugFlashSequence: Send + Sync + Debug {
     /// override this method.  When it returns `Ok(true)`, the per-page `program()` loop is skipped.
     ///
     /// The default returns `Ok(false)`, falling back to the per-page `program()` calls.
+    ///
+    /// If [`supports_sector_erase`](Self::supports_sector_erase) returns `true`, `regions` can
+    /// hold only the sectors that changed.
     fn program_image(
         &self,
         _session: &mut Session,

@@ -5,19 +5,14 @@ use zerocopy::IntoBytes;
 use super::{FlashAlgorithm, FlashBuilder, FlashError, FlashPage, FlashProgress};
 use crate::config::NvmRegion;
 use crate::error::Error;
-use crate::flashing::compare::{
-    CmsisVerifyCompare, CompareContext, CompareOutcome, FlashCompare, Outside, ReadBackCore,
-    ReadFlashCompare, RegionCompare, run_chain,
-};
 use crate::flashing::encoder::FlashEncoder;
-use crate::flashing::{FlashLayout, FlashSector, ProgressOperation};
+use crate::flashing::{FlashLayout, FlashSector};
 use crate::memory::MemoryInterface;
 use crate::rtt::{Rtt, RttTarget, ScanRegion};
 use crate::{Core, InstructionSet, RegisterValue, core::CoreRegisters, session::Session};
 use crate::{CoreStatus, Target};
 use std::borrow::Cow;
 use std::marker::PhantomData;
-use std::sync::Arc;
 use std::{
     fmt::Debug,
     time::{Duration, Instant},
@@ -169,6 +164,8 @@ pub struct Flasher {
     pub(super) core_index: usize,
     pub(super) flash_algorithm: FlashAlgorithm,
     pub(super) loaded: bool,
+    /// The algorithm code in target RAM is the code of this flasher.
+    pub(super) code_valid: bool,
     pub(super) regions: Vec<LoadedRegion>,
     pub(super) read_flasher_rtt: bool,
 }
@@ -193,6 +190,7 @@ impl Flasher {
             core_index,
             flash_algorithm,
             loaded: false,
+            code_valid: false,
             regions: Vec::new(),
             read_flasher_rtt: false,
         })
@@ -204,10 +202,26 @@ impl Flasher {
         self
     }
 
+    /// Returns a copy of the region and the layout of each region.
+    pub(super) fn layouts(&self) -> Vec<(NvmRegion, FlashLayout)> {
+        self.regions
+            .iter()
+            .map(|region| (region.region.clone(), region.data.layout().clone()))
+            .collect()
+    }
+
     fn ensure_loaded(&mut self, session: &mut Session) -> Result<(), FlashError> {
         if !self.loaded {
             self.load(session)?;
             self.loaded = true;
+            self.code_valid = true;
+        } else if !self.code_valid {
+            // No reset: it can clear state such as an FPGA configuration.
+            let mut core = session.core(self.core_index).map_err(FlashError::Core)?;
+            core.halt(Duration::from_millis(500))
+                .map_err(FlashError::Core)?;
+            Self::write_code(&self.flash_algorithm, &mut core)?;
+            self.code_valid = true;
         }
 
         Ok(())
@@ -235,6 +249,11 @@ impl Flasher {
 
         // TODO: Possible special preparation of the target such as enabling faster clocks for the flash e.g.
 
+        Self::write_code(algo, &mut core)
+    }
+
+    /// Writes the algorithm code into target RAM, and checks it.
+    fn write_code(algo: &FlashAlgorithm, core: &mut Core<'_>) -> Result<(), FlashError> {
         // Load flash algorithm code into target RAM.
         tracing::debug!("Downloading algorithm code to {:#010x}", algo.load_address);
 
@@ -421,7 +440,6 @@ impl Flasher {
         restore_unwritten_bytes: bool,
         enable_double_buffering: bool,
         skip_erasing: bool,
-        verify: bool,
     ) -> Result<(), FlashError> {
         tracing::debug!("Starting program procedure.");
 
@@ -442,14 +460,7 @@ impl Flasher {
         }
 
         // Flash all necessary pages.
-        self.do_program(session, progress, enable_double_buffering)?;
-
-        // The fills now hold the restored data or the erased value, so the full page must match.
-        if verify && !self.verify(session, progress, false)? {
-            return Err(FlashError::Verify);
-        }
-
-        Ok(())
+        self.do_program(session, progress, enable_double_buffering)
     }
 
     /// Fills all the unwritten bytes in `layout`.
@@ -487,7 +498,13 @@ impl Flasher {
             Ok(())
         }
 
-        let result = if self.flash_algorithm.pc_read.is_some() {
+        let result = if self
+            .regions
+            .iter()
+            .all(|r| r.flash_layout().fills().is_empty())
+        {
+            Ok(())
+        } else if self.flash_algorithm.pc_read.is_some() {
             self.run_verify(session, &mut FlashProgress::empty(), |active, data| {
                 fill_pages(data, progress, |address, data| {
                     active.read_flash(address, data)
@@ -510,91 +527,6 @@ impl Flasher {
         result
     }
 
-    /// Verifies all the to-be-written bytes of this flasher.
-    pub(super) fn verify(
-        &mut self,
-        session: &mut Session,
-        progress: &mut FlashProgress<'_>,
-        ignore_filled: bool,
-    ) -> Result<bool, FlashError> {
-        progress.started_verifying();
-
-        let result = self.do_verify(session, progress, ignore_filled);
-
-        match result.is_ok() {
-            true => progress.finished_verifying(),
-            false => progress.failed_verifying(),
-        }
-
-        result
-    }
-
-    fn do_verify(
-        &mut self,
-        session: &mut Session,
-        progress: &mut FlashProgress<'_>,
-        ignore_filled: bool,
-    ) -> Result<bool, FlashError> {
-        let outcomes = self.compare(
-            session,
-            progress,
-            ProgressOperation::Verify,
-            Outside::Any,
-            ignore_filled,
-        )?;
-
-        Ok(outcomes
-            .iter()
-            .flatten()
-            .all(|outcome| *outcome == CompareOutcome::Match))
-    }
-
-    /// Returns the compare backends of this flasher, in the order to try them.
-    fn compare_chain(&self, session: &Session) -> Vec<Arc<dyn FlashCompare>> {
-        let mut chain: Vec<Arc<dyn FlashCompare>> = Vec::new();
-
-        if let Some(backend) = session.target().debug_sequence.flash_compare() {
-            chain.push(backend);
-        }
-        if self.flash_algorithm.pc_verify.is_some() {
-            chain.push(Arc::new(CmsisVerifyCompare));
-        } else if self.flash_algorithm.pc_read.is_some() {
-            chain.push(Arc::new(ReadFlashCompare));
-        } else {
-            chain.push(Arc::new(ReadBackCore));
-        }
-
-        chain
-    }
-
-    /// Compares each sector of each loaded region with its expected content.
-    ///
-    /// Returns one result for each sector, for each region.
-    pub(super) fn compare(
-        &mut self,
-        session: &mut Session,
-        progress: &mut FlashProgress<'_>,
-        operation: ProgressOperation,
-        outside: Outside,
-        ignore_fills: bool,
-    ) -> Result<Vec<Vec<CompareOutcome>>, FlashError> {
-        // The checks borrow this copy, so that the backends can borrow `self`.
-        let layouts = self
-            .regions
-            .iter()
-            .map(|region| (region.region.clone(), region.data.layout().clone()))
-            .collect::<Vec<_>>();
-
-        let regions = layouts
-            .iter()
-            .map(|(region, layout)| RegionCompare::new(region, layout, outside, ignore_fills))
-            .collect::<Vec<_>>();
-
-        let chain = self.compare_chain(session);
-        let context = CompareContext::new(session, self);
-        run_chain(&chain, regions, context, progress, operation)
-    }
-
     /// Perform an erase of all sectors given in `flash_layout`.
     fn sector_erase(
         &mut self,
@@ -604,6 +536,16 @@ impl Flasher {
         progress.started_erasing();
 
         let encoding = self.flash_algorithm.transfer_encoding;
+
+        // A prune can leave no sector to erase. `Init` would then run for nothing.
+        if self
+            .regions
+            .iter()
+            .all(|r| r.flash_layout().sectors().is_empty())
+        {
+            progress.finished_erasing();
+            return Ok(());
+        }
 
         let result = self.run_erase(session, progress, |active, data| {
             for region in data.iter_mut() {
@@ -877,6 +819,11 @@ impl<'op, 'p, O: Operation> ActiveFlasher<'op, 'p, O> {
         }
 
         Ok(())
+    }
+
+    /// Returns the flash algorithm that this flasher runs.
+    pub(super) fn flash_algorithm(&self) -> &FlashAlgorithm {
+        self.flash_algorithm
     }
 
     /// Checks if the flash algorithm defines a vendor-specific entry point with the given name.
@@ -1317,6 +1264,28 @@ impl<'op, 'p, O: Operation> ActiveFlasher<'op, 'p, O> {
 }
 
 impl ActiveFlasher<'_, '_, Verify> {
+    /// Returns `true` if `BlankCheck` finds `size` bytes at `address` erased.
+    pub(super) fn is_blank(&mut self, address: u64, size: u64) -> Result<bool, FlashError> {
+        let algo = self.flash_algorithm;
+        let blank_check = algo
+            .pc_blank_check
+            .expect("the compare calls BlankCheck only if the algorithm has it");
+
+        let result = self.call_function_and_wait(
+            &Registers {
+                pc: blank_check,
+                r0: Some(address),
+                r1: Some(size),
+                r2: Some(algo.flash_properties.erased_byte_value.into()),
+                r3: None,
+            },
+            false,
+            Duration::from_secs(10),
+        )?;
+
+        Ok(result == 0)
+    }
+
     /// Returns `true` if CMSIS `Verify` finds `data` at `address`.
     pub(super) fn cmsis_verify(&mut self, address: u64, data: &[u8]) -> Result<bool, FlashError> {
         let algo = self.flash_algorithm;

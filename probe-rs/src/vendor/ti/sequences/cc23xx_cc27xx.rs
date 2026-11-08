@@ -393,6 +393,10 @@ impl Default for CC23xxCC27xxFlashSequence {
 pub struct SaciCompare;
 
 impl FlashCompare for SaciCompare {
+    fn name(&self) -> &str {
+        "SACI"
+    }
+
     fn cost(&self) -> CompareCost {
         CompareCost::Cheap
     }

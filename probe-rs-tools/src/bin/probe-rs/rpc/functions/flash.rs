@@ -346,6 +346,7 @@ pub(crate) mod convert {
 
     pub(crate) fn to_wire_operation(operation: flashing::ProgressOperation) -> Operation {
         match operation {
+            flashing::ProgressOperation::Compare => Operation::Compare,
             flashing::ProgressOperation::Fill => Operation::Fill,
             flashing::ProgressOperation::Erase => Operation::Erase,
             flashing::ProgressOperation::Program => Operation::Program,
