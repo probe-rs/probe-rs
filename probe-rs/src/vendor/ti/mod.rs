@@ -92,10 +92,14 @@ impl Vendor for TexasInstruments {
         let Some(mut chain) = probe.try_as_jtag_chain() else {
             return Ok(None);
         };
-        let idcodes = match chain.scan_chain() {
-            Ok(_) => chain.idcodes().iter().flatten().copied().collect(),
-            // A CC13xx/CC26xx powers up in 2-pin mode and stays silent on TDO.
-            Err(_) => vec![icepick::switch_to_4_pin(&mut chain)?],
+        let scanned = chain.scan_chain().map(|_| ());
+        let idcodes = match scanned {
+            Ok(()) if !chain.idcodes().is_empty() => {
+                chain.idcodes().iter().flatten().copied().collect()
+            }
+            // A CC13xx/CC26xx powers up in 2-pin mode and stays silent on TDO, which reads as
+            // an error or as an empty chain depending on the probe's pull.
+            Ok(()) | Err(_) => vec![icepick::switch_to_4_pin(&mut chain)?],
         };
         tracing::debug!("JTAG ID codes: {idcodes:x?}");
 
