@@ -7,8 +7,8 @@ use bitvec::vec::BitVec;
 
 use super::{MAX_DATA_BLOCK, OCD_SCAN_REQUEST, Xds110};
 use crate::probe::{
-    BatchExecutionError, DebugProbeError, JtagBatch, JtagChainAccess, JtagChainState, JtagOp,
-    JtagProbe, Results, TapState, jtag::distribute_captures,
+    BatchExecutionError, DebugProbeError, HandleId, JtagBatch, JtagChainAccess, JtagChainState,
+    JtagOp, JtagProbe, Results, TapState, jtag::distribute_captures,
 };
 
 const CMD_IR_SCAN: u8 = 1;
@@ -146,6 +146,16 @@ fn move_to(from: TapState, to: TapState) -> Option<Step> {
     ))
 }
 
+/// The number of bits of the exchanges at the start of `ops`.
+fn scan_bits(ops: &[(&HandleId, &JtagOp)]) -> usize {
+    ops.iter()
+        .map_while(|(_, op)| match op {
+            JtagOp::Exchange { data, .. } => Some(data.len()),
+            _ => None,
+        })
+        .sum()
+}
+
 /// Translates a batch that starts in `start` into firmware steps, and returns the end state.
 fn encode_batch(
     start: TapState,
@@ -159,8 +169,9 @@ fn encode_batch(
     while index < ops.len() {
         match ops[index].1 {
             JtagOp::EnterState(target) => {
+                // The firmware hangs on a scan of no bits.
                 let starts_scan = matches!(target, TapState::ShiftIr | TapState::ShiftDr)
-                    && matches!(ops.get(index + 1), Some((_, JtagOp::Exchange { .. })));
+                    && scan_bits(&ops[index + 1..]) > 0;
                 if !starts_scan {
                     steps.extend(move_to(state, *target));
                 }
@@ -202,6 +213,11 @@ fn encode_batch(
                 };
 
                 let bits = data.len();
+                if bits == 0 {
+                    steps.extend(move_to(state, end));
+                    state = end;
+                    continue;
+                }
                 let bytes = bits.div_ceil(8);
                 if bits > u16::MAX as usize || 4 + bytes + 2 > MAX_DATA_BLOCK {
                     return Err(DebugProbeError::Other(format!(
@@ -396,6 +412,27 @@ mod tests {
                 .map(|s| s as u8)
                 .to_vec()
             )]
+        );
+    }
+
+    #[test]
+    fn an_empty_scan_is_a_move() {
+        let mut batch = JtagBatch::new();
+        batch.enter(TapState::ShiftIr);
+        let _handle = batch.exchange(BitSequence::new());
+        batch.enter(TapState::RunTestIdle);
+
+        let (state, steps) = encode_batch(TapState::RunTestIdle, &batch).unwrap();
+        assert_eq!(state, TapState::RunTestIdle);
+        assert!(
+            steps
+                .iter()
+                .all(|step| !matches!(step, Step::Scan { bits, .. } if *bits > 0))
+        );
+        assert!(
+            !steps
+                .iter()
+                .any(|step| matches!(step, Step::Scan { entry, .. } if entry[0] == CMD_IR_SCAN))
         );
     }
 

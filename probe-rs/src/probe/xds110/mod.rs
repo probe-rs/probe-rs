@@ -289,6 +289,12 @@ impl Xds110Usb {
     /// A packet is a '*', the length of the payload (two bytes) and the payload. A response
     /// payload starts with the error code (four bytes).
     fn execute(&mut self, payload: &[u8], expected: usize) -> Result<Vec<u8>, Xds110Error> {
+        tracing::trace!(
+            "XDS110: command {:#04x}, {} bytes: {:02x?}",
+            payload[0],
+            payload.len(),
+            &payload[..payload.len().min(32)]
+        );
         let mut packet = Vec::with_capacity(payload.len() + 3);
         packet.push(b'*');
         packet.extend_from_slice(&(payload.len() as u16).to_le_bytes());
