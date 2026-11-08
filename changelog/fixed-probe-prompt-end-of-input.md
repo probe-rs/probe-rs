@@ -1,0 +1,1 @@
+When several probes are found and the probe prompt reads end of input (no terminal, e.g. `< /dev/null`), probe-rs now lists the probes and asks for `--probe`, as with `--non-interactive`, instead of "Failed to parse probe index".

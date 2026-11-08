@@ -244,9 +244,18 @@ pub async fn select_probe(
             std::io::stderr().flush().unwrap();
 
             let mut input = String::new();
-            std::io::stdin()
+            let read = std::io::stdin()
                 .read_line(&mut input)
-                .expect("Expect input for probe selection");
+                .context("Failed to read the probe selection")?;
+
+            // End of input: nobody can answer, so fail as `--non-interactive` does.
+            if read == 0 {
+                eprintln!();
+                return Err(MultipleProbesFound {
+                    list: list.iter().map(|probe| probe.to_string()).collect(),
+                }
+                .into());
+            }
 
             let probe_idx = input
                 .trim()
