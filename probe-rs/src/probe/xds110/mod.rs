@@ -97,6 +97,8 @@ pub(crate) enum Xds110Error {
     },
     /// The XDS110 sent a malformed response.
     MalformedResponse,
+    /// The USB transfer to the XDS110 failed.
+    Usb(#[source] std::io::Error),
     /// The XDS110 USB endpoints were not found.
     EndpointNotFound,
     /// The XDS110 firmware {0} is too old, version 2.3.0.11 or later is needed.
@@ -302,7 +304,7 @@ impl Xds110Usb {
         let written = self
             .ep_out
             .write_bulk(&packet, TIMEOUT)
-            .map_err(|_| Xds110Error::MalformedResponse)?;
+            .map_err(Xds110Error::Usb)?;
         if written != packet.len() {
             return Err(Xds110Error::MalformedResponse);
         }
@@ -315,7 +317,7 @@ impl Xds110Usb {
             let n = self
                 .ep_in
                 .read_bulk(&mut response[received..], TIMEOUT)
-                .map_err(|_| Xds110Error::MalformedResponse)?;
+                .map_err(Xds110Error::Usb)?;
             if received == 0 && (n < 7 || response[0] != b'*') {
                 return Err(Xds110Error::MalformedResponse);
             }
