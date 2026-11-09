@@ -1,9 +1,9 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, ops::Range};
 
 use super::memory::MemoryRegion;
 use crate::{
     CoreType, MemoryPort,
-    serialize::{hex_option, hex_u_int},
+    serialize::{hex_option, hex_range, hex_u_int},
 };
 use serde::{Deserialize, Serialize};
 
@@ -248,6 +248,34 @@ pub struct RiscvCoreAccessOptions {
     /// CoreSight/mem-AP to use as DTM. This is the method used for RP235x
     #[serde(default)]
     pub mem_ap: Option<ApAddress>,
+
+    /// Memory access method overrides for address ranges, applied to all access widths.
+    ///
+    /// Use these for core-local memory that the system bus can't reach at the core's addresses.
+    /// Where ranges overlap, `abstract_command` wins.
+    #[serde(default)]
+    pub memory_access: Vec<RiscvMemoryAccessOverride>,
+}
+
+/// Selects the memory access method for an address range of a RISC-V core.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RiscvMemoryAccessOverride {
+    /// Address range the override applies to.
+    #[serde(serialize_with = "hex_range")]
+    pub range: Range<u64>,
+    /// Method used to access the range.
+    pub method: RiscvMemoryAccessMethod,
+}
+
+/// A RISC-V memory access method that sees memory as the core does.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum RiscvMemoryAccessMethod {
+    /// Abstract memory access commands.
+    AbstractCommand,
+    /// Load and store instructions in the program buffer.
+    ProgramBuffer,
 }
 
 /// The data required to access an Xtensa core

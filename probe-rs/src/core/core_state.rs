@@ -211,6 +211,9 @@ impl CombinedCoreState {
 
         let hart = options.hart_id.unwrap_or_default();
         interface.select_hart(hart)?;
+        interface
+            .memory_access_config()
+            .set_target_overrides(&options.memory_access);
 
         match &mut self.specific_state {
             SpecificCoreState::Riscv(s) => Ok(Core::new(
