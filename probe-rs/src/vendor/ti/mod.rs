@@ -1,7 +1,7 @@
 //! Texas Instruments vendor support.
 
 use jep106::JEP106Code;
-use probe_rs_target::Chip;
+use probe_rs_target::{Chip, chip_detection::ChipDetectionMethod};
 
 use crate::{
     Error,
@@ -26,15 +26,20 @@ const CFG_AP_DEVICEID: u64 = 0x0;
 const CFG_AP_PARTID: u64 = 0x4;
 const DEVICEID_TI: u32 = 0x02F;
 
-/// PARTID bits 23:0, variant and part, from driverlib's chipinfo.h.
-const CC23XX_CC27XX_PARTS: &[(u32, &str)] = &[
-    (0x01_2DDA, "CC2340R5"), // CC2340R52E0RGER
-    (0x3B_2DDA, "CC2340R5"), // CC2340R52E0RKPR
-    (0x0F_2DDA, "CC2340R5"), // CC2340R52E0WRHBRQ1
-    (0xE8_AF23, "CC2745R10Q1"),
-    (0x9D_6301, "CC2755P10"), // CC2755R105E0WRHAR, same memory
-    (0xE6_6301, "CC2755P10"), // CC2755P105E0WRHAR
-];
+/// Target name from the PARTID variant and part fields (bits 23:0).
+fn cfg_ap_chip_name(registry: &Registry, part_id: u32) -> Option<&str> {
+    registry
+        .families()
+        .iter()
+        .flat_map(|family| &family.chip_detection)
+        .find_map(|method| match method {
+            ChipDetectionMethod::TiCfgAp(detection) => {
+                detection.variants.get(&(part_id & 0xFF_FFFF))
+            }
+            _ => None,
+        })
+        .map(String::as_str)
+}
 
 /// Texas Instruments
 #[derive(docsplay::Display)]
@@ -61,7 +66,7 @@ impl Vendor for TexasInstruments {
 
     fn try_detect_arm_chip(
         &self,
-        _registry: &Registry,
+        registry: &Registry,
         interface: &mut dyn ArmDebugInterface,
         chip_info: ArmChipInfo,
     ) -> Result<Option<String>, Error> {
@@ -81,10 +86,7 @@ impl Vendor for TexasInstruments {
         };
         tracing::debug!("CC23xx/CC27xx: device ID {device_id:#010x}, part ID {part_id:#010x}");
 
-        Ok(CC23XX_CC27XX_PARTS
-            .iter()
-            .find(|(part, _)| *part == part_id & 0xFF_FFFF)
-            .map(|(_, name)| name.to_string()))
+        Ok(cfg_ap_chip_name(registry, part_id).map(str::to_string))
     }
 }
 
@@ -93,10 +95,22 @@ mod tests {
     use super::*;
 
     #[test]
-    fn cc23xx_cc27xx_parts_are_targets() {
+    fn cfg_ap_chip_names() {
         let registry = Registry::from_builtin_families();
-        for (_, name) in CC23XX_CC27XX_PARTS {
-            assert!(registry.get_target_by_name(name).is_ok(), "{name}");
+
+        // Read from a CC2755P10 LaunchPad.
+        assert_eq!(cfg_ap_chip_name(&registry, 0x80e6_6301), Some("CC2755P10"));
+        assert_eq!(cfg_ap_chip_name(&registry, 0x80e6_6302), None);
+
+        for family in registry.families() {
+            for method in &family.chip_detection {
+                let ChipDetectionMethod::TiCfgAp(detection) = method else {
+                    continue;
+                };
+                for name in detection.variants.values() {
+                    assert!(registry.get_target_by_name(name).is_ok(), "{name}");
+                }
+            }
         }
     }
 }
