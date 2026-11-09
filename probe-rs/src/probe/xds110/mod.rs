@@ -135,13 +135,6 @@ fn xds110_interface(device: &nusb::DeviceInfo) -> Option<u8> {
         .map(|(_, _, interface)| *interface)
 }
 
-/// Returns whether the USB IDs are those of an XDS110, which this driver lists.
-pub(crate) fn is_xds110(vendor_id: u16, product_id: u16) -> bool {
-    XDS110_DEVICES
-        .iter()
-        .any(|(vid, pid, _)| vendor_id == *vid && product_id == *pid)
-}
-
 /// The probe name, with the firmware version from the product string
 /// ("XDS110 (03.00.00.45) Embed with CMSIS-DAP").
 fn probe_name(device: &nusb::DeviceInfo) -> String {

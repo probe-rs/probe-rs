@@ -118,7 +118,7 @@ impl ProbeFactory for CmsisDapFactory {
     }
 
     fn list_probes(&self) -> Vec<crate::probe::list::ProbeListItem> {
-        self.list_probes_filtered(None)
+        tools::list_cmsisdap_devices()
     }
 
     fn list_probes_filtered(
@@ -142,19 +142,11 @@ impl ProbeFactory for CmsisDapFactory {
                 },
             )];
         }
-        // The XDS110 driver lists the XDS110. A selector with its CMSIS-DAP interface still
-        // finds it here.
-        let named_interface = selector.is_some_and(|s| s.interface.is_some());
-        tools::list_cmsisdap_devices()
+        self.list_probes()
             .into_iter()
             .filter(|probe| selector.is_none_or(|s| s.matches_probe(&probe.info)))
-            .filter(|probe| named_interface || !is_xds110(&probe.info))
             .collect()
     }
-}
-
-fn is_xds110(info: &crate::probe::DebugProbeInfo) -> bool {
-    crate::probe::xds110::is_xds110(info.vendor_id, info.product_id)
 }
 
 /// The address of the TCP probe a selector names, if it names one.

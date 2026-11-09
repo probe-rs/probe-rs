@@ -35,6 +35,27 @@ impl ProbeListItem {
     }
 }
 
+/// Returns the index of the probe to use when none is selected: the first one, if all listed
+/// probes are one device. That is one probe that several drivers list, or the interfaces of one
+/// probe.
+pub fn default_probe_index<'a>(
+    probes: impl IntoIterator<Item = &'a DebugProbeInfo>,
+) -> Option<usize> {
+    let mut probes = probes.into_iter();
+    let first = probes.next()?;
+    probes.all(|probe| same_device(first, probe)).then_some(0)
+}
+
+/// Whether two listed probes are the same USB device, as far as their location or serial number
+/// tells.
+fn same_device(a: &DebugProbeInfo, b: &DebugProbeInfo) -> bool {
+    (a.vendor_id, a.product_id) == (b.vendor_id, b.product_id)
+        && match (&a.usb_location, &b.usb_location) {
+            (Some(a), Some(b)) => a == b,
+            _ => a.serial_number.is_some() && a.serial_number == b.serial_number,
+        }
+}
+
 /// Returns whether the current process can access the USB probe backed by the given device.
 ///
 /// On platforms other than Linux this always returns [`Accessibility::Accessible`].
@@ -218,5 +239,45 @@ mod linux {
             assert_eq!(usbfs_node_path(1, 5), "/dev/bus/usb/001/005");
             assert_eq!(usbfs_node_path(12, 127), "/dev/bus/usb/012/127");
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::default_probe_index;
+    use crate::probe::{DebugProbeInfo, fake_probe::FakeProbeFactory};
+
+    fn probe(serial: Option<&str>, interface: Option<u8>) -> DebugProbeInfo {
+        let serial = serial.map(str::to_string);
+        DebugProbeInfo::new(
+            "probe",
+            0x0451,
+            0xbef3,
+            serial,
+            &FakeProbeFactory,
+            interface,
+            false,
+        )
+    }
+
+    #[test]
+    fn one_device_listed_twice_is_the_default() {
+        let probes = [probe(Some("A"), Some(2)), probe(Some("A"), Some(5))];
+        assert_eq!(default_probe_index(&probes), Some(0));
+    }
+
+    #[test]
+    fn two_devices_have_no_default() {
+        let probes = [probe(Some("A"), Some(2)), probe(Some("B"), Some(2))];
+        assert_eq!(default_probe_index(&probes), None);
+
+        // Without a serial number or a USB location, two probes can't be told apart.
+        let probes = [probe(None, None), probe(None, None)];
+        assert_eq!(default_probe_index(&probes), None);
+
+        let mut probes = [probe(Some("A"), None), probe(Some("A"), None)];
+        probes[0].usb_location = Some(("1".to_string(), 1));
+        probes[1].usb_location = Some(("1".to_string(), 2));
+        assert_eq!(default_probe_index(&probes), None);
     }
 }
