@@ -110,7 +110,7 @@ impl<'a> Icepick<'a> {
             .inspect_err(|e| tracing::error!("Unable to select target 0: {e}"))?;
 
         if protocol == DefaultProtocol::CJtag {
-            this.ctag_to_jtag()?;
+            ctag_to_jtag(&mut this.probe).map_err(ArmError::Probe)?;
         }
 
         let tap_count = this
@@ -264,67 +264,95 @@ impl<'a> Icepick<'a> {
 
         Ok(())
     }
+}
 
-    /// This function implements a Zero Bit Scan(ZBS)
-    ///
-    /// The ZBS defined in section 6.2.2.1 of this document:
-    /// <https://www.ti.com/lit/ug/swcu185f/swcu185f.pdf>
-    ///
-    /// This function assumes that the JTAG state machine is in the Run-Test/Idle state
-    fn zero_bit_scan(&mut self) -> Result<(), ArmError> {
-        let mut batch = JtagBatch::new();
-        batch.enter(TapState::PauseDr);
-        batch.enter(TapState::RunTestIdle);
-        self.probe.run(batch).map_err(ArmError::Probe)?;
-        Ok(())
-    }
+/// This function implements a Zero Bit Scan(ZBS)
+///
+/// The ZBS defined in section 6.2.2.1 of this document:
+/// <https://www.ti.com/lit/ug/swcu185f/swcu185f.pdf>
+///
+/// This function assumes that the JTAG state machine is in the Run-Test/Idle state
+fn zero_bit_scan(chain: &mut JtagChain<'_>) -> Result<(), DebugProbeError> {
+    let mut batch = JtagBatch::new();
+    batch.enter(TapState::PauseDr);
+    batch.enter(TapState::RunTestIdle);
+    chain.run(batch)?;
+    Ok(())
+}
 
-    fn shift_ir_value(&mut self, ir: u32) -> Result<(), ArmError> {
-        let mut batch = JtagBatch::new();
-        let ir_bits = BitSequence::from_bytes(&ir.to_le_bytes(), IR_LEN_IN_BITS as usize);
-        self.probe.shift_ir(&mut batch, &ir_bits);
-        self.probe.run_test_idle(&mut batch, 0);
-        self.probe.run(batch).map_err(ArmError::Probe)?;
-        Ok(())
-    }
+fn shift_ir_value(chain: &mut JtagChain<'_>, ir: u32) -> Result<(), DebugProbeError> {
+    let mut batch = JtagBatch::new();
+    let ir_bits = BitSequence::from_bytes(&ir.to_le_bytes(), IR_LEN_IN_BITS as usize);
+    chain.shift_ir(&mut batch, &ir_bits);
+    chain.run_test_idle(&mut batch, 0);
+    chain.run(batch)?;
+    Ok(())
+}
 
-    fn exchange_dr_value(&mut self, bits: BitSequence) -> Result<(), ArmError> {
-        let mut batch = JtagBatch::new();
-        self.probe.exchange_dr(&mut batch, &bits);
-        self.probe.run_test_idle(&mut batch, 0);
-        self.probe.run(batch).map_err(ArmError::Probe)?;
-        Ok(())
-    }
+fn exchange_dr_value(chain: &mut JtagChain<'_>, bits: BitSequence) -> Result<(), DebugProbeError> {
+    let mut batch = JtagBatch::new();
+    chain.exchange_dr(&mut batch, &bits);
+    chain.run_test_idle(&mut batch, 0);
+    chain.run(batch)?;
+    Ok(())
+}
 
-    /// Disable "Compact JTAG" support and enable full JTAG.
-    pub(crate) fn ctag_to_jtag(&mut self) -> Result<(), ArmError> {
-        self.shift_ir_value(IR_BYPASS)?;
+/// Disable "Compact JTAG" support and enable full JTAG.
+///
+/// The chain must hold the ICEPick alone, as it does after a TAP reset.
+pub(crate) fn ctag_to_jtag(chain: &mut JtagChain<'_>) -> Result<(), DebugProbeError> {
+    shift_ir_value(chain, IR_BYPASS)?;
 
-        // cJTAG: Open Command Window
-        // This is described in section 6.2.2.1 of this document:
-        // <https://www.ti.com/lit/ug/swcu185f/swcu185f.pdf>
-        // Also refer to the openocd implementation:
-        // <https://github.com/openocd-org/openocd/blob/60d11a881fb2d1f34584ba975749feb6fc1c9d03/tcl/target/ti/cjtag.cfg#L6-L35>
-        self.zero_bit_scan()?;
-        self.zero_bit_scan()?;
-        self.exchange_dr_value(BitSequence::from_u64(1, 0xff))?;
+    // cJTAG: Open Command Window
+    // This is described in section 6.2.2.1 of this document:
+    // <https://www.ti.com/lit/ug/swcu185f/swcu185f.pdf>
+    // Also refer to the openocd implementation:
+    // <https://github.com/openocd-org/openocd/blob/60d11a881fb2d1f34584ba975749feb6fc1c9d03/tcl/target/ti/cjtag.cfg#L6-L35>
+    zero_bit_scan(chain)?;
+    zero_bit_scan(chain)?;
+    exchange_dr_value(chain, BitSequence::from_u64(1, 0xff))?;
 
-        // cJTAG: Switch to 4 pin
-        // This is described in section 6.2.2.2 of this document:
-        // <https://www.ti.com/lit/ug/swcu185f/swcu185f.pdf>
-        // Also refer to the openocd implementation:
-        // <https://github.com/openocd-org/openocd/blob/60d11a881fb2d1f34584ba975749feb6fc1c9d03/tcl/target/ti/cjtag.cfg#L6-L35>
-        self.exchange_dr_value(BitSequence::from_u64(2, 0xff))?;
-        self.exchange_dr_value(BitSequence::from_u64(9, 0xff))?;
+    // cJTAG: Switch to 4 pin
+    // This is described in section 6.2.2.2 of this document:
+    // <https://www.ti.com/lit/ug/swcu185f/swcu185f.pdf>
+    // Also refer to the openocd implementation:
+    // <https://github.com/openocd-org/openocd/blob/60d11a881fb2d1f34584ba975749feb6fc1c9d03/tcl/target/ti/cjtag.cfg#L6-L35>
+    exchange_dr_value(chain, BitSequence::from_u64(2, 0xff))?;
+    exchange_dr_value(chain, BitSequence::from_u64(9, 0xff))?;
 
-        // Load IR with BYPASS so that future state transitions don't affect IR
-        self.shift_ir_value(IR_BYPASS)?;
+    // Load IR with BYPASS so that future state transitions don't affect IR
+    shift_ir_value(chain, IR_BYPASS)?;
 
-        // Load IR with IDCODE to support scanning
-        self.shift_ir_value(IR_IDCODE)?;
+    // Load IR with IDCODE to support scanning
+    shift_ir_value(chain, IR_IDCODE)?;
 
-        Ok(())
-    }
+    Ok(())
+}
+
+/// Switch a chip that powered up in 2-pin mode to 4-pin JTAG, and return the ICEPick's IDCODE.
+///
+/// Until then nothing answers on TDO. A TAP reset brings back 2-pin mode, so the IDCODE can't
+/// come from a scan of the chain.
+pub(crate) fn switch_to_4_pin(chain: &mut JtagChain<'_>) -> Result<u32, DebugProbeError> {
+    let mut batch = JtagBatch::new();
+    chain.tap_reset(&mut batch);
+    chain.run(batch)?;
+
+    chain.set_chain(&[ScanChainElement {
+        name: Some("ICEPICK".to_owned()),
+        ir_len: Some(IR_LEN_IN_BITS),
+    }]);
+    chain.select(0)?;
+    ctag_to_jtag(chain)?;
+
+    let mut batch = JtagBatch::new();
+    let handle = chain.exchange_dr(&mut batch, &BitSequence::repeat(false, 32));
+    chain.run_test_idle(&mut batch, 0);
+    let mut results = chain.run(batch)?;
+    let idcode = results
+        .take(handle)
+        .map_err(|_| DebugProbeError::Other("missing IDCODE".into()))?;
+    Ok(idcode.as_bits().load_le::<u32>())
 }
 
 #[cfg(test)]

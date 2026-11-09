@@ -40,6 +40,9 @@ pub enum ChipDetectionMethod {
     /// Wuhan Xinyuan CW32 factory digital-signature detection.
     Cw32Signature(Cw32SignatureDetection),
 
+    /// Texas Instruments ICEPick and FCFG1 USER_ID chip detection information.
+    TiIcepick(TiIcepickDetection),
+
     /// Texas Instruments CFG-AP chip detection information.
     TiCfgAp(TiCfgApDetection),
 }
@@ -334,6 +337,35 @@ pub struct Cw32SignatureDetection {
     /// prefix can be either an exact variant name or the series name when
     /// the family maps the whole series onto a single target.
     pub variants: IndexMap<String, String>,
+}
+
+/// Texas Instruments chip detection information for chips behind an ICEPick JTAG router.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct TiIcepickDetection {
+    /// ICEPick ID code, without its version field (bits 31:28).
+    #[serde(serialize_with = "hex_u_int")]
+    pub icepick_id: u32,
+
+    /// FCFG1 USER_ID matches, checked in declaration order. The first target also selects the
+    /// debug sequence that reaches the chip.
+    pub variants: Vec<TiUserIdVariant>,
+}
+
+/// A target that matches the FCFG1 USER_ID register.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct TiUserIdVariant {
+    /// USER_ID bits compared to `value`. 0 matches any USER_ID.
+    #[serde(default, serialize_with = "hex_u_int")]
+    pub mask: u32,
+
+    /// Expected USER_ID bits.
+    #[serde(default, serialize_with = "hex_u_int")]
+    pub value: u32,
+
+    /// Target name.
+    pub target: String,
 }
 
 /// Texas Instruments chip detection information from the CFG-AP PARTID register.

@@ -1,6 +1,9 @@
 //! Vendor support modules.
 
-use std::{ops::Deref, sync::LazyLock};
+use std::{
+    ops::Deref,
+    sync::{Arc, LazyLock},
+};
 
 use parking_lot::{RecursiveRwLock, RecursiveRwLockReadGuard};
 use probe_rs_target::Chip;
@@ -9,8 +12,10 @@ use crate::{
     Error, Target,
     architecture::{
         arm::{
-            ArmChipInfo, ArmDebugInterface, communication_interface::read_chip_info_from_rom_table,
-            dp::DpAddress, sequences::DefaultArmSequence,
+            ArmChipInfo, ArmDebugInterface,
+            communication_interface::read_chip_info_from_rom_table,
+            dp::DpAddress,
+            sequences::{ArmDebugSequence, DefaultArmSequence},
         },
         riscv::communication_interface::RiscvCommunicationInterface,
         xtensa::communication_interface::{
@@ -55,6 +60,26 @@ pub trait Vendor: Send + Sync + std::fmt::Display {
         _registry: &Registry,
         _probe: &mut dyn ArmDebugInterface,
         _chip_info: ArmChipInfo,
+    ) -> Result<Option<String>, Error> {
+        Ok(None)
+    }
+
+    /// Tries to find an ARM chip that the default sequence can't reach, e.g. behind a JTAG
+    /// router. Returns `Some(sequence)` that reaches it, for the ARM chip detection.
+    fn try_create_arm_detection_sequence(
+        &self,
+        _registry: &Registry,
+        _probe: &mut Probe,
+    ) -> Result<Option<Arc<dyn ArmDebugSequence>>, Error> {
+        Ok(None)
+    }
+
+    /// Tries to identify an ARM chip reached by the sequence from
+    /// [`Vendor::try_create_arm_detection_sequence`]. Returns `Some(target name)` on success.
+    fn try_identify_arm_chip(
+        &self,
+        _registry: &Registry,
+        _interface: &mut dyn ArmDebugInterface,
     ) -> Result<Option<String>, Error> {
         Ok(None)
     }
@@ -153,8 +178,22 @@ fn try_detect_arm_chip(
         return Ok((probe, None));
     }
 
-    // We don't know what kind of chip it is, so we use the default sequence.
-    let sequence = DefaultArmSequence::create();
+    // We don't know what kind of chip it is, so we use the default sequence, unless a vendor
+    // finds a chip that the default sequence can't reach.
+    let mut sequence = DefaultArmSequence::create();
+    let mut sequence_vendor = None;
+    for vendor in vendors().iter() {
+        match vendor.try_create_arm_detection_sequence(registry, &mut probe) {
+            Ok(Some(vendor_sequence)) => {
+                tracing::debug!("Using the {vendor} sequence for detection");
+                sequence = vendor_sequence;
+                sequence_vendor = Some(*vendor);
+                break;
+            }
+            Ok(None) => {}
+            Err(error) => tracing::debug!("{vendor} sequence detection failed: {error}"),
+        }
+    }
 
     // We have no information about the target, so we must assume it's using the default DP.
     // We cannot automatically detect DPs if SWD multi-drop is used.
@@ -174,6 +213,18 @@ fn try_detect_arm_chip(
                     probe = interface.close();
                     tracing::debug!("Error during ARM chip detection on {dp_address:?}: {error}");
                     continue;
+                }
+
+                if let Some(vendor) = sequence_vendor {
+                    match vendor.try_identify_arm_chip(registry, interface.as_mut()) {
+                        Ok(Some(target_name)) => {
+                            found_target = Some(registry.get_target_by_name(&target_name)?);
+                            probe = interface.close();
+                            break;
+                        }
+                        Ok(None) => {}
+                        Err(error) => tracing::debug!("{vendor} chip detection failed: {error}"),
+                    }
                 }
 
                 let found_arm_chip = read_chip_info_from_rom_table(interface.as_mut(), dp_address)
