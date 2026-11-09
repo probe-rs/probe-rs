@@ -2,7 +2,10 @@ use std::sync::{Arc, OnceLock};
 use std::time::{Duration, Instant};
 
 use postcard_rpc::{header::VarHeader, server::Sender};
-use probe_rs::probe::{DebugProbeSelector, Probe, list::Lister};
+use probe_rs::probe::{
+    DebugProbeSelector, Probe,
+    list::{Lister, default_probe_index},
+};
 use probe_rs_rpc::probe::{
     AttachRequest, AttachResult, DebugProbeEntry, ListProbesResponse, SelectProbeRequest,
     SelectProbeResponse, SelectProbeResult, WireProtocol,
@@ -60,12 +63,12 @@ pub async fn select_probe(
         entry
     };
 
-    match list.len() {
-        0 => Err(OperationError::NoProbesFound.into()),
-        1 => Ok(SelectProbeResult::Success(with_interface(
-            convert::to_wire_debug_probe_entry(list.swap_remove(0)),
+    match default_probe_index(list.iter().map(|item| &item.info)) {
+        Some(index) => Ok(SelectProbeResult::Success(with_interface(
+            convert::to_wire_debug_probe_entry(list.swap_remove(index)),
         ))),
-        _ => Ok(SelectProbeResult::MultipleProbes(
+        None if list.is_empty() => Err(OperationError::NoProbesFound.into()),
+        None => Ok(SelectProbeResult::MultipleProbes(
             list.into_iter()
                 .map(|e| with_interface(convert::to_wire_debug_probe_entry(e)))
                 .collect(),

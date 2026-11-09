@@ -7,7 +7,7 @@ use probe_rs::probe::{
     DebugProbeError, DebugProbeSelector, Probe, WireProtocol,
     ch347::{Ch347, Ch347Config},
     ftdi::{FtdiConfig, FtdiProbe},
-    list::{ProbeListItem, ProbeLister},
+    list::{ProbeListItem, ProbeLister, default_probe_index},
     target_serial::{HostSerialPort, LineState, PortSelector, SerialSettings, TargetSerial},
     usb_util::UsbSerialFilter,
 };
@@ -290,10 +290,11 @@ impl<L: ProbeLister> ConfiguredLister<L> {
     /// Adds the serial number of the probe, so that the entries with a serial number match.
     fn complete_selector(&self, selector: &DebugProbeSelector) -> DebugProbeSelector {
         let mut selector = selector.clone();
-        if self.configs.needs_serial_number(&selector)
-            && let [info] = self.inner.list(Some(&selector)).as_slice()
-        {
-            selector.serial_number = info.serial_number.clone();
+        if self.configs.needs_serial_number(&selector) {
+            let list = self.inner.list(Some(&selector));
+            if let Some(index) = default_probe_index(&list) {
+                selector.serial_number = list[index].serial_number.clone();
+            }
         }
         selector
     }

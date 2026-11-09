@@ -21,6 +21,7 @@ pub mod swd;
 pub mod target_serial;
 pub mod ti_icdi;
 pub mod wlink;
+pub mod xds110;
 pub mod xvc;
 
 use crate::CoreStatus;
@@ -69,6 +70,8 @@ const LOW_TARGET_VOLTAGE_WARNING_THRESHOLD: f32 = 1.4;
 static DRIVERS: LazyLock<RwLock<Vec<&'static dyn ProbeFactory>>> = LazyLock::new(|| {
     let probes: Vec<&'static dyn ProbeFactory> = vec![
         &blackmagic::BlackMagicProbeFactory,
+        // Before CMSIS-DAP, which also opens the XDS110.
+        &xds110::Xds110Factory,
         &cmsisdap::CmsisDapFactory,
         &ftdi::FtdiProbeFactory,
         &stlink::StLinkFactory,
