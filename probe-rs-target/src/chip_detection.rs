@@ -42,6 +42,9 @@ pub enum ChipDetectionMethod {
 
     /// Texas Instruments ICEPick and FCFG1 USER_ID chip detection information.
     TiIcepick(TiIcepickDetection),
+
+    /// Texas Instruments CFG-AP chip detection information.
+    TiCfgAp(TiCfgApDetection),
 }
 
 impl ChipDetectionMethod {
@@ -363,4 +366,14 @@ pub struct TiUserIdVariant {
 
     /// Target name.
     pub target: String,
+}
+
+/// Texas Instruments chip detection information from the CFG-AP PARTID register.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct TiCfgApDetection {
+    /// PARTID variant and part fields (bits 23:0) => Target name.
+    #[serde(serialize_with = "hex_keys_indexmap")]
+    #[serde(deserialize_with = "maps_duplicate_key_is_error::deserialize")]
+    pub variants: IndexMap<u32, String>,
 }
