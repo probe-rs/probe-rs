@@ -68,6 +68,7 @@ pub trait Vendor: Send + Sync + std::fmt::Display {
     /// router. Returns `Some(sequence)` that reaches it, for the ARM chip detection.
     fn try_create_arm_detection_sequence(
         &self,
+        _registry: &Registry,
         _probe: &mut Probe,
     ) -> Result<Option<Arc<dyn ArmDebugSequence>>, Error> {
         Ok(None)
@@ -182,7 +183,7 @@ fn try_detect_arm_chip(
     let mut sequence = DefaultArmSequence::create();
     let mut sequence_vendor = None;
     for vendor in vendors().iter() {
-        match vendor.try_create_arm_detection_sequence(&mut probe) {
+        match vendor.try_create_arm_detection_sequence(registry, &mut probe) {
             Ok(Some(vendor_sequence)) => {
                 tracing::debug!("Using the {vendor} sequence for detection");
                 sequence = vendor_sequence;

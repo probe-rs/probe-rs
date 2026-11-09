@@ -2,6 +2,37 @@ name: CC13xx CC26xx Series
 manufacturer:
   id: 0x17
   cc: 0x0
+chip_detection:
+# FCFG1 USER_ID as decoded by driverlib's ChipInfo_GetChipType(): PROTOCOL in bits 15:12,
+# CC13 bit 23, HPOSC bit 24, PA bit 25.
+- !TiIcepick
+  icepick_id: 0x0b99a02f
+  variants:
+  - target: CC2650F128
+- !TiIcepick
+  icepick_id: 0x0bb4102f
+  variants:
+  - mask: 0x0380f000
+    value: 0x0000f000
+    target: CC2652R
+  - mask: 0x0380f000
+    value: 0x0100f000
+    target: CC2652RB
+  - mask: 0x0380f000
+    value: 0x0200f000
+    target: CC2652P
+  - mask: 0x0280f000
+    value: 0x0080f000
+    target: CC1352R
+  - mask: 0x0280f000
+    value: 0x0280f000
+    target: CC1352P
+  - mask: 0x0200f000
+    value: 0x00009000
+    target: CC2642R
+  - mask: 0x0200f000
+    value: 0x00008000
+    target: CC1312R
 variants:
 - name: CC2642R
   cores:
