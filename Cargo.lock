@@ -3076,7 +3076,7 @@ dependencies = [
  "itertools 0.15.0",
  "itm",
  "jep106",
- "md-5 0.10.6",
+ "md-5 0.11.0",
  "nix 0.31.3",
  "nusb",
  "object 0.40.0",
