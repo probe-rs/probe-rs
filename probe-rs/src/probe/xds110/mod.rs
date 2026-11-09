@@ -54,6 +54,9 @@ const XDS110_DEVICES: &[(u16, u16, u8)] = &[
 const MAX_DATA_BLOCK: usize = 4096;
 
 const TIMEOUT: Duration = Duration::from_secs(4);
+/// The timeout of a CMAPI connect. After a TARGETSEL that deselected the debug port, the connect
+/// takes about 7 s to fail.
+const CMAPI_CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
 
 /// The first firmware with batched DAP requests, JTAG scans and path moves.
 const OCD_FIRMWARE_VERSION: u32 = 0x0203_0011;
@@ -72,6 +75,8 @@ const XDS_GOTO_STATE: u8 = 0x09;
 const XDS_SET_SRST: u8 = 0x0e;
 const SWD_CONNECT: u8 = 0x17;
 const SWD_DISCONNECT: u8 = 0x18;
+const CMAPI_CONNECT: u8 = 0x0f;
+const CMAPI_DISCONNECT: u8 = 0x10;
 const CJTAG_CONNECT: u8 = 0x2b;
 const CJTAG_DISCONNECT: u8 = 0x2c;
 const OCD_DAP_REQUEST: u8 = 0x3a;
@@ -291,6 +296,16 @@ impl Xds110Usb {
     /// A packet is a '*', the length of the payload (two bytes) and the payload. A response
     /// payload starts with the error code (four bytes).
     fn execute(&mut self, payload: &[u8], expected: usize) -> Result<Vec<u8>, Xds110Error> {
+        self.execute_with_timeout(payload, expected, TIMEOUT)
+    }
+
+    /// Like [`Self::execute`], with a timeout for each USB transfer.
+    fn execute_with_timeout(
+        &mut self,
+        payload: &[u8],
+        expected: usize,
+        timeout: Duration,
+    ) -> Result<Vec<u8>, Xds110Error> {
         tracing::trace!(
             "XDS110: command {:#04x}, {} bytes: {:02x?}",
             payload[0],
@@ -303,7 +318,7 @@ impl Xds110Usb {
         packet.extend_from_slice(payload);
         let written = self
             .ep_out
-            .write_bulk(&packet, TIMEOUT)
+            .write_bulk(&packet, timeout)
             .map_err(Xds110Error::Usb)?;
         if written != packet.len() {
             return Err(Xds110Error::MalformedResponse);
@@ -316,7 +331,7 @@ impl Xds110Usb {
         while received < total {
             let n = self
                 .ep_in
-                .read_bulk(&mut response[received..], TIMEOUT)
+                .read_bulk(&mut response[received..], timeout)
                 .map_err(Xds110Error::Usb)?;
             if received == 0 && (n < 7 || response[0] != b'*') {
                 return Err(Xds110Error::MalformedResponse);
@@ -484,7 +499,24 @@ impl DebugProbe for Xds110 {
         self.swd_connected = false;
         self.tms_state = None;
         match self.protocol {
-            WireProtocol::Swd => self.swd_connect(),
+            WireProtocol::Swd => {
+                self.swd_connect()?;
+                // Until a CMAPI connect ran since power-up, OCD_DAP_REQUEST hangs the firmware
+                // until the probe is replugged, whether the target answers or not. The connect
+                // reads DPIDR; it fails at once while the debug port does not answer, which is
+                // enough.
+                match self
+                    .usb
+                    .execute_with_timeout(&[CMAPI_CONNECT], 4, CMAPI_CONNECT_TIMEOUT)
+                {
+                    Ok(_) => self.command(&[CMAPI_DISCONNECT])?,
+                    Err(Xds110Error::Command { code, .. }) => {
+                        tracing::debug!("XDS110: CMAPI connect failed with error {code}");
+                    }
+                    Err(error) => return Err(error.into()),
+                }
+                Ok(())
+            }
             WireProtocol::Jtag => {
                 self.command_u32(CJTAG_CONNECT, MODE_JTAG)?;
                 self.jtag_state.tap_state = crate::probe::TapState::TestLogicReset;
