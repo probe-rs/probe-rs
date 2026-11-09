@@ -1,1 +1,1 @@
-When all listed probes are the same device, for example an XDS110 listed by its own driver and by CMSIS-DAP, or the CMSIS-DAP interfaces of one probe, the first entry is selected without a prompt.
+The entries of a device that several drivers list, for example an XDS110 listed by its own driver and by CMSIS-DAP, are listed next to each other. When all listed probes are the same device, or the CMSIS-DAP interfaces of one probe, the first entry is selected without a prompt.

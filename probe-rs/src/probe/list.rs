@@ -56,6 +56,22 @@ fn same_device(a: &DebugProbeInfo, b: &DebugProbeInfo) -> bool {
         }
 }
 
+/// Moves the entries of a device that several drivers list next to its first entry. Devices keep
+/// the order of their first entry.
+fn group_by_device(list: Vec<ProbeListItem>) -> Vec<ProbeListItem> {
+    let mut groups: Vec<Vec<ProbeListItem>> = Vec::new();
+    for item in list {
+        match groups
+            .iter_mut()
+            .find(|group| same_device(&group[0].info, &item.info))
+        {
+            Some(group) => group.push(item),
+            None => groups.push(vec![item]),
+        }
+    }
+    groups.into_iter().flatten().collect()
+}
+
 /// Returns whether the current process can access the USB probe backed by the given device.
 ///
 /// On platforms other than Linux this always returns [`Accessibility::Accessible`].
@@ -196,7 +212,7 @@ impl ProbeLister for AllProbesLister {
             list.extend(driver.list_probes_filtered(selector));
         }
 
-        list
+        group_by_device(list)
     }
 }
 
@@ -244,7 +260,7 @@ mod linux {
 
 #[cfg(test)]
 mod tests {
-    use super::default_probe_index;
+    use super::{ProbeListItem, default_probe_index, group_by_device};
     use crate::probe::{DebugProbeInfo, fake_probe::FakeProbeFactory};
 
     fn probe(serial: Option<&str>, interface: Option<u8>) -> DebugProbeInfo {
@@ -279,5 +295,36 @@ mod tests {
         probes[0].usb_location = Some(("1".to_string(), 1));
         probes[1].usb_location = Some(("1".to_string(), 2));
         assert_eq!(default_probe_index(&probes), None);
+    }
+
+    #[test]
+    fn entries_of_one_device_are_grouped() {
+        let list = [
+            probe(Some("A"), Some(2)),
+            probe(Some("B"), Some(2)),
+            probe(None, None),
+            probe(Some("A"), Some(5)),
+            probe(Some("B"), Some(5)),
+            probe(None, None),
+        ]
+        .map(ProbeListItem::accessible);
+
+        let grouped: Vec<_> = group_by_device(list.to_vec())
+            .into_iter()
+            .map(|item| (item.info.serial_number, item.info.interface))
+            .collect();
+        let a = || Some("A".to_string());
+        let b = || Some("B".to_string());
+        assert_eq!(
+            grouped,
+            [
+                (a(), Some(2)),
+                (a(), Some(5)),
+                (b(), Some(2)),
+                (b(), Some(5)),
+                (None, None),
+                (None, None),
+            ]
+        );
     }
 }
