@@ -2,6 +2,16 @@ name: CC23XX CC27XX Series
 manufacturer:
   id: 0x17
   cc: 0x0
+chip_detection:
+# PARTID values from driverlib's chipinfo.h.
+- !TiCfgAp
+  variants:
+    0x012dda: CC2340R5 # CC2340R52E0RGER
+    0x3b2dda: CC2340R5 # CC2340R52E0RKPR
+    0x0f2dda: CC2340R5 # CC2340R52E0WRHBRQ1
+    0xe8af23: CC2745R10Q1
+    0x9d6301: CC2755P10 # CC2755R105E0WRHAR, same memory
+    0xe66301: CC2755P10 # CC2755P105E0WRHAR
 variants:
 - name: CC2340R5
   cores:

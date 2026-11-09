@@ -39,6 +39,9 @@ pub enum ChipDetectionMethod {
 
     /// Wuhan Xinyuan CW32 factory digital-signature detection.
     Cw32Signature(Cw32SignatureDetection),
+
+    /// Texas Instruments CFG-AP chip detection information.
+    TiCfgAp(TiCfgApDetection),
 }
 
 impl ChipDetectionMethod {
@@ -331,4 +334,14 @@ pub struct Cw32SignatureDetection {
     /// prefix can be either an exact variant name or the series name when
     /// the family maps the whole series onto a single target.
     pub variants: IndexMap<String, String>,
+}
+
+/// Texas Instruments chip detection information from the CFG-AP PARTID register.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct TiCfgApDetection {
+    /// PARTID variant and part fields (bits 23:0) => Target name.
+    #[serde(serialize_with = "hex_keys_indexmap")]
+    #[serde(deserialize_with = "maps_duplicate_key_is_error::deserialize")]
+    pub variants: IndexMap<u32, String>,
 }
