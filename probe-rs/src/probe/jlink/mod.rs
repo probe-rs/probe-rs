@@ -223,10 +223,13 @@ impl ProbeFactory for JLinkFactory {
         this.force_legacy_jtag_command =
             selector.product_id == 0x0101 && is_lite_firmware(&this.read_firmware_version()?);
 
-        this.supported_protocols = if this.caps.contains(Capability::SelectIf) {
+        let caps = this.caps;
+        this.supported_protocols = if caps.contains(Capability::SelectIf) {
             this.interfaces
                 .into_iter()
                 .filter_map(|p| match WireProtocol::try_from(p) {
+                    // cJTAG is activated with emulator options.
+                    Ok(WireProtocol::CJtag) if !caps.contains(Capability::SetEmuOption) => None,
                     Ok(protocol) => Some(protocol),
                     Err(JlinkError::UnknownInterface(interface)) => {
                         // We ignore unknown protocols.
@@ -372,8 +375,8 @@ enum Command {
     ReadConfig = 0xF2,
     WriteConfig = 0xF3,
 
-    /// Undocumented, observed in the traffic of the J-Link DLL (V8.44).
-    CJtagConfig = 0x0E,
+    /// `CMD_SET_EMU_OPTION`, undocumented. Requires [`Capability::SetEmuOption`].
+    SetEmuOption = 0x0E,
 }
 
 /// A J-Link probe.
@@ -598,6 +601,21 @@ impl JLink {
 
     fn read_u32(&self) -> Result<u32, JlinkError> {
         self.read_n::<4>().map(u32::from_le_bytes)
+    }
+
+    /// Sets an emulator option (`CMD_SET_EMU_OPTION`) and returns the probe's answer, whose
+    /// meaning depends on the option.
+    fn set_emu_option(&mut self, option: u32, value: u32) -> Result<u32, JlinkError> {
+        self.require_capability(Capability::SetEmuOption)?;
+
+        let handle = self.connection_handle.unwrap_or(0);
+        let mut cmd = [0u8; 17];
+        cmd[0] = Command::SetEmuOption as u8;
+        cmd[1..5].copy_from_slice(&option.to_le_bytes());
+        cmd[5..9].copy_from_slice(&value.to_le_bytes());
+        cmd[9..11].copy_from_slice(&handle.to_le_bytes());
+        self.write_cmd(&cmd)?;
+        self.read_u32()
     }
 
     fn require_capability(&self, cap: Capability) -> Result<(), JlinkError> {

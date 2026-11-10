@@ -47,10 +47,11 @@ pub enum Capability {
     // Extended capabilities
     HwJtagWrite = 32,
     Com = 33,
+    SetEmuOption = 46,
 }
 
 impl Capability {
-    const ALL_MASK: u128 = 0x3_ffff_7fff;
+    const ALL_MASK: u128 = 0x4003_ffff_7fff;
 
     fn mask(self) -> u128 {
         1 << self as u128

@@ -12,10 +12,12 @@
 use super::{Command, JLink, JlinkError};
 use crate::probe::jtag::FullTapState;
 
-/// Parameters of the undocumented `CJTAG_CONFIG` command.
-const PARAM_TRANSLATE: u32 = 8;
-const PARAM_ACTIVATE: u32 = 9;
-const PARAM_STATUS: u32 = 10;
+/// Emulator option: OScan1 translation of the JTAG I/O operations, off (0) or on (1).
+const OPTION_OSCAN1_TRANSLATION: u32 = 8;
+/// Emulator option sent once before the selection escape. The probe answers 1.
+const OPTION_CJTAG_ESCAPE: u32 = 9;
+/// Emulator option sent after each raw JTAG chunk of the activation. The probe answers 1.
+const OPTION_CJTAG_CHUNK: u32 = 10;
 
 #[derive(Debug)]
 pub(super) struct CJtag {
@@ -81,8 +83,8 @@ impl JLink {
 
         tracing::debug!("cJTAG activation");
 
-        self.cjtag_config(PARAM_ACTIVATE, 0)?;
-        self.cjtag_config(PARAM_TRANSLATE, 0)?;
+        self.set_emu_option(OPTION_CJTAG_ESCAPE, 0)?;
+        self.set_emu_option(OPTION_OSCAN1_TRANSLATION, 0)?;
         self.jtag_io_raw(&ONES, &ZEROS, 201)?;
 
         // Selection escape: six TMSC edges while TCKC is high
@@ -95,30 +97,17 @@ impl JLink {
         }
 
         self.jtag_io_raw(&ZEROS, &ZEROS, 32)?;
-        self.cjtag_config(PARAM_STATUS, 0)?;
+        self.set_emu_option(OPTION_CJTAG_CHUNK, 0)?;
         self.jtag_io_raw(&OAC, &ZEROS, 50)?;
-        self.cjtag_config(PARAM_STATUS, 0)?;
-        self.cjtag_config(PARAM_TRANSLATE, 1)?;
+        self.set_emu_option(OPTION_CJTAG_CHUNK, 0)?;
+        self.set_emu_option(OPTION_OSCAN1_TRANSLATION, 1)?;
         self.jtag_io_raw(&CP1, &ZEROS, 18)?;
-        self.cjtag_config(PARAM_STATUS, 0)?;
+        self.set_emu_option(OPTION_CJTAG_CHUNK, 0)?;
         self.jtag_io_raw(&CP2, &ZEROS, 6)?;
 
         self.cjtag.state = FullTapState::TestLogicReset;
         self.cjtag.parked = true;
         Ok(())
-    }
-
-    /// The undocumented `CJTAG_CONFIG` command (0x0e). Parameter 8 turns the OScan1
-    /// translation of JTAG I/O operations off (0) or on (1). Parameters 9 and 10 are queried
-    /// during the activation and return 1.
-    fn cjtag_config(&mut self, param: u32, value: u32) -> Result<u32, JlinkError> {
-        let mut cmd = [0u8; 17];
-        cmd[0] = Command::CJtagConfig as u8;
-        cmd[1..5].copy_from_slice(&param.to_le_bytes());
-        cmd[5..9].copy_from_slice(&value.to_le_bytes());
-        cmd[9..13].copy_from_slice(&4u32.to_le_bytes());
-        self.write_cmd(&cmd)?;
-        self.read_u32()
     }
 
     /// JTAG I/O outside of the queue and of the TAP state tracking (`HW_JTAG2`, no status).
