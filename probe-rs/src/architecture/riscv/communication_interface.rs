@@ -1832,11 +1832,20 @@ impl<'state> RiscvCommunicationInterface<'state> {
         address: u64,
         data: &mut [V],
     ) -> Result<(), RiscvError> {
-        if data.is_empty() {
-            return Ok(());
-        }
-        let start = Instant::now();
-        loop {
+        let width = V::WIDTH.byte_width() as u64;
+
+        // The number of words at the start of `data` that are correct.
+        let mut done = 0;
+        // The largest number of words in one access. A read that comes in while the bus is busy
+        // makes the rest of the access fail, and the debug module does not tell which word
+        // that was. A smaller access fails less often, and it repeats fewer words.
+        let mut limit = data.len();
+        let mut start = Instant::now();
+        while done < data.len() {
+            let end = data.len().min(done + limit);
+            let remaining = &mut data[done..end];
+            let address = address + done as u64 * width;
+
             let mut sbcs = Sbcs(0);
 
             // Reset the systembus busy error flag.
@@ -1858,10 +1867,10 @@ impl<'state> RiscvCommunicationInterface<'state> {
             }
             self.schedule_write_dm_register(Sbaddress0(address as u32))?;
 
-            let data_len = data.len();
+            let data_len = remaining.len();
 
             let mut read_results = Vec::with_capacity(data_len);
-            for _ in data[..data_len - 1].iter() {
+            for _ in remaining[..data_len - 1].iter() {
                 self.schedule_read_large_dtm_register::<V, Sbdata>(&mut read_results)?;
             }
 
@@ -1872,20 +1881,26 @@ impl<'state> RiscvCommunicationInterface<'state> {
 
             let sbcs = self.read_dm_register::<Sbcs>()?;
 
-            for out in data.iter_mut() {
+            for out in remaining.iter_mut() {
                 *out = V::read_scheduled_result(self, &mut read_results)?;
             }
 
             // Check that the read was successful
             if sbcs.sberror() != 0 {
-                break Err(RiscvError::SystemBusAccess);
+                return Err(RiscvError::SystemBusAccess);
             }
-            if !sbcs.sbbusyerror() {
-                break Ok(());
+            if sbcs.sbbusyerror() {
+                tracing::debug!("System bus was busy while reading {data_len} words, repeating");
+                self.wait_for_sysbus_idle(sbcs, start)?;
+                limit = (data_len / 2).max(1);
+            } else {
+                done = end;
+                limit = limit.saturating_mul(2);
+                start = Instant::now();
             }
-            tracing::debug!("System bus was busy while reading, repeating operation");
-            self.wait_for_sysbus_idle(sbcs, start)?;
         }
+
+        Ok(())
     }
 
     /// Wait for the abstract command to complete, then report the error of the
