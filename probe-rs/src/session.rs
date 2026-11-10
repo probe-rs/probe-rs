@@ -1166,8 +1166,10 @@ fn get_target_from_selector(
             held.attach_to_unspecified()?;
 
             let (returned_probe, found_target) =
-                crate::vendor::auto_determine_target(registry, held.into_inner())?;
-            probe = returned_probe;
+                crate::vendor::auto_determine_target(registry, held.into_inner());
+            let held = HeldReset::new(returned_probe, assertion);
+            let found_target = found_target?;
+            probe = held.into_inner();
 
             if AttachMethod::UnderReset == attach_method {
                 // Now we can deassert reset in case we asserted it before.
