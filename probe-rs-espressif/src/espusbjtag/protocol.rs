@@ -55,8 +55,6 @@ const MAX_IN_FLIGHT_TRANSFERS: usize = 4;
 // hold a very large number of clock cycles.
 const MAX_BUFFERED_CLOCKS: usize = 16 * 1024;
 const USB_TIMEOUT: Duration = Duration::from_millis(500);
-// The number of zero-length reads in sequence after which a read of capture data fails.
-const MAX_EMPTY_READS: usize = 8;
 const USB_DEVICE_CLASS: u8 = 0xFF;
 const USB_DEVICE_SUBCLASS: u8 = 0xFF;
 const USB_DEVICE_PROTOCOL: u8 = 0x01;
@@ -415,21 +413,6 @@ impl ProtocolHandler {
     ///
     /// Note that if the internal buffer is exceeded bytes will be automatically flushed to usb device
     pub fn shift_bit(&mut self, tms: bool, tdi: bool, cap: bool) -> Result<(), DebugProbeError> {
-        if cap && self.pending_in_bits >= MAX_IN_FLIGHT_CAPTURE_BITS {
-            // From the ESP32-S3 TRM:
-            // [A] command stream can cause at most 128 bytes of capture data to be
-            // generated [...] without the host acting to receive the generated data. If
-            // more data is generated anyway, the command stream is paused and the device
-            // will not accept more commands before the generated capture data is read out.
-
-            // Let's break the command stream here and flush the data.
-            // We do this before we would capture the 1025th bit, so we don't do an
-            // extra flush if we only ever want to capture 1024 bits.
-            self.finalize_previous_command()?;
-            self.send_buffer()?;
-            self.receive_buffer()?;
-        }
-
         self.push_command(Command::Clock { cap, tdi, tms })?;
 
         Ok(())
@@ -521,9 +504,9 @@ impl ProtocolHandler {
         {
             self.send_buffer()?;
 
-            // One command can make more capture data than the limit permits. Then read all the
-            // available capture data.
-            while self.pending_in_bits > 0
+            // Without a flush command, the device sends capture data only in full packets. Read
+            // only while the device has a full packet.
+            while self.pending_in_bits >= IN_EP_BUFFER_SIZE * 8
                 && self.pending_in_bits + repetitions + 1 > MAX_IN_FLIGHT_CAPTURE_BITS
             {
                 self.receive_buffer()?;
@@ -719,9 +702,9 @@ impl ProtocolHandler {
         let count = self.pending_in_bits.div_ceil(8).min(IN_EP_BUFFER_SIZE);
         let mut incoming = [0; IN_EP_BUFFER_SIZE];
 
-        // A zero-length read gives no capture data. Retry it a limited number of times, so that
-        // the callers that wait for `pending_in_bits` do not loop forever.
-        let mut empty_reads = 0;
+        // A zero-length read gives no capture data. Retry it until the timeout, so that the
+        // callers that wait for `pending_in_bits` do not loop forever.
+        let deadline = Instant::now() + USB_TIMEOUT;
         let read_bytes = loop {
             let read_bytes = self
                 .ep_in
@@ -740,10 +723,9 @@ impl ProtocolHandler {
                 break read_bytes;
             }
 
-            empty_reads += 1;
-            if empty_reads == MAX_EMPTY_READS {
+            if Instant::now() >= deadline {
                 tracing::warn!(
-                    "The device sent {empty_reads} empty packets - pending_in_bits: {}",
+                    "The device sent only empty packets - pending_in_bits: {}",
                     self.pending_in_bits
                 );
                 return Err(DebugProbeError::Usb(io::Error::other(
