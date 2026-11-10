@@ -193,14 +193,14 @@ impl Ch347Device {
 
     fn default_khz(&self) -> u32 {
         match self.protocol {
-            WireProtocol::Jtag => DEFAULT_JTAG_KHZ,
+            WireProtocol::Jtag | WireProtocol::CJtag => DEFAULT_JTAG_KHZ,
             WireProtocol::Swd => SwdClock::fastest(self.capabilities.swd_5mhz()).khz(),
         }
     }
 
     fn resolve(&mut self, khz: u32) -> Result<Clock, DebugProbeError> {
         match self.protocol {
-            WireProtocol::Jtag => jtag_clock(self.pack()?, khz),
+            WireProtocol::Jtag | WireProtocol::CJtag => jtag_clock(self.pack()?, khz),
             WireProtocol::Swd => SwdClock::new(khz, self.capabilities.swd_5mhz()).map(Clock::Swd),
         }
     }
@@ -219,6 +219,9 @@ impl Ch347Device {
         &mut self,
         protocol: WireProtocol,
     ) -> Result<(), DebugProbeError> {
+        if protocol == WireProtocol::CJtag {
+            return Err(DebugProbeError::UnsupportedProtocol(protocol));
+        }
         self.protocol = protocol;
         let khz = self.requested_khz.unwrap_or(self.default_khz());
         self.clock = Some(match self.resolve(khz) {

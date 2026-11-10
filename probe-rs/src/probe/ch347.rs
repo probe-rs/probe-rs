@@ -268,7 +268,7 @@ impl DebugProbe for Ch347 {
     ) -> Result<Box<dyn ArmDebugInterface + 'probe>, (Box<dyn DebugProbe>, ArmError)> {
         let settings = SwdProbe::swd_settings(self.as_ref());
         Ok(match self.device.protocol() {
-            WireProtocol::Jtag => {
+            WireProtocol::Jtag | WireProtocol::CJtag => {
                 ArmCommunicationInterface::create_jtag(self, settings, sequence, true)
             }
             // This firmware mishandles the data phase that overrun detection adds to a WAIT.

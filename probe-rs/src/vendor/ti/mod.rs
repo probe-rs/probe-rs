@@ -129,9 +129,9 @@ impl Vendor for TexasInstruments {
         registry: &Registry,
         probe: &mut Probe,
     ) -> Result<Option<Arc<dyn ArmDebugSequence>>, Error> {
-        if probe.protocol() != Some(WireProtocol::Jtag) {
+        let Some(protocol) = probe.protocol().filter(|protocol| protocol.is_jtag()) else {
             return Ok(None);
-        }
+        };
         let Some(mut chain) = probe.try_as_jtag_chain() else {
             return Ok(None);
         };
@@ -142,7 +142,11 @@ impl Vendor for TexasInstruments {
             }
             // A CC13xx/CC26xx powers up in 2-pin mode and stays silent on TDO, which reads as
             // an error or as an empty chain depending on the probe's pull.
-            Ok(()) | Err(_) => vec![icepick::switch_to_4_pin(&mut chain)?],
+            Ok(()) | Err(_) if protocol == WireProtocol::Jtag => {
+                vec![icepick::switch_to_4_pin(&mut chain)?]
+            }
+            Ok(()) => Vec::new(),
+            Err(error) => return Err(error.into()),
         };
         tracing::debug!("JTAG ID codes: {idcodes:x?}");
 

@@ -448,7 +448,7 @@ impl ArmDebugSequence for MCX {
 
         if let Some(protocol) = interface.active_wire_protocol() {
             match protocol {
-                WireProtocol::Jtag => {
+                WireProtocol::Jtag | WireProtocol::CJtag => {
                     let mut ctrl = Ctrl(0);
                     ctrl.set_csyspwrupreq(true);
                     ctrl.set_cdbgpwrupreq(true);

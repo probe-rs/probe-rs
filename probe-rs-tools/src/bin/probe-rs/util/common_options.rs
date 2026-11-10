@@ -136,7 +136,7 @@ pub struct ProbeOptions {
     )]
     pub chip_description_path: Option<PathBuf>,
 
-    /// Protocol used to connect to chip. Possible options: [swd, jtag]
+    /// Protocol used to connect to chip. Possible options: [swd, jtag, cjtag]
     #[arg(long, env = "PROBE_RS_PROTOCOL", help_heading = "PROBE CONFIGURATION")]
     pub protocol: Option<WireProtocol>,
 
