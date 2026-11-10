@@ -12,10 +12,17 @@
 use super::{Command, JLink, JlinkError};
 use crate::probe::jtag::FullTapState;
 
-/// Parameters of the undocumented `CJTAG_CONFIG` command.
+// Parameters of the undocumented `CJTAG_CONFIG` command.
+
+/// Whether the JTAG I/O operations are translated to OScan1: 0 off, 1 on. Setting it puts
+/// nothing on the wire. Replies 0.
 const PARAM_TRANSLATE: u32 = 8;
-const PARAM_ACTIVATE: u32 = 9;
-const PARAM_STATUS: u32 = 10;
+/// The firmware sends a reset escape: about ten TMSC edges with TCKC high, ending with TMSC high.
+/// The value is ignored. Replies 1.
+const PARAM_RESET_ESCAPE: u32 = 9;
+/// The firmware sends a check packet: four TCKC clocks with TMSC low, untranslated even with
+/// translation on. The value is ignored. Replies 1.
+const PARAM_CHECK_PACKET: u32 = 10;
 
 #[derive(Debug)]
 pub(super) struct CJtag {
@@ -81,7 +88,7 @@ impl JLink {
 
         tracing::debug!("cJTAG activation");
 
-        self.cjtag_config(PARAM_ACTIVATE, 0)?;
+        self.cjtag_config(PARAM_RESET_ESCAPE, 0)?;
         self.cjtag_config(PARAM_TRANSLATE, 0)?;
         self.jtag_io_raw(&ONES, &ZEROS, 201)?;
 
@@ -95,12 +102,12 @@ impl JLink {
         }
 
         self.jtag_io_raw(&ZEROS, &ZEROS, 32)?;
-        self.cjtag_config(PARAM_STATUS, 0)?;
+        self.cjtag_config(PARAM_CHECK_PACKET, 0)?;
         self.jtag_io_raw(&OAC, &ZEROS, 50)?;
-        self.cjtag_config(PARAM_STATUS, 0)?;
+        self.cjtag_config(PARAM_CHECK_PACKET, 0)?;
         self.cjtag_config(PARAM_TRANSLATE, 1)?;
         self.jtag_io_raw(&CP1, &ZEROS, 18)?;
-        self.cjtag_config(PARAM_STATUS, 0)?;
+        self.cjtag_config(PARAM_CHECK_PACKET, 0)?;
         self.jtag_io_raw(&CP2, &ZEROS, 6)?;
 
         self.cjtag.state = FullTapState::TestLogicReset;
@@ -108,14 +115,13 @@ impl JLink {
         Ok(())
     }
 
-    /// The undocumented `CJTAG_CONFIG` command (0x0e). Parameter 8 turns the OScan1
-    /// translation of JTAG I/O operations off (0) or on (1). Parameters 9 and 10 are queried
-    /// during the activation and return 1.
+    /// The undocumented `CJTAG_CONFIG` command (0x0e).
     fn cjtag_config(&mut self, param: u32, value: u32) -> Result<u32, JlinkError> {
         let mut cmd = [0u8; 17];
         cmd[0] = Command::CJtagConfig as u8;
         cmd[1..5].copy_from_slice(&param.to_le_bytes());
         cmd[5..9].copy_from_slice(&value.to_le_bytes());
+        // The firmware ignores this word.
         cmd[9..13].copy_from_slice(&4u32.to_le_bytes());
         self.write_cmd(&cmd)?;
         self.read_u32()
