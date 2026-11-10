@@ -1,0 +1,1 @@
+RISC-V block access through the program buffer now checks the program buffer inside the batch of debug module accesses, and waits for each word only on a target that is too slow for that. Block reads and writes through the program buffer are about two times faster.
