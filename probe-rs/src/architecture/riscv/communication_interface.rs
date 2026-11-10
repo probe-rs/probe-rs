@@ -2131,10 +2131,12 @@ impl<'state> RiscvCommunicationInterface<'state> {
             command.set_regno((registers::S1).id.0 as u32);
 
             self.schedule_write_dm_register(command)?;
+
+            // The command writes DATA0 at its start, but it can start late.
+            self.wait_for_progbuf()?;
+
             let value_idx = self.schedule_read_dm_register::<Data0>()?;
             result_idxs.push((out_idx, value_idx));
-
-            self.wait_for_progbuf()?;
         }
 
         let last_value = self.read_register_xlen(registers::S1)? as u32;
