@@ -25,8 +25,8 @@ use crate::{
     core::{Architecture, CombinedCoreState},
     memory_port::MemoryAccessPort,
     probe::{
-        AttachMethod, BitSequence, DebugProbe, DebugProbeError, Probe, ProbeCreationError,
-        WireProtocol, list::Lister,
+        AttachMethod, BitSequence, DebugProbe, DebugProbeError, HeldReset, Probe,
+        ProbeCreationError, ResetAssertion, WireProtocol, list::Lister,
     },
 };
 use std::collections::BTreeSet;
@@ -247,22 +247,14 @@ impl Session {
             return Err(Error::NoCoreOnJtagScanChain(target.name.clone()));
         }
 
-        if AttachMethod::UnderReset == attach_method {
+        let assertion = if AttachMethod::UnderReset == attach_method {
             let _span = tracing::debug_span!("Asserting hardware reset").entered();
-
-            if probe.try_as_swd_probe_mut().is_some()
-                || probe.try_as_jtag_chain_access_mut().is_some()
-            {
-                probe.with_debug_port_wire(|wire| sequence_handle.reset_hardware_assert(wire))?;
-            } else {
-                tracing::info!(
-                    "Custom reset sequences are not supported on {}.",
-                    probe.get_name()
-                );
-                tracing::info!("Falling back to standard probe reset.");
-                probe.target_reset_assert()?;
-            }
-        }
+            Some(probe.assert_reset(&*sequence_handle)?)
+        } else {
+            None
+        };
+        // An error before `reset_hardware_deassert` below drops the guard, which releases nRESET.
+        let mut probe = HeldReset::new(probe, assertion);
 
         if let Some(jtag) = target.jtag.as_ref()
             && let Some(scan_chain) = jtag.scan_chain.clone()
@@ -286,9 +278,8 @@ impl Session {
             }
         }
 
-        let mut interface = probe
-            .try_into_arm_debug_interface(sequence_handle.clone())
-            .map_err(|(_, err)| err)?;
+        let mut interface =
+            probe.try_map(|probe| probe.try_into_arm_debug_interface(sequence_handle.clone()))?;
 
         interface.select_debug_port(default_dp)?;
 
@@ -296,7 +287,7 @@ impl Session {
 
         // Enable debug mode
         let unlock_res =
-            sequence_handle.debug_device_unlock(&mut *interface, &default_memory_ap, &permissions);
+            sequence_handle.debug_device_unlock(&mut **interface, &default_memory_ap, &permissions);
         drop(unlock_span);
 
         match unlock_res {
@@ -312,7 +303,7 @@ impl Session {
             {
                 for core in &cores {
                     if core.is_arm_core() {
-                        core.arm_reset_catch_set(&mut *interface)?;
+                        core.arm_reset_catch_set(&mut **interface)?;
                     }
                 }
 
@@ -321,7 +312,7 @@ impl Session {
 
                 // A timeout here indicates that the reset pin is probably not properly connected.
                 if let Err(e) =
-                    sequence_handle.reset_hardware_deassert(&mut *interface, &default_memory_ap)
+                    sequence_handle.reset_hardware_deassert(&mut **interface, &default_memory_ap)
                 {
                     if matches!(e, ArmError::Timeout) {
                         tracing::warn!(
@@ -333,6 +324,7 @@ impl Session {
                 }
                 drop(reset_hardware_deassert);
             }
+            let mut interface = interface.into_inner();
 
             // Now that hardware reset is de-asserted, for each core, setup debugging.
             // (Some chips keep cores in power-down under hardware-reset.)
@@ -377,6 +369,7 @@ impl Session {
 
             Ok(session)
         } else {
+            let mut interface = interface.into_inner();
             // For each core, setup debugging
             for core in &cores {
                 if core.is_arm_core() {
@@ -1163,14 +1156,20 @@ fn get_target_from_selector(
             // At this point we do not know what the target is, so we cannot use the chip specific reset sequence.
             // Thus, we try just using a normal reset for target detection if we want to do so under reset.
             // This can of course fail, but target detection is a best effort, not a guarantee!
-            if AttachMethod::UnderReset == attach_method {
+            let assertion = if AttachMethod::UnderReset == attach_method {
                 probe.target_reset_assert()?;
-            }
-            probe.attach_to_unspecified()?;
+                Some(ResetAssertion::Command)
+            } else {
+                None
+            };
+            let mut held = HeldReset::new(probe, assertion);
+            held.attach_to_unspecified()?;
 
             let (returned_probe, found_target) =
-                crate::vendor::auto_determine_target(registry, probe)?;
-            probe = returned_probe;
+                crate::vendor::auto_determine_target(registry, held.into_inner());
+            let held = HeldReset::new(returned_probe, assertion);
+            let found_target = found_target?;
+            probe = held.into_inner();
 
             if AttachMethod::UnderReset == attach_method {
                 // Now we can deassert reset in case we asserted it before.

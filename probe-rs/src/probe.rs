@@ -1,6 +1,7 @@
 //! Probe drivers
 mod bits;
 pub(crate) mod common;
+mod held_reset;
 pub mod usb_util;
 
 pub mod blackmagic;
@@ -58,6 +59,8 @@ pub use queue::{
 #[allow(deprecated)]
 pub use queue::{DeferredResultIndex, DeferredResultSet, ErasedQueue, Queue};
 pub use selector::DebugProbeSelector;
+
+pub(crate) use held_reset::{HeldReset, ResetAssertion};
 pub use swd::{
     BitbangSwd, Direction, IoSequenceItem, Pins, Port, SwdBatch, SwdOp, SwdPort, SwdProbe,
     SwdSettings, SwdTransferError,
@@ -485,10 +488,23 @@ impl Probe {
 
     /// A combination of [`Probe::attach_to_unspecified`] and [`Probe::attach_under_reset`].
     pub fn attach_to_unspecified_under_reset(&mut self) -> Result<(), Error> {
-        if self.inner.try_as_swd_probe_mut().is_some()
-            || self.inner.try_as_jtag_chain_access_mut().is_some()
-        {
-            self.with_debug_port_wire(|wire| DefaultArmSequence(()).reset_hardware_assert(wire))?;
+        let assertion = self.assert_reset(&DefaultArmSequence(()))?;
+        let mut probe = HeldReset::new(self, Some(assertion));
+        probe.attach_to_unspecified()?;
+        // Attached: nRESET stays asserted for the caller to release.
+        probe.into_inner();
+        Ok(())
+    }
+
+    /// Asserts nRESET: with `sequence`'s hardware reset where the probe drives the debug port's
+    /// pins, with the probe's own reset command where it doesn't.
+    pub(crate) fn assert_reset(
+        &mut self,
+        sequence: &dyn ArmDebugSequence,
+    ) -> Result<ResetAssertion, Error> {
+        if self.try_as_swd_probe_mut().is_some() || self.try_as_jtag_chain_access_mut().is_some() {
+            self.with_debug_port_wire(|wire| sequence.reset_hardware_assert(wire))?;
+            Ok(ResetAssertion::Pins)
         } else {
             tracing::info!(
                 "Custom reset sequences are not supported on {}.",
@@ -496,9 +512,8 @@ impl Probe {
             );
             tracing::info!("Falling back to standard probe reset.");
             self.target_reset_assert()?;
+            Ok(ResetAssertion::Command)
         }
-        self.attach_to_unspecified()?;
-        Ok(())
     }
 
     /// Attach to the chip under hard-reset.
