@@ -194,7 +194,12 @@ impl fmt::Display for LinuxGpiodFactory {
 
 impl ProbeFactory for LinuxGpiodFactory {
     fn open(&self, selector: &DebugProbeSelector) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
-        let DebugProbeSelector::Usb(selector) = selector;
+        // This probe is selected with the placeholder VID:PID 0:0.
+        let DebugProbeSelector::Usb(selector) = selector else {
+            return Err(DebugProbeError::ProbeCouldNotBeCreated(
+                ProbeCreationError::NotFound,
+            ));
+        };
         // We're never a USB device; let other factories handle non-zero VID/PID.
         if selector.vendor_id != 0 || selector.product_id != 0 {
             return Err(DebugProbeError::ProbeCouldNotBeCreated(
@@ -254,6 +259,7 @@ impl ProbeFactory for LinuxGpiodFactory {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use probe_rs::probe::ProbeTransport;
 
     fn sel(s: &str) -> DebugProbeSelector {
         s.parse().unwrap()
@@ -294,8 +300,11 @@ mod tests {
         let s = sel(&format!("0:0:{serial}"));
         let entries = LinuxGpiodFactory.list_probes_filtered(Some(&s));
         assert_eq!(entries.len(), 1);
-        assert_eq!(entries[0].info.vendor_id, 0);
-        assert_eq!(entries[0].info.product_id, 0);
-        assert_eq!(entries[0].info.serial_number.as_deref(), Some(serial));
+        let ProbeTransport::Usb(info) = &entries[0].info.transport else {
+            panic!("not a USB probe");
+        };
+        assert_eq!(info.vendor_id, 0);
+        assert_eq!(info.product_id, 0);
+        assert_eq!(info.serial_number.as_deref(), Some(serial));
     }
 }

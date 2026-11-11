@@ -1,7 +1,7 @@
-use crate::probe::DebugProbeInfo;
 use crate::probe::list::{ProbeListItem, usb_probe_accessibility};
 use crate::probe::stlink::StLinkFactory;
 use crate::probe::usb_util::to_hex;
+use crate::probe::{DebugProbeInfo, ProbeTransport, UsbProbeInfo};
 use nusb::MaybeFuture;
 
 use super::usb_interface::USB_PID_EP_MAP;
@@ -30,13 +30,15 @@ pub(super) fn list_stlink_devices() -> Vec<ProbeListItem> {
                     "STLink {}",
                     USB_PID_EP_MAP[&device.product_id()].version_name
                 ),
-                vendor_id: device.vendor_id(),
-                product_id: device.product_id(),
-                serial_number: read_serial_number(&device),
+                transport: ProbeTransport::Usb(UsbProbeInfo {
+                    vendor_id: device.vendor_id(),
+                    product_id: device.product_id(),
+                    serial_number: read_serial_number(&device),
+                    is_hid_interface: false,
+                    interface: None,
+                    usb_location: Some((device.bus_id().to_string(), device.device_address())),
+                }),
                 probe_factory: &StLinkFactory,
-                is_hid_interface: false,
-                interface: None,
-                usb_location: Some((device.bus_id().to_string(), device.device_address())),
             };
             ProbeListItem {
                 info,

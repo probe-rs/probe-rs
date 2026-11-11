@@ -5,12 +5,16 @@
 //! `u16`, the packet type (1 for a request, 2 for a response) and a reserved byte. The payload is
 //! the same as the payload of a CMSIS-DAP v2 bulk transfer.
 //!
-//! A TCP probe has no USB identity, so it is selected with a placeholder VID:PID and its address
-//! as the serial number, for example `--probe 0000:0001:192.168.1.50:4441`.
+//! A TCP probe is selected by its address, for example `--probe tcp://cmsis-dap@192.168.1.50:4441`.
+//! A placeholder VID:PID with the address as the serial number also works, for example
+//! `--probe 0000:0001:192.168.1.50:4441`.
 
 use std::io::{self, ErrorKind, Read, Write};
 use std::net::{SocketAddr, TcpStream, ToSocketAddrs};
 use std::time::{Duration, Instant};
+
+/// The driver name in a `tcp://` selector.
+pub(crate) const DRIVER: &str = "cmsis-dap";
 
 /// Placeholder vendor id that routes a selector to the TCP transport.
 pub(crate) const TCP_VID: u16 = 0x0000;
