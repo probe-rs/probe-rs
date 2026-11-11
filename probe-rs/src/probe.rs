@@ -57,7 +57,7 @@ pub use queue::{
 };
 #[allow(deprecated)]
 pub use queue::{DeferredResultIndex, DeferredResultSet, ErasedQueue, Queue};
-pub use selector::{DebugProbeSelector, UsbSelector};
+pub use selector::{DebugProbeSelector, TcpAddress, UsbSelector};
 pub use swd::{
     BitbangSwd, Direction, IoSequenceItem, Pins, Port, SwdBatch, SwdOp, SwdPort, SwdProbe,
     SwdSettings, SwdTransferError,
@@ -998,10 +998,12 @@ pub struct DebugProbeInfo {
 pub enum ProbeTransport {
     /// A USB probe.
     ///
-    /// Probes that are not on USB, such as those reached over TCP and the Linux GPIO and SPI
-    /// probes, are listed with this variant too for now: with a placeholder VID and PID, and their
-    /// address as the serial number.
+    /// Some probes that are not on USB, such as the Linux GPIO and SPI probes and some probes
+    /// reached over TCP, are listed with this variant too for now: with a placeholder VID and PID,
+    /// and their address as the serial number.
     Usb(UsbProbeInfo),
+    /// A probe reached over TCP.
+    Tcp(TcpAddress),
 }
 
 /// A USB debug probe.
@@ -1028,7 +1030,16 @@ pub struct UsbProbeInfo {
 
 impl std::fmt::Display for DebugProbeInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        let ProbeTransport::Usb(usb) = &self.transport;
+        let usb = match &self.transport {
+            ProbeTransport::Usb(usb) => usb,
+            ProbeTransport::Tcp(address) => {
+                return write!(
+                    f,
+                    "{} -- {address} ({})",
+                    self.identifier, self.probe_factory
+                );
+            }
+        };
         write!(
             f,
             "{} -- {:04x}:{:04x}",

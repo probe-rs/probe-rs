@@ -20,9 +20,13 @@ pub(super) fn list_hid_only_devices(probes: &mut Vec<ProbeListItem>) {
     };
 
     for info in api.device_list().filter_map(get_cmsisdap_hid_info) {
-        let ProbeTransport::Usb(hid) = &info.transport;
+        let ProbeTransport::Usb(hid) = &info.transport else {
+            continue;
+        };
         let duplicate = probes.iter().any(|p| {
-            let ProbeTransport::Usb(usb) = &p.info.transport;
+            let ProbeTransport::Usb(usb) = &p.info.transport else {
+                return false;
+            };
             usb.vendor_id == hid.vendor_id
                 && usb.product_id == hid.product_id
                 && usb.serial_number.as_deref().unwrap_or("")
@@ -103,7 +107,9 @@ pub(super) fn open_device(
             }
 
             if let Some(hid_interface) = hid_device_info.as_ref().and_then(|info| {
-                let ProbeTransport::Usb(info) = &info.transport;
+                let ProbeTransport::Usb(info) = &info.transport else {
+                    return None;
+                };
                 info.interface.filter(|_| info.is_hid_interface)
             }) {
                 device_match &= info.interface_number() == hid_interface as i32;

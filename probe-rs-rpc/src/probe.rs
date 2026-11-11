@@ -28,6 +28,21 @@ pub enum ProbeTransport {
     /// A USB probe, or for now a probe that is not on USB but is listed with a placeholder VID and
     /// PID. See `probe_rs::probe::ProbeTransport::Usb`.
     Usb(UsbProbeEntry),
+    /// A probe reached over TCP.
+    Tcp(TcpAddress),
+}
+
+/// A probe reached over TCP. See `probe_rs::probe::TcpAddress`.
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Schema)]
+pub struct TcpAddress {
+    pub driver: String,
+    pub address: String,
+}
+
+impl Display for TcpAddress {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "tcp://{}@{}", self.driver, self.address)
+    }
 }
 
 /// A USB debug probe. See `probe_rs::probe::UsbProbeInfo`.
@@ -49,7 +64,12 @@ pub struct UsbProbeEntry {
 
 impl Display for DebugProbeEntry {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let ProbeTransport::Usb(usb) = &self.transport;
+        let usb = match &self.transport {
+            ProbeTransport::Usb(usb) => usb,
+            ProbeTransport::Tcp(address) => {
+                return write!(f, "{} -- {address} ({})", self.identifier, self.probe_type);
+            }
+        };
         write!(
             f,
             "{} -- {:04x}:{:04x}",
@@ -68,7 +88,10 @@ impl Display for DebugProbeEntry {
 
 impl DebugProbeEntry {
     pub fn selector(&self) -> DebugProbeSelector {
-        let ProbeTransport::Usb(usb) = &self.transport;
+        let usb = match &self.transport {
+            ProbeTransport::Usb(usb) => usb,
+            ProbeTransport::Tcp(address) => return DebugProbeSelector::Tcp(address.clone()),
+        };
         DebugProbeSelector::Usb(UsbSelector {
             vendor_id: usb.vendor_id,
             product_id: usb.product_id,
@@ -123,6 +146,8 @@ pub enum DebugProbeSelector {
     /// A USB probe, or for now a probe that is not on USB but is selected with a placeholder VID
     /// and PID. See `probe_rs::probe::DebugProbeSelector::Usb`.
     Usb(UsbSelector),
+    /// A probe reached over TCP.
+    Tcp(TcpAddress),
 }
 
 /// Selects a USB probe. See `probe_rs::probe::UsbSelector`.
