@@ -4,7 +4,7 @@ use std::net::TcpStream;
 use std::os::unix::net::UnixStream;
 
 use crate::probe::{
-    DebugProbeError, DebugProbeSelector, ProbeCreationError,
+    DebugProbeError, DebugProbeSelector, ProbeCreationError, UsbSelector,
     glasgow::mux::{DiscoveryError, hexdump},
 };
 
@@ -18,7 +18,11 @@ pub struct GlasgowNetDevice(Box<dyn ReadWrite + Send>);
 
 impl GlasgowNetDevice {
     pub fn new_from_selector(selector: &DebugProbeSelector) -> Result<Self, ProbeCreationError> {
-        let Some(qual_addr) = selector.serial_number.clone() else {
+        let DebugProbeSelector::Usb(UsbSelector {
+            serial_number: Some(qual_addr),
+            ..
+        }) = selector
+        else {
             Err(ProbeCreationError::NotFound)?
         };
         let stream: Box<dyn ReadWrite + Send> = match *qual_addr.splitn(2, ":").collect::<Vec<_>>()

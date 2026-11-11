@@ -2,7 +2,7 @@
 
 use super::{is_cmsis_dap, reject_probe_by_version};
 use crate::probe::{
-    DebugProbeInfo, DebugProbeSelector, ProbeCreationError,
+    DebugProbeInfo, ProbeCreationError, UsbSelector,
     cmsisdap::{CmsisDapDevice, CmsisDapFactory, commands::DEFAULT_USB_TIMEOUT},
     list::ProbeListItem,
 };
@@ -67,7 +67,7 @@ fn get_cmsisdap_hid_info(device: &hidapi::DeviceInfo) -> Option<DebugProbeInfo> 
 /// `hid_device_info` is the probe as nusb listed it, if it did. It picks the HID interface when
 /// the probe has several.
 pub(super) fn open_device(
-    selector: &DebugProbeSelector,
+    selector: &UsbSelector,
     hid_device_info: Option<DebugProbeInfo>,
 ) -> Result<(CmsisDapDevice, Option<String>), ProbeCreationError> {
     // If nusb failed or the device didn't support v2, try using hidapi to open in v1 mode.
