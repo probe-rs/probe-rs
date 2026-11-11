@@ -252,17 +252,6 @@ impl HostSideFlasher {
             self.fill_unwritten(session, progress)?;
         }
 
-        // If sector erase is not supported, fall back to chip erase once before programming.
-        if !skip_erasing && !self.flash_sequence.supports_sector_erase() {
-            tracing::info!("Host-side: Device does not support sector erase, using chip erase");
-            self.flash_sequence
-                .erase_all(session)
-                .map_err(|e| FlashError::ChipEraseFailed {
-                    source: Box::new(e),
-                })?;
-            progress.finished_erasing();
-        }
-
         // Check whether the sequence supports whole-image programming.  If so,
         // collect all (region, layout) pairs and call program_image() once instead
         // of the per-page loop below.
