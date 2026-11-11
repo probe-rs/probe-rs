@@ -28,6 +28,21 @@ pub enum ProbeTransport {
     /// A USB probe, or for now a probe that is not on USB but is listed with a placeholder VID and
     /// PID. See `probe_rs::probe::ProbeTransport::Usb`.
     Usb(UsbProbeEntry),
+    /// A probe reached over TCP.
+    Tcp(TcpAddress),
+}
+
+/// A probe reached over TCP. See `probe_rs::probe::TcpAddress`.
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Schema)]
+pub struct TcpAddress {
+    pub driver: String,
+    pub address: String,
+}
+
+impl Display for TcpAddress {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "tcp://{}@{}", self.driver, self.address)
+    }
 }
 
 /// A USB debug probe. See `probe_rs::probe::UsbProbeInfo`.
@@ -47,35 +62,43 @@ pub struct UsbProbeEntry {
     pub usb_location: Option<(String, u8)>,
 }
 
+impl Display for ProbeTransport {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ProbeTransport::Usb(usb) => {
+                write!(f, "{:04x}:{:04x}", usb.vendor_id, usb.product_id)?;
+                if let Some(interface) = usb.interface {
+                    write!(f, "-{interface}")?;
+                }
+                write!(f, ":{}", usb.serial_number)
+            }
+            ProbeTransport::Tcp(address) => address.fmt(f),
+        }
+    }
+}
+
 impl Display for DebugProbeEntry {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let ProbeTransport::Usb(usb) = &self.transport;
         write!(
             f,
-            "{} -- {:04x}:{:04x}",
-            self.identifier, usb.vendor_id, usb.product_id,
-        )?;
-
-        if let Some(interface) = usb.interface {
-            write!(f, "-{}", interface)?;
-        }
-
-        write!(f, ":{} ({})", usb.serial_number, self.probe_type)?;
-
-        Ok(())
+            "{} -- {} ({})",
+            self.identifier, self.transport, self.probe_type
+        )
     }
 }
 
 impl DebugProbeEntry {
     pub fn selector(&self) -> DebugProbeSelector {
-        let ProbeTransport::Usb(usb) = &self.transport;
-        DebugProbeSelector::Usb(UsbSelector {
-            vendor_id: usb.vendor_id,
-            product_id: usb.product_id,
-            serial_number: Some(usb.serial_number.clone()),
-            interface: usb.interface,
-            usb_location: usb.usb_location.clone(),
-        })
+        match &self.transport {
+            ProbeTransport::Usb(usb) => DebugProbeSelector::Usb(UsbSelector {
+                vendor_id: usb.vendor_id,
+                product_id: usb.product_id,
+                serial_number: Some(usb.serial_number.clone()),
+                interface: usb.interface,
+                usb_location: usb.usb_location.clone(),
+            }),
+            ProbeTransport::Tcp(address) => DebugProbeSelector::Tcp(address.clone()),
+        }
     }
 }
 
@@ -123,6 +146,8 @@ pub enum DebugProbeSelector {
     /// A USB probe, or for now a probe that is not on USB but is selected with a placeholder VID
     /// and PID. See `probe_rs::probe::DebugProbeSelector::Usb`.
     Usb(UsbSelector),
+    /// A probe reached over TCP.
+    Tcp(TcpAddress),
 }
 
 /// Selects a USB probe. See `probe_rs::probe::UsbSelector`.

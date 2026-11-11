@@ -57,7 +57,7 @@ pub use queue::{
 };
 #[allow(deprecated)]
 pub use queue::{DeferredResultIndex, DeferredResultSet, ErasedQueue, Queue};
-pub use selector::{DebugProbeSelector, UsbSelector};
+pub use selector::{DebugProbeSelector, TcpAddress, UsbSelector};
 pub use swd::{
     BitbangSwd, Direction, IoSequenceItem, Pins, Port, SwdBatch, SwdOp, SwdPort, SwdProbe,
     SwdSettings, SwdTransferError,
@@ -998,10 +998,12 @@ pub struct DebugProbeInfo {
 pub enum ProbeTransport {
     /// A USB probe.
     ///
-    /// Probes that are not on USB, such as those reached over TCP and the Linux GPIO and SPI
-    /// probes, are listed with this variant too for now: with a placeholder VID and PID, and their
-    /// address as the serial number.
+    /// Some probes that are not on USB, such as the Linux GPIO and SPI probes and some probes
+    /// reached over TCP, are listed with this variant too for now: with a placeholder VID and PID,
+    /// and their address as the serial number.
     Usb(UsbProbeInfo),
+    /// A probe reached over TCP.
+    Tcp(TcpAddress),
 }
 
 /// A USB debug probe.
@@ -1026,24 +1028,27 @@ pub struct UsbProbeInfo {
     pub usb_location: Option<(String, u8)>,
 }
 
+impl std::fmt::Display for ProbeTransport {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            ProbeTransport::Usb(usb) => {
+                write!(f, "{:04x}:{:04x}", usb.vendor_id, usb.product_id)?;
+                if let Some(interface) = usb.interface {
+                    write!(f, "-{interface}")?;
+                }
+                write!(f, ":{}", usb.serial_number.as_deref().unwrap_or(""))
+            }
+            ProbeTransport::Tcp(address) => address.fmt(f),
+        }
+    }
+}
+
 impl std::fmt::Display for DebugProbeInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        let ProbeTransport::Usb(usb) = &self.transport;
         write!(
             f,
-            "{} -- {:04x}:{:04x}",
-            self.identifier, usb.vendor_id, usb.product_id,
-        )?;
-
-        if let Some(interface) = usb.interface {
-            write!(f, "-{}", interface)?;
-        }
-
-        write!(
-            f,
-            ":{} ({})",
-            usb.serial_number.as_deref().unwrap_or(""),
-            self.probe_factory
+            "{} -- {} ({})",
+            self.identifier, self.transport, self.probe_factory
         )
     }
 }

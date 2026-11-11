@@ -4,11 +4,15 @@ use std::time::Duration;
 
 use anyhow::Result;
 use anyhow::anyhow;
+use anyhow::bail;
 use nusb::DeviceInfo;
 use probe_rs::probe::DebugProbeSelector;
 
 /// Reset power on a probe
 pub async fn power_reset(selector: DebugProbeSelector, delay: Duration) -> Result<()> {
+    let DebugProbeSelector::Usb(selector) = selector else {
+        bail!("power cycling only works for USB probes, not {selector}");
+    };
     let dev = nusb::list_devices()
         .await?
         .find(|d| selector.matches(d))

@@ -243,9 +243,12 @@ impl DutDefinition {
 fn power_cycle(selector: &DebugProbeSelector) -> Result<()> {
     use nusb::MaybeFuture;
 
+    let DebugProbeSelector::Usb(usb) = selector else {
+        anyhow::bail!("power cycling only works for USB probes, not {selector}");
+    };
     let device = nusb::list_devices()
         .wait()?
-        .find(|device| selector.matches(device))
+        .find(|device| usb.matches(device))
         .with_context(|| format!("Probe with selector {selector} not found"))?;
 
     // The port directory belongs to the hub. It stays when the probe disconnects.

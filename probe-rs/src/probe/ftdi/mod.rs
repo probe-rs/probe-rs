@@ -358,7 +358,12 @@ impl std::fmt::Display for FtdiProbeFactory {
 
 impl ProbeFactory for FtdiProbeFactory {
     fn open(&self, selector: &DebugProbeSelector) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
-        let DebugProbeSelector::Usb(selector) = selector;
+        // Probes of this driver are selected by VID:PID; other selectors are for other drivers.
+        let DebugProbeSelector::Usb(selector) = selector else {
+            return Err(DebugProbeError::ProbeCouldNotBeCreated(
+                ProbeCreationError::NotFound,
+            ));
+        };
         // Only open FTDI-compatible probes
         let Some(ftdi) = FTDI_COMPAT_DEVICES
             .iter()
@@ -410,9 +415,12 @@ impl ProbeFactory for FtdiProbeFactory {
         // listed entries.
         //
         // So match as the default does, but ignoring interface.
-        let selector = selector.map(|DebugProbeSelector::Usb(selector)| UsbSelector {
-            interface: None,
-            ..selector.clone()
+        let selector = selector.map(|selector| match selector {
+            DebugProbeSelector::Usb(selector) => DebugProbeSelector::Usb(UsbSelector {
+                interface: None,
+                ..selector.clone()
+            }),
+            selector => selector.clone(),
         });
         self.list_probes()
             .into_iter()
