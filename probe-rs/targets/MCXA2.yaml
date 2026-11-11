@@ -17,8 +17,15 @@ chip_detection:
     0x2256: MCXA256
     0x2265: MCXA265
     0x2266: MCXA266
+# Package variants follow NXP device-family packs 26.09.00.
+# MCXA165/166 and MCXA275/276 use packs 25.03.00.
 variants:
 - name: MCXA165
+  package_variants:
+  - MCXA165VLH
+  - MCXA165VLL
+  - MCXA165VLQ
+  - MCXA165VPN
   cores:
   - name: main
     type: armv8m
@@ -68,6 +75,11 @@ variants:
   flash_algorithms:
   - mcxa16x_512
 - name: MCXA166
+  package_variants:
+  - MCXA166VLH
+  - MCXA166VLL
+  - MCXA166VLQ
+  - MCXA166VPN
   cores:
   - name: main
     type: armv8m
@@ -117,6 +129,11 @@ variants:
   flash_algorithms:
   - mcxa16x_1024
 - name: MCXA175
+  package_variants:
+  - MCXA175VLH
+  - MCXA175VLL
+  - MCXA175VLQ
+  - MCXA175VPN
   cores:
   - name: main
     type: armv8m
@@ -166,6 +183,11 @@ variants:
   flash_algorithms:
   - mcxa16x_512
 - name: MCXA176
+  package_variants:
+  - MCXA176VLH
+  - MCXA176VLL
+  - MCXA176VLQ
+  - MCXA176VPN
   cores:
   - name: main
     type: armv8m
@@ -215,6 +237,11 @@ variants:
   flash_algorithms:
   - mcxa16x_1024
 - name: MCXA185
+  package_variants:
+  - MCXA185VLH
+  - MCXA185VLL
+  - MCXA185VLQ
+  - MCXA185VPN
   cores:
   - name: main
     type: armv8m
@@ -264,6 +291,11 @@ variants:
   flash_algorithms:
   - mcxa18x_512
 - name: MCXA186
+  package_variants:
+  - MCXA186VLH
+  - MCXA186VLL
+  - MCXA186VLQ
+  - MCXA186VPN
   cores:
   - name: main
     type: armv8m
@@ -313,6 +345,11 @@ variants:
   flash_algorithms:
   - mcxa18x_1024
 - name: MCXA255
+  package_variants:
+  - MCXA255VLH
+  - MCXA255VLL
+  - MCXA255VLQ
+  - MCXA255VPN
   cores:
   - name: main
     type: armv8m
@@ -362,6 +399,11 @@ variants:
   flash_algorithms:
   - mcxa25x_512
 - name: MCXA256
+  package_variants:
+  - MCXA256VLH
+  - MCXA256VLL
+  - MCXA256VLQ
+  - MCXA256VPN
   cores:
   - name: main
     type: armv8m
@@ -411,6 +453,11 @@ variants:
   flash_algorithms:
   - mcxa25x_1024
 - name: MCXA265
+  package_variants:
+  - MCXA265VLH
+  - MCXA265VLL
+  - MCXA265VLQ
+  - MCXA265VPN
   cores:
   - name: main
     type: armv8m
@@ -460,6 +507,11 @@ variants:
   flash_algorithms:
   - mcxa25x_512
 - name: MCXA266
+  package_variants:
+  - MCXA266VLH
+  - MCXA266VLL
+  - MCXA266VLQ
+  - MCXA266VPN
   cores:
   - name: main
     type: armv8m
@@ -509,6 +561,11 @@ variants:
   flash_algorithms:
   - mcxa25x_1024
 - name: MCXA275
+  package_variants:
+  - MCXA275VLH
+  - MCXA275VLL
+  - MCXA275VLQ
+  - MCXA275VPN
   cores:
   - name: main
     type: armv8m
@@ -558,6 +615,11 @@ variants:
   flash_algorithms:
   - mcxa27x_512
 - name: MCXA276
+  package_variants:
+  - MCXA276VLH
+  - MCXA276VLL
+  - MCXA276VLQ
+  - MCXA276VPN
   cores:
   - name: main
     type: armv8m

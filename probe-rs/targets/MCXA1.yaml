@@ -24,6 +24,7 @@ chip_detection:
     0x2154: MCXA154
     0x2155: MCXA155
     0x2156: MCXA156
+# Package variants follow NXP device-family packs 26.09.00.
 variants:
 - name: MCXA132
   package_variants:
@@ -226,6 +227,12 @@ variants:
   flash_algorithms:
   - mcxa15x_128
 - name: MCXA144
+  package_variants:
+  - MCXA144VFT
+  - MCXA144VLH
+  - MCXA144VLL
+  - MCXA144VMP
+  - MCXA144VPJ
   cores:
   - name: main
     type: armv8m
@@ -268,6 +275,12 @@ variants:
   flash_algorithms:
   - mcxa15x_256
 - name: MCXA145
+  package_variants:
+  - MCXA145VFT
+  - MCXA145VLH
+  - MCXA145VLL
+  - MCXA145VMP
+  - MCXA145VPJ
   cores:
   - name: main
     type: armv8m
@@ -310,6 +323,12 @@ variants:
   flash_algorithms:
   - mcxa15x_512
 - name: MCXA146
+  package_variants:
+  - MCXA146VFT
+  - MCXA146VLH
+  - MCXA146VLL
+  - MCXA146VMP
+  - MCXA146VPJ
   cores:
   - name: main
     type: armv8m
@@ -453,6 +472,12 @@ variants:
   flash_algorithms:
   - mcxa15x_128
 - name: MCXA154
+  package_variants:
+  - MCXA154VFT
+  - MCXA154VLH
+  - MCXA154VLL
+  - MCXA154VMP
+  - MCXA154VPJ
   cores:
   - name: main
     type: armv8m
@@ -495,6 +520,12 @@ variants:
   flash_algorithms:
   - mcxa15x_256
 - name: MCXA155
+  package_variants:
+  - MCXA155VFT
+  - MCXA155VLH
+  - MCXA155VLL
+  - MCXA155VMP
+  - MCXA155VPJ
   cores:
   - name: main
     type: armv8m
@@ -537,6 +568,12 @@ variants:
   flash_algorithms:
   - mcxa15x_512
 - name: MCXA156
+  package_variants:
+  - MCXA156VFT
+  - MCXA156VLH
+  - MCXA156VLL
+  - MCXA156VMP
+  - MCXA156VPJ
   cores:
   - name: main
     type: armv8m
