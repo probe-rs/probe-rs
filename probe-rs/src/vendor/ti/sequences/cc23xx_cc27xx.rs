@@ -268,6 +268,8 @@ const SCFG_START: u64 = 0x4E04_0000;
 
 /// FLASH_ERASE_CHIP, FLASH_ERASE_MAIN_APP: keep the sectors that the CCFG retains.
 const RETAIN_SECTORS: u32 = 1 << 0;
+/// FLASH_VERIFY_CCFG_SECTOR: skip the CRC check of the user record.
+const SKIP_USER_RECORD: u32 = 1 << 1;
 /// FLASH_VERIFY_CCFG_SECTOR: check that the sector is blank.
 const BLANK_CHECK: u32 = 1 << 15;
 
@@ -353,12 +355,22 @@ impl CC23xxCC27xxFlashSequence {
         Ok(SaciResult::from(((response >> 16) & 0xFF) as u8))
     }
 
-    /// Whether the CCFG sector is blank, checked with FLASH_VERIFY_CCFG_SECTOR.
-    fn ccfg_is_blank(interface: &mut dyn DapAccess) -> Result<bool, ArmError> {
-        let header = saci::make_header(saci::cmd::FLASH_VERIFY_CCFG_SECTOR, BLANK_CHECK);
+    /// Whether the CCFG passes a FLASH_VERIFY_CCFG_SECTOR check with `parameters`.
+    fn verify_ccfg(interface: &mut dyn DapAccess, parameters: u32) -> Result<bool, ArmError> {
+        let header = saci::make_header(saci::cmd::FLASH_VERIFY_CCFG_SECTOR, parameters);
         saci::send_words(interface, &[header, 0, 0, 0, 0], Duration::from_millis(200))?;
         let response = saci::read_response(interface, Duration::from_secs(5))?;
         Ok(SaciResult::from(((response >> 16) & 0xFF) as u8) == SaciResult::Success)
+    }
+
+    /// Whether the CCFG sector is blank.
+    fn ccfg_is_blank(interface: &mut dyn DapAccess) -> Result<bool, ArmError> {
+        Self::verify_ccfg(interface, BLANK_CHECK)
+    }
+
+    /// Whether the CCFG is valid: its embedded CRCs match, apart from the user record's.
+    fn ccfg_is_valid(interface: &mut dyn DapAccess) -> Result<bool, ArmError> {
+        Self::verify_ccfg(interface, SKIP_USER_RECORD)
     }
 
     fn check_erase(result: SaciResult) -> Result<(), crate::Error> {
@@ -590,10 +602,10 @@ impl DebugFlashSequence for CC23xxCC27xxFlashSequence {
             return Self::check_erase(result);
         }
 
-        // Retaining the sectors that the CCFG lists keeps the HSM firmware. It needs a valid CCFG.
-        let result = Self::erase_command(interface, saci::cmd::FLASH_ERASE_CHIP, RETAIN_SECTORS)?;
-        let result = if result != SaciResult::NotAllowed {
-            result
+        // Retaining the sectors that the CCFG lists keeps the HSM firmware, but only with a valid
+        // CCFG. With an invalid one, the ROM doesn't refuse the option: it erases the HSM firmware.
+        let result = if Self::ccfg_is_valid(interface)? {
+            Self::erase_command(interface, saci::cmd::FLASH_ERASE_CHIP, RETAIN_SECTORS)?
         } else if Self::ccfg_is_blank(interface)? {
             // Erasing the application never erases the HSM firmware.
             tracing::info!("CC23xx/CC27xx: no CCFG, erasing the application sectors");
