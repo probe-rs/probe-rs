@@ -253,7 +253,7 @@ impl DebugAdapter {
 
         if let Err(error) = session_data
             .backend
-            .write_memory_8(core_index, address, data_bytes.clone())
+            .write_bytes(core_index, address, data_bytes.clone())
             .await
         {
             return self.send_response::<()>(request, Err(&DebuggerError::ProbeRs(error)));
