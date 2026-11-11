@@ -6,7 +6,7 @@ use probe_rs_target::{
 };
 use std::io::{Read, Seek};
 use std::ops::Range;
-use std::sync::LazyLock;
+use std::sync::{Arc, LazyLock};
 use std::time::{Duration, Instant};
 use yaml_serde::Value;
 
@@ -1211,7 +1211,7 @@ impl FlashLoader {
         session: &mut Session,
         progress: &mut FlashProgress<'_>,
     ) -> Result<(), FlashError> {
-        let mut plan = self.prepare_plan(session, false, &[])?;
+        let mut plan = self.prepare_plan(session, false, &[], false)?;
 
         for method in plan.iter_mut() {
             method.add_verify_progress_bar(progress);
@@ -1237,6 +1237,7 @@ impl FlashLoader {
             session,
             options.keep_unwritten_bytes,
             &options.preferred_algos,
+            options.do_chip_erase,
         )?;
 
         if options.dry_run {
@@ -1436,6 +1437,7 @@ impl FlashLoader {
         session: &mut Session,
         restore_unwritten_bytes: bool,
         opt_preferred_algos: &[String],
+        chip_erase: bool,
     ) -> Result<Vec<Box<dyn DownloadMethod + '_>>, FlashError> {
         tracing::debug!("Contents of builder:");
         for (&address, data) in &self.builder.data {
@@ -1465,6 +1467,17 @@ impl FlashLoader {
         if self.memory_map != session.target().memory_map {
             tracing::warn!("Memory map of flash loader does not match memory map of target!");
         }
+
+        let flash_sequence = match session.target().debug_sequence.debug_flash_sequence() {
+            Some(sequence)
+                if sequence
+                    .flashes_download(session, self, chip_erase)
+                    .map_err(FlashError::Core)? =>
+            {
+                Some(sequence)
+            }
+            _ => None,
+        };
 
         let mut algos: Vec<Box<dyn FlasherOps>> = Vec::new();
 
@@ -1523,10 +1536,13 @@ impl FlashLoader {
             {
                 entry.add_region(region, &self.builder, restore_unwritten_bytes)?;
             } else {
-                let mut flasher: Box<dyn FlasherOps> = if let Some(flash_sequence) =
-                    session.target().debug_sequence.debug_flash_sequence()
+                let mut flasher: Box<dyn FlasherOps> = if let Some(flash_sequence) = &flash_sequence
                 {
-                    Box::new(HostSideFlasher::new(flash_sequence, core, algo.clone()))
+                    Box::new(HostSideFlasher::new(
+                        Arc::clone(flash_sequence),
+                        core,
+                        algo.clone(),
+                    ))
                 } else {
                     let mut f = Flasher::new(target, core, algo)?;
                     f.read_rtt_output(self.read_flasher_rtt);
