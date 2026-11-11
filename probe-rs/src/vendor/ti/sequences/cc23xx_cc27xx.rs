@@ -42,6 +42,8 @@ pub struct CC23xxCC27xx {
     /// stays active for flash operations. Shared with CC23xxCC27xxFlashSequence
     /// via Arc and reset to false when the flash sequence is dropped.
     saci_flash_mode: Arc<AtomicBool>,
+    /// AHB-AP state as of the last debug_port_start.
+    ahb_ap_available: AtomicBool,
 }
 
 /// Flash memory region types for CC23xx/CC27xx devices.
@@ -62,6 +64,7 @@ impl CC23xxCC27xx {
             _name: name,
             boot_loop: AtomicBool::new(false),
             saci_flash_mode: Arc::new(AtomicBool::new(false)),
+            ahb_ap_available: AtomicBool::new(false),
         })
     }
 
@@ -123,6 +126,7 @@ impl ArmDebugSequence for CC23xxCC27xx {
                 tracing::info!(
                     "CC23xx/CC27xx: debug_port_start in flash mode, leaving SACI active"
                 );
+                self.ahb_ap_available.store(false, Ordering::SeqCst);
                 return Ok(());
             }
 
@@ -142,12 +146,15 @@ impl ArmDebugSequence for CC23xxCC27xx {
                 _ => {
                     if !device_status.ahb_ap_available() {
                         tracing::warn!(
-                            "CC23xx/CC27xx: Device is still in SACI mode after EXIT_SACI_HALT"
+                            "CC23xx/CC27xx: Device stayed in SACI mode (no valid image or debug locked), only flashing is available"
                         );
                     }
                 }
             }
         }
+
+        self.ahb_ap_available
+            .store(device_status.ahb_ap_available(), Ordering::SeqCst);
 
         Ok(())
     }
@@ -160,6 +167,12 @@ impl ArmDebugSequence for CC23xxCC27xx {
         _debug_base: Option<u64>,
         _cti_base: Option<u64>,
     ) -> Result<(), ArmError> {
+        // A blank device cannot leave SACI, so there is no AHB-AP yet.
+        // Skip core setup so it can still be flashed over SACI.
+        if !self.ahb_ap_available.load(Ordering::SeqCst) {
+            return Ok(());
+        }
+
         if self.is_in_boot_loop() {
             // Step 1: halt the CPU.
             let mut dhcsr = Dhcsr(0);
@@ -186,6 +199,20 @@ impl ArmDebugSequence for CC23xxCC27xx {
         // Step 4: start the core normally.
         let mut core = interface.memory_interface(core_ap)?;
         cortex_m_core_start(&mut *core)
+    }
+
+    fn on_attach(
+        &self,
+        _interface: &mut dyn ArmDebugInterface,
+        _ap: &FullyQualifiedApAddress,
+        _core_type: CoreType,
+        _target: &mut crate::Target,
+    ) -> Result<(), ArmError> {
+        // Report the core as disabled until the device has left SACI.
+        if !self.ahb_ap_available.load(Ordering::SeqCst) {
+            return Err(ArmError::CoreDisabled);
+        }
+        Ok(())
     }
 
     fn debug_flash_sequence(&self) -> Option<Arc<dyn DebugFlashSequence>> {
