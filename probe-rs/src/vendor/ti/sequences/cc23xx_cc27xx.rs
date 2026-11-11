@@ -376,10 +376,10 @@ impl CC23xxCC27xxFlashSequence {
     fn check_erase(result: SaciResult) -> Result<(), crate::Error> {
         if result != SaciResult::Success {
             return Err(crate::Error::Other(format!(
-                "SACI chip erase failed: {result:?}"
+                "SACI erase failed: {result:?}"
             )));
         }
-        tracing::info!("CC23xx/CC27xx: Chip erase completed");
+        tracing::info!("CC23xx/CC27xx: Erase completed");
         Ok(())
     }
 
@@ -595,11 +595,12 @@ impl DebugFlashSequence for CC23xxCC27xxFlashSequence {
     fn erase_all(&self, session: &mut Session) -> Result<(), crate::Error> {
         let interface = session.get_arm_interface()?;
 
-        tracing::info!("CC23xx/CC27xx: Chip erase via SACI FLASH_ERASE_CHIP (0x09)");
-
         // Retaining sectors needs a valid CCFG. With an invalid one, the ROM doesn't refuse the
         // option: it erases the sectors too.
         let result = if Self::ccfg_is_valid(interface)? {
+            tracing::info!(
+                "CC23xx/CC27xx: erasing the chip, keeping the sectors that the CCFG retains"
+            );
             Self::erase_command(interface, saci::cmd::FLASH_ERASE_CHIP, RETAIN_SECTORS)?
         } else if Self::ccfg_is_blank(interface)? {
             // Erasing the application never erases the HSM firmware. Parts without an HSM don't
