@@ -1,0 +1,890 @@
+name: PIC32CM PL10
+manufacturer:
+  id: 0x29
+  cc: 0x0
+chip_detection:
+- !MicrochipDsuDid
+  did_address: 0x41002120
+  pnmid: 0xba
+  variants:
+    0xa: PIC32CM1216PL10028
+    0xb: PIC32CM1216PL10032
+    0xc: PIC32CM1216PL10048
+    0xd: PIC32CM1216PL10064
+    0x4: PIC32CM3204PL10020
+    0x5: PIC32CM3204PL10028
+    0x6: PIC32CM3204PL10032
+    0x0: PIC32CM6408PL10028
+    0x1: PIC32CM6408PL10032
+    0x2: PIC32CM6408PL10048
+    0x3: PIC32CM6408PL10064
+generated_from_pack: true
+pack_file_release: 1.6.499
+variants:
+- name: PIC32CM1216PL10028
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: FLASH
+    range:
+      start: 0xc000000
+      end: 0xc020000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: HSRAM
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
+  - !Generic
+    name: APBA
+    range:
+      start: 0x40000000
+      end: 0x40004000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Generic
+    name: APBB
+    range:
+      start: 0x41000000
+      end: 0x41010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Generic
+    name: APBC
+    range:
+      start: 0x42000000
+      end: 0x42008000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Generic
+    name: IOBUS
+    range:
+      start: 0x50000000
+      end: 0x50000200
+    cores:
+    - main
+    access:
+      execute: false
+  - !Generic
+    name: PPB
+    range:
+      start: 0xe0000000
+      end: 0xe0100000
+    cores:
+    - main
+    access:
+      execute: false
+  flash_algorithms:
+  - pic32cm-pl_flash_128
+  - pic32cm-pl_bootcfg
+  - pic32cm-pl_romcfg
+- name: PIC32CM1216PL10032
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: FLASH
+    range:
+      start: 0xc000000
+      end: 0xc020000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: HSRAM
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
+  - !Generic
+    name: APBA
+    range:
+      start: 0x40000000
+      end: 0x40004000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Generic
+    name: APBB
+    range:
+      start: 0x41000000
+      end: 0x41010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Generic
+    name: APBC
+    range:
+      start: 0x42000000
+      end: 0x42008000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Generic
+    name: IOBUS
+    range:
+      start: 0x50000000
+      end: 0x50000200
+    cores:
+    - main
+    access:
+      execute: false
+  - !Generic
+    name: PPB
+    range:
+      start: 0xe0000000
+      end: 0xe0100000
+    cores:
+    - main
+    access:
+      execute: false
+  flash_algorithms:
+  - pic32cm-pl_flash_128
+  - pic32cm-pl_bootcfg
+  - pic32cm-pl_romcfg
+- name: PIC32CM1216PL10048
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: FLASH
+    range:
+      start: 0xc000000
+      end: 0xc020000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: HSRAM
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
+  - !Generic
+    name: APBA
+    range:
+      start: 0x40000000
+      end: 0x40004000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Generic
+    name: APBB
+    range:
+      start: 0x41000000
+      end: 0x41010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Generic
+    name: APBC
+    range:
+      start: 0x42000000
+      end: 0x42008000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Generic
+    name: IOBUS
+    range:
+      start: 0x50000000
+      end: 0x50000200
+    cores:
+    - main
+    access:
+      execute: false
+  - !Generic
+    name: PPB
+    range:
+      start: 0xe0000000
+      end: 0xe0100000
+    cores:
+    - main
+    access:
+      execute: false
+  flash_algorithms:
+  - pic32cm-pl_flash_128
+  - pic32cm-pl_bootcfg
+  - pic32cm-pl_romcfg
+- name: PIC32CM1216PL10064
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: FLASH
+    range:
+      start: 0xc000000
+      end: 0xc020000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: HSRAM
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
+  - !Generic
+    name: APBA
+    range:
+      start: 0x40000000
+      end: 0x40004000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Generic
+    name: APBB
+    range:
+      start: 0x41000000
+      end: 0x41010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Generic
+    name: APBC
+    range:
+      start: 0x42000000
+      end: 0x42008000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Generic
+    name: IOBUS
+    range:
+      start: 0x50000000
+      end: 0x50000200
+    cores:
+    - main
+    access:
+      execute: false
+  - !Generic
+    name: PPB
+    range:
+      start: 0xe0000000
+      end: 0xe0100000
+    cores:
+    - main
+    access:
+      execute: false
+  flash_algorithms:
+  - pic32cm-pl_flash_128
+  - pic32cm-pl_bootcfg
+  - pic32cm-pl_romcfg
+- name: PIC32CM3204PL10020
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: FLASH
+    range:
+      start: 0xc000000
+      end: 0xc008000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: HSRAM
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
+  - !Generic
+    name: APBA
+    range:
+      start: 0x40000000
+      end: 0x40004000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Generic
+    name: APBB
+    range:
+      start: 0x41000000
+      end: 0x41010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Generic
+    name: APBC
+    range:
+      start: 0x42000000
+      end: 0x42008000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Generic
+    name: IOBUS
+    range:
+      start: 0x50000000
+      end: 0x50000200
+    cores:
+    - main
+    access:
+      execute: false
+  - !Generic
+    name: PPB
+    range:
+      start: 0xe0000000
+      end: 0xe0100000
+    cores:
+    - main
+    access:
+      execute: false
+  flash_algorithms:
+  - pic32cm-pl_flash_128
+  - pic32cm-pl_bootcfg
+  - pic32cm-pl_romcfg
+- name: PIC32CM3204PL10028
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: FLASH
+    range:
+      start: 0xc000000
+      end: 0xc008000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: HSRAM
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
+  - !Generic
+    name: APBA
+    range:
+      start: 0x40000000
+      end: 0x40004000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Generic
+    name: APBB
+    range:
+      start: 0x41000000
+      end: 0x41010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Generic
+    name: APBC
+    range:
+      start: 0x42000000
+      end: 0x42008000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Generic
+    name: IOBUS
+    range:
+      start: 0x50000000
+      end: 0x50000200
+    cores:
+    - main
+    access:
+      execute: false
+  - !Generic
+    name: PPB
+    range:
+      start: 0xe0000000
+      end: 0xe0100000
+    cores:
+    - main
+    access:
+      execute: false
+  flash_algorithms:
+  - pic32cm-pl_flash_128
+  - pic32cm-pl_bootcfg
+  - pic32cm-pl_romcfg
+- name: PIC32CM3204PL10032
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: FLASH
+    range:
+      start: 0xc000000
+      end: 0xc008000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: HSRAM
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
+  - !Generic
+    name: APBA
+    range:
+      start: 0x40000000
+      end: 0x40004000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Generic
+    name: APBB
+    range:
+      start: 0x41000000
+      end: 0x41010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Generic
+    name: APBC
+    range:
+      start: 0x42000000
+      end: 0x42008000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Generic
+    name: IOBUS
+    range:
+      start: 0x50000000
+      end: 0x50000200
+    cores:
+    - main
+    access:
+      execute: false
+  - !Generic
+    name: PPB
+    range:
+      start: 0xe0000000
+      end: 0xe0100000
+    cores:
+    - main
+    access:
+      execute: false
+  flash_algorithms:
+  - pic32cm-pl_flash_128
+  - pic32cm-pl_bootcfg
+  - pic32cm-pl_romcfg
+- name: PIC32CM6408PL10028
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: FLASH
+    range:
+      start: 0xc000000
+      end: 0xc010000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: HSRAM
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Generic
+    name: APBA
+    range:
+      start: 0x40000000
+      end: 0x40004000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Generic
+    name: APBB
+    range:
+      start: 0x41000000
+      end: 0x41010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Generic
+    name: APBC
+    range:
+      start: 0x42000000
+      end: 0x42008000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Generic
+    name: IOBUS
+    range:
+      start: 0x50000000
+      end: 0x50000200
+    cores:
+    - main
+    access:
+      execute: false
+  - !Generic
+    name: PPB
+    range:
+      start: 0xe0000000
+      end: 0xe0100000
+    cores:
+    - main
+    access:
+      execute: false
+  flash_algorithms:
+  - pic32cm-pl_flash_128
+  - pic32cm-pl_bootcfg
+  - pic32cm-pl_romcfg
+- name: PIC32CM6408PL10032
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: FLASH
+    range:
+      start: 0xc000000
+      end: 0xc010000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: HSRAM
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Generic
+    name: APBA
+    range:
+      start: 0x40000000
+      end: 0x40004000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Generic
+    name: APBB
+    range:
+      start: 0x41000000
+      end: 0x41010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Generic
+    name: APBC
+    range:
+      start: 0x42000000
+      end: 0x42008000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Generic
+    name: IOBUS
+    range:
+      start: 0x50000000
+      end: 0x50000200
+    cores:
+    - main
+    access:
+      execute: false
+  - !Generic
+    name: PPB
+    range:
+      start: 0xe0000000
+      end: 0xe0100000
+    cores:
+    - main
+    access:
+      execute: false
+  flash_algorithms:
+  - pic32cm-pl_flash_128
+  - pic32cm-pl_bootcfg
+  - pic32cm-pl_romcfg
+- name: PIC32CM6408PL10048
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: FLASH
+    range:
+      start: 0xc000000
+      end: 0xc010000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: HSRAM
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Generic
+    name: APBA
+    range:
+      start: 0x40000000
+      end: 0x40004000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Generic
+    name: APBB
+    range:
+      start: 0x41000000
+      end: 0x41010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Generic
+    name: APBC
+    range:
+      start: 0x42000000
+      end: 0x42008000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Generic
+    name: IOBUS
+    range:
+      start: 0x50000000
+      end: 0x50000200
+    cores:
+    - main
+    access:
+      execute: false
+  - !Generic
+    name: PPB
+    range:
+      start: 0xe0000000
+      end: 0xe0100000
+    cores:
+    - main
+    access:
+      execute: false
+  flash_algorithms:
+  - pic32cm-pl_flash_128
+  - pic32cm-pl_bootcfg
+  - pic32cm-pl_romcfg
+- name: PIC32CM6408PL10064
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    name: FLASH
+    range:
+      start: 0xc000000
+      end: 0xc010000
+    cores:
+    - main
+    access:
+      write: false
+      boot: true
+  - !Ram
+    name: HSRAM
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Generic
+    name: APBA
+    range:
+      start: 0x40000000
+      end: 0x40004000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Generic
+    name: APBB
+    range:
+      start: 0x41000000
+      end: 0x41010000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Generic
+    name: APBC
+    range:
+      start: 0x42000000
+      end: 0x42008000
+    cores:
+    - main
+    access:
+      execute: false
+  - !Generic
+    name: IOBUS
+    range:
+      start: 0x50000000
+      end: 0x50000200
+    cores:
+    - main
+    access:
+      execute: false
+  - !Generic
+    name: PPB
+    range:
+      start: 0xe0000000
+      end: 0xe0100000
+    cores:
+    - main
+    access:
+      execute: false
+  flash_algorithms:
+  - pic32cm-pl_flash_128
+  - pic32cm-pl_bootcfg
+  - pic32cm-pl_romcfg
+flash_algorithms:
+- name: pic32cm-pl_flash_128
+  description: FLASH
+  default: true
+  instructions: CEkJSophCmnSB/zQCmmSBwXUpSISAoAYCGAAIHBHiGlwR8BGBEAAQf//AAAAIHBHACBwRxC1BEYBIIACIEMJSYhCAdEAIBC9CCD/99n/ACgA0BC9ACDAQyBgASD/99D/EL3ARgAEAA1wtRRGDUYGRhlIhkIF0A0gAAaGQgfRCCAA4BAg//e8/wAoAtBwvQIgCOAAIMBDMGABIP/3sf8AKPTRESD/96z/ACjv0QAgqEIN0iFcIhhTeBsCWRiTeBsEyRjSeBIGiRgxUAAd7+cBIP/3lv9wvcBGAAQADQAAAAA=
+  load_address: 0x20000008
+  pc_init: 0x2d
+  pc_uninit: 0x31
+  pc_program_page: 0x69
+  pc_erase_sector: 0x35
+  data_section_offset: 0xdc
+  flash_properties:
+    address_range:
+      start: 0xc000000
+      end: 0xc020000
+    page_size: 0x200
+    erased_byte_value: 0xff
+    program_page_timeout: 100
+    erase_sector_timeout: 1000
+    sectors:
+    - size: 0x200
+      address: 0x0
+- name: pic32cm-pl_bootcfg
+  description: BOOTCFG
+  default: true
+  instructions: CEkJSophCmnSB/zQCmmSBwXUpSISAoAYCGAAIHBHiGlwR8BGBEAAQf//AAAAIHBHACBwRxC1BEYBIIACIEMJSYhCAdEAIBC9CCD/99n/ACgA0BC9ACDAQyBgASD/99D/EL3ARgAEAA1wtRRGDUYGRhlIhkIF0A0gAAaGQgfRCCAA4BAg//e8/wAoAtBwvQIgCOAAIMBDMGABIP/3sf8AKPTRESD/96z/ACjv0QAgqEIN0iFcIhhTeBsCWRiTeBsEyRjSeBIGiRgxUAAd7+cBIP/3lv9wvcBGAAQADQAAAAA=
+  load_address: 0x20000008
+  pc_init: 0x2d
+  pc_uninit: 0x31
+  pc_program_page: 0x69
+  pc_erase_sector: 0x35
+  data_section_offset: 0xdc
+  flash_properties:
+    address_range:
+      start: 0xd000400
+      end: 0xd000500
+    page_size: 0x100
+    erased_byte_value: 0xff
+    program_page_timeout: 100
+    erase_sector_timeout: 1000
+    sectors:
+    - size: 0x100
+      address: 0x0
+- name: pic32cm-pl_romcfg
+  description: ROMCFG
+  default: true
+  instructions: CEkJSophCmnSB/zQCmmSBwXUpSISAoAYCGAAIHBHiGlwR8BGBEAAQf//AAAAIHBHACBwRxC1BEYBIIACIEMJSYhCAdEAIBC9CCD/99n/ACgA0BC9ACDAQyBgASD/99D/EL3ARgAEAA1wtRRGDUYGRhlIhkIF0A0gAAaGQgfRCCAA4BAg//e8/wAoAtBwvQIgCOAAIMBDMGABIP/3sf8AKPTRESD/96z/ACjv0QAgqEIN0iFcIhhTeBsCWRiTeBsEyRjSeBIGiRgxUAAd7+cBIP/3lv9wvcBGAAQADQAAAAA=
+  load_address: 0x20000008
+  pc_init: 0x2d
+  pc_uninit: 0x31
+  pc_program_page: 0x69
+  pc_erase_sector: 0x35
+  data_section_offset: 0xdc
+  flash_properties:
+    address_range:
+      start: 0xd000000
+      end: 0xd000100
+    page_size: 0x100
+    erased_byte_value: 0xff
+    program_page_timeout: 100
+    erase_sector_timeout: 1000
+    sectors:
+    - size: 0x100
+      address: 0x0
