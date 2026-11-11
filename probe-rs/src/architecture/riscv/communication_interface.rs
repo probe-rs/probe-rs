@@ -10,6 +10,7 @@ use crate::probe::{CommandResult, queue::Handle};
 use crate::{
     Error as ProbeRsError, architecture::riscv::*, config::Target, memory_mapped_bitfield_register,
 };
+use probe_rs_target::{RiscvMemoryAccessMethod, RiscvMemoryAccessOverride};
 use std::any::Any;
 use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
@@ -335,6 +336,21 @@ impl MemoryAccessConfig {
         method: MemoryAccessMethod,
     ) {
         self.region_override.insert((range, access), method);
+    }
+
+    /// Applies the memory access overrides of a target description to all access widths.
+    pub(crate) fn set_target_overrides(&mut self, overrides: &[RiscvMemoryAccessOverride]) {
+        for o in overrides {
+            for access in [
+                RiscvBusAccess::A8,
+                RiscvBusAccess::A16,
+                RiscvBusAccess::A32,
+                RiscvBusAccess::A64,
+                RiscvBusAccess::A128,
+            ] {
+                self.set_region_override(access, o.range.clone(), o.method.into());
+            }
+        }
     }
 
     /// Installs the cache maintenance implementation of the target.
@@ -3806,6 +3822,15 @@ pub enum MemoryAccessMethod {
     SystemBus,
 }
 
+impl From<RiscvMemoryAccessMethod> for MemoryAccessMethod {
+    fn from(method: RiscvMemoryAccessMethod) -> Self {
+        match method {
+            RiscvMemoryAccessMethod::AbstractCommand => MemoryAccessMethod::AbstractCommand,
+            RiscvMemoryAccessMethod::ProgramBuffer => MemoryAccessMethod::ProgramBuffer,
+        }
+    }
+}
+
 /// Timeout for the execution of the program buffer.
 const PROGBUF_TIMEOUT: Duration = Duration::from_millis(100);
 
@@ -4007,7 +4032,38 @@ memory_mapped_bitfield_register! { pub struct Confstrptr3(pub u32); 0x1c, "confs
 
 #[cfg(test)]
 mod tests {
-    use super::HartIsa;
+    use super::{HartIsa, MemoryAccessConfig, MemoryAccessMethod, RiscvBusAccess};
+    use probe_rs_target::{RiscvMemoryAccessMethod, RiscvMemoryAccessOverride};
+
+    #[test]
+    fn target_override_selects_method_in_range() {
+        let mut config = MemoryAccessConfig::default();
+        config.set_default_method(RiscvBusAccess::A8, MemoryAccessMethod::SystemBus);
+        config.set_default_method(RiscvBusAccess::A32, MemoryAccessMethod::SystemBus);
+        config.set_target_overrides(&[RiscvMemoryAccessOverride {
+            range: 0x0..0x10000,
+            method: RiscvMemoryAccessMethod::ProgramBuffer,
+        }]);
+
+        for access in [RiscvBusAccess::A8, RiscvBusAccess::A32] {
+            assert_eq!(
+                config.method(0x1000, access),
+                MemoryAccessMethod::ProgramBuffer
+            );
+            assert_eq!(
+                config.method(0x10000, access),
+                MemoryAccessMethod::SystemBus
+            );
+            assert_eq!(
+                config.range_method(0xfff0..0x10010, access),
+                MemoryAccessMethod::ProgramBuffer
+            );
+            assert_eq!(
+                config.range_method(0x2000_0000..0x2000_0100, access),
+                MemoryAccessMethod::SystemBus
+            );
+        }
+    }
 
     #[test]
     fn hart_isa_from_rv32_misa() {
