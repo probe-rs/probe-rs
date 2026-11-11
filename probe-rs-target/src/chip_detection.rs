@@ -13,6 +13,9 @@ pub enum ChipDetectionMethod {
     /// Microchip ATSAM chip detection information.
     AtsamDsu(AtsamDsuDetection),
 
+    /// Microchip DSU DID chip detection information, for DIDs with the PNMID/PNDID layout.
+    MicrochipDsuDid(MicrochipDsuDidDetection),
+
     /// Espressif chip detection information.
     Espressif(EspressifDetection),
 
@@ -51,6 +54,15 @@ impl ChipDetectionMethod {
     /// Returns the ATSAM detection information if available.
     pub fn as_atsam_dsu(&self) -> Option<&AtsamDsuDetection> {
         if let Self::AtsamDsu(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
+
+    /// Returns the Microchip DSU DID detection information if available.
+    pub fn as_microchip_dsu_did(&self) -> Option<&MicrochipDsuDidDetection> {
+        if let Self::MicrochipDsuDid(v) = self {
             Some(v)
         } else {
             None
@@ -144,6 +156,25 @@ pub struct AtsamDsuDetection {
     pub series: u8,
 
     /// Devsel => Target field value
+    #[serde(serialize_with = "hex_keys_indexmap")]
+    #[serde(deserialize_with = "maps_duplicate_key_is_error::deserialize")]
+    pub variants: IndexMap<u8, String>,
+}
+
+/// Microchip chip detection information when the device contains a DSU whose DID register has the
+/// VER, PNMID, PNDID, MANID and FV fields, such as the PIC32CM PL10.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MicrochipDsuDidDetection {
+    /// Address of the DSU DID register
+    #[serde(serialize_with = "hex_u_int")]
+    pub did_address: u32,
+
+    /// DSU DID register, Part Number Mask ID (PNMID) field
+    #[serde(serialize_with = "hex_u_int")]
+    pub pnmid: u8,
+
+    /// Part Number Device ID (PNDID) => Target name
     #[serde(serialize_with = "hex_keys_indexmap")]
     #[serde(deserialize_with = "maps_duplicate_key_is_error::deserialize")]
     pub variants: IndexMap<u8, String>,
