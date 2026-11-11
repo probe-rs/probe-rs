@@ -19,13 +19,22 @@ pub type TestResult = Result<(), TestError>;
 /// The reason a test did not pass.
 pub enum TestError {
     Skipped,
-    Failed(Failed),
+    Failed(anyhow::Error),
 }
 
-impl<E: Into<Failed>> From<E> for TestError {
+impl<E: Into<anyhow::Error>> From<E> for TestError {
     fn from(error: E) -> Self {
         TestError::Failed(error.into())
     }
+}
+
+/// Makes a trial that reports an error with its causes. `Failed` from an error keeps only the
+/// outer message.
+fn trial(name: &str, kind: &str, test: impl FnOnce() -> Result<()> + Send + 'static) -> Trial {
+    Trial::test(name, move || {
+        test().map_err(|error| Failed::from(format!("{error:?}")))
+    })
+    .with_kind(kind)
 }
 
 #[derive(Debug, Parser)]
@@ -86,11 +95,10 @@ fn run_test(mut args: Arguments, definitions: &[DutDefinition]) -> Result<ExitCo
         // Verify the probe shows up when listing, and is reported as accessible.
         {
             let definition = definition.clone();
-            let trial = Trial::test("List probe", move || {
+            let trial = trial("List probe", &chip_name, move || {
                 definition.assert_listed()?;
                 Ok(())
-            })
-            .with_kind(&chip_name);
+            });
 
             trials.push(trial);
         }
@@ -98,7 +106,7 @@ fn run_test(mut args: Arguments, definitions: &[DutDefinition]) -> Result<ExitCo
         for test in SESSION_TESTS {
             let session_definition = definition.clone();
 
-            let trial = Trial::test(test.name, move || {
+            let trial = trial(test.name, &chip_name, move || {
                 let probe = session_definition.open_probe()?;
 
                 // We don't care about existing flash contents
@@ -112,8 +120,7 @@ fn run_test(mut args: Arguments, definitions: &[DutDefinition]) -> Result<ExitCo
                     Ok(()) | Err(TestError::Skipped) => Ok(()),
                     Err(TestError::Failed(err)) => Err(err),
                 }
-            })
-            .with_kind(&chip_name);
+            });
 
             trials.push(trial);
         }
@@ -122,14 +129,13 @@ fn run_test(mut args: Arguments, definitions: &[DutDefinition]) -> Result<ExitCo
         if definition.reset_connected {
             let definition = definition.clone();
 
-            let trial = Trial::test("Hard Reset", move || {
+            let trial = trial("Hard Reset", &chip_name, move || {
                 let probe = definition.open_probe()?;
 
                 let _session =
                     probe.attach_under_reset(definition.chip.clone(), Permissions::default())?;
                 Ok(())
-            })
-            .with_kind(&chip_name);
+            });
 
             trials.push(trial);
         }
@@ -147,7 +153,7 @@ fn run_test(mut args: Arguments, definitions: &[DutDefinition]) -> Result<ExitCo
         for (core_index, core_type) in cores.into_iter().take(1) {
             for test_struct in CORE_TESTS {
                 let definition_for_cores = definition.clone();
-                let cores_trial = Trial::test(test_struct.name, move || {
+                let cores_trial = trial(test_struct.name, &chip_name, move || {
                     let definition = definition_for_cores;
 
                     let probe = definition.open_probe()?;
@@ -181,8 +187,7 @@ fn run_test(mut args: Arguments, definitions: &[DutDefinition]) -> Result<ExitCo
                         })?;
 
                     result
-                })
-                .with_kind(&chip_name);
+                });
 
                 trials.push(cores_trial);
             }
