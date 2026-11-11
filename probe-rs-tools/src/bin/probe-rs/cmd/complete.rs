@@ -154,7 +154,10 @@ pub fn list_probes(lister: &Lister, starts_with: &str) -> Result<String> {
     let probes = lister.list_all();
     for probe in probes {
         if probe.identifier.starts_with(starts_with) {
-            let ProbeTransport::Usb(usb) = &probe.transport;
+            // Only USB probes are found by listing.
+            let ProbeTransport::Usb(usb) = &probe.transport else {
+                continue;
+            };
             writeln!(
                 &mut output,
                 "{vid:04x}\\:{pid:04x}{sn}B[{id}B]",

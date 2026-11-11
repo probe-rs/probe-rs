@@ -20,6 +20,10 @@ pub struct WchLinkUsbDevice {
 
 impl WchLinkUsbDevice {
     pub fn new_from_selector(selector: &DebugProbeSelector) -> Result<Self, ProbeCreationError> {
+        // Probes of this driver are selected by VID:PID; other selectors are for other drivers.
+        let DebugProbeSelector::Usb(selector) = selector else {
+            return Err(ProbeCreationError::NotFound);
+        };
         let devices = nusb::list_devices()
             .wait()
             .map_err(|e| ProbeCreationError::Usb(e.into()))?;
