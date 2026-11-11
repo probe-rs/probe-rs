@@ -57,7 +57,7 @@ pub use queue::{
 };
 #[allow(deprecated)]
 pub use queue::{DeferredResultIndex, DeferredResultSet, ErasedQueue, Queue};
-pub use selector::{DebugProbeSelector, UsbSelector};
+pub use selector::{DebugProbeSelector, TcpAddress, UsbSelector};
 pub use swd::{
     BitbangSwd, Direction, IoSequenceItem, Pins, Port, SwdBatch, SwdOp, SwdPort, SwdProbe,
     SwdSettings, SwdTransferError,
@@ -986,6 +986,29 @@ impl PartialEq for dyn ProbeFactory {
 pub struct DebugProbeInfo {
     /// The name of the debug probe.
     pub identifier: String,
+    /// How the probe is reached.
+    pub transport: ProbeTransport,
+
+    /// A reference to the [`ProbeFactory`] that created this info object.
+    probe_factory: &'static dyn ProbeFactory,
+}
+
+/// How a debug probe is reached.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ProbeTransport {
+    /// A USB probe.
+    ///
+    /// Some probes that are not on USB, such as the Linux GPIO and SPI probes and some probes
+    /// reached over TCP, are listed with this variant too for now: with a placeholder VID and PID,
+    /// and their address as the serial number.
+    Usb(UsbProbeInfo),
+    /// A probe reached over TCP.
+    Tcp(TcpAddress),
+}
+
+/// A USB debug probe.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct UsbProbeInfo {
     /// The USB vendor ID of the debug probe.
     pub vendor_id: u16,
     /// The USB product ID of the debug probe.
@@ -1003,27 +1026,34 @@ pub struct DebugProbeInfo {
     /// Tells identical probes (same VID/PID, no serial number) apart while they stay plugged
     /// in. It is not part of the string form of a [`DebugProbeSelector`].
     pub usb_location: Option<(String, u8)>,
-
-    /// A reference to the [`ProbeFactory`] that created this info object.
-    probe_factory: &'static dyn ProbeFactory,
 }
 
 impl std::fmt::Display for DebugProbeInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let usb = match &self.transport {
+            ProbeTransport::Usb(usb) => usb,
+            ProbeTransport::Tcp(address) => {
+                return write!(
+                    f,
+                    "{} -- {address} ({})",
+                    self.identifier, self.probe_factory
+                );
+            }
+        };
         write!(
             f,
             "{} -- {:04x}:{:04x}",
-            self.identifier, self.vendor_id, self.product_id,
+            self.identifier, usb.vendor_id, usb.product_id,
         )?;
 
-        if let Some(interface) = self.interface {
+        if let Some(interface) = usb.interface {
             write!(f, "-{}", interface)?;
         }
 
         write!(
             f,
             ":{} ({})",
-            self.serial_number.as_deref().unwrap_or(""),
+            usb.serial_number.as_deref().unwrap_or(""),
             self.probe_factory
         )
     }
@@ -1042,13 +1072,15 @@ impl DebugProbeInfo {
     ) -> Self {
         Self {
             identifier: identifier.into(),
-            vendor_id,
-            product_id,
-            serial_number,
+            transport: ProbeTransport::Usb(UsbProbeInfo {
+                vendor_id,
+                product_id,
+                serial_number,
+                interface,
+                is_hid_interface,
+                usb_location: None,
+            }),
             probe_factory,
-            interface,
-            is_hid_interface,
-            usb_location: None,
         }
     }
 
