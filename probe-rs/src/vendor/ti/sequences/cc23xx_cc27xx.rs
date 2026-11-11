@@ -590,28 +590,30 @@ impl DebugFlashSequence for CC23xxCC27xxFlashSequence {
         Ok(())
     }
 
-    /// On a CC27xx, the HSM firmware is kept when possible: probe-rs can't provision it again.
+    /// The sectors that the CCFG retains are kept when possible. On a CC27xx, they hold the HSM
+    /// firmware, which probe-rs can't provision again.
     fn erase_all(&self, session: &mut Session) -> Result<(), crate::Error> {
-        let has_hsm = session.target().cores[0].core_type == CoreType::Armv8m;
         let interface = session.get_arm_interface()?;
 
         tracing::info!("CC23xx/CC27xx: Chip erase via SACI FLASH_ERASE_CHIP (0x09)");
 
-        if !has_hsm {
-            let result = Self::erase_command(interface, saci::cmd::FLASH_ERASE_CHIP, 0)?;
-            return Self::check_erase(result);
-        }
-
-        // Retaining the sectors that the CCFG lists keeps the HSM firmware, but only with a valid
-        // CCFG. With an invalid one, the ROM doesn't refuse the option: it erases the HSM firmware.
+        // Retaining sectors needs a valid CCFG. With an invalid one, the ROM doesn't refuse the
+        // option: it erases the sectors too.
         let result = if Self::ccfg_is_valid(interface)? {
             Self::erase_command(interface, saci::cmd::FLASH_ERASE_CHIP, RETAIN_SECTORS)?
         } else if Self::ccfg_is_blank(interface)? {
-            // Erasing the application never erases the HSM firmware.
+            // Erasing the application never erases the HSM firmware. Parts without an HSM don't
+            // have the command.
             tracing::info!("CC23xx/CC27xx: no CCFG, erasing the application sectors");
-            Self::erase_command(interface, saci::cmd::FLASH_ERASE_MAIN_APP, 0)?
+            match Self::erase_command(interface, saci::cmd::FLASH_ERASE_MAIN_APP, 0)? {
+                SaciResult::InvalidCmdId => {
+                    tracing::info!("CC23xx/CC27xx: no FLASH_ERASE_MAIN_APP, erasing the chip");
+                    Self::erase_command(interface, saci::cmd::FLASH_ERASE_CHIP, 0)?
+                }
+                result => result,
+            }
         } else {
-            tracing::warn!("CC23xx/CC27xx: invalid CCFG, erasing the HSM firmware too");
+            tracing::warn!("CC23xx/CC27xx: invalid CCFG, erasing the retained sectors too");
             Self::erase_command(interface, saci::cmd::FLASH_ERASE_CHIP, 0)?
         };
         Self::check_erase(result)
