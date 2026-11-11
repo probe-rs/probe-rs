@@ -15,7 +15,7 @@ pub use context::CompareContext;
 use std::fmt::Debug;
 use std::ops::Range;
 use std::sync::Arc;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use cmsis_verify::CmsisVerifyCompare;
 use read_back::ReadBackCore;
@@ -355,6 +355,13 @@ impl<'a> CompareChain<'a> {
             .collect::<Vec<_>>();
         tracing::info!("{:?} with {}", purpose.progress(), names.join(", "));
 
+        for region in &mut regions {
+            let size = region.settle_unreadable(purpose);
+            if size > 0 {
+                progress.progressed(purpose.progress(), size, Duration::ZERO);
+            }
+        }
+
         for backend in &backends {
             for region in &mut regions {
                 region.run(backend.as_ref(), &mut context, progress, purpose)?;
@@ -472,6 +479,35 @@ impl<'a> RegionCompare<'a> {
             region,
             checks: sector_checks(layout, outside, ignore_fills).collect(),
         }
+    }
+
+    /// Settles the checks of a region that can't be read, and returns their progress size.
+    ///
+    /// Before programming, its sectors need programming. A verify skips them.
+    fn settle_unreadable(&mut self, purpose: Purpose) -> u64 {
+        if self.region.is_readable() {
+            return 0;
+        }
+
+        let range = &self.region.range;
+        let name = self.region.name.as_deref().unwrap_or("Region");
+        let outcome = match purpose {
+            Purpose::Prune { .. } => {
+                tracing::info!("{name} {range:#010x?} is not readable, it is programmed");
+                CompareOutcome::Mismatch
+            }
+            Purpose::Verify { .. } => {
+                tracing::warn!("{name} {range:#010x?} is not readable, it is not verified");
+                CompareOutcome::Match
+            }
+        };
+
+        let mut size = 0;
+        for check in &mut self.checks {
+            check.outcome = Some(outcome);
+            size += check.progress_size;
+        }
+        size
     }
 
     /// Runs one backend on the checks that have no result yet.
@@ -621,6 +657,38 @@ mod tests {
         builder
             .build_sectors_and_pages_from_properties(&region, &props, include_empty_pages)
             .unwrap()
+    }
+
+    #[test]
+    fn unreadable_regions_are_programmed_and_not_verified() {
+        let layout = layout(&[(0x10, &[1]), (0x1010, &[2])], false);
+        let mut region = test_region(0..0x4000);
+        region.access = Some(probe_rs_target::MemoryAccess {
+            read: false,
+            ..Default::default()
+        });
+
+        let mut prune = RegionCompare::new(&region, &layout, Outside::Any, true);
+        assert_eq!(prune.settle_unreadable(PRUNE), 0x800);
+        assert_eq!(
+            prune.finish(),
+            vec![CompareOutcome::Mismatch, CompareOutcome::Mismatch]
+        );
+
+        let verify_purpose = Purpose::Verify {
+            ignore_fills: false,
+        };
+        let mut verify = RegionCompare::new(&region, &layout, Outside::Any, false);
+        verify.settle_unreadable(verify_purpose);
+        assert_eq!(
+            verify.finish(),
+            vec![CompareOutcome::Match, CompareOutcome::Match]
+        );
+
+        let readable = test_region(0..0x4000);
+        let mut compare = RegionCompare::new(&readable, &layout, Outside::Any, true);
+        assert_eq!(compare.settle_unreadable(PRUNE), 0);
+        assert!(compare.checks.iter().all(|check| check.outcome.is_none()));
     }
 
     #[test]

@@ -1235,6 +1235,20 @@ impl FlashLoader {
         Ok(())
     }
 
+    /// Returns whether a verify can check any of the stored data.
+    ///
+    /// Data in NVM regions that can't be read is not verified. Without other data, a verify checks
+    /// nothing.
+    pub fn can_verify(&self) -> bool {
+        self.builder.data.iter().any(|(&address, data)| {
+            let range = address..address + data.len() as u64;
+            !self.memory_map.iter().any(|region| {
+                matches!(region, MemoryRegion::Nvm(nvm)
+                    if !nvm.is_readable() && nvm.range.contains_range(&range))
+            })
+        })
+    }
+
     /// Writes all the stored data chunks to flash.
     ///
     /// Requires a session with an attached target that has a known flash algorithm.

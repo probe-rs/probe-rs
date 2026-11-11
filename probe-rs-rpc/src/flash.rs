@@ -209,6 +209,8 @@ pub struct VerifyRequest {
 pub enum VerifyResult {
     Ok,
     Mismatch,
+    /// The data is only in regions that can't be read.
+    NothingVerified,
 }
 
 pub type VerifyResponse = RpcResult<VerifyResult>;
