@@ -228,6 +228,7 @@ impl ArmDebugSequence for CC23xxCC27xx {
             saci_flash_mode: Arc::clone(&self.saci_flash_mode),
             saci_download: Arc::clone(&self.saci_download),
             cc27xx: self.cc27xx,
+            hsm_download: AtomicBool::new(false),
             xcfg_pending: AtomicU8::new(0),
         }))
     }
@@ -292,6 +293,49 @@ const SCFG_START: u64 = 0x4E04_0000;
 const CCFG_SIZE: u64 = 0x800;
 /// Size of the SCFG.
 const SCFG_SIZE: usize = 0x400;
+/// The HSM firmware area: the last 96 KB of MAIN on 1 MB CC27xx parts. The boot ROM read-protects
+/// it. An HSM firmware image downloaded there is provisioned with HSM_FW_PROVISION.
+const HSM_AREA: std::ops::Range<u64> = 0xE_8000..0x10_0000;
+
+/// The header of TI's HSM firmware images: the payload follows the header.
+const HSM_IMAGE_HEADER_SIZE: usize = 0x410;
+/// The magic of TI's HSM firmware images.
+const HSM_IMAGE_MAGIC: (usize, &[u8; 4]) = (0x404, b"FWr\0");
+/// The offset of the payload size in TI's HSM firmware images.
+const HSM_IMAGE_PAYLOAD_SIZE: usize = 0x408;
+
+/// Returns the HSM firmware image at the start of `data`, without the padding after it.
+fn hsm_image(data: &[u8]) -> Result<&[u8], ArmError> {
+    let (offset, magic) = HSM_IMAGE_MAGIC;
+    if data.len() < HSM_IMAGE_HEADER_SIZE || &data[offset..offset + 4] != magic {
+        return Err(ArmError::Other(
+            "CC27xx: the data in the HSM area is not an HSM firmware image".to_string(),
+        ));
+    }
+    let payload = u32::from_le_bytes(
+        data[HSM_IMAGE_PAYLOAD_SIZE..HSM_IMAGE_PAYLOAD_SIZE + 4]
+            .try_into()
+            .unwrap(),
+    ) as usize;
+    let size = HSM_IMAGE_HEADER_SIZE + payload;
+    if size > data.len() || !size.is_multiple_of(4) {
+        return Err(ArmError::Other(format!(
+            "CC27xx: invalid HSM firmware image size {size:#x}"
+        )));
+    }
+    Ok(&data[..size])
+}
+
+/// Provisions the HSM firmware with HSM_FW_PROVISION: the command word, the image size in words,
+/// then the image. It must be the first command of the SACI session.
+fn provision_hsm(interface: &mut dyn DapAccess, image: &[u8]) -> Result<(), ArmError> {
+    tracing::info!("CC27xx: provisioning {} bytes of HSM firmware", image.len());
+    let mut words = vec![saci::cmd::HSM_FW_PROVISION, (image.len() / 4) as u32];
+    words.extend(saci::pack_words(image, 0xFF));
+    saci::send_words(interface, &words, Duration::from_millis(500))?;
+    let response = saci::read_response(interface, Duration::from_secs(30))?;
+    saci::check_result(response, "HSM_FW_PROVISION")
+}
 
 /// FLASH_ERASE_CHIP, FLASH_ERASE_MAIN_APP: keep the sectors that the CCFG retains.
 const RETAIN_SECTORS: u32 = 1 << 0;
@@ -316,6 +360,8 @@ pub struct CC23xxCC27xxFlashSequence {
     saci_download: Arc<AtomicBool>,
     /// Whether the chip is a CC27xx, which has a RAM flash algorithm.
     cc27xx: bool,
+    /// Whether the current download is an HSM firmware image, which goes alone.
+    hsm_download: AtomicBool,
     /// The configuration sectors that the current download still has to program through SACI:
     /// [`PENDING_CCFG`] and [`PENDING_SCFG`].
     xcfg_pending: AtomicU8,
@@ -661,7 +707,22 @@ impl DebugFlashSequence for CC23xxCC27xxFlashSequence {
         loader: &FlashLoader,
         _chip_erase: bool,
     ) -> Result<bool, crate::Error> {
+        let hsm =
+            self.cc27xx && Self::writes(loader, HSM_AREA.start, HSM_AREA.end - HSM_AREA.start);
+        self.hsm_download.store(hsm, Ordering::SeqCst);
         self.xcfg_pending.store(0, Ordering::SeqCst);
+        if hsm {
+            if loader.data().any(|(address, data)| {
+                address < HSM_AREA.start || address + data.len() as u64 > HSM_AREA.end
+            }) {
+                return Err(crate::Error::Other(
+                    "CC27xx: an HSM firmware image must be downloaded on its own".to_string(),
+                ));
+            }
+            tracing::info!("CC27xx: HSM firmware image, provisioning through SACI");
+            self.saci_download.store(true, Ordering::SeqCst);
+            return Ok(true);
+        }
 
         let saci = if !self.cc27xx {
             true
@@ -705,8 +766,14 @@ impl DebugFlashSequence for CC23xxCC27xxFlashSequence {
     }
 
     /// The sectors that the CCFG retains are kept when possible. On a CC27xx, they hold the HSM
-    /// firmware, which probe-rs can't provision again.
+    /// firmware.
     fn erase_all(&self, session: &mut Session) -> Result<(), crate::Error> {
+        // Provisioning the HSM firmware needs no erase, and must be alone in its SACI session.
+        if self.hsm_download.load(Ordering::SeqCst) {
+            tracing::info!("CC27xx: HSM firmware image, no erase");
+            return Ok(());
+        }
+
         let interface = session.get_arm_interface()?;
 
         // Retaining sectors needs a valid CCFG. With an invalid one, the ROM doesn't refuse the
@@ -748,7 +815,9 @@ impl DebugFlashSequence for CC23xxCC27xxFlashSequence {
 
         let interface = session.get_arm_interface()?;
 
-        if address >= SCFG_START {
+        if self.cc27xx && HSM_AREA.contains(&address) {
+            provision_hsm(interface, hsm_image(data)?)?;
+        } else if address >= SCFG_START {
             self.program_scfg(interface, data)?;
             self.xcfg_pending.fetch_and(!PENDING_SCFG, Ordering::SeqCst);
         } else if address >= CCFG_START {
@@ -763,8 +832,16 @@ impl DebugFlashSequence for CC23xxCC27xxFlashSequence {
         Ok(())
     }
 
+    /// The HSM area needs no erase: for an HSM firmware image, no chip erase either.
     fn supports_sector_erase(&self) -> bool {
-        false
+        self.hsm_download.load(Ordering::SeqCst)
+    }
+
+    fn erase_sector(&self, _session: &mut Session, address: u64) -> Result<(), crate::Error> {
+        if self.hsm_download.load(Ordering::SeqCst) && HSM_AREA.contains(&address) {
+            return Ok(());
+        }
+        Err(crate::Error::NotImplemented("sector erase"))
     }
 
     fn finish_flash(&self, session: &mut Session) -> Result<(), crate::Error> {
