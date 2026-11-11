@@ -854,12 +854,38 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
             return Ok(());
         }
 
-        let mut memory_access = self.memory_access_for(address, dst.len());
+        self.repeat_while_exec_busy(|this| {
+            let mut memory_access = this.memory_access_for(address, dst.len());
 
-        memory_access.halted_access(self, &mut |this, memory_access| {
-            memory_access.save_scratch_registers(this)?;
-            this.read_memory_impl(memory_access, address, dst)
+            memory_access.halted_access(this, &mut |this, memory_access| {
+                memory_access.save_scratch_registers(this)?;
+                this.read_memory_impl(memory_access, address, dst)
+            })
         })
+    }
+
+    /// Run a memory access, and run it again while an instruction in it is still running at its
+    /// status check.
+    ///
+    /// The probe runs the rest of the batch before probe-rs sees the status, and the core ignores
+    /// the instructions in it, so only a new run of the whole access is correct. Each new run
+    /// gets a new [`MemoryAccess`], because it writes the address again.
+    fn repeat_while_exec_busy<R>(
+        &mut self,
+        mut access: impl FnMut(&mut Self) -> Result<R, XtensaError>,
+    ) -> Result<R, XtensaError> {
+        const MAX_ATTEMPTS: usize = 3;
+
+        let mut attempt = 1;
+        loop {
+            match access(self) {
+                Err(XtensaError::XdmError(XdmError::ExecBusy)) if attempt < MAX_ATTEMPTS => {
+                    tracing::debug!("An instruction was still running, repeating the access");
+                    attempt += 1;
+                }
+                result => return result,
+            }
+        }
     }
 
     fn read_memory_impl(
@@ -942,11 +968,13 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
             return Ok(());
         }
 
-        let mut memory_access = self.memory_access_for(address, data.len());
+        self.repeat_while_exec_busy(|this| {
+            let mut memory_access = this.memory_access_for(address, data.len());
 
-        memory_access.halted_access(self, &mut |this, memory_access| {
-            memory_access.save_scratch_registers(this)?;
-            this.write_memory_impl(memory_access, address, data)
+            memory_access.halted_access(this, &mut |this, memory_access| {
+                memory_access.save_scratch_registers(this)?;
+                this.write_memory_impl(memory_access, address, data)
+            })
         })
     }
 
@@ -969,7 +997,7 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
         }
 
         let mut temp_bytes = [0; 8];
-        let op = match operation.operation {
+        let mut op = match operation.operation {
             OperationKind::Read(data) => Op::Read(data),
             OperationKind::Read8(data) => Op::Read(data),
             OperationKind::Read16(data) => Op::Read(data.as_mut_bytes()),
@@ -1012,17 +1040,18 @@ impl<'probe> XtensaCommunicationInterface<'probe> {
 
         let address = operation.address;
 
-        let mut memory_access = self.memory_access_for(address, op.data_len());
-        memory_access.save_scratch_registers(self)?;
+        self.repeat_while_exec_busy(|this| {
+            let mut memory_access = this.memory_access_for(address, op.data_len());
+            memory_access.save_scratch_registers(this)?;
 
-        match op {
-            Op::Read(dst) => self
-                .read_memory_impl(memory_access.as_mut(), address, dst)
-                .map_err(ProbeRsError::Xtensa),
-            Op::Write(buffer) => self
-                .write_memory_impl(memory_access.as_mut(), address, buffer)
-                .map_err(ProbeRsError::Xtensa),
-        }
+            match &mut op {
+                Op::Read(dst) => this.read_memory_impl(memory_access.as_mut(), address, dst),
+                Op::Write(buffer) => {
+                    this.write_memory_impl(memory_access.as_mut(), address, buffer)
+                }
+            }
+        })
+        .map_err(ProbeRsError::Xtensa)
     }
 
     fn write_memory_impl(

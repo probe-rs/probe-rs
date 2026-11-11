@@ -31,6 +31,12 @@ const NARADR_DIR0EXEC: u8 = 0x47;
 // Assume we only support 16-24b instructions for now
 const NARADR_DIR0: u8 = 0x48;
 
+/// Idle TCK cycles after an instruction, after the first instruction that was still running at
+/// its status check.
+const MIN_EXEC_IDLE_CYCLES: u32 = 64;
+/// The largest number of idle TCK cycles after an instruction.
+const MAX_EXEC_IDLE_CYCLES: u32 = 4096;
+
 #[derive(Clone, Copy, PartialEq, Debug)]
 enum TapInstruction {
     Nar,
@@ -164,6 +170,13 @@ pub(crate) struct XdmState {
     /// complete correctly, or to - ironically - increase performance. We store their otherwise
     /// ignored handles in this vector and drop them when we're done with the batch.
     status_idxs: Vec<Handle<CommandResult>>,
+
+    /// Idle TCK cycles after an instruction that probe-rs waits for. Zero until an instruction is
+    /// still running at its status check.
+    ///
+    /// On the ESP32, a load that misses the flash cache stays busy when the next debug module
+    /// access comes in while it runs.
+    exec_idle_cycles: u32,
 }
 
 /// The lower level functions of the Xtensa Debug Module.
@@ -378,10 +391,15 @@ impl<'probe> Xdm<'probe> {
                                     // retry, but we should probably add some no-ops later.
                                 }
                                 Error::ExecBusy => {
-                                    // The instruction is still executing. Retry the Debug Status read.
-                                    // Do not rewind the queue, it will not include the failed command.
-                                    // Retrying the failed command will just shift the DSR out of the
-                                    // JTAG DR again, re-attempting the read.
+                                    // The probe ran the rest of the batch while the instruction
+                                    // was still running, and the core ignored the instructions in
+                                    // it. Only the results before the status check are correct,
+                                    // so the caller must run its access again.
+                                    self.state.jtag_results.merge_from(e.results);
+                                    self.state.exec_idle_cycles = (self.state.exec_idle_cycles * 2)
+                                        .clamp(MIN_EXEC_IDLE_CYCLES, MAX_EXEC_IDLE_CYCLES);
+                                    self.wait_for_exec_idle()?;
+                                    return Err(XtensaError::XdmError(Error::ExecBusy));
                                 }
                                 Error::ExecOverrun => {
                                     // Clear exception/overrun to allow executing further instructions.
@@ -445,7 +463,15 @@ impl<'probe> Xdm<'probe> {
         }
     }
 
-    fn do_nexus_op(&mut self, nar: u8, ndr: u32, transform: TransformFn) -> Handle<CommandResult> {
+    /// Schedule a NAR scan with `nar`, then an NDR scan with `ndr` and `idle_cycles` TCK cycles in
+    /// Run-Test/Idle after it.
+    fn do_nexus_op(
+        &mut self,
+        nar: u8,
+        ndr: u32,
+        idle_cycles: u32,
+        transform: TransformFn,
+    ) -> Handle<CommandResult> {
         let nar_idx = self.state.queue.schedule(JtagWriteCommand {
             data: JtagWriteData {
                 address: TapInstruction::Nar.code(),
@@ -483,7 +509,7 @@ impl<'probe> Xdm<'probe> {
                     &ndr.to_le_bytes(),
                     TapInstruction::Ndr.bits() as usize,
                 ),
-                idle_cycles: 0,
+                idle_cycles,
             },
             transform,
         })
@@ -493,23 +519,29 @@ impl<'probe> Xdm<'probe> {
     fn schedule_dbg_read_and_transform(
         &mut self,
         address: u8,
+        idle_cycles: u32,
         transform: TransformFn,
     ) -> Handle<CommandResult> {
         let regdata = address << 1;
 
-        self.do_nexus_op(regdata, 0, transform)
+        self.do_nexus_op(regdata, 0, idle_cycles, transform)
     }
 
     /// Perform an access to a register
     fn schedule_dbg_read(&mut self, address: u8) -> Handle<CommandResult> {
-        self.schedule_dbg_read_and_transform(address, transform_u32)
+        self.schedule_dbg_read_and_transform(address, 0, transform_u32)
     }
 
     /// Perform an access to a register
-    fn schedule_dbg_write(&mut self, address: u8, value: u32) -> Handle<CommandResult> {
+    fn schedule_dbg_write(
+        &mut self,
+        address: u8,
+        value: u32,
+        idle_cycles: u32,
+    ) -> Handle<CommandResult> {
         let regdata = (address << 1) | 1;
 
-        self.do_nexus_op(regdata, value, transform_noop)
+        self.do_nexus_op(regdata, value, idle_cycles, transform_noop)
     }
 
     fn pwr_write(&mut self, dev: PowerDevice, value: u8) -> Result<u8, XtensaError> {
@@ -562,7 +594,7 @@ impl<'probe> Xdm<'probe> {
 
     pub(crate) fn schedule_write_nexus_register<R: NexusRegister>(&mut self, register: R) {
         tracing::debug!("Writing {}: {:08x}", R::NAME, register.bits());
-        self.schedule_dbg_write(R::ADDRESS, register.bits());
+        self.schedule_dbg_write(R::ADDRESS, register.bits(), 0);
     }
 
     pub(crate) fn write_nexus_register<R: NexusRegister>(
@@ -578,8 +610,11 @@ impl<'probe> Xdm<'probe> {
     }
 
     pub(super) fn schedule_wait_for_exec_done(&mut self) {
-        let status_reader = self
-            .schedule_dbg_read_and_transform(DebugStatus::ADDRESS, transform_instruction_status);
+        let status_reader = self.schedule_dbg_read_and_transform(
+            DebugStatus::ADDRESS,
+            0,
+            transform_instruction_status,
+        );
 
         self.state.status_idxs.push(status_reader);
     }
@@ -686,7 +721,7 @@ impl<'probe> Xdm<'probe> {
 
         match instruction.encode() {
             InstructionEncoding::Narrow(inst) => {
-                self.schedule_write_nexus_register(DebugInstructionAndExecRegister(inst));
+                self.schedule_write_exec_register(DebugInstructionAndExecRegister(inst));
             }
         }
 
@@ -698,7 +733,13 @@ impl<'probe> Xdm<'probe> {
     }
 
     pub(super) fn schedule_read_ddr_and_execute(&mut self) -> Handle<CommandResult> {
-        let reader = self.schedule_read_nexus_register::<DebugDataAndExecRegister>();
+        tracing::debug!("Reading from {}", DebugDataAndExecRegister::NAME);
+        let idle_cycles = self.exec_idle_cycles();
+        let reader = self.schedule_dbg_read_and_transform(
+            DebugDataAndExecRegister::ADDRESS,
+            idle_cycles,
+            transform_u32,
+        );
         self.schedule_wait_for_last_instruction();
 
         reader
@@ -715,26 +756,45 @@ impl<'probe> Xdm<'probe> {
             tracing::warn!("Writing DDREXEC without instruction");
         }
 
-        self.schedule_write_nexus_register(DebugDataAndExecRegister(ddr));
+        self.schedule_write_exec_register(DebugDataAndExecRegister(ddr));
         self.schedule_wait_for_last_instruction();
     }
 
     fn schedule_wait_for_last_instruction(&mut self) {
+        if self.last_instruction_waits() {
+            self.schedule_wait_for_exec_done();
+        }
+    }
+
+    /// Whether probe-rs checks the status of the last instruction.
+    fn last_instruction_waits(&self) -> bool {
         // Assume some instructions complete practically instantly and don't waste bandwidth
         // checking their results.
-        if let Some(last_instruction) = self.state.last_instruction {
-            let wait = !matches!(
-                last_instruction,
+        self.state.last_instruction.is_some_and(|instruction| {
+            !matches!(
+                instruction,
                 Instruction::Rsr(_, _)
                     | Instruction::Wsr(_, _)
                     | Instruction::Lddr32P(_)
                     | Instruction::Sddr32P(_)
-            );
+            )
+        })
+    }
 
-            if wait {
-                self.schedule_wait_for_exec_done();
-            }
+    /// Idle TCK cycles after the last instruction starts, before the next debug module access.
+    fn exec_idle_cycles(&self) -> u32 {
+        if self.last_instruction_waits() {
+            self.state.exec_idle_cycles
+        } else {
+            0
         }
+    }
+
+    /// Write a register that starts the last instruction.
+    fn schedule_write_exec_register<R: NexusRegister>(&mut self, register: R) {
+        tracing::debug!("Writing {}: {:08x}", R::NAME, register.bits());
+        let idle_cycles = self.exec_idle_cycles();
+        self.schedule_dbg_write(R::ADDRESS, register.bits(), idle_cycles);
     }
 
     pub(crate) fn reset_and_halt(&mut self) -> Result<(), XtensaError> {
@@ -764,6 +824,18 @@ impl<'probe> Xdm<'probe> {
         })?;
 
         Ok(())
+    }
+
+    /// Wait until the core has run its instruction, and clear the errors that the instructions
+    /// which came in during it left.
+    fn wait_for_exec_idle(&mut self) -> Result<(), XtensaError> {
+        let start = Instant::now();
+        while self.status()?.exec_busy() {
+            if start.elapsed() > Duration::from_millis(100) {
+                return Err(XtensaError::Timeout);
+            }
+        }
+        self.clear_exception_state()
     }
 
     fn clear_exception_state(&mut self) -> Result<(), XtensaError> {
