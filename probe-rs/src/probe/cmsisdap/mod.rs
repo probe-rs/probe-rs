@@ -132,13 +132,9 @@ impl ProbeFactory for CmsisDapFactory {
             return vec![crate::probe::list::ProbeListItem::accessible(
                 crate::probe::DebugProbeInfo {
                     identifier: "CMSIS-DAP TCP".to_string(),
-                    transport: crate::probe::ProbeTransport::Usb(crate::probe::UsbProbeInfo {
-                        vendor_id: tcp::TCP_VID,
-                        product_id: tcp::TCP_PID,
-                        serial_number: Some(address.to_string()),
-                        is_hid_interface: false,
-                        interface: None,
-                        usb_location: None,
+                    transport: crate::probe::ProbeTransport::Tcp(crate::probe::TcpAddress {
+                        driver: tcp::DRIVER.to_string(),
+                        address: address.to_string(),
                     }),
                     probe_factory: &Self,
                 },
@@ -151,18 +147,23 @@ impl ProbeFactory for CmsisDapFactory {
     }
 }
 
-/// The address of the TCP probe a selector names, if it names one.
+/// The address of the TCP probe a selector names, if it names one: `tcp://cmsis-dap@ADDRESS`, or
+/// the placeholder `0000:0001:ADDRESS`.
 fn tcp_address(selector: &DebugProbeSelector) -> Option<&str> {
-    let DebugProbeSelector::Usb(selector) = selector else {
-        return None;
-    };
-    if selector.vendor_id != tcp::TCP_VID || selector.product_id != tcp::TCP_PID {
-        return None;
+    match selector {
+        DebugProbeSelector::Tcp(address) if address.driver == tcp::DRIVER => {
+            Some(address.address.as_str())
+        }
+        DebugProbeSelector::Usb(selector)
+            if (selector.vendor_id, selector.product_id) == (tcp::TCP_VID, tcp::TCP_PID) =>
+        {
+            selector
+                .serial_number
+                .as_deref()
+                .filter(|address| !address.is_empty())
+        }
+        _ => None,
     }
-    selector
-        .serial_number
-        .as_deref()
-        .filter(|address| !address.is_empty())
 }
 
 /// A CMSIS-DAP probe.
@@ -1290,6 +1291,23 @@ impl From<ScanChainError> for CmsisDapError {
             ScanChainError::InvalidIdCode => CmsisDapError::InvalidIdCode,
             ScanChainError::InvalidIR => CmsisDapError::InvalidIR,
         }
+    }
+}
+
+#[cfg(test)]
+mod tcp_address_tests {
+    use super::{DebugProbeSelector, tcp_address};
+
+    fn address(selector: &str) -> Option<String> {
+        tcp_address(&selector.parse::<DebugProbeSelector>().unwrap()).map(str::to_string)
+    }
+
+    #[test]
+    fn both_forms_name_the_same_address() {
+        let address_of = address("tcp://cmsis-dap@192.168.1.50:4441");
+        assert_eq!(address_of.as_deref(), Some("192.168.1.50:4441"));
+        assert_eq!(address("0000:0001:192.168.1.50:4441"), address_of);
+        assert_eq!(address("tcp://xvc@192.168.1.50:2542"), None);
     }
 }
 
