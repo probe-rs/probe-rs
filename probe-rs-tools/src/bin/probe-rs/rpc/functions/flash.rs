@@ -122,6 +122,18 @@ pub async fn build(
     _header: VarHeader,
     request: BuildRequest,
 ) -> BuildResponse {
+    ctx.check_file_access(&request.path)?;
+    let idf_options = &request.format.idf_options;
+    for path in [
+        &idf_options.idf_bootloader,
+        &idf_options.idf_partition_table,
+    ]
+    .into_iter()
+    .flatten()
+    {
+        ctx.check_file_access(path)?;
+    }
+
     let mut session = ctx.session(request.sessid).await;
     let mut loader = lift(build_loader(
         &mut session,

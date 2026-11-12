@@ -282,12 +282,13 @@ pub(crate) enum ProbeAccess {
     Deny(Vec<String>),
 }
 
-/// Semihosting access to the files of the server host.
+/// Access to the files of the server host.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum HostFiles {
     /// The server runs in the client process, so its files are the files of the client.
     Allow,
     /// The server accepts connections from other processes. A client must not access its files.
+    /// It can use only the files that it uploaded.
     Deny,
 }
 
@@ -302,6 +303,16 @@ pub struct RpcContext {
     lister: Arc<dyn ProbeLister + Send + Sync>,
     probe_broker: Arc<ProbeBroker>,
     host_files: HostFiles,
+}
+
+fn check_file_access(state: &ConnectionState, host_files: HostFiles, path: &str) -> RpcResult<()> {
+    if host_files == HostFiles::Allow || state.is_upload(path) {
+        Ok(())
+    } else {
+        Err(RpcError::from(format!(
+            "This server opens only files that the client uploaded, and not {path}"
+        )))
+    }
 }
 
 /// Shim that lets a [`Lister`] own a reference to the shared
@@ -361,6 +372,15 @@ impl RpcContext {
 
     pub fn set_sender(&mut self, sender: PostcardSender<WireTxImpl>) {
         self.sender = Some(sender);
+    }
+
+    /// Returns an error if the client must not make the server open `path`.
+    pub(crate) fn check_file_access(&self, path: &str) -> RpcResult<()> {
+        check_file_access(&self.state, self.host_files, path)
+    }
+
+    pub(crate) fn add_upload(&self, path: String) {
+        self.state.add_upload(path);
     }
 
     pub async fn publish<T>(&self, seq_no: VarSeq, msg: &T::Message) -> anyhow::Result<()>
@@ -779,6 +799,16 @@ mod tests {
             lister: Arc::new(LimitedLister::new(ProbeAccess::All)),
             host_files,
         }
+    }
+
+    #[test]
+    fn remote_server_opens_only_uploads() {
+        let state = ConnectionState::new();
+        state.add_upload("/tmp/upload".to_owned());
+
+        assert!(check_file_access(&state, HostFiles::Deny, "/tmp/upload").is_ok());
+        assert!(check_file_access(&state, HostFiles::Deny, "/etc/passwd").is_err());
+        assert!(check_file_access(&state, HostFiles::Allow, "/etc/passwd").is_ok());
     }
 
     #[test]

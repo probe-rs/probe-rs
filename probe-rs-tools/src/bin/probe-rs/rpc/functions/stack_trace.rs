@@ -26,6 +26,7 @@ pub async fn load_debug_info(
     _header: VarHeader,
     request: LoadDebugInfoRequest,
 ) -> LoadDebugInfoResponse {
+    ctx.check_file_access(&request.path)?;
     let debug_info = DebugInfo::from_file(&request.path).map_err(|e| e.to_string())?;
     ctx.with_server_debug_state_mut(request.sessid, |state| {
         state.replace_debug_info(debug_info);
@@ -41,6 +42,7 @@ async fn unwind_all_cores(
     ctx: &mut RpcContext,
     request: &TakeStackTraceRequest,
 ) -> probe_rs_rpc::RpcResult<Vec<(u32, Vec<StackTraceFrame>)>> {
+    ctx.check_file_access(&request.path)?;
     let mut session = ctx.session(request.sessid).await;
 
     let Some(debug_info) = DebugInfo::from_file(&request.path).ok() else {
