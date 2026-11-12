@@ -1,0 +1,1 @@
+ARM chip detection now reuses the access port from ROM table detection, instead of defaulting to access port 0.

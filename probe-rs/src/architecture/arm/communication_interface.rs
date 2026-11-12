@@ -143,6 +143,7 @@ pub fn read_chip_info_from_rom_table(
                 return Ok(Some(ArmChipInfo {
                     manufacturer: jep106,
                     part: component_id.peripheral_id().part(),
+                    access_port: ap,
                 }));
             }
         }
@@ -1508,7 +1509,7 @@ impl DapAccess for ArmCommunicationInterface {
 /// Information about the chip target we are currently attached to.
 /// This can be used for discovery, tho, for now it does not work optimally,
 /// as some manufacturers (e.g. ST Microelectronics) violate the spec and thus need special discovery procedures.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct ArmChipInfo {
     /// The JEP106 code of the manufacturer of this chip target.
     pub manufacturer: JEP106Code,
@@ -1517,6 +1518,8 @@ pub struct ArmChipInfo {
     ///
     /// Consider this not unique when working with targets!
     pub part: u16,
+    /// The access port whose ROM table identified the chip.
+    pub access_port: FullyQualifiedApAddress,
 }
 
 impl std::fmt::Display for ArmChipInfo {

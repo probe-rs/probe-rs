@@ -48,7 +48,7 @@ impl Vendor for TridentIot {
         }
 
         // Any chip with a stock Cortex-M33 ROM table gets here; a failed read means "not ours".
-        match detect_rt584(interface) {
+        match detect_rt584(interface, &chip_info.access_port) {
             Ok(name) => Ok(name.map(String::from)),
             Err(error) => {
                 tracing::debug!("RT584 detection failed: {error}");
@@ -58,10 +58,11 @@ impl Vendor for TridentIot {
     }
 }
 
-fn detect_rt584(interface: &mut dyn ArmDebugInterface) -> Result<Option<&'static str>, ArmError> {
-    let Some(dp) = interface.current_debug_port() else {
-        return Ok(None);
-    };
+fn detect_rt584(
+    interface: &mut dyn ArmDebugInterface,
+    access_port: &FullyQualifiedApAddress,
+) -> Result<Option<&'static str>, ArmError> {
+    let dp = access_port.dp();
 
     // TARGETID only exists on DPv2 and later.
     let dpidr: DPIDR = interface.read_dp_register(dp)?;
@@ -78,7 +79,7 @@ fn detect_rt584(interface: &mut dyn ArmDebugInterface) -> Result<Option<&'static
 
     // TARGETID is shared across the family; CHIP_ID tells the variants apart.
     let chip_info = interface
-        .memory_interface(&FullyQualifiedApAddress::v1_with_dp(dp, 0))?
+        .memory_interface(access_port)?
         .read_word_32(SOC_CHIP_INFO)?;
 
     Ok(match chip_info >> 16 {

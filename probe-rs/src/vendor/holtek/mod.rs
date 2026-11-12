@@ -4,7 +4,7 @@ use jep106::JEP106Code;
 use probe_rs_target::Chip;
 
 use crate::{
-    architecture::arm::{ArmChipInfo, ArmDebugInterface, FullyQualifiedApAddress},
+    architecture::arm::{ArmChipInfo, ArmDebugInterface},
     config::DebugSequence,
     config::Registry,
     error::Error,
@@ -34,9 +34,7 @@ impl Vendor for Holtek {
             return Ok(None);
         }
 
-        // Use default AP (v1, AP 0)
-        let access_port = &FullyQualifiedApAddress::v1_with_default_dp(0);
-        let mut memory_interface = interface.memory_interface(access_port)?;
+        let mut memory_interface = interface.memory_interface(&chip_info.access_port)?;
 
         // Holtek HT32F series stores a device ID at 0x40048000 (observed in OpenOCD scripts).
         // Read this register and map to known variants.

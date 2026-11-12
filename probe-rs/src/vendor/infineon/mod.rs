@@ -5,7 +5,7 @@ use probe_rs_target::{Chip, chip_detection::ChipDetectionMethod};
 
 use crate::{
     architecture::arm::{
-        ArmChipInfo, ArmDebugInterface, ArmError, FullyQualifiedApAddress,
+        ArmChipInfo, ArmDebugInterface, ArmError,
         dp::{DpRegister, TARGETID},
         memory::ArmMemoryInterface,
     },
@@ -88,9 +88,7 @@ fn try_detect_xmc4xxx(
         return Ok(None);
     }
 
-    // FIXME: This is a bit shaky but good enough for now.
-    let access_port = &FullyQualifiedApAddress::v1_with_default_dp(0);
-    let mut memory_interface = interface.memory_interface(access_port)?;
+    let mut memory_interface = interface.memory_interface(&chip_info.access_port)?;
 
     // First, read the SCU peripheral ID register to verify that this is an XMC4000.
     let Some(scu_idchip) = read_xmc4xxx_scu_idchip(memory_interface.as_mut())? else {
@@ -199,10 +197,8 @@ fn try_detect_psoc(
         return Ok(None);
     }
 
-    let tid = TARGETID(
-        interface
-            .read_raw_dp_register(interface.current_debug_port().unwrap(), TARGETID::ADDRESS)?,
-    );
+    let tid =
+        TARGETID(interface.read_raw_dp_register(chip_info.access_port.dp(), TARGETID::ADDRESS)?);
     let siid = tid.tpartno();
 
     Ok(families.find_map(|family| family.silicon_ids.get(&siid).cloned()))

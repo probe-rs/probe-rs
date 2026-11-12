@@ -5,7 +5,7 @@ use probe_rs_target::{Chip, chip_detection::ChipDetectionMethod};
 
 use crate::{
     Error,
-    architecture::arm::{ArmChipInfo, ArmDebugInterface, FullyQualifiedApAddress},
+    architecture::arm::{ArmChipInfo, ArmDebugInterface},
     config::{DebugSequence, Registry},
     vendor::{
         Vendor,
@@ -53,12 +53,10 @@ impl Vendor for Microchip {
             return Ok(None);
         }
 
-        // FIXME: This is a bit shaky but good enough for now.
-        let access_port = &FullyQualifiedApAddress::v1_with_default_dp(0);
         // This device has an Atmel DSU - Read and parse the DSU DID register
         let did = DsuDid(
             interface
-                .memory_interface(access_port)?
+                .memory_interface(&chip_info.access_port)?
                 .read_word_32(DsuDid::ADDRESS)?,
         );
 

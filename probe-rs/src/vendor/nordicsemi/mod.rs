@@ -11,9 +11,7 @@ use sequences::nrf54l::Nrf54L;
 
 use crate::{
     Error,
-    architecture::arm::{
-        ArmChipInfo, ArmDebugInterface, FullyQualifiedApAddress, memory::ArmMemoryInterface,
-    },
+    architecture::arm::{ArmChipInfo, ArmDebugInterface, memory::ArmMemoryInterface},
     config::{DebugSequence, Registry},
     vendor::{
         Vendor,
@@ -58,9 +56,7 @@ impl Vendor for NordicSemi {
             return Ok(None);
         }
 
-        // FIXME: This is a bit shaky but good enough for now.
-        let access_port = &FullyQualifiedApAddress::v1_with_default_dp(0);
-        let mut memory_interface = probe.memory_interface(access_port)?;
+        let mut memory_interface = probe.memory_interface(&chip_info.access_port)?;
 
         // Cache to avoid reading the same register multiple times
         let mut register_values: HashMap<u32, u32> = HashMap::new();
