@@ -9,7 +9,7 @@
 
 use std::fmt::Debug;
 
-use crate::flashing::FlashLayout;
+use crate::flashing::{FlashLayout, FlashLoader};
 use probe_rs_target::NvmRegion;
 
 use crate::Error;
@@ -25,6 +25,7 @@ use crate::session::Session;
 /// ## Lifecycle
 ///
 /// ```text
+/// flashes_download() ← once per download, while the flash plan is built
 /// prepare_flash()    ← enter required mode (e.g. SACI for CC27xx, release probe for CC35xx)
 ///   erase_all() / erase_sector()
 ///   program() ...    ← per-page, OR
@@ -46,6 +47,23 @@ use crate::session::Session;
 /// With preverify, the flash loader calls `prepare_flash` and `finish_flash` once more. Do not
 /// reset there if the target loses state on a reset.
 pub trait DebugFlashSequence: Send + Sync + Debug {
+    /// Whether this sequence flashes the download, rather than the flash algorithms of the
+    /// target's regions.
+    ///
+    /// The flash loader calls this once per download, while it builds the flash plan and before
+    /// anything is compared, erased or programmed. `loader` holds the download's data, and
+    /// `chip_erase` is set when the download starts with a chip erase.
+    ///
+    /// The default returns `true`.
+    fn flashes_download(
+        &self,
+        _session: &mut Session,
+        _loader: &FlashLoader,
+        _chip_erase: bool,
+    ) -> Result<bool, Error> {
+        Ok(true)
+    }
+
     /// Called before erase/program/verify operations begin.
     ///
     /// Use this to enter a required programming mode or, for external-toolbox devices,
