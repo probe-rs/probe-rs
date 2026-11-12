@@ -4,7 +4,7 @@ use std::{any::Any, collections::HashMap};
 
 use anyhow::Context as _;
 use probe_rs::probe::{
-    DebugProbeError, DebugProbeSelector, Probe, WireProtocol,
+    DebugProbeError, DebugProbeSelector, Probe, ProbeTransport, WireProtocol,
     ch347::{Ch347, Ch347Config},
     ftdi::{FtdiConfig, FtdiProbe},
     list::{ProbeListItem, ProbeLister, default_probe_index},
@@ -183,7 +183,10 @@ impl SerialConfig {
         };
         let DebugProbeSelector::Usb(selector) = usb
             .parse::<DebugProbeSelector>()
-            .with_context(|| format!("Invalid serial port `{usb}`"))?;
+            .with_context(|| format!("Invalid serial port `{usb}`"))?
+        else {
+            anyhow::bail!("Invalid serial port `{usb}`: not a USB device");
+        };
         Ok(Some(PortSelector::Usb(UsbSerialFilter {
             vendor_id: Some(selector.vendor_id),
             product_id: Some(selector.product_id),
@@ -249,12 +252,13 @@ impl ProbeConfigs {
             .iter()
             .filter(|(selector, _)| selector.matches_selector(probe))
             .collect::<Vec<_>>();
-        matching.sort_by_key(|(selector, _)| {
-            let DebugProbeSelector::Usb(selector) = selector;
-            (
+        matching.sort_by_key(|(selector, _)| match selector {
+            DebugProbeSelector::Usb(selector) => (
                 selector.serial_number.is_some(),
                 selector.interface.is_some(),
-            )
+            ),
+            // A TCP entry names one probe, like an entry with a serial number.
+            DebugProbeSelector::Tcp(_) => (true, false),
         });
 
         let mut resolved = ProbeConfig::default();
@@ -267,12 +271,15 @@ impl ProbeConfigs {
     /// Returns whether an entry with a serial number can match `probe`. Only these entries need
     /// the serial number of the probe.
     fn needs_serial_number(&self, probe: &DebugProbeSelector) -> bool {
-        let DebugProbeSelector::Usb(probe) = probe;
+        let DebugProbeSelector::Usb(probe) = probe else {
+            return false;
+        };
         probe.serial_number.is_none()
-            && self.0.keys().any(|DebugProbeSelector::Usb(selector)| {
-                selector.serial_number.is_some()
-                    && (selector.vendor_id, selector.product_id)
-                        == (probe.vendor_id, probe.product_id)
+            && self.0.keys().any(|selector| {
+                matches!(selector, DebugProbeSelector::Usb(selector)
+                    if selector.serial_number.is_some()
+                        && (selector.vendor_id, selector.product_id)
+                            == (probe.vendor_id, probe.product_id))
             })
     }
 }
@@ -294,9 +301,11 @@ impl<L: ProbeLister> ConfiguredLister<L> {
         let mut selector = selector.clone();
         if self.configs.needs_serial_number(&selector) {
             let list = self.inner.list(Some(&selector));
-            if let Some(index) = default_probe_index(&list) {
-                let DebugProbeSelector::Usb(usb) = &mut selector;
-                usb.serial_number = list[index].serial_number.clone();
+            if let Some(index) = default_probe_index(&list)
+                && let DebugProbeSelector::Usb(usb) = &mut selector
+                && let ProbeTransport::Usb(info) = &list[index].transport
+            {
+                usb.serial_number = info.serial_number.clone();
             }
         }
         selector

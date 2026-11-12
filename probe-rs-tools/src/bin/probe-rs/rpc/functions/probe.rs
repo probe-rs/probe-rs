@@ -7,8 +7,8 @@ use probe_rs::probe::{
     list::{Lister, default_probe_index},
 };
 use probe_rs_rpc::probe::{
-    AttachRequest, AttachResult, DebugProbeEntry, ListProbesResponse, SelectProbeRequest,
-    SelectProbeResponse, SelectProbeResult, WireProtocol,
+    AttachRequest, AttachResult, DebugProbeEntry, ListProbesResponse, ProbeTransport,
+    SelectProbeRequest, SelectProbeResponse, SelectProbeResult, WireProtocol,
 };
 
 use crate::rpc::SharedTargetSerial;
@@ -44,7 +44,10 @@ pub async fn select_probe(
     // open() time via the selector. We must propagate the interface from the
     // original selector into the returned DebugProbeEntry so that the subsequent
     // attach() call opens the correct channel.
-    let requested_interface = request.probe.as_ref().and_then(|s| s.interface);
+    let requested_interface = request.probe.as_ref().and_then(|selector| match selector {
+        probe_rs_rpc::probe::DebugProbeSelector::Usb(selector) => selector.interface,
+        probe_rs_rpc::probe::DebugProbeSelector::Tcp(_) => None,
+    });
 
     let mut list = lister.list_with_access(
         request
@@ -57,8 +60,10 @@ pub async fn select_probe(
     // If the probe entry does not carry an interface (common for FTDI probes)
     // but the caller requested one, copy it from the original selector.
     let with_interface = |mut entry: DebugProbeEntry| {
-        if entry.interface.is_none() {
-            entry.interface = requested_interface;
+        if let ProbeTransport::Usb(usb) = &mut entry.transport
+            && usb.interface.is_none()
+        {
+            usb.interface = requested_interface;
         }
         entry
     };
@@ -568,15 +573,26 @@ pub(crate) mod convert {
     pub(crate) fn to_wire_debug_probe_entry(item: ProbeListItem) -> DebugProbeEntry {
         let inaccessible = item.accessibility == Accessibility::PermissionDenied;
         let probe = item.info;
+        let probe_type = probe.probe_type();
+        let transport = match probe.transport {
+            probe_rs::probe::ProbeTransport::Usb(usb) => {
+                probe_rs_rpc::probe::ProbeTransport::Usb(probe_rs_rpc::probe::UsbProbeEntry {
+                    vendor_id: usb.vendor_id,
+                    product_id: usb.product_id,
+                    serial_number: usb.serial_number.unwrap_or_default(),
+                    interface: usb.interface,
+                    usb_location: usb.usb_location,
+                })
+            }
+            probe_rs::probe::ProbeTransport::Tcp(address) => {
+                probe_rs_rpc::probe::ProbeTransport::Tcp(to_wire_tcp_address(address))
+            }
+        };
         DebugProbeEntry {
-            probe_type: probe.probe_type(),
+            probe_type,
             inaccessible,
             identifier: probe.identifier,
-            vendor_id: probe.vendor_id,
-            product_id: probe.product_id,
-            serial_number: probe.serial_number.unwrap_or_default(),
-            interface: probe.interface,
-            usb_location: probe.usb_location,
+            transport,
         }
     }
 
@@ -599,8 +615,33 @@ pub(crate) mod convert {
     pub(crate) fn to_wire_debug_probe_selector(
         selector: probe_rs::probe::DebugProbeSelector,
     ) -> probe_rs_rpc::probe::DebugProbeSelector {
-        let probe_rs::probe::DebugProbeSelector::Usb(selector) = selector;
-        probe_rs_rpc::probe::DebugProbeSelector {
+        match selector {
+            probe_rs::probe::DebugProbeSelector::Usb(selector) => {
+                probe_rs_rpc::probe::DebugProbeSelector::Usb(to_wire_usb_selector(selector))
+            }
+            probe_rs::probe::DebugProbeSelector::Tcp(address) => {
+                probe_rs_rpc::probe::DebugProbeSelector::Tcp(to_wire_tcp_address(address))
+            }
+        }
+    }
+
+    pub(crate) fn from_wire_debug_probe_selector(
+        selector: probe_rs_rpc::probe::DebugProbeSelector,
+    ) -> probe_rs::probe::DebugProbeSelector {
+        match selector {
+            probe_rs_rpc::probe::DebugProbeSelector::Usb(selector) => {
+                probe_rs::probe::DebugProbeSelector::Usb(from_wire_usb_selector(selector))
+            }
+            probe_rs_rpc::probe::DebugProbeSelector::Tcp(address) => {
+                probe_rs::probe::DebugProbeSelector::Tcp(from_wire_tcp_address(address))
+            }
+        }
+    }
+
+    fn to_wire_usb_selector(
+        selector: probe_rs::probe::UsbSelector,
+    ) -> probe_rs_rpc::probe::UsbSelector {
+        probe_rs_rpc::probe::UsbSelector {
             vendor_id: selector.vendor_id,
             product_id: selector.product_id,
             serial_number: selector.serial_number,
@@ -609,16 +650,34 @@ pub(crate) mod convert {
         }
     }
 
-    pub(crate) fn from_wire_debug_probe_selector(
-        selector: probe_rs_rpc::probe::DebugProbeSelector,
-    ) -> probe_rs::probe::DebugProbeSelector {
-        probe_rs::probe::DebugProbeSelector::Usb(probe_rs::probe::UsbSelector {
+    fn from_wire_usb_selector(
+        selector: probe_rs_rpc::probe::UsbSelector,
+    ) -> probe_rs::probe::UsbSelector {
+        probe_rs::probe::UsbSelector {
             vendor_id: selector.vendor_id,
             product_id: selector.product_id,
             serial_number: selector.serial_number,
             interface: selector.interface,
             usb_location: selector.usb_location,
-        })
+        }
+    }
+
+    fn to_wire_tcp_address(
+        address: probe_rs::probe::TcpAddress,
+    ) -> probe_rs_rpc::probe::TcpAddress {
+        probe_rs_rpc::probe::TcpAddress {
+            driver: address.driver,
+            address: address.address,
+        }
+    }
+
+    fn from_wire_tcp_address(
+        address: probe_rs_rpc::probe::TcpAddress,
+    ) -> probe_rs::probe::TcpAddress {
+        probe_rs::probe::TcpAddress {
+            driver: address.driver,
+            address: address.address,
+        }
     }
 
     impl From<&AttachRequest> for ProbeOptions {
