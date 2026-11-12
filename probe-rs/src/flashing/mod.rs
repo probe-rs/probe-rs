@@ -62,6 +62,7 @@ use builder::*;
 pub use builder::{FlashDataBlockSpan, FlashFill, FlashLayout, FlashPage, FlashSector};
 pub use compare::{
     CompareContext, CompareCost, CompareOutcome, FlashCompare, Outside, SectorCheck,
+    compare_with_signatures,
 };
 pub use download::*;
 pub use erase::*;
