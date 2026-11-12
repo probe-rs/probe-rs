@@ -234,21 +234,15 @@ impl LimitedLister {
         }
     }
 
+    /// Whether the access list lets clients use the probe that `selector` selects. An entry
+    /// covers a probe as a selector would select it: `VID:PID` every serial number of that
+    /// probe, `tcp://DRIVER@ADDRESS` that one TCP probe.
     fn is_allowed(&self, selector: &DebugProbeSelector) -> bool {
-        let DebugProbeSelector::Usb(selector) = selector;
-        // We aren't using `.to_string()` because it doesn't append an empty serial when missing.
-        let sel_without_serial = format!("{:04x}:{:04x}", selector.vendor_id, selector.product_id);
-        let mut sel_with_serial = format!("{sel_without_serial}:");
-        if let Some(sn) = selector.serial_number.as_deref() {
-            sel_with_serial.push_str(sn);
-        }
-
-        let matching = |s: &String| s == &sel_with_serial || s == &sel_without_serial;
-
+        let covers = |entry: &DebugProbeSelector| entry.matches_selector(selector);
         match &self.probe_access {
             ProbeAccess::All => true,
-            ProbeAccess::Allow(allow) => allow.iter().any(matching),
-            ProbeAccess::Deny(deny) => !deny.iter().any(matching),
+            ProbeAccess::Allow(allow) => allow.iter().any(covers),
+            ProbeAccess::Deny(deny) => !deny.iter().any(covers),
         }
     }
 }
@@ -278,8 +272,10 @@ impl ProbeLister for LimitedLister {
 pub(crate) enum ProbeAccess {
     #[default]
     All,
-    Allow(Vec<String>),
-    Deny(Vec<String>),
+    /// Only the probes that these selectors select.
+    Allow(Vec<DebugProbeSelector>),
+    /// All probes except those that these selectors select.
+    Deny(Vec<DebugProbeSelector>),
 }
 
 /// Semihosting access to the files of the server host.
@@ -732,6 +728,24 @@ mod tests {
     use super::*;
     use postcard_rpc::header::VarKeyKind;
     use probe_rs_rpc::{RttTopic, monitor::RttEvent};
+
+    #[test]
+    fn access_lists_cover_probes_as_selectors_do() {
+        let selector = |s: &str| s.parse::<DebugProbeSelector>().unwrap();
+
+        let allow = LimitedLister::new(ProbeAccess::Allow(vec![
+            selector("0483:3748"),
+            selector("tcp://cmsis-dap@host:4441"),
+        ]));
+        assert!(allow.is_allowed(&selector("0483:3748:ABC")));
+        assert!(!allow.is_allowed(&selector("0483:374b:ABC")));
+        assert!(allow.is_allowed(&selector("tcp://cmsis-dap@host:4441")));
+        assert!(!allow.is_allowed(&selector("tcp://xvc@host:4441")));
+
+        let deny = LimitedLister::new(ProbeAccess::Deny(vec![selector("0483:3748:ABC")]));
+        assert!(!deny.is_allowed(&selector("0483:3748:ABC")));
+        assert!(deny.is_allowed(&selector("0483:3748:DEF")));
+    }
 
     #[tokio::test]
     async fn run_blocking_publishes_every_event_before_it_returns() {

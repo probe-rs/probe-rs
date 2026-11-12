@@ -150,7 +150,9 @@ pub async fn attach_request(
         )
         .await?;
         // The probe gets a new USB device address when it enumerates again.
-        probe.usb_location = None;
+        if let probe_rs_rpc::probe::ProbeTransport::Usb(usb) = &mut probe.transport {
+            usb.usb_location = None;
+        }
     }
 
     Ok(AttachRequest {
