@@ -3,6 +3,7 @@
 use crate::{
     architecture::arm::{
         ApAddress, ArmDebugInterface, ArmError, FullyQualifiedApAddress,
+        ap::CSW,
         core::armv7m::Dhcsr,
         dp::DpAddress,
         memory::ArmMemoryInterface,
@@ -84,6 +85,8 @@ pub trait Nrf: Sync + Send + Debug {
 const RESET: u64 = 0x00;
 const ERASEALL: u64 = 0x04;
 const ERASEALLSTATUS: u64 = 0x08;
+const ERASEALL_STATUS_POLL_LIMIT: usize = 150;
+const ERASEALL_STATUS_POLL_INTERVAL: Duration = Duration::from_millis(100);
 
 const APPLICATION_SPU_PERIPH_PERM: u64 = 0x50003800;
 
@@ -133,10 +136,168 @@ impl<T: ArmMemoryInterface + ?Sized> NetworkForceoffInterface for T {
     }
 }
 
+trait CtrlApRecoveryInterface {
+    fn read_recovery_register(
+        &mut self,
+        ctrl_ap: &FullyQualifiedApAddress,
+        register: u64,
+    ) -> Result<u32, ArmError>;
+    fn write_recovery_register(
+        &mut self,
+        ctrl_ap: &FullyQualifiedApAddress,
+        register: u64,
+        value: u32,
+    ) -> Result<(), ArmError>;
+    fn flush_recovery(&mut self) -> Result<(), ArmError>;
+    fn sleep_recovery(&mut self, duration: Duration);
+    fn restore_network_after_erase(&mut self, access: &NetworkEraseAccess) -> Result<(), ArmError>;
+}
+
+#[derive(Clone, Debug)]
+struct NetworkEraseAccess {
+    application_ahb_ap: FullyQualifiedApAddress,
+    network_ahb_ap: FullyQualifiedApAddress,
+}
+
+#[derive(Debug)]
+enum PostEraseNetworkAccess {
+    NotRequired,
+    Restore(NetworkEraseAccess),
+    MissingMapping,
+}
+
+impl<T: ArmDebugInterface + ?Sized> CtrlApRecoveryInterface for T {
+    fn read_recovery_register(
+        &mut self,
+        ctrl_ap: &FullyQualifiedApAddress,
+        register: u64,
+    ) -> Result<u32, ArmError> {
+        self.read_raw_ap_register(ctrl_ap, register)
+    }
+
+    fn write_recovery_register(
+        &mut self,
+        ctrl_ap: &FullyQualifiedApAddress,
+        register: u64,
+        value: u32,
+    ) -> Result<(), ArmError> {
+        self.write_raw_ap_register(ctrl_ap, register, value)
+    }
+
+    fn flush_recovery(&mut self) -> Result<(), ArmError> {
+        self.flush()
+    }
+
+    fn sleep_recovery(&mut self, duration: Duration) {
+        std::thread::sleep(duration);
+    }
+
+    fn restore_network_after_erase(&mut self, access: &NetworkEraseAccess) -> Result<(), ArmError> {
+        {
+            let mut application_interface = self.memory_interface(&access.application_ahb_ap)?;
+            set_network_core_running(&mut *application_interface)?;
+        }
+
+        let started = Instant::now();
+        loop {
+            let csw: CSW = self
+                .read_raw_ap_register(&access.network_ahb_ap, 0x00)?
+                .try_into()?;
+            if csw.DeviceEn() {
+                return Ok(());
+            }
+            if started.elapsed() >= NETWORK_CORE_ACCESS_TIMEOUT {
+                return Err(ArmDebugSequenceError::custom(
+                    "Network core did not become accessible after chip erase",
+                )
+                .into());
+            }
+            std::thread::sleep(Duration::from_millis(1));
+        }
+    }
+}
+
+fn preserve_primary_error(
+    primary: Result<(), ArmError>,
+    cleanup: Result<(), ArmError>,
+    cleanup_context: &'static str,
+) -> Result<(), ArmError> {
+    match (primary, cleanup) {
+        (Err(primary), Err(cleanup)) => {
+            tracing::warn!(?cleanup, "{cleanup_context}");
+            Err(primary)
+        }
+        (Err(primary), Ok(())) => Err(primary),
+        (Ok(()), cleanup) => cleanup,
+    }
+}
+
+fn perform_reset_after_erase(
+    interface: &mut (impl CtrlApRecoveryInterface + ?Sized),
+    ctrl_ap: &FullyQualifiedApAddress,
+) -> Result<(), ArmError> {
+    let reset_result = (|| {
+        interface.write_recovery_register(ctrl_ap, RESET, 1)?;
+        interface.flush_recovery()?;
+        interface.write_recovery_register(ctrl_ap, RESET, 0)?;
+        interface.flush_recovery()
+    })();
+
+    if reset_result.is_ok() {
+        return Ok(());
+    }
+
+    // A failed or batched reset transaction must not leave the core held in
+    // reset. Preserve the original transport failure while reporting cleanup.
+    let cleanup_write = interface.write_recovery_register(ctrl_ap, RESET, 0);
+    let cleanup_flush = interface.flush_recovery();
+    let cleanup_result = preserve_primary_error(
+        cleanup_write,
+        cleanup_flush,
+        "CTRL-AP reset cleanup flush also failed",
+    );
+    preserve_primary_error(
+        reset_result,
+        cleanup_result,
+        "CTRL-AP reset cleanup also failed",
+    )
+}
+
+fn perform_erase_all(
+    interface: &mut (impl CtrlApRecoveryInterface + ?Sized),
+    ctrl_ap: &FullyQualifiedApAddress,
+    reset_after_erase: bool,
+) -> Result<(), ArmError> {
+    interface.write_recovery_register(ctrl_ap, ERASEALL, 1)?;
+    interface.flush_recovery()?;
+
+    for attempt in 0..=ERASEALL_STATUS_POLL_LIMIT {
+        if interface.read_recovery_register(ctrl_ap, ERASEALLSTATUS)? == 0 {
+            break;
+        }
+
+        if attempt == ERASEALL_STATUS_POLL_LIMIT {
+            return Err(ArmError::Timeout);
+        }
+        interface.sleep_recovery(ERASEALL_STATUS_POLL_INTERVAL);
+    }
+
+    if reset_after_erase {
+        tracing::debug!(?ctrl_ap, "Resetting core after erase operation");
+        let reset_result = perform_reset_after_erase(interface, ctrl_ap);
+        // Let the reset exit settle before callers attempt memory access,
+        // including after a reset transport error and best-effort deassertion.
+        interface.sleep_recovery(Duration::from_millis(20));
+        reset_result?;
+    }
+
+    Ok(())
+}
+
 /// Performs an erase all operation on the core.
 /// The `ap_address` must be of the ctrl ap of the core.
 fn erase_all(
-    arm_interface: &mut dyn ArmDebugInterface,
+    arm_interface: &mut (impl CtrlApRecoveryInterface + ?Sized),
     ap_address: &FullyQualifiedApAddress,
     permissions: &crate::Permissions,
     reset_after_erase: bool,
@@ -145,21 +306,7 @@ fn erase_all(
         .erase_all()
         .map_err(|MissingPermissions(desc)| ArmError::MissingPermissions(desc))?;
 
-    arm_interface.write_raw_ap_register(ap_address, ERASEALL, 1)?;
-
-    while arm_interface.read_raw_ap_register(ap_address, ERASEALLSTATUS)? != 0 {}
-
-    if reset_after_erase {
-        tracing::debug!("Performing a soft reset after erase operation");
-
-        arm_interface.write_raw_ap_register(ap_address, RESET, 1)?;
-        arm_interface.write_raw_ap_register(ap_address, RESET, 0)?;
-        std::thread::sleep(std::time::Duration::from_millis(20));
-
-        tracing::debug!("Soft reset complete");
-    }
-
-    Ok(())
+    perform_erase_all(arm_interface, ap_address, reset_after_erase)
 }
 
 /// Performs an erase all procedure to unlock the core.
@@ -442,13 +589,32 @@ fn initialize_core_access<T: Nrf + ?Sized>(
                 "Core {} is not accessible. Erase procedure will be started to recover access.",
                 core_index
             );
+            if is_network_core {
+                tracing::warn!(
+                    "CTRL-AP3 recovery erases application and network flash, UICR, RAM, and peripheral state"
+                );
+            }
 
-            operations.recover_core(
+            let recovery_result = operations.recover_core(
                 core_ctrl_ap_address,
                 permissions,
                 sequence.requires_soft_reset_after_erase(),
-            )?;
+            );
             quiesce_network_core |= is_network_core;
+
+            if is_network_core {
+                // AP3 reset makes the post-ERASEALL protection state take
+                // effect. Re-release FORCEOFF even when recovery reports an
+                // error, while preserving that primary recovery error.
+                let prepare_result = operations.prepare_network_core(default_ap).map(|_| ());
+                preserve_primary_error(
+                    recovery_result,
+                    prepare_result,
+                    "Network preparation after CTRL-AP3 recovery also failed",
+                )?;
+            } else {
+                recovery_result?;
+            }
 
             if !operations.is_core_accessible(
                 sequence,
@@ -456,25 +622,11 @@ fn initialize_core_access<T: Nrf + ?Sized>(
                 core_ctrl_ap_address,
                 is_network_core,
             )? {
-                tracing::warn!("Core is still not accessible after erase operation. Retrying");
-
-                operations.recover_core(
-                    core_ctrl_ap_address,
-                    permissions,
-                    sequence.requires_soft_reset_after_erase(),
-                )?;
-
-                if !operations.is_core_accessible(
-                    sequence,
-                    core_ahb_ap_address,
-                    core_ctrl_ap_address,
-                    is_network_core,
-                )? {
-                    return Err(ArmDebugSequenceError::custom(format!(
-                        "Could not access core {core_index}"
-                    ))
-                    .into());
-                }
+                // Do not silently issue a second destructive ERASEALL.
+                return Err(ArmDebugSequenceError::custom(format!(
+                    "Could not access core {core_index} after erase operation"
+                ))
+                .into());
             }
         }
 
@@ -525,13 +677,37 @@ impl<T: Nrf> ArmDebugSequence for T {
     }
 
     fn debug_erase_sequence(&self) -> Option<Arc<dyn DebugEraseSequence>> {
+        let core_aps = self.core_aps(&DpAddress::Default);
+        let post_erase_network_access = if self.has_network_core() {
+            let application_ahb_ap = core_aps
+                .iter()
+                .find(|(ahb_ap, _)| ahb_ap.ap() == &ApAddress::V1(0))
+                .map(|(ahb_ap, _)| ahb_ap.clone());
+            let network_ahb_ap = core_aps
+                .iter()
+                .find(|(ahb_ap, _)| ahb_ap.ap() == &ApAddress::V1(1))
+                .map(|(ahb_ap, _)| ahb_ap.clone());
+
+            match (application_ahb_ap, network_ahb_ap) {
+                (Some(application_ahb_ap), Some(network_ahb_ap)) => {
+                    PostEraseNetworkAccess::Restore(NetworkEraseAccess {
+                        application_ahb_ap,
+                        network_ahb_ap,
+                    })
+                }
+                _ => PostEraseNetworkAccess::MissingMapping,
+            }
+        } else {
+            PostEraseNetworkAccess::NotRequired
+        };
+
         Some(Arc::new(NrfDebugEraseSequence {
-            ctrl_aps: self
-                .core_aps(&DpAddress::Default)
+            ctrl_aps: core_aps
                 .into_iter()
                 .map(|(_ahb_ap, ctrl_ap)| ctrl_ap)
                 .collect(),
             reset_after_erase: self.requires_soft_reset_after_erase(),
+            post_erase_network_access,
         }))
     }
 }
@@ -548,6 +724,41 @@ impl<T: Nrf> ArmDebugSequence for T {
 struct NrfDebugEraseSequence {
     ctrl_aps: Vec<FullyQualifiedApAddress>,
     reset_after_erase: bool,
+    post_erase_network_access: PostEraseNetworkAccess,
+}
+
+fn perform_debug_erase_all(
+    interface: &mut (impl CtrlApRecoveryInterface + ?Sized),
+    ctrl_aps: &[FullyQualifiedApAddress],
+    permissions: &crate::Permissions,
+    reset_after_erase: bool,
+    post_erase_network_access: &PostEraseNetworkAccess,
+) -> Result<(), ArmError> {
+    let network_access = match post_erase_network_access {
+        PostEraseNetworkAccess::NotRequired => None,
+        PostEraseNetworkAccess::Restore(access) => Some(access),
+        PostEraseNetworkAccess::MissingMapping => {
+            return Err(ArmDebugSequenceError::custom(
+                "Dual-core nRF5340 target has incomplete application/network AP mappings",
+            )
+            .into());
+        }
+    };
+
+    let erase_result = ctrl_aps
+        .iter()
+        .try_for_each(|ctrl_ap| erase_all(interface, ctrl_ap, permissions, reset_after_erase));
+
+    if let Some(access) = network_access {
+        let restore_result = interface.restore_network_after_erase(access);
+        preserve_primary_error(
+            erase_result,
+            restore_result,
+            "Network restoration after CTRL-AP erase also failed",
+        )
+    } else {
+        erase_result
+    }
 }
 
 impl DebugEraseSequence for NrfDebugEraseSequence {
@@ -555,12 +766,13 @@ impl DebugEraseSequence for NrfDebugEraseSequence {
         // Chip erase is only requested by an explicit user action (`--chip-erase` or an erase
         // command), which stands in for the `erase_all` permission here.
         let permissions = crate::Permissions::new().allow_erase_all();
-
-        for ctrl_ap in &self.ctrl_aps {
-            erase_all(interface, ctrl_ap, &permissions, self.reset_after_erase)?;
-        }
-
-        Ok(())
+        perform_debug_erase_all(
+            interface,
+            &self.ctrl_aps,
+            &permissions,
+            self.reset_after_erase,
+            &self.post_erase_network_access,
+        )
     }
 }
 
@@ -613,7 +825,10 @@ mod tests {
 
     struct MockCoreUnlockOperations {
         network_release: NetworkCoreRelease,
+        network_prepare_calls: usize,
+        network_prepare_error: Option<(usize, ArmError)>,
         accessibility: std::collections::VecDeque<bool>,
+        recovery_error: Option<ArmError>,
         operations: Vec<UnlockOperation>,
     }
 
@@ -623,6 +838,14 @@ mod tests {
             _default_ap: &FullyQualifiedApAddress,
         ) -> Result<NetworkCoreRelease, ArmError> {
             self.operations.push(UnlockOperation::PrepareNetwork);
+            self.network_prepare_calls += 1;
+            if self
+                .network_prepare_error
+                .as_ref()
+                .is_some_and(|(call, _)| *call == self.network_prepare_calls)
+            {
+                return Err(self.network_prepare_error.take().unwrap().1);
+            }
             Ok(self.network_release)
         }
 
@@ -646,7 +869,7 @@ mod tests {
         ) -> Result<(), ArmError> {
             self.operations
                 .push(UnlockOperation::Recover(ctrl_ap_address.ap().clone()));
-            Ok(())
+            self.recovery_error.take().map_or(Ok(()), Err)
         }
 
         fn halt_core(&mut self, ahb_ap_address: &FullyQualifiedApAddress) -> Result<(), ArmError> {
@@ -683,7 +906,10 @@ mod tests {
         ] {
             let mut operations = MockCoreUnlockOperations {
                 network_release,
+                network_prepare_calls: 0,
+                network_prepare_error: None,
                 accessibility: [true, true].into(),
+                recovery_error: None,
                 operations: Vec::new(),
             };
 
@@ -706,7 +932,10 @@ mod tests {
         };
         let mut operations = MockCoreUnlockOperations {
             network_release: NetworkCoreRelease::Released,
+            network_prepare_calls: 0,
+            network_prepare_error: None,
             accessibility: [true].into(),
+            recovery_error: None,
             operations: Vec::new(),
         };
 
@@ -722,6 +951,429 @@ mod tests {
             operations.operations,
             [UnlockOperation::Check(ApAddress::V1(0))]
         );
+    }
+
+    #[test]
+    fn network_recovery_is_single_attempt_then_release_recheck_and_halt() {
+        let sequence = TestNrf {
+            core_aps: vec![(0, 2), (1, 3)],
+        };
+        let mut operations = MockCoreUnlockOperations {
+            network_release: NetworkCoreRelease::Released,
+            network_prepare_calls: 0,
+            network_prepare_error: None,
+            accessibility: [true, false, true].into(),
+            recovery_error: None,
+            operations: Vec::new(),
+        };
+
+        initialize_core_access(
+            &sequence,
+            &mut operations,
+            &FullyQualifiedApAddress::v1_with_default_dp(0),
+            &crate::Permissions::new(),
+        )
+        .unwrap();
+
+        assert_eq!(
+            operations.operations,
+            [
+                UnlockOperation::Check(ApAddress::V1(0)),
+                UnlockOperation::PrepareNetwork,
+                UnlockOperation::Check(ApAddress::V1(1)),
+                UnlockOperation::Recover(ApAddress::V1(3)),
+                UnlockOperation::PrepareNetwork,
+                UnlockOperation::Check(ApAddress::V1(1)),
+                UnlockOperation::Halt(ApAddress::V1(1)),
+            ]
+        );
+    }
+
+    #[test]
+    fn failed_network_recovery_is_not_retried() {
+        let sequence = TestNrf {
+            core_aps: vec![(0, 2), (1, 3)],
+        };
+        let mut operations = MockCoreUnlockOperations {
+            network_release: NetworkCoreRelease::Released,
+            network_prepare_calls: 0,
+            network_prepare_error: None,
+            accessibility: [true, false, false].into(),
+            recovery_error: None,
+            operations: Vec::new(),
+        };
+
+        assert!(
+            initialize_core_access(
+                &sequence,
+                &mut operations,
+                &FullyQualifiedApAddress::v1_with_default_dp(0),
+                &crate::Permissions::new(),
+            )
+            .is_err()
+        );
+
+        assert_eq!(
+            operations.operations,
+            [
+                UnlockOperation::Check(ApAddress::V1(0)),
+                UnlockOperation::PrepareNetwork,
+                UnlockOperation::Check(ApAddress::V1(1)),
+                UnlockOperation::Recover(ApAddress::V1(3)),
+                UnlockOperation::PrepareNetwork,
+                UnlockOperation::Check(ApAddress::V1(1)),
+            ]
+        );
+    }
+
+    #[test]
+    fn failed_network_recovery_still_releases_forceoff() {
+        let sequence = TestNrf {
+            core_aps: vec![(0, 2), (1, 3)],
+        };
+        let mut operations = MockCoreUnlockOperations {
+            network_release: NetworkCoreRelease::Released,
+            network_prepare_calls: 0,
+            network_prepare_error: Some((2, ArmError::OutOfBounds)),
+            accessibility: [true, false].into(),
+            recovery_error: Some(ArmError::Timeout),
+            operations: Vec::new(),
+        };
+
+        assert!(matches!(
+            initialize_core_access(
+                &sequence,
+                &mut operations,
+                &FullyQualifiedApAddress::v1_with_default_dp(0),
+                &crate::Permissions::new(),
+            ),
+            Err(ArmError::Timeout)
+        ));
+
+        assert_eq!(
+            operations.operations,
+            [
+                UnlockOperation::Check(ApAddress::V1(0)),
+                UnlockOperation::PrepareNetwork,
+                UnlockOperation::Check(ApAddress::V1(1)),
+                UnlockOperation::Recover(ApAddress::V1(3)),
+                UnlockOperation::PrepareNetwork,
+            ]
+        );
+    }
+
+    #[derive(Debug, PartialEq)]
+    enum RecoveryOperation {
+        Read(ApAddress, u64),
+        Write(ApAddress, u64, u32),
+        Flush,
+        Sleep(Duration),
+        RestoreNetwork(ApAddress, ApAddress),
+    }
+
+    struct MockCtrlApRecoveryInterface {
+        statuses: std::collections::VecDeque<u32>,
+        fail_at_operations: std::collections::BTreeSet<usize>,
+        network_restore_error: Option<ArmError>,
+        operations: Vec<RecoveryOperation>,
+    }
+
+    impl MockCtrlApRecoveryInterface {
+        fn new(statuses: impl IntoIterator<Item = u32>) -> Self {
+            Self {
+                statuses: statuses.into_iter().collect(),
+                fail_at_operations: Default::default(),
+                network_restore_error: None,
+                operations: Vec::new(),
+            }
+        }
+
+        fn should_fail(&self) -> bool {
+            self.fail_at_operations.contains(&self.operations.len())
+        }
+    }
+
+    impl CtrlApRecoveryInterface for MockCtrlApRecoveryInterface {
+        fn read_recovery_register(
+            &mut self,
+            ctrl_ap: &FullyQualifiedApAddress,
+            register: u64,
+        ) -> Result<u32, ArmError> {
+            self.operations
+                .push(RecoveryOperation::Read(ctrl_ap.ap().clone(), register));
+            if self.should_fail() {
+                return Err(ArmError::Timeout);
+            }
+            Ok(self.statuses.pop_front().unwrap_or(0))
+        }
+
+        fn write_recovery_register(
+            &mut self,
+            ctrl_ap: &FullyQualifiedApAddress,
+            register: u64,
+            value: u32,
+        ) -> Result<(), ArmError> {
+            self.operations.push(RecoveryOperation::Write(
+                ctrl_ap.ap().clone(),
+                register,
+                value,
+            ));
+            if self.should_fail() {
+                return Err(ArmError::Timeout);
+            }
+            Ok(())
+        }
+
+        fn flush_recovery(&mut self) -> Result<(), ArmError> {
+            self.operations.push(RecoveryOperation::Flush);
+            if self.should_fail() {
+                return Err(ArmError::Timeout);
+            }
+            Ok(())
+        }
+
+        fn sleep_recovery(&mut self, duration: Duration) {
+            self.operations.push(RecoveryOperation::Sleep(duration));
+        }
+
+        fn restore_network_after_erase(
+            &mut self,
+            access: &NetworkEraseAccess,
+        ) -> Result<(), ArmError> {
+            self.operations.push(RecoveryOperation::RestoreNetwork(
+                access.application_ahb_ap.ap().clone(),
+                access.network_ahb_ap.ap().clone(),
+            ));
+            if self.should_fail() {
+                return Err(ArmError::Timeout);
+            }
+            self.network_restore_error.take().map_or(Ok(()), Err)
+        }
+    }
+
+    #[test]
+    fn erase_all_polls_and_resets_with_flushed_edges() {
+        let ctrl_ap = FullyQualifiedApAddress::v1_with_default_dp(3);
+        let mut interface = MockCtrlApRecoveryInterface::new([1, 0]);
+
+        perform_erase_all(&mut interface, &ctrl_ap, true).unwrap();
+
+        assert_eq!(
+            interface.operations,
+            [
+                RecoveryOperation::Write(ApAddress::V1(3), ERASEALL, 1),
+                RecoveryOperation::Flush,
+                RecoveryOperation::Read(ApAddress::V1(3), ERASEALLSTATUS),
+                RecoveryOperation::Sleep(ERASEALL_STATUS_POLL_INTERVAL),
+                RecoveryOperation::Read(ApAddress::V1(3), ERASEALLSTATUS),
+                RecoveryOperation::Write(ApAddress::V1(3), RESET, 1),
+                RecoveryOperation::Flush,
+                RecoveryOperation::Write(ApAddress::V1(3), RESET, 0),
+                RecoveryOperation::Flush,
+                RecoveryOperation::Sleep(Duration::from_millis(20)),
+            ]
+        );
+    }
+
+    #[test]
+    fn erase_all_without_reset_stops_after_ready() {
+        let ctrl_ap = FullyQualifiedApAddress::v1_with_default_dp(4);
+        let mut interface = MockCtrlApRecoveryInterface::new([0]);
+
+        perform_erase_all(&mut interface, &ctrl_ap, false).unwrap();
+
+        assert_eq!(
+            interface.operations,
+            [
+                RecoveryOperation::Write(ApAddress::V1(4), ERASEALL, 1),
+                RecoveryOperation::Flush,
+                RecoveryOperation::Read(ApAddress::V1(4), ERASEALLSTATUS),
+            ]
+        );
+    }
+
+    #[test]
+    fn erase_all_timeout_is_bounded_and_does_not_reset() {
+        let ctrl_ap = FullyQualifiedApAddress::v1_with_default_dp(3);
+        let mut interface = MockCtrlApRecoveryInterface::new(std::iter::repeat_n(
+            1,
+            ERASEALL_STATUS_POLL_LIMIT + 1,
+        ));
+
+        assert!(matches!(
+            perform_erase_all(&mut interface, &ctrl_ap, true),
+            Err(ArmError::Timeout)
+        ));
+
+        assert_eq!(
+            interface
+                .operations
+                .iter()
+                .filter(|operation| matches!(operation, RecoveryOperation::Read(_, ERASEALLSTATUS)))
+                .count(),
+            ERASEALL_STATUS_POLL_LIMIT + 1
+        );
+        assert!(
+            !interface
+                .operations
+                .iter()
+                .any(|operation| matches!(operation, RecoveryOperation::Write(_, RESET, _)))
+        );
+        assert!(matches!(
+            interface.operations.last(),
+            Some(RecoveryOperation::Read(_, ERASEALLSTATUS))
+        ));
+    }
+
+    #[test]
+    fn reset_failures_retry_deassertion_and_flush() {
+        let ctrl_ap = FullyQualifiedApAddress::v1_with_default_dp(3);
+
+        for failed_operation in 4..=7 {
+            let mut interface = MockCtrlApRecoveryInterface::new([0]);
+            interface.fail_at_operations.insert(failed_operation);
+
+            assert!(perform_erase_all(&mut interface, &ctrl_ap, true).is_err());
+            assert_eq!(
+                &interface.operations[interface.operations.len() - 3..],
+                [
+                    RecoveryOperation::Write(ApAddress::V1(3), RESET, 0),
+                    RecoveryOperation::Flush,
+                    RecoveryOperation::Sleep(Duration::from_millis(20)),
+                ]
+            );
+        }
+    }
+
+    #[test]
+    fn debug_erase_restores_network_after_all_core_erases() {
+        let mut interface = MockCtrlApRecoveryInterface::new([0, 0]);
+        let ctrl_aps = [
+            FullyQualifiedApAddress::v1_with_default_dp(2),
+            FullyQualifiedApAddress::v1_with_default_dp(3),
+        ];
+        let network_access = PostEraseNetworkAccess::Restore(NetworkEraseAccess {
+            application_ahb_ap: FullyQualifiedApAddress::v1_with_default_dp(0),
+            network_ahb_ap: FullyQualifiedApAddress::v1_with_default_dp(1),
+        });
+
+        perform_debug_erase_all(
+            &mut interface,
+            &ctrl_aps,
+            &crate::Permissions::new().allow_erase_all(),
+            true,
+            &network_access,
+        )
+        .unwrap();
+
+        let erased_aps = interface
+            .operations
+            .iter()
+            .filter_map(|operation| match operation {
+                RecoveryOperation::Write(ap, ERASEALL, 1) => Some(ap.clone()),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(erased_aps, [ApAddress::V1(2), ApAddress::V1(3)]);
+        assert_eq!(
+            interface.operations.last(),
+            Some(&RecoveryOperation::RestoreNetwork(
+                ApAddress::V1(0),
+                ApAddress::V1(1),
+            ))
+        );
+    }
+
+    #[test]
+    fn debug_erase_restores_network_after_second_core_failure() {
+        let ctrl_aps = [
+            FullyQualifiedApAddress::v1_with_default_dp(2),
+            FullyQualifiedApAddress::v1_with_default_dp(3),
+        ];
+        let network_access = PostEraseNetworkAccess::Restore(NetworkEraseAccess {
+            application_ahb_ap: FullyQualifiedApAddress::v1_with_default_dp(0),
+            network_ahb_ap: FullyQualifiedApAddress::v1_with_default_dp(1),
+        });
+
+        for failed_operation in 9..=15 {
+            let mut interface = MockCtrlApRecoveryInterface::new([0, 0]);
+            interface.fail_at_operations.insert(failed_operation);
+            interface.network_restore_error = Some(ArmError::OutOfBounds);
+
+            let result = perform_debug_erase_all(
+                &mut interface,
+                &ctrl_aps,
+                &crate::Permissions::new().allow_erase_all(),
+                true,
+                &network_access,
+            );
+            assert!(
+                matches!(result, Err(ArmError::Timeout)),
+                "operation {failed_operation} returned {result:?}"
+            );
+            assert!(matches!(
+                interface.operations.last(),
+                Some(RecoveryOperation::RestoreNetwork(
+                    ApAddress::V1(0),
+                    ApAddress::V1(1)
+                ))
+            ));
+            assert_eq!(
+                interface
+                    .operations
+                    .iter()
+                    .filter_map(|operation| match operation {
+                        RecoveryOperation::Write(ap, ERASEALL, 1) => Some(ap.clone()),
+                        _ => None,
+                    })
+                    .collect::<Vec<_>>(),
+                [ApAddress::V1(2), ApAddress::V1(3)]
+            );
+        }
+    }
+
+    #[test]
+    fn debug_erase_restores_network_without_starting_ap3_after_ap2_failure() {
+        let mut interface = MockCtrlApRecoveryInterface::new([0, 0]);
+        interface.fail_at_operations.insert(7);
+        interface.network_restore_error = Some(ArmError::OutOfBounds);
+        let ctrl_aps = [
+            FullyQualifiedApAddress::v1_with_default_dp(2),
+            FullyQualifiedApAddress::v1_with_default_dp(3),
+        ];
+        let network_access = PostEraseNetworkAccess::Restore(NetworkEraseAccess {
+            application_ahb_ap: FullyQualifiedApAddress::v1_with_default_dp(0),
+            network_ahb_ap: FullyQualifiedApAddress::v1_with_default_dp(1),
+        });
+
+        assert!(matches!(
+            perform_debug_erase_all(
+                &mut interface,
+                &ctrl_aps,
+                &crate::Permissions::new().allow_erase_all(),
+                true,
+                &network_access,
+            ),
+            Err(ArmError::Timeout)
+        ));
+        assert_eq!(
+            interface
+                .operations
+                .iter()
+                .filter_map(|operation| match operation {
+                    RecoveryOperation::Write(ap, ERASEALL, 1) => Some(ap.clone()),
+                    _ => None,
+                })
+                .collect::<Vec<_>>(),
+            [ApAddress::V1(2)]
+        );
+        assert!(matches!(
+            interface.operations.last(),
+            Some(RecoveryOperation::RestoreNetwork(
+                ApAddress::V1(0),
+                ApAddress::V1(1)
+            ))
+        ));
     }
 
     #[derive(Debug, PartialEq)]

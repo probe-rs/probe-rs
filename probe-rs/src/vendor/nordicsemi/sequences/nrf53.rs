@@ -96,6 +96,13 @@ impl Nrf for Nrf5340 {
         self.core_aps.iter().any(|&(ahb_ap, _)| ahb_ap == 1)
     }
 
+    /// nRF5340 CTRL-AP ERASEALL makes access temporarily available only after
+    /// the next soft reset. See the nRF5340 Product Specification, CTRL-AP
+    /// "Erase all": <https://docs.nordicsemi.com/bundle/ps_nrf5340/page/ctrl-ap.html>.
+    fn requires_soft_reset_after_erase(&self) -> bool {
+        true
+    }
+
     fn ctrl_ap_for_core(
         &self,
         core_ap: &FullyQualifiedApAddress,
@@ -187,6 +194,7 @@ mod tests {
 
         assert_eq!(sequence.core_aps, vec![(0, 2), (1, 3)]);
         assert!(sequence.has_network_core());
+        assert!(sequence.requires_soft_reset_after_erase());
     }
 
     #[test]
