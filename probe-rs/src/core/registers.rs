@@ -1,6 +1,6 @@
 //! Core registers are represented by the `CoreRegister` struct, and collected in a `RegisterFile` for each of the supported architectures.
 
-use crate::{CoreType, Error};
+use crate::{CoreType, Error, InstructionSet};
 use serde::{Deserialize, Serialize};
 use std::{
     cmp::Ordering,
@@ -486,11 +486,13 @@ impl CoreRegisters {
     /// remote target through an RPC-backed `Core`). `fpu_support` and
     /// `floating_point_register_count` should reflect the actual target
     /// configuration, as some cores select different register files based on
-    /// FPU presence or the number of FP registers.
+    /// FPU presence or the number of FP registers. `instruction_set` selects
+    /// the RV32E register file; pass `None` if it is not known.
     pub fn for_core_type(
         core_type: CoreType,
         fpu_support: bool,
         floating_point_register_count: Option<usize>,
+        instruction_set: Option<InstructionSet>,
     ) -> &'static CoreRegisters {
         use crate::architecture::arm::core::registers::aarch32::{
             AARCH32_CORE_REGISTERS, AARCH32_WITH_FP_16_CORE_REGISTERS,
@@ -501,7 +503,7 @@ impl CoreRegisters {
             CORTEX_M_CORE_REGISTERS, CORTEX_M_WITH_FP_CORE_REGISTERS,
         };
         use crate::architecture::riscv::registers::{
-            RISCV_CORE_REGISTERS, RISCV_WITH_FP_CORE_REGISTERS,
+            RISCV_CORE_REGISTERS, RISCV_RV32E_CORE_REGISTERS, RISCV_WITH_FP_CORE_REGISTERS,
         };
         use crate::architecture::riscv::registers64::{
             RISCV64_CORE_REGISTERS, RISCV64_WITH_FP_CORE_REGISTERS,
@@ -529,7 +531,10 @@ impl CoreRegisters {
             // has been omitted.
             CoreType::Armv8a => &AARCH64_CORE_REGISTERS,
             CoreType::Riscv => {
-                if fpu_support {
+                // RV32E has no standard F extension, so it takes precedence over fpu_support
+                if let Some(InstructionSet::Riscv { e: true, .. }) = instruction_set {
+                    &RISCV_RV32E_CORE_REGISTERS
+                } else if fpu_support {
                     &RISCV_WITH_FP_CORE_REGISTERS
                 } else {
                     &RISCV_CORE_REGISTERS

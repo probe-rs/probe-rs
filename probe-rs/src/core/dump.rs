@@ -109,6 +109,7 @@ impl Processor for RiscvProcessor {
             xlen: Xlen::X32,
             c: false,
             f: false,
+            e: false,
         }
     }
     fn core_type(&self) -> CoreType {
@@ -363,6 +364,7 @@ impl CoreDump {
             self.core_type,
             self.fpu_support,
             self.floating_point_register_count,
+            Some(self.instruction_set),
         )
     }
 }

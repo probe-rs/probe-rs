@@ -123,6 +123,8 @@ pub enum InstructionSet {
         /// The F extension: single-precision floating point. Also set for the D and Q extensions,
         /// which depend on F.
         f: bool,
+        /// The E base: only the registers x0-x15.
+        e: bool,
     },
     /// Xtensa instruction set
     Xtensa,
@@ -140,6 +142,8 @@ enum SerializedInstructionSet {
         c: bool,
         #[serde(default)]
         f: bool,
+        #[serde(default)]
+        e: bool,
     },
     Xtensa,
     RV32,
@@ -150,12 +154,19 @@ enum SerializedInstructionSet {
 
 impl From<SerializedInstructionSet> for InstructionSet {
     fn from(value: SerializedInstructionSet) -> Self {
-        let riscv = |xlen, c| InstructionSet::Riscv { xlen, c, f: false };
+        let riscv = |xlen, c| InstructionSet::Riscv {
+            xlen,
+            c,
+            f: false,
+            e: false,
+        };
         match value {
             SerializedInstructionSet::Thumb2 => InstructionSet::Thumb2,
             SerializedInstructionSet::A32 => InstructionSet::A32,
             SerializedInstructionSet::A64 => InstructionSet::A64,
-            SerializedInstructionSet::Riscv { xlen, c, f } => InstructionSet::Riscv { xlen, c, f },
+            SerializedInstructionSet::Riscv { xlen, c, f, e } => {
+                InstructionSet::Riscv { xlen, c, f, e }
+            }
             SerializedInstructionSet::Xtensa => InstructionSet::Xtensa,
             SerializedInstructionSet::RV32 => riscv(Xlen::X32, false),
             SerializedInstructionSet::RV32C => riscv(Xlen::X32, true),
@@ -184,6 +195,8 @@ impl InstructionSet {
                     c: features.contains('c'),
                     // G is IMAFD.
                     f: features.contains('f') || features.contains('g'),
+                    // The base ISA letter comes first, for example `riscv32emc`.
+                    e: features.starts_with('e'),
                 })
             }
         }
@@ -218,13 +231,17 @@ impl InstructionSet {
 
         match (*self, instr_set) {
             (
-                InstructionSet::Riscv { xlen, c, f },
+                InstructionSet::Riscv { xlen, c, f, e },
                 InstructionSet::Riscv {
                     xlen: image_xlen,
                     c: image_c,
                     f: image_f,
+                    e: image_e,
                 },
-            ) => xlen == image_xlen && (c || !image_c) && (f || !image_f),
+            ) => {
+                // RV32E code uses a subset of the RV32I registers, so RV32I cores also run it.
+                xlen == image_xlen && (c || !image_c) && (f || !image_f) && (!e || image_e)
+            }
             _ => false,
         }
     }
@@ -582,19 +599,23 @@ mod tests {
 
     #[test]
     fn riscv_target_triples() {
-        let riscv = |xlen, c, f| Some(InstructionSet::Riscv { xlen, c, f });
+        let riscv = |xlen, c, f, e| Some(InstructionSet::Riscv { xlen, c, f, e });
         let from = InstructionSet::from_target_triple;
         assert_eq!(
             from("riscv32imac-unknown-none-elf"),
-            riscv(Xlen::X32, true, false)
+            riscv(Xlen::X32, true, false, false)
         );
         assert_eq!(
             from("riscv32imafc-unknown-none-elf"),
-            riscv(Xlen::X32, true, true)
+            riscv(Xlen::X32, true, true, false)
+        );
+        assert_eq!(
+            from("riscv32emc-unknown-none-elf"),
+            riscv(Xlen::X32, true, false, true)
         );
         assert_eq!(
             from("riscv64gc-unknown-none-elf"),
-            riscv(Xlen::X64, true, true)
+            riscv(Xlen::X64, true, true, false)
         );
     }
 
@@ -604,9 +625,22 @@ mod tests {
             xlen: Xlen::X32,
             c: true,
             f,
+            e: false,
         };
         assert!(riscv(true).is_compatible(riscv(false)));
         assert!(!riscv(false).is_compatible(riscv(true)));
+    }
+
+    #[test]
+    fn riscv_e_compatibility() {
+        let riscv = |e| InstructionSet::Riscv {
+            xlen: Xlen::X32,
+            c: true,
+            f: false,
+            e,
+        };
+        assert!(riscv(false).is_compatible(riscv(true)));
+        assert!(!riscv(true).is_compatible(riscv(false)));
     }
 
     fn family_with_region_port(port: &str) -> ChipFamily {
