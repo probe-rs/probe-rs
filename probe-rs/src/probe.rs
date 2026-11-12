@@ -3,6 +3,7 @@ mod bits;
 pub(crate) mod common;
 pub mod usb_util;
 
+#[cfg(feature = "serialport")]
 pub mod blackmagic;
 pub mod ch347;
 pub mod cmsisdap;
@@ -15,6 +16,7 @@ pub mod jtag;
 pub mod list;
 pub(crate) mod queue;
 mod selector;
+#[cfg(feature = "serialport")]
 pub mod sifliuart;
 pub mod stlink;
 pub mod swd;
@@ -69,6 +71,7 @@ const LOW_TARGET_VOLTAGE_WARNING_THRESHOLD: f32 = 1.4;
 
 static DRIVERS: LazyLock<RwLock<Vec<&'static dyn ProbeFactory>>> = LazyLock::new(|| {
     let probes: Vec<&'static dyn ProbeFactory> = vec![
+        #[cfg(feature = "serialport")]
         &blackmagic::BlackMagicProbeFactory,
         // Before CMSIS-DAP, which also opens the XDS110.
         &xds110::Xds110Factory,
@@ -77,6 +80,7 @@ static DRIVERS: LazyLock<RwLock<Vec<&'static dyn ProbeFactory>>> = LazyLock::new
         &stlink::StLinkFactory,
         &jlink::JLinkFactory,
         &wlink::WchLinkFactory,
+        #[cfg(feature = "serialport")]
         &sifliuart::SifliUartFactory,
         &glasgow::GlasgowFactory,
         &ch347::Ch347Factory,
