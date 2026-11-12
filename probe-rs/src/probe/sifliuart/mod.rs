@@ -10,7 +10,7 @@ use crate::probe::sifliuart::arm::SifliUartArmDebug;
 use crate::probe::usb_util::{UsbSerialPort, usb_serial_ports};
 use crate::probe::{
     DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, ProbeCreationError,
-    ProbeFactory, WireProtocol, list::ProbeListItem,
+    ProbeFactory, ProbeTransport, UsbProbeInfo, WireProtocol, list::ProbeListItem,
 };
 use serialport::SerialPort;
 use std::io::{BufReader, BufWriter, Read, Write};
@@ -391,14 +391,16 @@ impl SifliUartFactory {
 
         Some(DebugProbeInfo {
             identifier: "Sifli uart debug probe".to_string(),
-            vendor_id: port.info.vid,
-            product_id: port.info.pid,
-            // The port name is the serial number, so that the user can select the port.
-            serial_number: Some(port.port_name.clone()),
+            transport: ProbeTransport::Usb(UsbProbeInfo {
+                vendor_id: port.info.vid,
+                product_id: port.info.pid,
+                // The port name is the serial number, so that the user can select the port.
+                serial_number: Some(port.port_name.clone()),
+                interface: port.info.interface,
+                is_hid_interface: false,
+                usb_location: None,
+            }),
             probe_factory: &SifliUartFactory,
-            interface: port.info.interface,
-            is_hid_interface: false,
-            usb_location: None,
         })
     }
 

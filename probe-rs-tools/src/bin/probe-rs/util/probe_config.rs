@@ -4,7 +4,7 @@ use std::{any::Any, collections::HashMap};
 
 use anyhow::Context as _;
 use probe_rs::probe::{
-    DebugProbeError, DebugProbeSelector, Probe, WireProtocol,
+    DebugProbeError, DebugProbeSelector, Probe, ProbeTransport, WireProtocol,
     ch347::{Ch347, Ch347Config},
     ftdi::{FtdiConfig, FtdiProbe},
     list::{ProbeListItem, ProbeLister, default_probe_index},
@@ -296,7 +296,8 @@ impl<L: ProbeLister> ConfiguredLister<L> {
             let list = self.inner.list(Some(&selector));
             if let Some(index) = default_probe_index(&list) {
                 let DebugProbeSelector::Usb(usb) = &mut selector;
-                usb.serial_number = list[index].serial_number.clone();
+                let ProbeTransport::Usb(info) = &list[index].transport;
+                usb.serial_number = info.serial_number.clone();
             }
         }
         selector
