@@ -839,11 +839,11 @@ impl<X: XlenMode> CoreInterface for RiscvCore<'_, X> {
     }
 
     fn registers(&self) -> &'static CoreRegisters {
-        let fp_present = matches!(
-            self.state.instruction_set,
-            Some(InstructionSet::Riscv { f: true, .. })
-        );
-        X::registers(fp_present, self.state.rv32e)
+        let (fp_present, rv32e) = match self.state.instruction_set {
+            Some(InstructionSet::Riscv { f, e, .. }) => (f, e),
+            _ => (false, false),
+        };
+        X::registers(fp_present, rv32e)
     }
 
     fn program_counter(&self) -> &'static CoreRegister {
@@ -942,10 +942,6 @@ pub struct RiscvCoreState {
 
     /// The instruction set from `misa`, or `None` if `misa` was not read yet.
     instruction_set: Option<InstructionSet>,
-
-    /// Whether the core is RV32E (misa E extension), with only 16 integer registers. Set together
-    /// with `instruction_set`.
-    rv32e: bool,
 }
 
 impl RiscvCoreState {
@@ -956,7 +952,6 @@ impl RiscvCoreState {
             pc_written: false,
             semihosting_command: None,
             instruction_set: None,
-            rv32e: false,
         }
     }
 
@@ -977,9 +972,8 @@ impl RiscvCoreState {
             xlen: X::XLEN,
             c: isa_extensions & (1 << 2) != 0,
             f: isa_extensions & fp_mask != 0,
+            e: isa_extensions & (1 << 4) != 0,
         };
-        // The E bit is set on RV32E cores, which only have x0-x15.
-        self.rv32e = isa_extensions & (1 << 4) != 0;
         self.instruction_set = Some(instruction_set);
 
         Ok(instruction_set)

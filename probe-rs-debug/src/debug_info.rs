@@ -2689,6 +2689,7 @@ mod test {
             xlen: Xlen::X32,
             c: false,
             f: false,
+            e: false,
         });
 
         assert_eq!(

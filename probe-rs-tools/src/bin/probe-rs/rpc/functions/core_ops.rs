@@ -659,13 +659,14 @@ pub(crate) mod convert {
             InstructionSet::Thumb2 => WireInstructionSet::Thumb2,
             InstructionSet::A32 => WireInstructionSet::A32,
             InstructionSet::A64 => WireInstructionSet::A64,
-            InstructionSet::Riscv { xlen, c, f } => WireInstructionSet::Riscv {
+            InstructionSet::Riscv { xlen, c, f, e } => WireInstructionSet::Riscv {
                 xlen: match xlen {
                     Xlen::X32 => WireXlen::X32,
                     Xlen::X64 => WireXlen::X64,
                 },
                 c,
                 f,
+                e,
             },
             InstructionSet::Xtensa => WireInstructionSet::Xtensa,
         }
@@ -676,13 +677,14 @@ pub(crate) mod convert {
             WireInstructionSet::Thumb2 => InstructionSet::Thumb2,
             WireInstructionSet::A32 => InstructionSet::A32,
             WireInstructionSet::A64 => InstructionSet::A64,
-            WireInstructionSet::Riscv { xlen, c, f } => InstructionSet::Riscv {
+            WireInstructionSet::Riscv { xlen, c, f, e } => InstructionSet::Riscv {
                 xlen: match xlen {
                     WireXlen::X32 => Xlen::X32,
                     WireXlen::X64 => Xlen::X64,
                 },
                 c,
                 f,
+                e,
             },
             WireInstructionSet::Xtensa => InstructionSet::Xtensa,
         }

@@ -1,1 +1,1 @@
-`InstructionSet` has one `Riscv { xlen, c, f }` variant in place of `RV32`, `RV32C`, `RV64` and `RV64C`. probe-rs rejects images built for a RISC-V target with F on cores without F.
+`InstructionSet` has one `Riscv { xlen, c, f, e }` variant in place of `RV32`, `RV32C`, `RV64` and `RV64C`. probe-rs rejects images built for a RISC-V target with F on cores without F, and images built for an RV32I target on RV32E cores. `CoreRegisters::for_core_type` takes the instruction set of the core.
