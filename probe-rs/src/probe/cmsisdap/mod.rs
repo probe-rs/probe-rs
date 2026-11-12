@@ -107,10 +107,12 @@ impl ProbeFactory for CmsisDapFactory {
         if let Some(product) = product
             && tools::loses_pipelined_replies(&product)
         {
-            tracing::warn!(
-                "{product}: this firmware loses replies to parallel requests. \
-                 probe-rs sends one request at a time. Update the firmware for faster transfers."
-            );
+            if tools::firmware_update_helps(&product) {
+                tracing::warn!(
+                    "{product}: this firmware loses replies to parallel requests. \
+                     probe-rs sends one request at a time. Update the firmware for faster transfers."
+                );
+            }
             dap.packet_count = 1;
         }
 

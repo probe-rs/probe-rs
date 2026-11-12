@@ -467,13 +467,25 @@ fn is_known_cmsis_dap_dev(device: &DeviceInfo) -> bool {
         .any(|&(vid, pid)| device.vendor_id() == vid && device.product_id() == pid)
 }
 
+const MICROBIT: &str = "BBC micro:bit CMSIS-DAP";
+
+/// Whether newer firmware can make a probe that loses replies faster.
+///
+/// A deeper queue does not make the micro:bit faster, and no DAPLink release changes this.
+pub(super) fn firmware_update_helps(product: &str) -> bool {
+    product != MICROBIT
+}
+
 /// Whether the probe loses replies when it gets more than one request at a time.
 ///
 /// XDS110 firmware 3.0.0.22 reports 64 packet buffers, but drops some of the replies to parallel
 /// `DAP_TransferBlock` reads. Firmware 3.0.0.45 keeps all of them. The XDS110 shows its firmware
 /// version in the product string, for example "XDS110 (03.00.00.22) Embed with CMSIS-DAP".
+///
+/// The micro:bit V2.21 with DAPLink 0257 reports 8 packet buffers, but drops replies with 3 or more
+/// requests in flight.
 pub(super) fn loses_pipelined_replies(product: &str) -> bool {
-    if product == "IFMCU CMSIS-DAP" {
+    if product == "IFMCU CMSIS-DAP" || product == MICROBIT {
         return true;
     }
 
