@@ -1,8 +1,8 @@
 use probe_rs::{
     Core,
     semihosting::{
-        CloseRequest, FileLengthRequest, OpenRequest, ReadRequest, RemoveRequest, RenameRequest,
-        SeekRequest, SemihostingCommand, WriteRequest,
+        CloseRequest, FileLengthRequest, MAX_TRANSFER_LEN, OpenRequest, ReadRequest, RemoveRequest,
+        RenameRequest, SeekRequest, SemihostingCommand, WriteRequest,
     },
 };
 use probe_rs_rpc::monitor::SemihostingEvent;
@@ -225,6 +225,11 @@ impl SemihostingFileManager {
     }
 
     fn handle_open(&mut self, core: &mut Core<'_>, request: OpenRequest) -> anyhow::Result<()> {
+        if request.path_is_too_long() {
+            tracing::warn!("Target wanted to open a file with a too long path. Continuing...");
+            return Ok(());
+        }
+
         let path = request.path(core)?;
 
         let f = if path == ":tt" {
@@ -292,7 +297,7 @@ impl SemihostingFileManager {
             FileHandle::UnixStream(stream) => log.inspect(stream.write(&buf)),
         };
         if let Some(len) = len {
-            request.write_status(core, (buf.len() - len) as i32)?;
+            request.write_status(core, (request.bytes_to_write() - len as u32) as i32)?;
         }
 
         Ok(())
@@ -303,7 +308,7 @@ impl SemihostingFileManager {
             return Ok(());
         };
 
-        let mut buf = vec![0; request.bytes_to_read() as usize];
+        let mut buf = vec![0; request.bytes_to_read().min(MAX_TRANSFER_LEN) as usize];
         let len = match f {
             FileHandle::File(file) => log.inspect(file.read(&mut buf)),
             FileHandle::TcpStream(stream) => log.inspect(stream.read(&mut buf)),
@@ -383,7 +388,7 @@ impl SemihostingFileManager {
     }
 
     fn get_file_handle_entry(&mut self, handle: u32) -> Option<&mut Option<FileHandle>> {
-        self.file_handles.get_mut(handle as usize - 1)
+        self.file_handles.get_mut((handle as usize).checked_sub(1)?)
     }
 
     fn take_file_handle(&mut self, handle: u32) -> Option<FileHandle> {
@@ -500,6 +505,14 @@ mod test {
                 .unwrap();
 
         assert!(map_file(&options, "in.txt").is_err());
+    }
+
+    #[test]
+    fn handle_zero_is_invalid() {
+        let mut manager = SemihostingFileManager::new(SemihostingOptions::new());
+
+        assert!(manager.get_file_handle("read from", 0).is_none());
+        assert!(manager.take_file_handle(0).is_none());
     }
 
     #[test]

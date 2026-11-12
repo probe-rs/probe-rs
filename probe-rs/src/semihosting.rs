@@ -6,6 +6,19 @@ use std::{num::NonZeroU32, time::SystemTime};
 
 use crate::{Core, CoreInterface, Error, MemoryInterface, RegisterValue};
 
+/// The maximum number of bytes that one `SYS_READ` or `SYS_WRITE` transfers. The target sees a
+/// partial transfer, and can repeat the call for the rest.
+pub const MAX_TRANSFER_LEN: u32 = 64 * 1024;
+
+/// The maximum length of a path that a target can use.
+pub const MAX_PATH_LEN: u32 = 4 * 1024;
+
+/// The maximum number of bytes that a string from the target contains.
+const MAX_STRING_LEN: usize = 64 * 1024;
+
+/// The maximum size of a buffer from the target, for example a test list.
+const MAX_BUFFER_LEN: u32 = 16 * 1024 * 1024;
+
 /// Indicates the operation the target would like the debugger to perform.
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum SemihostingCommand {
@@ -197,6 +210,11 @@ impl OpenRequest {
         self.path.read(core)
     }
 
+    /// Returns `true` if the path is longer than [`MAX_PATH_LEN`].
+    pub fn path_is_too_long(&self) -> bool {
+        self.path.length.is_some_and(|len| len > MAX_PATH_LEN)
+    }
+
     /// Reads the raw mode from the target.
     pub fn mode(&self) -> &'static str {
         self.mode
@@ -261,9 +279,14 @@ impl WriteRequest {
         self.handle
     }
 
-    /// Reads the buffer from the target
+    /// Returns the number of bytes that the target wants to write.
+    pub fn bytes_to_write(&self) -> u32 {
+        self.len
+    }
+
+    /// Reads the buffer from the target, up to [`MAX_TRANSFER_LEN`] bytes.
     pub fn read(&self, core: &mut Core<'_>) -> Result<Vec<u8>, Error> {
-        let mut buf = vec![0u8; self.len as usize];
+        let mut buf = vec![0u8; self.len.min(MAX_TRANSFER_LEN) as usize];
         core.read(self.bytes as u64, &mut buf)?;
         Ok(buf)
     }
@@ -455,6 +478,12 @@ impl Buffer {
 
     /// Reads the buffer contents from the target.
     pub fn read(&self, core: &mut dyn CoreInterface) -> Result<Vec<u8>, Error> {
+        if self.len > MAX_BUFFER_LEN {
+            return Err(Error::Other(format!(
+                "The semihosting buffer of {} bytes is too large",
+                self.len
+            )));
+        }
         let mut buf = vec![0u8; self.len as usize];
         core.read(self.address as u64, &mut buf[..])?;
         Ok(buf)
@@ -483,27 +512,34 @@ pub(crate) struct ZeroTerminatedString {
 }
 
 impl ZeroTerminatedString {
-    /// Reads the buffer contents from the target.
+    /// Reads the buffer contents from the target, up to [`MAX_STRING_LEN`] bytes.
     pub fn read(&self, core: &mut dyn CoreInterface) -> Result<String, Error> {
         let mut bytes = Vec::new();
+        let mut complete = false;
 
         if let Some(len) = self.length {
-            bytes = vec![0; len as usize];
+            complete = len as usize <= MAX_STRING_LEN;
+            bytes = vec![0; (len as usize).min(MAX_STRING_LEN)];
             core.read(self.address as u64, &mut bytes)?;
         } else {
             let mut buf = [0; 128];
             let mut from = self.address as u64;
 
-            loop {
+            while bytes.len() < MAX_STRING_LEN {
                 core.read(from, &mut buf)?;
                 if let Some(end) = buf.iter().position(|&x| x == 0) {
                     bytes.extend_from_slice(&buf[..end]);
+                    complete = true;
                     break;
                 }
 
                 bytes.extend_from_slice(&buf);
                 from += buf.len() as u64;
             }
+        }
+
+        if !complete {
+            tracing::warn!("Truncated a semihosting string to {MAX_STRING_LEN} bytes.");
         }
 
         Ok(String::from_utf8_lossy(&bytes).to_string())

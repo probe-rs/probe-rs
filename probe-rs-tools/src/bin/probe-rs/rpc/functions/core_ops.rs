@@ -403,6 +403,7 @@ fn handle_semihosting_impl(
             tracing::debug!("Semihosting request: write {request:?}");
             let handle = request.file_handle();
             let bytes = request.read(core)?;
+            let not_written = request.bytes_to_write() - bytes.len() as u32;
 
             if let Some(file) = sh.handles.get(&handle) {
                 let data = if file.mode.ends_with('b') {
@@ -419,7 +420,7 @@ fn handle_semihosting_impl(
                 };
 
                 events.push(WireSemihostingUiEvent::RttOutput { handle, data });
-                request.write_status(core, 0)?;
+                request.write_status(core, not_written as i32)?;
             }
         }
         SemihostingCommand::Errno(request) => {
