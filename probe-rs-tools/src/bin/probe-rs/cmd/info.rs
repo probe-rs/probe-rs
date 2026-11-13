@@ -57,6 +57,10 @@ pub struct Cmd {
         requires = "verbose"
     )]
     scan_chain: Vec<u8>,
+
+    /// When cJTAG is selected use the short-form TAP.7 selection sequence.
+    #[arg(long, default_value_t = false)]
+    short_form: bool,
 }
 
 fn parse_hex(src: &str) -> Result<u32, ParseIntError> {
@@ -69,7 +73,7 @@ impl Cmd {
             let protocols = if let Some(protocol) = self.common.protocol {
                 vec![protocol]
             } else {
-                vec![WireProtocol::Jtag, WireProtocol::Swd]
+                vec![WireProtocol::Jtag, WireProtocol::CJtag, WireProtocol::Swd]
             };
 
             let probe = select_probe(
@@ -94,6 +98,7 @@ impl Cmd {
                 let req = TargetInfoRequest {
                     target_sel: self.target_sel,
                     protocol: to_wire_protocol(protocol),
+                    short_form: self.short_form,
 
                     probe: probe.clone(),
                     speed: self.common.speed,

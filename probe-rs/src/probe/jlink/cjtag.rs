@@ -81,6 +81,8 @@ impl JLink {
         const OAC: [u8; 7] = [0xad, 0x65, 0x59, 0x16, 0x16, 0x80, 0x01];
         const CP1: [u8; 3] = [0x01, 0xd6, 0x00];
         const CP2: [u8; 1] = [0x1b];
+        const SHORT_OAC: [u8; 1] = [0x8c];
+        const SHORT_CP: [u8; 1] = [0x40];
 
         if !reset_sent {
             self.jtag_io_raw(&[0x1f], &ZEROS, 5)?;
@@ -101,14 +103,21 @@ impl JLink {
             self.set_tms(false)?;
         }
 
-        self.jtag_io_raw(&ZEROS, &ZEROS, 32)?;
-        self.cjtag_config(PARAM_CHECK_PACKET, 0)?;
-        self.jtag_io_raw(&OAC, &ZEROS, 50)?;
-        self.cjtag_config(PARAM_CHECK_PACKET, 0)?;
-        self.cjtag_config(PARAM_TRANSLATE, 1)?;
-        self.jtag_io_raw(&CP1, &ZEROS, 18)?;
-        self.cjtag_config(PARAM_CHECK_PACKET, 0)?;
-        self.jtag_io_raw(&CP2, &ZEROS, 6)?;
+        if !self.short_form {
+            self.jtag_io_raw(&ZEROS, &ZEROS, 32)?;
+            self.cjtag_config(PARAM_CHECK_PACKET, 0)?;
+            self.jtag_io_raw(&OAC, &ZEROS, 50)?;
+            self.cjtag_config(PARAM_CHECK_PACKET, 0)?;
+            self.cjtag_config(PARAM_TRANSLATE, 1)?;
+            self.jtag_io_raw(&CP1, &ZEROS, 18)?;
+            self.cjtag_config(PARAM_CHECK_PACKET, 0)?;
+            self.jtag_io_raw(&CP2, &ZEROS, 6)?;
+        } else {
+            self.jtag_io_raw(&SHORT_OAC, &ZEROS, 8)?;
+            self.cjtag_config(PARAM_CHECK_PACKET, 0)?;
+            self.cjtag_config(PARAM_TRANSLATE, 1)?;
+            self.jtag_io_raw(&SHORT_CP, &ZEROS, 4)?;
+        }
 
         self.cjtag.state = FullTapState::TestLogicReset;
         self.cjtag.parked = true;
