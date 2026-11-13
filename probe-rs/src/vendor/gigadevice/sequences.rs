@@ -214,7 +214,10 @@ impl ArmDebugSequence for Gd32H7Sequence {
         Self::update_memory_map(&mut target.memory_map, layout)
     }
 
-    fn debug_flash_sequence(&self) -> Option<Arc<dyn DebugFlashSequence>> {
+    fn debug_flash_sequence(
+        &self,
+        _session: &mut crate::Session,
+    ) -> Option<Arc<dyn DebugFlashSequence>> {
         Some(Arc::new(Gd32H7FlashSequence))
     }
 }

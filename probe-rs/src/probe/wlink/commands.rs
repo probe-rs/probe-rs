@@ -7,8 +7,12 @@ use super::{DMI_OP_NOP, DMI_OP_READ, DMI_OP_WRITE, RiscvChip, WchLinkError, WchL
 pub enum CommandId {
     /// Probe control
     Control = 0x0D,
-    /// Config chip, flash protection, etc
+    /// Config chip, flash protection, write memory region.
     ConfigChip = 0x01,
+    /// Flash operations.
+    Program = 0x02,
+    /// Extended flash protection queries (read/write protection)
+    ChipProtect = 0x06,
     /// Chip reset
     Reset = 0x0b,
     /// Set chip type and connection speed
@@ -38,6 +42,9 @@ pub(crate) trait WchLinkCommand {
 
     /// Parse the response to this request from received bytes.
     fn parse_response(&self, buffer: &[u8]) -> Result<Self::Response, super::WchLinkError> {
+        if buffer.len() < 3 || (buffer[0] == 0x82 && buffer[1] != Self::COMMAND_ID as u8) {
+            return Err(WchLinkError::InvalidPayload);
+        }
         Self::Response::from_raw(buffer)
     }
 }
@@ -53,6 +60,9 @@ pub(crate) trait WchLinkCommandResponse {
     where
         Self: Sized,
     {
+        if resp.len() < 3 {
+            return Err(WchLinkError::InvalidPayload);
+        }
         if resp[0] == 0x81 {
             let reason = resp[1];
             let len = resp[2] as usize;
@@ -342,16 +352,141 @@ impl WchLinkCommand for UnprotectFlash {
     }
 }
 
+/// Set the memory region for a following flash write (CMD 0x01).
+#[derive(Debug)]
+pub struct SetWriteMemoryRegion {
+    /// Absolute target address the firmware is written to.
+    pub start_addr: u32,
+    /// Length of the firmware image in bytes.
+    pub len: u32,
+}
+
+impl WchLinkCommand for SetWriteMemoryRegion {
+    const COMMAND_ID: CommandId = CommandId::ConfigChip;
+    type Response = ();
+
+    fn payload(&self) -> Vec<u8> {
+        let mut bytes = Vec::with_capacity(8);
+        bytes.extend_from_slice(&self.start_addr.to_be_bytes());
+        bytes.extend_from_slice(&self.len.to_be_bytes());
+        bytes
+    }
+}
+
+/// Flash operations (CMD 0x02).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Program {
+    /// Erase the whole code flash.
+    EraseFlash = 0x01,
+    /// Program the announced memory region.
+    WriteFlash = 0x02,
+    /// Upload the flash loader.
+    WriteFlashOP = 0x05,
+    /// Commit the uploaded flash loader. The probe answers `0x07` on success.
+    Unknown07AfterFlashOPWritten = 0x07,
+    /// Finish programming.
+    End = 0x08,
+}
+
+impl WchLinkCommand for Program {
+    const COMMAND_ID: CommandId = CommandId::Program;
+    type Response = u8;
+
+    fn payload(&self) -> Vec<u8> {
+        vec![*self as u8]
+    }
+}
+
+/// Query the flash read-protection status (CMD 0x06, subcommand 0x01).
+///
+/// Answers `0x01` when protected, `0x02` when unprotected.
+#[derive(Debug)]
+pub struct CheckReadProtect;
+
+impl WchLinkCommand for CheckReadProtect {
+    const COMMAND_ID: CommandId = CommandId::ChipProtect;
+    type Response = u8;
+
+    fn payload(&self) -> Vec<u8> {
+        vec![0x01]
+    }
+}
+
+/// Disable flash read protection (CMD 0x06, subcommand 0x02).
+#[derive(Debug)]
+pub struct UnprotectReadFlash;
+
+impl WchLinkCommand for UnprotectReadFlash {
+    const COMMAND_ID: CommandId = CommandId::ChipProtect;
+    type Response = ();
+
+    fn payload(&self) -> Vec<u8> {
+        vec![0x02]
+    }
+}
+
+/// Query the flash write-protection status (CMD 0x06, subcommand 0x04).
+///
+/// Answers `0x11` when write protected, `0x00` when unprotected.
+#[derive(Debug)]
+pub struct CheckWriteProtect;
+
+impl WchLinkCommand for CheckWriteProtect {
+    const COMMAND_ID: CommandId = CommandId::ChipProtect;
+    type Response = u8;
+
+    fn payload(&self) -> Vec<u8> {
+        vec![0x04]
+    }
+}
+
+/// Disable flash write protection (CMD 0x06, subcommand 0x02).
+#[derive(Debug)]
+pub struct UnprotectWriteFlash(pub u8);
+
+impl WchLinkCommand for UnprotectWriteFlash {
+    const COMMAND_ID: CommandId = CommandId::ChipProtect;
+    type Response = ();
+
+    fn payload(&self) -> Vec<u8> {
+        vec![0x02, self.0, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff]
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{SetRstPin, WchLinkCommand};
+    use super::*;
+
+    fn encoded<C: WchLinkCommand>(cmd: &C) -> Vec<u8> {
+        let mut buf = [0u8; 64];
+        let len = cmd.to_bytes(&mut buf).expect("encoding must fit");
+        buf[..len].to_vec()
+    }
 
     #[test]
     fn set_rst_pin_bytes() {
-        let mut buffer = [0u8; 8];
-        let len = SetRstPin::Low.to_bytes(&mut buffer).unwrap();
-        assert_eq!(buffer[..len], [0x81, 0x0d, 0x02, 0x0e, 0x13]);
-        let len = SetRstPin::Floating.to_bytes(&mut buffer).unwrap();
-        assert_eq!(buffer[..len], [0x81, 0x0d, 0x02, 0x0e, 0x15]);
+        assert_eq!(encoded(&SetRstPin::Low), [0x81, 0x0d, 0x02, 0x0e, 0x13]);
+        assert_eq!(
+            encoded(&SetRstPin::Floating),
+            [0x81, 0x0d, 0x02, 0x0e, 0x15]
+        );
+    }
+
+    #[test]
+    fn response_parsers_reject_malformed_frames() {
+        assert!(
+            Program::WriteFlash
+                .parse_response(&[0x82, 0x03, 1, 2])
+                .is_err()
+        );
+        assert_eq!(
+            Program::WriteFlash
+                .parse_response(&[0x82, 0x02, 1, 2])
+                .unwrap(),
+            2
+        );
+        for len in 0..3 {
+            assert!(u8::from_raw(&[0x82, 0x02, 1][..len]).is_err());
+        }
     }
 }

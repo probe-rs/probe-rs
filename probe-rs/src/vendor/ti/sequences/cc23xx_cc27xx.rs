@@ -215,7 +215,7 @@ impl ArmDebugSequence for CC23xxCC27xx {
         Ok(())
     }
 
-    fn debug_flash_sequence(&self) -> Option<Arc<dyn DebugFlashSequence>> {
+    fn debug_flash_sequence(&self, _session: &mut Session) -> Option<Arc<dyn DebugFlashSequence>> {
         Some(Arc::new(CC23xxCC27xxFlashSequence::new_with_flag(
             Arc::clone(&self.saci_flash_mode),
         )))
