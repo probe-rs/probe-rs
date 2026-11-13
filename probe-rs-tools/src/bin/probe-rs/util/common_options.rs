@@ -209,7 +209,7 @@ pub struct ProbeOptions {
 
     /// When cJTAG is selected use the short-form TAP.7 selection sequence.
     #[arg(long)]
-    pub short_form: Option<bool>,
+    pub short_form: bool,
 }
 
 impl ProbeOptions {
@@ -405,8 +405,8 @@ impl<'r> LoadedProbeOptions<'r> {
             tracing::info!("Protocol speed {} kHz", protocol_speed);
         }
 
-        if let Some(short_form) = self.0.short_form {
-            let options = JtagOptions { short_form };
+        if self.0.short_form {
+            let options = JtagOptions { short_form: true };
             probe.set_jtag_options(options).map_err(|error| {
                 OperationError::FailedToSelectJtagOptions {
                     source: error,

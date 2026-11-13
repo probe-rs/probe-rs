@@ -1154,7 +1154,7 @@ pub(crate) mod convert {
                 allow_erase_all: false,
                 attach_timeout: None,
                 target_serial: false,
-                short_form: Some(request.short_form),
+                short_form: request.short_form,
             }
         }
     }

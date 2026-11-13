@@ -354,6 +354,7 @@ mod tests {
                 resume_target: false,
                 wait_for_probe,
                 target_serial: false,
+                short_form: false,
             })
             .await;
 
@@ -649,7 +650,7 @@ pub(crate) mod convert {
                 // client can cancel it.
                 attach_timeout: None,
                 target_serial: false,
-                short_form: Some(request.short_form),
+                short_form: request.short_form,
             }
         }
     }

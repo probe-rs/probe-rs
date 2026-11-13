@@ -85,7 +85,7 @@ impl Cmd {
                 let mut requests = vec![TargetInfoRequest {
                     target_sel: self.target_sel,
                     protocol: to_wire_protocol(protocol),
-                    short_form: self.common.short_form.unwrap_or_default(),
+                    short_form: self.common.short_form,
 
                     probe: probe.clone(),
                     speed: self.common.speed,
@@ -93,9 +93,9 @@ impl Cmd {
                     scan_chain: self.scan_chain.clone(),
                 }];
 
-                if protocol == WireProtocol::CJtag && self.common.short_form.is_none() {
+                if protocol == WireProtocol::CJtag {
                     requests.push(TargetInfoRequest {
-                        short_form: true,
+                        short_form: !self.common.short_form,
                         ..requests[0].clone()
                     });
                 }

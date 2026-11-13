@@ -271,7 +271,7 @@ impl SessionConfig {
                 .attach_timeout
                 .and_then(|seconds| Duration::try_from_secs_f64(seconds).ok()),
             target_serial: false,
-            short_form: None,
+            short_form: false,
         }
     }
 }
