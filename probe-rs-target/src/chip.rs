@@ -23,14 +23,15 @@ impl ScanChainElement {
     }
 }
 
+/// JTAG scan mode
 #[derive(Default, Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum ScanMode {
     /// JTAG
     #[default]
     Jtag,
-    /// cJTAG OSCAN1
+    /// cJTAG OScan1
     Oscan1,
-    /// cJTAG OSCAN1 using short-form select sequence
+    /// cJTAG OScan1 using short-form select sequence
     Oscan1Short,
 }
 
@@ -70,6 +71,7 @@ pub struct Jtag {
     #[serde(default)]
     pub riscv_tunnel: Option<RiscvJtagTunnel>,
 
+    /// Describes the JTAG scan mode.
     #[serde(default)]
     pub scan_mode: ScanMode,
 }
