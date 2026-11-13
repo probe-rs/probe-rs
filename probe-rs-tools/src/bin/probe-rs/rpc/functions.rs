@@ -25,7 +25,7 @@ use crate::rpc::{
             boot, build, erase_all, erase_range, flash, load_region, new_flash_loader, verify,
         },
         info::{target_info, target_metadata},
-        memory::{read_bytes, read_memory, write_memory},
+        memory::{read_bytes, read_memory, write_bytes, write_memory},
         monitor::{monitor, write_serial},
         probe::{attach, list_probes, select_probe},
         reset::{reset, reset_and_halt, reset_target},
@@ -587,6 +587,7 @@ postcard_rpc::define_dispatch! {
         | WriteMemory16Endpoint            | async | write_memory               |
         | WriteMemory32Endpoint            | async | write_memory               |
         | WriteMemory64Endpoint            | async | write_memory               |
+        | WriteBytesEndpoint               | async | write_bytes                |
     };
     topics_in: {
         list: TOPICS_IN_LIST;
