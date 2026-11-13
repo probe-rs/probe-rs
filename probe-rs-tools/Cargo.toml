@@ -17,7 +17,7 @@ default-run = "probe-rs"
 
 [features]
 default = ["remote", "cmsisdap_v1"]
-cmsisdap_v1 = ["probe-rs/cmsisdap_v1"]
+cmsisdap_v1 = ["probe-rs/cmsisdap_v1", "probe-rs/hidapi-basic-udev"]
 # Include server/client functionality. Disable with `--no-default-features`.
 remote = ["dep:axum", "probe-rs-rpc/remote", "probe-rs-rpc-client/remote"]
 
