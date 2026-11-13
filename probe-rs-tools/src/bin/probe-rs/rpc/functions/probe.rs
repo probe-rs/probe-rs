@@ -649,6 +649,7 @@ pub(crate) mod convert {
                 // client can cancel it.
                 attach_timeout: None,
                 target_serial: false,
+                short_form: Some(request.short_form),
             }
         }
     }

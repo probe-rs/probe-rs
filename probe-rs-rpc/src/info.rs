@@ -36,7 +36,7 @@ pub struct TargetMetadataRequest {
     pub sessid: Key<Session>,
 }
 
-#[derive(Serialize, Deserialize, Schema)]
+#[derive(Clone, Serialize, Deserialize, Schema)]
 pub struct TargetInfoRequest {
     pub probe: DebugProbeEntry,
     pub speed: Option<u32>,
