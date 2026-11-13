@@ -322,6 +322,9 @@ pub(crate) fn ctag_to_jtag(chain: &mut JtagChain<'_>) -> Result<(), DebugProbeEr
     exchange_dr_value(chain, BitSequence::from_u64(2, 0xff))?;
     exchange_dr_value(chain, BitSequence::from_u64(9, 0xff))?;
 
+    // A target in 2-pin mode did not take the IR scan above.
+    chain.forget_loaded_ir();
+
     // Load IR with BYPASS so that future state transitions don't affect IR
     shift_ir_value(chain, IR_BYPASS)?;
 
@@ -378,6 +381,7 @@ mod tests {
         dr: VecDeque<bool>,
         captured: BitVec,
         captures: usize,
+        ir_captures: usize,
         tms: String,
         jtag_state: JtagChainState,
     }
@@ -391,6 +395,7 @@ mod tests {
                 dr: VecDeque::new(),
                 captured: BitVec::new(),
                 captures: 0,
+                ir_captures: 0,
                 tms: String::new(),
                 jtag_state: JtagChainState {
                     tap_state: TapState::RunTestIdle,
@@ -462,6 +467,9 @@ mod tests {
                 }
             }
             self.tap.update(tms);
+            if self.tap == OldJtagState::Ir(RegisterState::Capture) {
+                self.ir_captures += 1;
+            }
             if self.tap == OldJtagState::Dr(RegisterState::Capture) {
                 self.captures += 1;
                 self.dr = self
@@ -504,6 +512,15 @@ mod tests {
         assert_eq!(chain.tms, format!("100{}110", "0".repeat(3 * 32)));
         assert_eq!(chain.tap, OldJtagState::Idle);
         assert_eq!(chain.jtag_state.tap_state, TapState::RunTestIdle);
+    }
+
+    #[test]
+    fn the_switch_to_4_pin_loads_the_ir_again() {
+        let mut chain = IdcodeChain::new(vec![0x0B9B_E02F]);
+        super::ctag_to_jtag(&mut JtagChain::new(&mut chain)).unwrap();
+
+        // BYPASS before the switch, then BYPASS and IDCODE after it.
+        assert_eq!(chain.ir_captures, 3);
     }
 
     #[test]
