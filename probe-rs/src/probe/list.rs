@@ -46,15 +46,20 @@ pub fn default_probe_index<'a>(
     probes.all(|probe| same_device(first, probe)).then_some(0)
 }
 
-/// Whether two listed probes are the same USB device, as far as their location or serial number
-/// tells.
+/// Whether two listed probes are the same device: for USB, as far as their location or serial
+/// number tells.
 fn same_device(a: &DebugProbeInfo, b: &DebugProbeInfo) -> bool {
-    let (ProbeTransport::Usb(a), ProbeTransport::Usb(b)) = (&a.transport, &b.transport);
-    (a.vendor_id, a.product_id) == (b.vendor_id, b.product_id)
-        && match (&a.usb_location, &b.usb_location) {
-            (Some(a), Some(b)) => a == b,
-            _ => a.serial_number.is_some() && a.serial_number == b.serial_number,
+    match (&a.transport, &b.transport) {
+        (ProbeTransport::Usb(a), ProbeTransport::Usb(b)) => {
+            (a.vendor_id, a.product_id) == (b.vendor_id, b.product_id)
+                && match (&a.usb_location, &b.usb_location) {
+                    (Some(a), Some(b)) => a == b,
+                    _ => a.serial_number.is_some() && a.serial_number == b.serial_number,
+                }
         }
+        (ProbeTransport::Tcp(a), ProbeTransport::Tcp(b)) => a == b,
+        _ => false,
+    }
 }
 
 /// Moves the entries of a device that several drivers list next to its first entry. Devices keep
@@ -294,7 +299,9 @@ mod tests {
 
         let mut probes = [probe(Some("A"), None), probe(Some("A"), None)];
         for (probe, address) in probes.iter_mut().zip([1, 2]) {
-            let ProbeTransport::Usb(usb) = &mut probe.transport;
+            let ProbeTransport::Usb(usb) = &mut probe.transport else {
+                unreachable!()
+            };
             usb.usb_location = Some(("1".to_string(), address));
         }
         assert_eq!(default_probe_index(&probes), None);
@@ -315,7 +322,9 @@ mod tests {
         let grouped: Vec<_> = group_by_device(list.to_vec())
             .into_iter()
             .map(|item| {
-                let ProbeTransport::Usb(usb) = item.info.transport;
+                let ProbeTransport::Usb(usb) = item.info.transport else {
+                    unreachable!()
+                };
                 (usb.serial_number, usb.interface)
             })
             .collect();

@@ -148,7 +148,12 @@ fn probe_name(device: &nusb::DeviceInfo) -> String {
 
 impl ProbeFactory for Xds110Factory {
     fn open(&self, selector: &DebugProbeSelector) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
-        let DebugProbeSelector::Usb(selector) = selector;
+        // Probes of this driver are selected by VID:PID; other selectors are for other drivers.
+        let DebugProbeSelector::Usb(selector) = selector else {
+            return Err(DebugProbeError::ProbeCouldNotBeCreated(
+                ProbeCreationError::NotFound,
+            ));
+        };
         let devices = nusb::list_devices()
             .wait()
             .map_err(|e| ProbeCreationError::Usb(e.into()))?;

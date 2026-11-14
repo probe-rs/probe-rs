@@ -1520,7 +1520,12 @@ impl ProbeFactory for BlackMagicProbeFactory {
         &self,
         selector: &super::DebugProbeSelector,
     ) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
-        let super::DebugProbeSelector::Usb(selector) = selector;
+        // Probes of this driver are selected by VID:PID; other selectors are for other drivers.
+        let super::DebugProbeSelector::Usb(selector) = selector else {
+            return Err(DebugProbeError::ProbeCouldNotBeCreated(
+                ProbeCreationError::NotFound,
+            ));
+        };
         // Ensure the VID and PID match Black Magic Probes
         if selector.vendor_id != BLACK_MAGIC_PROBE_VID
             || selector.product_id != BLACK_MAGIC_PROBE_PID
@@ -1562,7 +1567,9 @@ impl ProbeFactory for BlackMagicProbeFactory {
             let Some(info) = black_magic_debug_port_info(&port_description) else {
                 continue;
             };
-            let ProbeTransport::Usb(info) = info.transport;
+            let ProbeTransport::Usb(info) = info.transport else {
+                continue;
+            };
 
             if selector.serial_number.is_some() && selector.serial_number != info.serial_number {
                 tracing::trace!(
@@ -1628,8 +1635,12 @@ impl ProbeFactory for BlackMagicProbeFactory {
 
     fn list_probes_filtered(&self, selector: Option<&DebugProbeSelector>) -> Vec<ProbeListItem> {
         // No selector - list probes as usual
-        let Some(DebugProbeSelector::Usb(selector)) = selector else {
+        let Some(selector) = selector else {
             return self.list_probes();
+        };
+        // Probes of this driver are selected by VID:PID; other selectors are for other drivers.
+        let DebugProbeSelector::Usb(selector) = selector else {
+            return vec![];
         };
 
         let vid_pid = (selector.vendor_id, selector.product_id);

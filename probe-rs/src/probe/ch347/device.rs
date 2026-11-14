@@ -113,6 +113,10 @@ impl Ch347Device {
     pub(crate) fn new_from_selector(
         selector: &DebugProbeSelector,
     ) -> Result<Self, DebugProbeError> {
+        // Probes of this driver are selected by VID:PID; other selectors are for other drivers.
+        let DebugProbeSelector::Usb(selector) = selector else {
+            return Err(ProbeCreationError::NotFound.into());
+        };
         let usb = |e: nusb::Error| ProbeCreationError::Usb(e.into());
         let devices = nusb::list_devices().wait().map_err(usb)?;
         let device = devices

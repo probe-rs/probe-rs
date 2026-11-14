@@ -132,7 +132,9 @@ mod tests {
 
         let probes = client.list_probes().await?;
         let is_probe = |p: &probe_rs_rpc::probe::DebugProbeEntry| {
-            let probe_rs_rpc::probe::ProbeTransport::Usb(usb) = &p.transport;
+            let probe_rs_rpc::probe::ProbeTransport::Usb(usb) = &p.transport else {
+                return false;
+            };
             usb.serial_number == serial
         };
         anyhow::ensure!(probes.iter().any(is_probe), "probe {serial} not listed");
