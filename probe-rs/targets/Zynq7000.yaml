@@ -66,7 +66,7 @@ variants:
     name: DDR
     range:
       start: 0x100000
-      end: 0x3fffffff
+      end: 0x40000000
     cores:
     - core0
     - core1
@@ -76,7 +76,7 @@ variants:
     name: QSPI
     range:
       start: 0xfc000000
-      end: 0xfcffffff
+      end: 0xfd000000
     cores:
     - core0
     - core1
