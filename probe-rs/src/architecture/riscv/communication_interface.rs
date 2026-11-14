@@ -1839,7 +1839,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
                 break Err(RiscvError::SystemBusAccess);
             }
             if !sbcs.sbbusyerror() {
-                break V::read_scheduled_result(self, &mut results);
+                break V::read_scheduled_result(self, &mut results.into_iter());
             }
             tracing::debug!("System bus was busy while reading, repeating operation");
             self.wait_for_sysbus_idle(sbcs, start)?;
@@ -1903,8 +1903,10 @@ impl<'state> RiscvCommunicationInterface<'state> {
 
             let sbcs = self.read_dm_register::<Sbcs>()?;
 
+            let mut read_results_iter = read_results.into_iter();
+
             for out in remaining.iter_mut() {
-                *out = V::read_scheduled_result(self, &mut read_results)?;
+                *out = V::read_scheduled_result(self, &mut read_results_iter)?;
             }
 
             // Check that the read was successful
@@ -2365,7 +2367,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
         let mut results = vec![];
         self.schedule_read_large_dtm_register::<V, Arg0>(&mut results)?;
 
-        V::read_scheduled_result(self, &mut results)
+        V::read_scheduled_result(self, &mut results.into_iter())
     }
 
     /// Perform multiple reads from consecutive memory locations
@@ -2415,7 +2417,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
             let mut results = vec![];
             self.schedule_read_large_dtm_register::<V, Arg0>(&mut results)?;
 
-            *out = V::read_scheduled_result(self, &mut results)?;
+            *out = V::read_scheduled_result(self, &mut results.into_iter())?;
 
             address = address.wrapping_add(V::WIDTH.byte_width() as u64);
         }
@@ -3554,7 +3556,7 @@ pub(crate) trait RiscvValue: std::fmt::Debug + Copy + Sized {
 
     fn read_scheduled_result(
         interface: &mut RiscvCommunicationInterface,
-        results: &mut Vec<Handle<CommandResult>>,
+        results: &mut impl Iterator<Item = Handle<CommandResult>>,
     ) -> Result<Self, RiscvError>;
 
     fn schedule_write_to_register<R>(
@@ -3581,9 +3583,13 @@ impl RiscvValue for u8 {
 
     fn read_scheduled_result(
         interface: &mut RiscvCommunicationInterface,
-        results: &mut Vec<Handle<CommandResult>>,
+        results: &mut impl Iterator<Item = Handle<CommandResult>>,
     ) -> Result<Self, RiscvError> {
-        let result = interface.dtm.read_deferred_result(results.remove(0))?;
+        let result = interface.dtm.read_deferred_result(
+            results
+                .next()
+                .ok_or(RiscvError::BatchedResultNotAvailable)?,
+        )?;
 
         Ok(result.into_u32() as u8)
     }
@@ -3615,9 +3621,13 @@ impl RiscvValue for u16 {
 
     fn read_scheduled_result(
         interface: &mut RiscvCommunicationInterface,
-        results: &mut Vec<Handle<CommandResult>>,
+        results: &mut impl Iterator<Item = Handle<CommandResult>>,
     ) -> Result<Self, RiscvError> {
-        let result = interface.dtm.read_deferred_result(results.remove(0))?;
+        let result = interface.dtm.read_deferred_result(
+            results
+                .next()
+                .ok_or(RiscvError::BatchedResultNotAvailable)?,
+        )?;
 
         Ok(result.into_u32() as u16)
     }
@@ -3649,9 +3659,13 @@ impl RiscvValue for u32 {
 
     fn read_scheduled_result(
         interface: &mut RiscvCommunicationInterface,
-        results: &mut Vec<Handle<CommandResult>>,
+        results: &mut impl Iterator<Item = Handle<CommandResult>>,
     ) -> Result<Self, RiscvError> {
-        let result = interface.dtm.read_deferred_result(results.remove(0))?;
+        let result = interface.dtm.read_deferred_result(
+            results
+                .next()
+                .ok_or(RiscvError::BatchedResultNotAvailable)?,
+        )?;
 
         Ok(result.into_u32())
     }
@@ -3684,10 +3698,18 @@ impl RiscvValue for u64 {
 
     fn read_scheduled_result(
         interface: &mut RiscvCommunicationInterface,
-        results: &mut Vec<Handle<CommandResult>>,
+        results: &mut impl Iterator<Item = Handle<CommandResult>>,
     ) -> Result<Self, RiscvError> {
-        let r1 = interface.dtm.read_deferred_result(results.remove(0))?;
-        let r0 = interface.dtm.read_deferred_result(results.remove(0))?;
+        let r1 = interface.dtm.read_deferred_result(
+            results
+                .next()
+                .ok_or(RiscvError::BatchedResultNotAvailable)?,
+        )?;
+        let r0 = interface.dtm.read_deferred_result(
+            results
+                .next()
+                .ok_or(RiscvError::BatchedResultNotAvailable)?,
+        )?;
 
         Ok(((r1.into_u32() as u64) << 32) | (r0.into_u32() as u64))
     }
@@ -3729,12 +3751,28 @@ impl RiscvValue for u128 {
 
     fn read_scheduled_result(
         interface: &mut RiscvCommunicationInterface,
-        results: &mut Vec<Handle<CommandResult>>,
+        results: &mut impl Iterator<Item = Handle<CommandResult>>,
     ) -> Result<Self, RiscvError> {
-        let r3 = interface.dtm.read_deferred_result(results.remove(0))?;
-        let r2 = interface.dtm.read_deferred_result(results.remove(0))?;
-        let r1 = interface.dtm.read_deferred_result(results.remove(0))?;
-        let r0 = interface.dtm.read_deferred_result(results.remove(0))?;
+        let r3 = interface.dtm.read_deferred_result(
+            results
+                .next()
+                .ok_or(RiscvError::BatchedResultNotAvailable)?,
+        )?;
+        let r2 = interface.dtm.read_deferred_result(
+            results
+                .next()
+                .ok_or(RiscvError::BatchedResultNotAvailable)?,
+        )?;
+        let r1 = interface.dtm.read_deferred_result(
+            results
+                .next()
+                .ok_or(RiscvError::BatchedResultNotAvailable)?,
+        )?;
+        let r0 = interface.dtm.read_deferred_result(
+            results
+                .next()
+                .ok_or(RiscvError::BatchedResultNotAvailable)?,
+        )?;
 
         Ok(((r3.into_u32() as u128) << 96)
             | ((r2.into_u32() as u128) << 64)
