@@ -248,14 +248,14 @@ impl RpcBackend {
             .map_err(rpc_err)
     }
 
-    pub(crate) async fn write_memory_8(
+    pub(crate) async fn write_bytes(
         &self,
         core_index: usize,
         address: u64,
         data: Vec<u8>,
     ) -> Result<(), Error> {
         self.core(core_index)
-            .write_memory_8(address, data)
+            .write_bytes(address, data)
             .await
             .map_err(rpc_err)
     }

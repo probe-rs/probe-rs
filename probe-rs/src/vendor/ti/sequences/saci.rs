@@ -137,6 +137,8 @@ pub mod cmd {
     pub const FLASH_PROG_SCFG_SECTOR: u32 = 0x1A;
     /// Verify the SCFG sector (CC27xx only).
     pub const FLASH_VERIFY_SCFG_SECTOR: u32 = 0x1B;
+    /// Erase the application's MAIN sectors, never the HSM firmware
+    pub const FLASH_ERASE_MAIN_APP: u32 = 0x1C;
     /// No operation.
     pub const MISC_NO_OPERATION: u32 = 0x01;
 }

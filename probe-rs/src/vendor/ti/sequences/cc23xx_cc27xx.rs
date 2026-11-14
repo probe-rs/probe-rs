@@ -266,6 +266,13 @@ const CCFG_START: u64 = 0x4E02_0000;
 /// Address boundary for the SCFG region on CC23xx/CC27xx devices.
 const SCFG_START: u64 = 0x4E04_0000;
 
+/// FLASH_ERASE_CHIP, FLASH_ERASE_MAIN_APP: keep the sectors that the CCFG retains.
+const RETAIN_SECTORS: u32 = 1 << 0;
+/// FLASH_VERIFY_CCFG_SECTOR: skip the CRC check of the user record.
+const SKIP_USER_RECORD: u32 = 1 << 1;
+/// FLASH_VERIFY_CCFG_SECTOR: check that the sector is blank.
+const BLANK_CHECK: u32 = 1 << 15;
+
 /// Host-side flash programming implementation for CC23xx/CC27xx devices.
 ///
 /// Implements DebugFlashSequence by issuing SACI commands through the SEC-AP
@@ -328,6 +335,52 @@ impl CC23xxCC27xxFlashSequence {
             }
             thread::sleep(Duration::from_millis(50));
         }
+    }
+
+    /// Sends a SACI erase command and returns its result.
+    fn erase_command(
+        interface: &mut dyn DapAccess,
+        command: u32,
+        parameters: u32,
+    ) -> Result<SaciResult, ArmError> {
+        let words = [saci::make_header(command, parameters), saci::cmd::FLASH_KEY];
+        saci::send_words(interface, &words, Duration::from_millis(200))?;
+
+        let response = saci::read_response(interface, Duration::from_secs(30))?;
+        // The retained sector masks follow.
+        for _ in 0..response >> 24 {
+            let mask = saci::read_response(interface, Duration::from_millis(100))?;
+            tracing::debug!("CC23xx/CC27xx: retained sectors {mask:#010x}");
+        }
+        Ok(SaciResult::from(((response >> 16) & 0xFF) as u8))
+    }
+
+    /// Whether the CCFG passes a FLASH_VERIFY_CCFG_SECTOR check with `parameters`.
+    fn verify_ccfg(interface: &mut dyn DapAccess, parameters: u32) -> Result<bool, ArmError> {
+        let header = saci::make_header(saci::cmd::FLASH_VERIFY_CCFG_SECTOR, parameters);
+        saci::send_words(interface, &[header, 0, 0, 0, 0], Duration::from_millis(200))?;
+        let response = saci::read_response(interface, Duration::from_secs(5))?;
+        Ok(SaciResult::from(((response >> 16) & 0xFF) as u8) == SaciResult::Success)
+    }
+
+    /// Whether the CCFG sector is blank.
+    fn ccfg_is_blank(interface: &mut dyn DapAccess) -> Result<bool, ArmError> {
+        Self::verify_ccfg(interface, BLANK_CHECK)
+    }
+
+    /// Whether the CCFG is valid: its embedded CRCs match, apart from the user record's.
+    fn ccfg_is_valid(interface: &mut dyn DapAccess) -> Result<bool, ArmError> {
+        Self::verify_ccfg(interface, SKIP_USER_RECORD)
+    }
+
+    fn check_erase(result: SaciResult) -> Result<(), crate::Error> {
+        if result != SaciResult::Success {
+            return Err(crate::Error::Other(format!(
+                "SACI erase failed: {result:?}"
+            )));
+        }
+        tracing::info!("CC23xx/CC27xx: Erase completed");
+        Ok(())
     }
 
     fn program_main(
@@ -537,21 +590,34 @@ impl DebugFlashSequence for CC23xxCC27xxFlashSequence {
         Ok(())
     }
 
+    /// The sectors that the CCFG retains are kept when possible. On a CC27xx, they hold the HSM
+    /// firmware, which probe-rs can't provision again.
     fn erase_all(&self, session: &mut Session) -> Result<(), crate::Error> {
         let interface = session.get_arm_interface()?;
 
-        tracing::info!("CC23xx/CC27xx: Chip erase via SACI FLASH_ERASE_CHIP (0x09)");
-
-        // FLASH_ERASE_CHIP (0x09): [header, FLASH_KEY]
-        let header = saci::make_header(saci::cmd::FLASH_ERASE_CHIP, 0);
-        let words = [header, saci::cmd::FLASH_KEY];
-        saci::send_words(interface, &words, Duration::from_millis(200))?;
-
-        let response = saci::read_response(interface, Duration::from_secs(30))?;
-        saci::check_result(response, "FLASH_ERASE_CHIP")?;
-
-        tracing::info!("CC23xx/CC27xx: Chip erase completed");
-        Ok(())
+        // Retaining sectors needs a valid CCFG. With an invalid one, the ROM doesn't refuse the
+        // option: it erases the sectors too.
+        let result = if Self::ccfg_is_valid(interface)? {
+            tracing::info!(
+                "CC23xx/CC27xx: erasing the chip, keeping the sectors that the CCFG retains"
+            );
+            Self::erase_command(interface, saci::cmd::FLASH_ERASE_CHIP, RETAIN_SECTORS)?
+        } else if Self::ccfg_is_blank(interface)? {
+            // Erasing the application never erases the HSM firmware. Parts without an HSM don't
+            // have the command.
+            tracing::info!("CC23xx/CC27xx: no CCFG, erasing the application sectors");
+            match Self::erase_command(interface, saci::cmd::FLASH_ERASE_MAIN_APP, 0)? {
+                SaciResult::InvalidCmdId => {
+                    tracing::info!("CC23xx/CC27xx: no FLASH_ERASE_MAIN_APP, erasing the chip");
+                    Self::erase_command(interface, saci::cmd::FLASH_ERASE_CHIP, 0)?
+                }
+                result => result,
+            }
+        } else {
+            tracing::warn!("CC23xx/CC27xx: invalid CCFG, erasing the retained sectors too");
+            Self::erase_command(interface, saci::cmd::FLASH_ERASE_CHIP, 0)?
+        };
+        Self::check_erase(result)
     }
 
     fn program(

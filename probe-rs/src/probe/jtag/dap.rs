@@ -30,6 +30,10 @@ const JTAG_STATUS_OK: u32 = 0x2;
 // ARM DR accesses are always 35 bits wide
 const JTAG_DR_BIT_LENGTH: u32 = 35;
 
+// The AP access runs on TCK. A CC1354P10 answers WAIT to an APACC scan when the TAP did not stay
+// in Run-Test/Idle after the APACC scan before it.
+const AP_ACCESS_IDLE_CYCLES: usize = 8;
+
 // Build a JTAG payload
 fn build_jtag_payload_and_address(transfer: &DapTransfer) -> (u64, u32) {
     if transfer.is_abort() {
@@ -226,22 +230,24 @@ struct DapTransfer {
 
 impl DapTransfer {
     fn read<P: Into<RegisterAddress>>(address: P) -> DapTransfer {
-        Self {
-            address: address.into(),
-            direction: TransferDirection::Read,
-            value: 0,
-            status: TransferStatus::Pending,
-            idle_cycles_after: 0,
-        }
+        Self::new(address.into(), TransferDirection::Read, 0)
     }
 
     fn write<P: Into<RegisterAddress>>(address: P, value: u32) -> DapTransfer {
+        Self::new(address.into(), TransferDirection::Write, value)
+    }
+
+    fn new(address: RegisterAddress, direction: TransferDirection, value: u32) -> DapTransfer {
         Self {
-            address: address.into(),
+            address,
+            direction,
             value,
-            direction: TransferDirection::Write,
             status: TransferStatus::Pending,
-            idle_cycles_after: 0,
+            idle_cycles_after: if address.is_ap() {
+                AP_ACCESS_IDLE_CYCLES
+            } else {
+                0
+            },
         }
     }
 
@@ -529,8 +535,9 @@ pub(crate) fn jtag_write_block(
 #[cfg(test)]
 mod tests {
     use super::{
-        JTAG_ABORT_IR_VALUE, JTAG_ACCESS_PORT_IR_VALUE, JTAG_DEBUG_PORT_IR_VALUE, JTAG_STATUS_OK,
-        JTAG_STATUS_WAIT, SwdSettings, jtag_read_register, jtag_write_register,
+        AP_ACCESS_IDLE_CYCLES, JTAG_ABORT_IR_VALUE, JTAG_ACCESS_PORT_IR_VALUE,
+        JTAG_DEBUG_PORT_IR_VALUE, JTAG_STATUS_OK, JTAG_STATUS_WAIT, SwdSettings, jtag_read_block,
+        jtag_read_register, jtag_write_register,
     };
     use crate::{
         architecture::arm::{
@@ -568,6 +575,7 @@ mod tests {
         jtag_transactions: Vec<ExpectedJtagTransaction>,
         expected_transfer_count: usize,
         performed_transfer_count: usize,
+        idle_cycles: usize,
         protocol: WireProtocol,
         jtag_state: JtagChainState,
     }
@@ -578,6 +586,7 @@ mod tests {
                 jtag_transactions: vec![],
                 expected_transfer_count: 0,
                 performed_transfer_count: 0,
+                idle_cycles: 0,
                 protocol: WireProtocol::Swd,
                 jtag_state: JtagChainState {
                     chain_params: ChainParams {
@@ -654,6 +663,9 @@ mod tests {
             let mut pending_ir: Option<u32> = None;
 
             for (id, op) in batch.iter() {
+                if let JtagOp::ClockTck { count } = op {
+                    self.idle_cycles += *count as usize;
+                }
                 if let JtagOp::Exchange { data, capture } = op {
                     if data.len() <= 8 {
                         pending_ir = Some(data.as_bits().load_le::<u32>());
@@ -746,6 +758,30 @@ mod tests {
         fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
             self
         }
+    }
+
+    #[test]
+    fn each_ap_access_clocks_run_test_idle() {
+        let mut mock = MockJaylink::new();
+        mock.select_protocol(WireProtocol::Jtag).unwrap();
+
+        mock.add_jtag_response(ApAddress::V1(12), true, DapAcknowledge::Ok, 0, 0);
+        mock.add_jtag_response(ApAddress::V1(12), true, DapAcknowledge::Ok, 1, 0);
+        mock.add_jtag_response(RdBuff::ADDRESS, true, DapAcknowledge::Ok, 2, 0);
+        mock.add_jtag_response(Ctrl::ADDRESS, true, DapAcknowledge::Ok, 0, 0);
+        mock.add_jtag_response(RdBuff::ADDRESS, true, DapAcknowledge::Ok, 0, 0);
+
+        let mut values = [0; 2];
+        jtag_read_block(
+            &mut JtagChain::new(&mut mock),
+            ApAddress::V1(12).into(),
+            &mut values,
+            &SwdSettings::default(),
+        )
+        .unwrap();
+
+        assert_eq!(values, [1, 2]);
+        assert_eq!(mock.idle_cycles, 2 * AP_ACCESS_IDLE_CYCLES);
     }
 
     #[test]
