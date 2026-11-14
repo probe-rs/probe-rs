@@ -11,7 +11,7 @@ use crate::{
     architecture::arm::{
         ArmDebugInterface, ArmError, FullyQualifiedApAddress,
         ap::{ApRegister, DRW, TAR},
-        armv8m::Aircr,
+        armv8m::{Aircr, Dhcsr},
         core::{
             cortex_m::write_core_reg,
             registers::{
@@ -127,6 +127,74 @@ impl ArmDebugSequence for Stm32n6 {
         // Try to restore the CPU to a known state after halting. This is necessary on the STM32N6
         // where we can't `reset_and_halt()` into a known state because the boot ROM always runs.
         // See TakeReset() in the arch manual, and DCRSR.REGSEL for register indices.
+
+        let dhcsr = Dhcsr(core.read_word_32(Dhcsr::get_mmio_address())?);
+        if !dhcsr.s_sde() || dhcsr.s_suide() || dhcsr.s_nsuide() {
+            return Err(ArmError::Other(
+                "STM32N6 reset cleanup requires privileged Secure and Non-secure debug access"
+                    .into(),
+            ));
+        }
+
+        // DAP accesses to the Non-secure SCS aliases are RAZ/WI. Select the bank with
+        // DSCSR instead (Armv8-M ARM B13.3, D1.2.51). CDSKEY=1 prevents changing CDS.
+        const DSCSR: u64 = 0xE000_EE08;
+        const DSCSR_CDSKEY: u32 = 1 << 17;
+        const DSCSR_SELECTION: u32 = 3;
+        let previous_dscsr = core.read_word_32(DSCSR)? | DSCSR_CDSKEY;
+        let result = (|| {
+            // The core remains halted while disabling both SysTicks and clearing the banked
+            // SysTick/PendSV pending bits, before either PRIMASK bank is cleared below.
+            // SBRSELEN=1, with SBRSEL=0 (Non-secure) then SBRSEL=1 (Secure).
+            for selection in [1, 3] {
+                let dscsr = (previous_dscsr & !DSCSR_SELECTION) | selection;
+                core.write_word_32(DSCSR, dscsr)?;
+                if core.read_word_32(DSCSR)? & DSCSR_SELECTION != selection {
+                    return Err(ArmError::Other(
+                        "STM32N6 SCS bank selection did not take effect".into(),
+                    ));
+                }
+                const SYST_CSR: u64 = 0xE000_E010;
+                const SCB_ICSR: u64 = 0xE000_ED04;
+                core.write_word_32(SYST_CSR, 0)?;
+                core.write_word_32(SCB_ICSR, (1 << 25) | (1 << 27))?;
+            }
+
+            // NVIC enable/pending bits are shared. Leave the Secure view selected so that
+            // interrupts targeted to either security state are accessible.
+            const ICTR: u64 = 0xE000_E004;
+            const NVIC_ICER: u64 = 0xE000_E180;
+            const NVIC_ICPR: u64 = 0xE000_E280;
+            let interrupt_registers = (core.read_word_32(ICTR)? & 0xf) + 1;
+            for index in 0..interrupt_registers {
+                let offset = u64::from(index) * 4;
+                core.write_word_32(NVIC_ICER + offset, u32::MAX)?;
+                core.write_word_32(NVIC_ICPR + offset, u32::MAX)?;
+            }
+            Ok(())
+        })();
+
+        // Even a failed selection write may have reached the core. Always attempt to restore
+        // the previous selection, and preserve the cleanup error if restoration also fails.
+        let restore = (|| {
+            core.write_word_32(DSCSR, previous_dscsr)?;
+            if core.read_word_32(DSCSR)? & DSCSR_SELECTION != previous_dscsr & DSCSR_SELECTION {
+                return Err(ArmError::Other(
+                    "STM32N6 SCS bank selection could not be restored".into(),
+                ));
+            }
+            Ok(())
+        })();
+        match (result, restore) {
+            (Ok(()), Ok(())) => {}
+            (Err(error), Ok(())) | (Ok(()), Err(error)) => return Err(error),
+            (Err(error), Err(restore_error)) => {
+                tracing::warn!("Failed to restore STM32N6 SCS bank selection: {restore_error}");
+                return Err(error);
+            }
+        }
+
+        // Includes both EXTRA_S and EXTRA_NS, clearing both banks of interrupt masks.
         for reg in V8M_MAIN_SEC_FP_REGISTERS.all_registers() {
             write_core_reg(core, reg.into(), 0u32)?;
         }
@@ -136,16 +204,6 @@ impl ArmDebugSequence for Stm32n6 {
             core,
             CORTEX_M_WITH_FP_CORE_REGISTERS.psr().unwrap().into(),
             0x0100_0000_u32,
-        )?;
-
-        // Mask interrupts by writing to EXTRA since the NVIC state is unknown.
-        write_core_reg(
-            core,
-            CORTEX_M_WITH_FP_CORE_REGISTERS
-                .other_by_name("EXTRA")
-                .unwrap()
-                .into(),
-            0x0000_0001_u32,
         )?;
 
         // Set FPCCR.ASPEN and FPCCR.LSPEN to their default reset values
@@ -178,5 +236,152 @@ impl ArmDebugSequence for Stm32n6 {
         }
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::architecture::arm::core::mock::MockProbe;
+
+    // Ordered DAP transactions, not a model of exception delivery on silicon.
+    fn interrupt_operations(previous: u32, ictr: u32) -> Vec<(bool, u64, u32)> {
+        let mut ops = vec![
+            (true, 0xE000_EDF0, 1 << 20), // DHCSR.S_SDE
+            (true, 0xE000_EE08, previous),
+        ];
+        for selection in [1, 3] {
+            let value = (previous & !3) | (1 << 17) | selection;
+            ops.extend([
+                (false, 0xE000_EE08, value),
+                (true, 0xE000_EE08, value),
+                (false, 0xE000_E010, 0),
+                (false, 0xE000_ED04, (1 << 25) | (1 << 27)),
+            ]);
+        }
+        ops.push((true, 0xE000_E004, ictr));
+        for index in 0..=(ictr & 0xf) {
+            let offset = u64::from(index) * 4;
+            ops.push((false, 0xE000_E180 + offset, u32::MAX));
+            ops.push((false, 0xE000_E280 + offset, u32::MAX));
+        }
+        ops.extend([
+            (false, 0xE000_EE08, previous | (1 << 17)),
+            (true, 0xE000_EE08, previous),
+        ]);
+        ops
+    }
+
+    fn expect_operations(core: &mut MockProbe, ops: &[(bool, u64, u32)]) {
+        for &(read, address, value) in ops {
+            if read {
+                core.expected_read(address, value);
+            } else {
+                core.expected_write(address, value);
+            }
+        }
+    }
+
+    fn expect_reset_catch_clear(core: &mut MockProbe, previous: u32, ictr: u32) {
+        expect_operations(core, &interrupt_operations(previous, ictr));
+
+        for reg in V8M_MAIN_SEC_FP_REGISTERS.all_registers() {
+            core.expected_write(0xE000_EDF8, 0);
+            core.expected_write(0xE000_EDF4, 0x10000 | u32::from(reg.id().0));
+            core.expected_read(0xE000_EDF0, 1 << 16);
+        }
+        core.expected_write(0xE000_EDF8, 1 << 24);
+        core.expected_write(0xE000_EDF4, 0x10010);
+        core.expected_read(0xE000_EDF0, 1 << 16);
+        core.expected_write(0xE000_EF34, 0xc000_0000);
+        core.expected_write(0xE000_ED14, 0x201);
+        core.expected_write(0xE000_EF50, 0);
+        core.expected_read(0x4602_824C, 0x100);
+        core.expected_write(0x4602_824C, 0x10f);
+        for address in [0x4202_3100, 0x4202_3180, 0x4202_3200, 0x4202_3280] {
+            core.expected_write(address, 0);
+        }
+    }
+
+    #[test]
+    fn reset_catch_clear_restores_interrupt_state() {
+        // One bank and the seven banks used by STM32N6. Ignore reserved ICTR bits.
+        for (ictr, previous) in [
+            (0, 0x30000),
+            (0xffff_fff6, 0x30001),
+            (6, 0x20002),
+            (6, 0x20003),
+        ] {
+            let mut core = MockProbe::new(0);
+            for _ in 0..2 {
+                expect_reset_catch_clear(&mut core, previous, ictr);
+                Stm32n6::create()
+                    .reset_catch_clear(&mut core, CoreType::Armv8m, None)
+                    .unwrap();
+            }
+
+            // No later write may re-mask either security state's interrupts.
+            for selector in [0x14, 0x22, 0x23] {
+                let last_write =
+                    core.batches.iter().rev().find(|batch| {
+                        batch.get(1) == Some(&(0xE000_EDF4, Some(0x10000 | selector)))
+                    });
+                assert_eq!(last_write.unwrap()[0], (0xE000_EDF8, Some(0)));
+            }
+        }
+    }
+
+    #[test]
+    fn reset_catch_clear_requires_privileged_secure_debug() {
+        for dhcsr in [0, (1 << 20) | (1 << 22), (1 << 20) | (1 << 21)] {
+            let mut core = MockProbe::new(0);
+            core.expected_read(0xE000_EDF0, dhcsr);
+            let result = Stm32n6::create().reset_catch_clear(&mut core, CoreType::Armv8m, None);
+            assert!(matches!(result, Err(ArmError::Other(_))));
+        }
+    }
+
+    #[test]
+    fn reset_catch_clear_restores_selection_after_io_errors() {
+        let ops = interrupt_operations(0x30002, 0);
+        let restore = ops.len() - 2;
+        for failed in 0..ops.len() {
+            let mut core = MockProbe::new(0);
+            expect_operations(&mut core, &ops[..failed]);
+            let (read, address, _) = ops[failed];
+            core.expected_error(address, read, ArmError::Timeout);
+            if (2..restore).contains(&failed) {
+                expect_operations(&mut core, &ops[restore..]);
+            }
+            let result = Stm32n6::create().reset_catch_clear(&mut core, CoreType::Armv8m, None);
+            assert!(
+                matches!(result, Err(ArmError::Timeout)),
+                "operation {failed}: {result:?}"
+            );
+        }
+
+        // A restoration failure must not replace the original cleanup error.
+        let mut core = MockProbe::new(0);
+        expect_operations(&mut core, &ops[..2]);
+        core.expected_error(0xE000_EE08, false, ArmError::Timeout);
+        core.expected_error(0xE000_EE08, false, ArmError::Other("restore failed".into()));
+        let result = Stm32n6::create().reset_catch_clear(&mut core, CoreType::Armv8m, None);
+        assert!(matches!(result, Err(ArmError::Timeout)));
+    }
+
+    #[test]
+    fn reset_catch_clear_checks_selection_readback() {
+        let ops = interrupt_operations(0x30002, 0);
+        // Both bank selections and the restoration must actually take effect.
+        for failed in [3, 7, ops.len() - 1] {
+            let mut core = MockProbe::new(0);
+            expect_operations(&mut core, &ops[..failed]);
+            core.expected_read(0xE000_EE08, ops[failed].2 ^ 2);
+            if failed < ops.len() - 2 {
+                expect_operations(&mut core, &ops[ops.len() - 2..]);
+            }
+            let result = Stm32n6::create().reset_catch_clear(&mut core, CoreType::Armv8m, None);
+            assert!(matches!(result, Err(ArmError::Other(_))));
+        }
     }
 }
