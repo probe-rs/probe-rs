@@ -354,6 +354,7 @@ mod tests {
                 resume_target: false,
                 wait_for_probe,
                 target_serial: false,
+                short_form: false,
             })
             .await;
 
@@ -471,6 +472,7 @@ mod tests {
             resume_target: false,
             wait_for_probe: Some(Duration::from_secs(600)),
             target_serial: false,
+            short_form: false,
         };
         let (server, tx, rx) = RpcApp::create_server_with_lister(
             16,
@@ -541,6 +543,7 @@ mod tests {
             resume_target: false,
             wait_for_probe: Some(Duration::from_secs(600)),
             target_serial: false,
+            short_form: false,
         };
         let attach = tokio::spawn(async move { client.attach_probe(request).await });
         while lister.attempts() == 0 {
@@ -649,6 +652,7 @@ pub(crate) mod convert {
                 // client can cancel it.
                 attach_timeout: None,
                 target_serial: false,
+                short_form: request.short_form,
             }
         }
     }

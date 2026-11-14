@@ -153,6 +153,8 @@ pub struct AttachRequest {
     pub wait_for_probe: Option<Duration>,
     /// Open the serial port to the target.
     pub target_serial: bool,
+    /// Whether to use the TAP.7 short-form selection sequence.
+    pub short_form: bool,
 }
 
 pub type AttachResponse = RpcResult<AttachResult>;

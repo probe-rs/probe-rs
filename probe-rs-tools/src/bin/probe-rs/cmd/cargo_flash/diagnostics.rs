@@ -160,6 +160,10 @@ pub(crate) fn render_diagnostics(registry: &Registry, error: OperationError) {
             error.to_string(),
             vec![],
         ),
+        OperationError::FailedToSelectJtagOptions { ..} => (
+            error.to_string(),
+            vec![],
+        ),
         OperationError::FailedToSelectProtocolSpeed { speed, .. } => (
             error.to_string(),
             vec![

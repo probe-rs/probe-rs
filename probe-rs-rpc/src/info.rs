@@ -36,7 +36,7 @@ pub struct TargetMetadataRequest {
     pub sessid: Key<Session>,
 }
 
-#[derive(Serialize, Deserialize, Schema)]
+#[derive(Clone, Serialize, Deserialize, Schema)]
 pub struct TargetInfoRequest {
     pub probe: DebugProbeEntry,
     pub speed: Option<u32>,
@@ -49,6 +49,8 @@ pub struct TargetInfoRequest {
     /// directly. For example, `[5]` specifies a single-TAP chain with IR length 5.
     #[serde(default)]
     pub scan_chain: Vec<u8>,
+    /// Use the short-form selection sequence when cJTAG is selected.
+    pub short_form: bool,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, Schema)]

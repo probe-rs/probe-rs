@@ -69,7 +69,7 @@ impl Cmd {
             let protocols = if let Some(protocol) = self.common.protocol {
                 vec![protocol]
             } else {
-                vec![WireProtocol::Jtag, WireProtocol::Swd]
+                vec![WireProtocol::Jtag, WireProtocol::CJtag, WireProtocol::Swd]
             };
 
             let probe = select_probe(
@@ -81,8 +81,30 @@ impl Cmd {
 
             let mut any_success = false;
 
-            for protocol in protocols {
-                let msg = format!("Probing target via {protocol}");
+            let requests = protocols.into_iter().flat_map(|protocol| {
+                let mut requests = vec![TargetInfoRequest {
+                    target_sel: self.target_sel,
+                    protocol: to_wire_protocol(protocol),
+                    short_form: self.common.short_form,
+
+                    probe: probe.clone(),
+                    speed: self.common.speed,
+                    connect_under_reset: self.common.connect_under_reset,
+                    scan_chain: self.scan_chain.clone(),
+                }];
+
+                if protocol == WireProtocol::CJtag {
+                    requests.push(TargetInfoRequest {
+                        short_form: !self.common.short_form,
+                        ..requests[0].clone()
+                    });
+                }
+
+                requests
+            });
+
+            for req in requests {
+                let msg = format!("Probing target via {}", req.protocol);
                 println!("{msg}");
                 println!("{}", "-".repeat(msg.len()));
                 println!();
@@ -90,16 +112,6 @@ impl Cmd {
                 let mut events = vec![];
                 let mut successes = vec![];
                 let mut errors = vec![];
-
-                let req = TargetInfoRequest {
-                    target_sel: self.target_sel,
-                    protocol: to_wire_protocol(protocol),
-
-                    probe: probe.clone(),
-                    speed: self.common.speed,
-                    connect_under_reset: self.common.connect_under_reset,
-                    scan_chain: self.scan_chain.clone(),
-                };
 
                 let result = client
                     .info(req, async |message| {

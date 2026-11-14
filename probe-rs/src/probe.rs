@@ -140,6 +140,13 @@ impl std::str::FromStr for WireProtocol {
     }
 }
 
+/// Additional JTAG and cJTAG specific options.
+#[derive(Copy, Clone, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
+pub struct JtagOptions {
+    /// Whether to use short-form TAP.7 selection sequence
+    pub short_form: bool,
+}
+
 /// Sends a line reset, the SWJ-DP SWD to JTAG switch sequence and a TAP reset.
 fn switch_swd_to_jtag(wire: &mut dyn DebugPortWire) -> Result<(), ArmError> {
     wire.swj_sequence(&BitSequence::from_u64(51, (1 << 51) - 1))?;
@@ -562,6 +569,15 @@ impl Probe {
         }
     }
 
+    /// Additional configuration for JTAG / cJTAG.
+    pub fn set_jtag_options(&mut self, jtag_options: JtagOptions) -> Result<(), DebugProbeError> {
+        if !self.attached {
+            self.inner.set_jtag_options(jtag_options)
+        } else {
+            Err(DebugProbeError::Attached)
+        }
+    }
+
     /// Get the currently selected protocol
     ///
     /// Depending on the probe, this might not be available.
@@ -847,6 +863,12 @@ pub trait DebugProbe: Any + Send + fmt::Debug {
 
     /// Selects the transport protocol to be used by the debug probe.
     fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError>;
+
+    /// Additional configuration for JTAG / cJTAG.
+    fn set_jtag_options(&mut self, jtag_options: JtagOptions) -> Result<(), DebugProbeError> {
+        let _ = jtag_options;
+        Ok(())
+    }
 
     /// Get the transport protocol currently in active use by the debug probe.
     fn active_protocol(&self) -> Option<WireProtocol>;

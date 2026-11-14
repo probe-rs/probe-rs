@@ -1,3 +1,5 @@
+use probe_rs_target::ScanMode;
+
 use crate::{
     Core, CoreType, Error,
     architecture::{
@@ -25,8 +27,8 @@ use crate::{
     core::{Architecture, CombinedCoreState},
     memory_port::MemoryAccessPort,
     probe::{
-        AttachMethod, BitSequence, DebugProbe, DebugProbeError, Probe, ProbeCreationError,
-        WireProtocol, list::Lister,
+        AttachMethod, BitSequence, DebugProbe, DebugProbeError, JtagOptions, Probe,
+        ProbeCreationError, WireProtocol, list::Lister,
     },
 };
 use std::collections::BTreeSet;
@@ -444,17 +446,29 @@ impl Session {
         // While we still don't support mixed architectures
         // (they'd need per-core debug sequences), we can at least
         // handle most of the setup in the same way.
-        if let Some(jtag) = target.jtag.as_ref()
-            && let Some(scan_chain) = jtag.scan_chain.clone()
-            && let Some(mut chain) = probe.try_as_jtag_chain()
-        {
-            if jtag.force_scan_chain {
-                // Bypass JTAG auto-detection entirely; use the scan chain from the target YAML.
-                // This is required for targets whose TAP does not respond to the standard IDCODE
-                // DR scan (e.g., some RISC-V cores during early power-up).
-                chain.set_chain(&scan_chain);
-            } else {
-                chain.set_expected(&scan_chain);
+        if let Some(jtag) = target.jtag.as_ref() {
+            if let Some(scan_chain) = jtag.scan_chain.clone()
+                && let Some(mut chain) = probe.try_as_jtag_chain()
+            {
+                if jtag.force_scan_chain {
+                    // Bypass JTAG auto-detection entirely; use the scan chain from the target YAML.
+                    // This is required for targets whose TAP does not respond to the standard IDCODE
+                    // DR scan (e.g., some RISC-V cores during early power-up).
+                    chain.set_chain(&scan_chain);
+                } else {
+                    chain.set_expected(&scan_chain);
+                }
+            }
+
+            match jtag.scan_mode {
+                ScanMode::Oscan1 => {
+                    probe.select_protocol(WireProtocol::CJtag)?;
+                }
+                ScanMode::Oscan1Short => {
+                    probe.select_protocol(WireProtocol::CJtag)?;
+                    probe.set_jtag_options(JtagOptions { short_form: true })?;
+                }
+                _ => {}
             }
         }
 

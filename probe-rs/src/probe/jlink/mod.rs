@@ -36,7 +36,9 @@ use crate::probe::jlink::bits::IteratorExt;
 use crate::probe::jlink::config::JlinkConfig;
 use crate::probe::jlink::connection::JlinkConnection;
 use crate::probe::usb_util::InterfaceExt;
-use crate::probe::{BitbangJtag, JtagChain, JtagChainAccess, JtagChainState, TapState};
+use crate::probe::{
+    BitbangJtag, JtagChain, JtagChainAccess, JtagChainState, JtagOptions, TapState,
+};
 use crate::{
     architecture::{
         arm::{ArmCommunicationInterface, SwoAccess, swo::SwoConfig},
@@ -206,6 +208,7 @@ impl ProbeFactory for JLinkFactory {
             reset_line: ResetLine::default(),
             force_legacy_jtag_command: false,
             cjtag: CJtag::new(),
+            short_form: false,
 
             jtag_tms_bits: vec![],
             jtag_tdi_bits: vec![],
@@ -430,6 +433,7 @@ pub struct JLink {
     swd_settings: SwdSettings,
 
     reset_line: ResetLine,
+    short_form: bool,
 }
 
 impl fmt::Debug for JLink {
@@ -1097,6 +1101,12 @@ impl DebugProbe for JLink {
         Ok(())
     }
 
+    fn set_jtag_options(&mut self, jtag_options: JtagOptions) -> Result<(), DebugProbeError> {
+        self.short_form = jtag_options.short_form;
+
+        Ok(())
+    }
+
     fn active_protocol(&self) -> Option<WireProtocol> {
         Some(self.protocol)
     }
@@ -1164,18 +1174,10 @@ impl DebugProbe for JLink {
             tracing::info!("J-Link: Target voltage: {:2.2} V", target_voltage);
         }
 
-        match self.protocol {
-            WireProtocol::Jtag | WireProtocol::CJtag => {
-                // try some JTAG stuff
-
-                tracing::debug!("Resetting JTAG chain using trst");
-                self.reset_trst()?;
-            }
-            WireProtocol::Swd => {
-                // Attaching is handled in sequence
-
-                // We are ready to debug.
-            }
+        if self.protocol.is_jtag() {
+            // Try some JTAG stuff. For SWD, attaching is handled in sequence.
+            tracing::debug!("Resetting JTAG chain using trst");
+            self.reset_trst()?;
         }
 
         self.write_cmd(&[Command::HwReset1 as u8])?;
@@ -1235,7 +1237,9 @@ impl DebugProbe for JLink {
     fn try_get_riscv_interface_builder<'probe>(
         &'probe mut self,
     ) -> Result<Box<dyn RiscvInterfaceBuilder<'probe> + 'probe>, RiscvError> {
-        if self.supported_protocols.contains(&WireProtocol::Jtag) {
+        if self.protocol.is_jtag() {
+            Ok(Box::new(JtagDtmBuilder::new(self)))
+        } else if self.supported_protocols.contains(&WireProtocol::Jtag) {
             self.select_protocol(WireProtocol::Jtag)?;
             Ok(Box::new(JtagDtmBuilder::new(self)))
         } else {
@@ -1271,21 +1275,19 @@ impl DebugProbe for JLink {
         sequence: Arc<dyn ArmDebugSequence>,
     ) -> Result<Box<dyn ArmDebugInterface + 'probe>, (Box<dyn DebugProbe>, ArmError)> {
         let settings = SwdProbe::swd_settings(self.as_ref());
-        let iface = match self.protocol {
-            WireProtocol::Jtag | WireProtocol::CJtag => {
-                ArmCommunicationInterface::create_jtag(self, settings, sequence, true)
-            }
-            WireProtocol::Swd => {
-                ArmCommunicationInterface::create_swd(self, settings, sequence, true)
-            }
+        let iface = if self.protocol.is_jtag() {
+            ArmCommunicationInterface::create_jtag(self, settings, sequence, true)
+        } else {
+            ArmCommunicationInterface::create_swd(self, settings, sequence, true)
         };
         Ok(iface)
     }
 
     fn try_as_swd_probe(self: Box<Self>) -> Result<Box<dyn SwdProbe>, Box<dyn DebugProbe>> {
-        match self.protocol {
-            WireProtocol::Jtag | WireProtocol::CJtag => Err(self.into_probe()),
-            _ => Ok(self),
+        if self.protocol.is_jtag() {
+            Err(self.into_probe())
+        } else {
+            Ok(self)
         }
     }
 

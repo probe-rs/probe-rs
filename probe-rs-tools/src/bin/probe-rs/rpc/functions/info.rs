@@ -32,7 +32,7 @@ use probe_rs::{
             XtensaCommunicationInterface, XtensaDebugInterfaceState,
         },
     },
-    probe::{Probe, wlink::WchLink},
+    probe::{JtagOptions, Probe, wlink::WchLink},
 };
 use probe_rs_rpc::info::{
     ApInfo, ComponentTreeNode, DebugPortId, DebugPortInfo, DebugPortInfoNode, DebugPortVersion,
@@ -154,6 +154,7 @@ pub async fn target_info(
         probe,
         request.scan_chain.clone(),
         request.protocol,
+        request.short_form,
         probe_options.connect_under_reset(),
         request.target_sel,
     )
@@ -179,6 +180,7 @@ async fn try_show_info(
     mut probe: Probe,
     scan_chain: Vec<u8>,
     protocol: WireProtocol,
+    short_form: bool,
     connect_under_reset: bool,
     target_sel: Option<u32>,
 ) -> anyhow::Result<()> {
@@ -195,6 +197,10 @@ async fn try_show_info(
             })
             .collect::<Vec<_>>();
         chain.set_chain(&chain_elements);
+    }
+
+    if protocol == WireProtocol::CJtag {
+        probe.set_jtag_options(JtagOptions { short_form })?;
     }
 
     if connect_under_reset {
@@ -573,7 +579,7 @@ async fn try_read_riscv_info(
     probe: &mut Probe,
     protocol: WireProtocol,
 ) -> Result<(), anyhow::Error> {
-    if probe.has_riscv_interface() && protocol == WireProtocol::Jtag {
+    if probe.has_riscv_interface() && matches!(protocol, WireProtocol::Jtag | WireProtocol::CJtag) {
         tracing::debug!("Trying to show RISC-V chip information");
 
         // WCH-Link probes don't expose a real JTAG IDCODE; report the chip
@@ -1148,6 +1154,7 @@ pub(crate) mod convert {
                 allow_erase_all: false,
                 attach_timeout: None,
                 target_serial: false,
+                short_form: request.short_form,
             }
         }
     }
