@@ -3,8 +3,9 @@
 use std::fmt;
 
 use probe_rs_target::ScanChainElement;
+use tracing::{Span, field::Empty};
 
-use super::{JtagBatch, JtagChainAccess, JtagOp, TapState};
+use super::{JtagBatch, JtagChainAccess, JtagOp, Step, TapState, walk_batch};
 use crate::probe::common::{
     bit_sequence_to_bitvec, common_sequence, extract_idcodes, extract_ir_lengths,
 };
@@ -310,7 +311,24 @@ impl<'p> JtagChain<'p> {
             Some((end, ir)) if end == start => Some(ir),
             _ => None,
         };
-        let (batch, loaded) = skip_loaded_ir(start, loaded, batch);
+        let ops = batch.len();
+        let (batch, loaded) = tracing::trace_span!("skip_loaded_ir")
+            .in_scope(|| skip_loaded_ir(start, loaded, batch));
+
+        let span = tracing::trace_span!(
+            "jtag_batch",
+            ops = batch.len(),
+            skipped_ops = ops - batch.len(),
+            shift_bits = Empty,
+            capture_bits = Empty,
+            tms_tck = Empty,
+            idle_tck = Empty,
+            tck = Empty,
+        );
+        if !span.is_disabled() {
+            record_batch_size(&span, start, &batch);
+        }
+        let _span = span.entered();
 
         let results = self
             .probe
@@ -345,6 +363,8 @@ impl<'p> JtagChain<'p> {
         let max_ir = self.probe.chain_state_ref().chain_params.max_ir_address();
         let ir_len = self.probe.chain_state_ref().chain_params.irlen;
 
+        let build_span =
+            tracing::trace_span!("build_jtag_batch", commands = writes.len()).entered();
         let mut batch = JtagBatch::new();
         let mut capture_handles = Vec::new();
 
@@ -379,6 +399,8 @@ impl<'p> JtagChain<'p> {
             }
         }
 
+        drop(build_span);
+
         let mut run_results = match self.run(batch) {
             Ok(results) => results,
             Err(error) => {
@@ -390,6 +412,7 @@ impl<'p> JtagChain<'p> {
         };
 
         tracing::debug!("Got responses! Processing...");
+        let _decode_span = tracing::trace_span!("decode_jtag_results").entered();
         let mut responses = Results::with_capacity(writes.len());
         let mut capture_handles = capture_handles.into_iter();
 
@@ -433,6 +456,39 @@ impl<'p> JtagChain<'p> {
 
         Ok(responses)
     }
+}
+
+/// Record the bits and the TCK cycles of `batch` in the fields of `span`.
+fn record_batch_size(span: &Span, start: TapState, batch: &JtagBatch) {
+    let mut shift_bits = 0;
+    let mut capture_bits = 0;
+    for (id, op) in batch.iter() {
+        if let JtagOp::Exchange { data, capture } = op {
+            shift_bits += data.len();
+            if *capture && id.should_capture() {
+                capture_bits += data.len();
+            }
+        }
+    }
+
+    let mut tms_tck = 0;
+    let mut idle_tck = 0;
+    let mut state = start;
+    // An invalid batch fails in the probe. The counts then stop at the invalid operation.
+    let _ = walk_batch(&mut state, batch, |step| {
+        match step {
+            Step::Tms { path, .. } => tms_tck += path.len(),
+            Step::Shift { .. } => {}
+            Step::Clock { count, .. } => idle_tck += count as usize,
+        }
+        Ok(())
+    });
+
+    span.record("shift_bits", shift_bits);
+    span.record("capture_bits", capture_bits);
+    span.record("tms_tck", tms_tck);
+    span.record("idle_tck", idle_tck);
+    span.record("tck", tms_tck + shift_bits + idle_tck);
 }
 
 /// Leave out each IR scan that shifts the bits that the IR holds.

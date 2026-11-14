@@ -9,6 +9,7 @@ use std::{
     io,
     time::{Duration, Instant},
 };
+use tracing::field::Empty;
 
 use probe_rs::probe::{
     DebugProbeError, DebugProbeInfo, DebugProbeSelector, ProbeCreationError, ProbeError,
@@ -613,6 +614,13 @@ impl ProtocolHandler {
         tracing::trace!("Writing {} bytes to usb endpoint", self.output_buffer.len());
 
         if !self.output_buffer.is_empty() {
+            let _span = tracing::trace_span!(
+                "usb_write",
+                bytes = self.output_buffer.len(),
+                tck = self.buffered_clocks,
+            )
+            .entered();
+
             // Keep space in the queue for the new transfer.
             self.complete_writes(MAX_IN_FLIGHT_TRANSFERS - 1)?;
 
@@ -648,6 +656,13 @@ impl ProtocolHandler {
     /// The endpoint reports the result of a transfer at this point, and not at the submission.
     /// The driver can therefore not relate an error to a specific command.
     fn complete_writes(&mut self, keep_pending: usize) -> Result<(), DebugProbeError> {
+        let pending = self.ep_out.pending();
+        if pending <= keep_pending {
+            return Ok(());
+        }
+        let _span =
+            tracing::trace_span!("usb_write_wait", transfers = pending - keep_pending).entered();
+
         while self.ep_out.pending() > keep_pending {
             let Some(completion) = self.ep_out.wait_next_complete(USB_TIMEOUT) else {
                 self.cancel_writes();
@@ -701,6 +716,9 @@ impl ProtocolHandler {
 
         let count = self.pending_in_bits.div_ceil(8).min(IN_EP_BUFFER_SIZE);
         let mut incoming = [0; IN_EP_BUFFER_SIZE];
+        let span = tracing::trace_span!("usb_read", bytes = Empty, bits = Empty, reads = Empty);
+        let _span = span.enter();
+        let mut reads = 0;
 
         // A zero-length read gives no capture data. Retry it until the timeout, so that the
         // callers that wait for `pending_in_bits` do not loop forever.
@@ -709,6 +727,7 @@ impl ProtocolHandler {
             let read_bytes = self
                 .ep_in
                 .read_bulk(&mut incoming, USB_TIMEOUT)
+                .inspect(|_| reads += 1)
                 .map_err(|e| {
                     tracing::warn!(
                         "Something went wrong in read_bulk {:?} when trying to read {}bytes - pending_in_bits: {}",
@@ -740,6 +759,9 @@ impl ProtocolHandler {
 
         let bits_in_buffer = self.pending_in_bits.min(read_bytes * 8);
         let incoming = &incoming[..read_bytes];
+        span.record("bytes", read_bytes);
+        span.record("bits", bits_in_buffer);
+        span.record("reads", reads);
 
         tracing::trace!("Read: {:?}, length = {}", incoming, bits_in_buffer);
         self.pending_in_bits = self.pending_in_bits.saturating_sub(bits_in_buffer);

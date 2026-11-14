@@ -411,96 +411,114 @@ where
         self.memory_mut().supports_native_64bit_access()
     }
 
+    #[tracing::instrument(level = "trace", skip_all, fields(address = format_args!("{address:#x}")))]
     fn read_word_64(&mut self, address: u64) -> Result<u64, Error> {
         self.memory_mut().read_word_64(address).map_err(Error::from)
     }
 
+    #[tracing::instrument(level = "trace", skip_all, fields(address = format_args!("{address:#x}")))]
     fn read_word_32(&mut self, address: u64) -> Result<u32, Error> {
         self.memory_mut().read_word_32(address).map_err(Error::from)
     }
 
+    #[tracing::instrument(level = "trace", skip_all, fields(address = format_args!("{address:#x}")))]
     fn read_word_16(&mut self, address: u64) -> Result<u16, Error> {
         self.memory_mut().read_word_16(address).map_err(Error::from)
     }
 
+    #[tracing::instrument(level = "trace", skip_all, fields(address = format_args!("{address:#x}")))]
     fn read_word_8(&mut self, address: u64) -> Result<u8, Error> {
         self.memory_mut().read_word_8(address).map_err(Error::from)
     }
 
+    #[tracing::instrument(level = "trace", skip_all, fields(address = format_args!("{address:#x}"), len = data.len()))]
     fn read_64(&mut self, address: u64, data: &mut [u64]) -> Result<(), Error> {
         self.memory_mut()
             .read_64(address, data)
             .map_err(Error::from)
     }
 
+    #[tracing::instrument(level = "trace", skip_all, fields(address = format_args!("{address:#x}"), len = data.len()))]
     fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), Error> {
         self.memory_mut()
             .read_32(address, data)
             .map_err(Error::from)
     }
 
+    #[tracing::instrument(level = "trace", skip_all, fields(address = format_args!("{address:#x}"), len = data.len()))]
     fn read_16(&mut self, address: u64, data: &mut [u16]) -> Result<(), Error> {
         self.memory_mut()
             .read_16(address, data)
             .map_err(Error::from)
     }
 
+    #[tracing::instrument(level = "trace", skip_all, fields(address = format_args!("{address:#x}"), len = data.len()))]
     fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), Error> {
         self.memory_mut().read_8(address, data).map_err(Error::from)
     }
 
+    #[tracing::instrument(level = "trace", skip_all, fields(address = format_args!("{address:#x}"), len = data.len()))]
     fn read(&mut self, address: u64, data: &mut [u8]) -> Result<(), Error> {
         self.memory_mut().read(address, data).map_err(Error::from)
     }
 
+    #[tracing::instrument(level = "trace", skip_all, fields(address = format_args!("{address:#x}")))]
     fn write_word_64(&mut self, address: u64, data: u64) -> Result<(), Error> {
         self.memory_mut()
             .write_word_64(address, data)
             .map_err(Error::from)
     }
 
+    #[tracing::instrument(level = "trace", skip_all, fields(address = format_args!("{address:#x}")))]
     fn write_word_32(&mut self, address: u64, data: u32) -> Result<(), Error> {
         self.memory_mut()
             .write_word_32(address, data)
             .map_err(Error::from)
     }
 
+    #[tracing::instrument(level = "trace", skip_all, fields(address = format_args!("{address:#x}")))]
     fn write_word_16(&mut self, address: u64, data: u16) -> Result<(), Error> {
         self.memory_mut()
             .write_word_16(address, data)
             .map_err(Error::from)
     }
 
+    #[tracing::instrument(level = "trace", skip_all, fields(address = format_args!("{address:#x}")))]
     fn write_word_8(&mut self, address: u64, data: u8) -> Result<(), Error> {
         self.memory_mut()
             .write_word_8(address, data)
             .map_err(Error::from)
     }
 
+    #[tracing::instrument(level = "trace", skip_all, fields(address = format_args!("{address:#x}"), len = data.len()))]
     fn write_64(&mut self, address: u64, data: &[u64]) -> Result<(), Error> {
         self.memory_mut()
             .write_64(address, data)
             .map_err(Error::from)
     }
 
+    #[tracing::instrument(level = "trace", skip_all, fields(address = format_args!("{address:#x}"), len = data.len()))]
     fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), Error> {
         self.memory_mut()
             .write_32(address, data)
             .map_err(Error::from)
     }
 
+    #[tracing::instrument(level = "trace", skip_all, fields(address = format_args!("{address:#x}"), len = data.len()))]
     fn write_16(&mut self, address: u64, data: &[u16]) -> Result<(), Error> {
         self.memory_mut()
             .write_16(address, data)
             .map_err(Error::from)
     }
 
+    #[tracing::instrument(level = "trace", skip_all, fields(address = format_args!("{address:#x}"), len = data.len()))]
     fn write_8(&mut self, address: u64, data: &[u8]) -> Result<(), Error> {
         self.memory_mut()
             .write_8(address, data)
             .map_err(Error::from)
     }
 
+    #[tracing::instrument(level = "trace", skip_all, fields(address = format_args!("{address:#x}"), len = data.len()))]
     fn write(&mut self, address: u64, data: &[u8]) -> Result<(), Error> {
         self.memory_mut().write(address, data).map_err(Error::from)
     }
@@ -509,10 +527,12 @@ where
         self.memory().supports_8bit_transfers().map_err(Error::from)
     }
 
+    #[tracing::instrument(level = "trace", skip_all)]
     fn flush(&mut self) -> Result<(), Error> {
         self.memory_mut().flush().map_err(Error::from)
     }
 
+    #[tracing::instrument(level = "trace", skip_all, fields(operations = operations.len()))]
     fn execute_memory_operations(&mut self, operations: &mut [Operation<'_>]) {
         self.memory_mut().execute_memory_operations(operations)
     }

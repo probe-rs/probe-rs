@@ -9,6 +9,7 @@ pub mod meta;
 pub mod probe_config;
 pub mod pwr;
 pub mod rtt;
+pub mod self_profile;
 pub mod setup_hints;
 pub mod stream_decoder;
 pub mod style;

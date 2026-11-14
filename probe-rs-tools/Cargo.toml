@@ -20,6 +20,8 @@ default = ["remote", "cmsisdap_v1"]
 cmsisdap_v1 = ["probe-rs/cmsisdap_v1", "probe-rs/hidapi-basic-udev"]
 # Include server/client functionality. Disable with `--no-default-features`.
 remote = ["dep:axum", "probe-rs-rpc/remote", "probe-rs-rpc-client/remote"]
+# Profile probe-rs itself. See `util/self_profile.rs` for the environment variables.
+self-profile = ["dep:tracing-chrome"]
 
 [dependencies]
 anyhow.workspace = true
@@ -86,6 +88,7 @@ time = { version = "0.3", default-features = false, features = [
 ] }
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 tracing-appender = "0.2"
+tracing-chrome = { version = "0.7.2", optional = true }
 ratatui = { version = "0.30.0", default-features = false, features = [
     "crossterm",
 ] }

@@ -302,6 +302,7 @@ impl DtmAccess for JtagDtm<'_> {
         }
     }
 
+    #[tracing::instrument(level = "trace", name = "riscv_dmi_execute", skip_all, fields(commands = self.state.queued_commands.len()))]
     fn execute(&mut self) -> Result<(), RiscvError> {
         let mut cmds = std::mem::take(&mut self.state.queued_commands);
 
@@ -664,6 +665,7 @@ impl DtmAccess for TunneledJtagDtm<'_> {
         }
     }
 
+    #[tracing::instrument(level = "trace", name = "riscv_dmi_execute", skip_all, fields(commands = self.state.queued_commands.len()))]
     fn execute(&mut self) -> Result<(), RiscvError> {
         let mut cmds = std::mem::take(&mut self.state.queued_commands);
 

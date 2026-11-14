@@ -111,7 +111,7 @@ pub async fn main(args: Vec<OsString>, config: Config) -> anyhow::Result<()> {
     let opt = parse_and_resolve_cli_args::<CliOptions>(args, &config)?;
 
     // Initialize the logger with the loglevel given on the commandline.
-    let _log_guard = setup_logging(None, opt.log);
+    let log_guard = setup_logging(None, opt.log);
 
     #[cfg(feature = "remote")]
     let connection_params = opt
@@ -148,6 +148,8 @@ pub async fn main(args: Vec<OsString>, config: Config) -> anyhow::Result<()> {
 
     if terminate {
         // We've already printed the error with our custom renderer, just exit here.
+        // `process::exit` runs no destructors, and the guard flushes the logs when dropped.
+        drop(log_guard);
         process::exit(1);
     }
 

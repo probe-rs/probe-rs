@@ -8,6 +8,8 @@ use tracing_subscriber::{
     EnvFilter, Layer, fmt::format::FmtSpan, layer::SubscriberExt, util::SubscriberInitExt,
 };
 
+use crate::util::self_profile::{self, ProfileGuard};
+
 /// Stores the progress bar for the logging facility.
 static PROGRESS_BAR: LazyLock<Mutex<Option<MultiProgress>>> = LazyLock::new(|| Mutex::new(None));
 
@@ -51,6 +53,13 @@ impl Drop for FileLoggerGuard<'_> {
     fn drop(&mut self) {
         tracing::info!("Wrote log to {:?}", self.log_path);
     }
+}
+
+/// Keeps the log outputs open, and flushes them when dropped.
+#[derive(Default)]
+pub struct LogGuard<'a> {
+    _file: Option<FileLoggerGuard<'a>>,
+    _profile: ProfileGuard,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, clap::ValueEnum)]
@@ -114,7 +123,7 @@ impl std::io::Write for ProgressBarWriter {
 pub fn setup_logging(
     log_path: Option<&Path>,
     default: Option<LevelFilter>,
-) -> anyhow::Result<Option<FileLoggerGuard<'_>>> {
+) -> anyhow::Result<LogGuard<'_>> {
     let stdout_subscriber = tracing_subscriber::fmt::layer()
         .compact()
         .without_time()
@@ -134,12 +143,18 @@ pub fn setup_logging(
             }
         });
 
+    let (profile_layers, profile_guard) = self_profile::layers();
+
     let Some(log_path) = log_path else {
         tracing_subscriber::registry()
+            .with(profile_layers)
             .with(stdout_subscriber)
             .init();
 
-        return Ok(None);
+        return Ok(LogGuard {
+            _file: None,
+            _profile: profile_guard,
+        });
     };
 
     let log_file = File::create(log_path)?;
@@ -157,11 +172,15 @@ pub fn setup_logging(
         .with_writer(file_appender);
 
     tracing_subscriber::registry()
+        .with(profile_layers)
         .with(stdout_subscriber)
         .with(file_subscriber)
         .init();
 
-    Ok(Some(FileLoggerGuard::new(guard, log_path)))
+    Ok(LogGuard {
+        _file: Some(FileLoggerGuard::new(guard, log_path)),
+        _profile: profile_guard,
+    })
 }
 
 /// Sets the currently displayed progress bar of the CLI.
