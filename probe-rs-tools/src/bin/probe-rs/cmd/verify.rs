@@ -61,6 +61,10 @@ impl Cmd {
             VerifyResult::Mismatch => {
                 anyhow::bail!("Verification failed: contents do not match")
             }
+            VerifyResult::NothingVerified => {
+                println!("Nothing verified: the data is only in regions that can't be read");
+                Ok(())
+            }
         }
     }
 }

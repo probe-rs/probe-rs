@@ -294,6 +294,7 @@ fn verify_impl(
     });
 
     match loader.verify(&mut session, &mut progress) {
+        Ok(()) if !loader.can_verify() => Ok(VerifyResult::NothingVerified),
         Ok(()) => Ok(VerifyResult::Ok),
         Err(flashing::FlashError::Verify) => Ok(VerifyResult::Mismatch),
         Err(other) => Err(crate::rpc::functions::convert::rpc_error_flash(other)),

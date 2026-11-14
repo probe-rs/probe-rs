@@ -1,7 +1,7 @@
 //! Sequences for CC23xx/CC27xx devices.
 use std::ops::DerefMut;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
 use std::thread;
 use std::time::{Duration, Instant};
 
@@ -10,6 +10,7 @@ use super::saci::{
     BOOT_STATUS_APP_WAITLOOP_DBGPROBE, BOOT_STATUS_BLDR_WAITLOOP_DBGPROBE,
     BOOT_STATUS_BOOT_WAITLOOP_DBGPROBE, SaciResult,
 };
+use crate::MemoryInterface;
 use crate::MemoryMappedRegister;
 use crate::Session;
 use crate::architecture::arm::ArmDebugInterface;
@@ -18,13 +19,15 @@ use crate::architecture::arm::armv6m::{BpCtrl, Demcr, Dhcsr};
 use crate::architecture::arm::core::cortex_m;
 use crate::architecture::arm::dp::DpAddress;
 use crate::architecture::arm::memory::ArmMemoryInterface;
-use crate::architecture::arm::sequences::{ArmDebugSequence, cortex_m_core_start};
+use crate::architecture::arm::sequences::{
+    ArmDebugSequence, DebugEraseSequence, cortex_m_core_start,
+};
 use crate::architecture::arm::traits::DebugPortWire;
 use crate::architecture::arm::{ArmError, FullyQualifiedApAddress};
 use crate::config::NvmRegion;
 use crate::flashing::{
     CompareContext, CompareCost, CompareOutcome, DebugFlashSequence, FlashCompare, FlashError,
-    SectorCheck,
+    FlashLoader, SectorCheck,
 };
 use crate::probe::DebugProbeError;
 use probe_rs_target::CoreType;
@@ -32,8 +35,8 @@ use probe_rs_target::CoreType;
 /// Marker struct for debug and flash sequencing on CC23xx/CC27xx family parts.
 #[derive(Debug)]
 pub struct CC23xxCC27xx {
-    /// Chip name - used when additional targets are added.
-    _name: String,
+    /// Whether the chip is a CC27xx, which has a RAM flash algorithm.
+    cc27xx: bool,
     /// Tracks whether the ROM is currently in the boot wait loop.
     boot_loop: AtomicBool,
     /// Shared flag set during host-side flash programming.
@@ -44,6 +47,10 @@ pub struct CC23xxCC27xx {
     saci_flash_mode: Arc<AtomicBool>,
     /// AHB-AP state as of the last debug_port_start.
     ahb_ap_available: AtomicBool,
+    /// Whether the current download goes through SACI rather than the RAM flash algorithm.
+    ///
+    /// Set by the flash sequence for each download.
+    saci_download: Arc<AtomicBool>,
 }
 
 /// Flash memory region types for CC23xx/CC27xx devices.
@@ -61,10 +68,11 @@ impl CC23xxCC27xx {
     /// Create the sequencer for the CC23xx/CC27xx family.
     pub fn create(name: String) -> Arc<Self> {
         Arc::new(Self {
-            _name: name,
+            cc27xx: name.starts_with("CC27"),
             boot_loop: AtomicBool::new(false),
             saci_flash_mode: Arc::new(AtomicBool::new(false)),
             ahb_ap_available: AtomicBool::new(false),
+            saci_download: Arc::new(AtomicBool::new(true)),
         })
     }
 
@@ -216,13 +224,29 @@ impl ArmDebugSequence for CC23xxCC27xx {
     }
 
     fn debug_flash_sequence(&self) -> Option<Arc<dyn DebugFlashSequence>> {
-        Some(Arc::new(CC23xxCC27xxFlashSequence::new_with_flag(
-            Arc::clone(&self.saci_flash_mode),
-        )))
+        Some(Arc::new(CC23xxCC27xxFlashSequence {
+            saci_flash_mode: Arc::clone(&self.saci_flash_mode),
+            saci_download: Arc::clone(&self.saci_download),
+            cc27xx: self.cc27xx,
+            hsm_download: AtomicBool::new(false),
+            xcfg_pending: AtomicU8::new(0),
+        }))
     }
 
     fn flash_compare(&self) -> Option<Arc<dyn FlashCompare>> {
+        if !self.saci_download.load(Ordering::SeqCst) {
+            return None;
+        }
         Some(Arc::new(SaciCompare))
+    }
+
+    fn debug_erase_sequence(&self) -> Option<Arc<dyn DebugEraseSequence>> {
+        if !self.cc27xx {
+            return None;
+        }
+        Some(Arc::new(CC27xxEraseSequence {
+            saci_flash_mode: Arc::clone(&self.saci_flash_mode),
+        }))
     }
 
     /// Connect without a reset, so a running application keeps running.
@@ -265,6 +289,53 @@ impl ArmDebugSequence for CC23xxCC27xx {
 const CCFG_START: u64 = 0x4E02_0000;
 /// Address boundary for the SCFG region on CC23xx/CC27xx devices.
 const SCFG_START: u64 = 0x4E04_0000;
+/// Size of the CCFG.
+const CCFG_SIZE: u64 = 0x800;
+/// Size of the SCFG.
+const SCFG_SIZE: usize = 0x400;
+/// The HSM firmware area: the last 96 KB of MAIN on 1 MB CC27xx parts. The boot ROM read-protects
+/// it. An HSM firmware image downloaded there is provisioned with HSM_FW_PROVISION.
+const HSM_AREA: std::ops::Range<u64> = 0xE_8000..0x10_0000;
+
+/// The header of TI's HSM firmware images: the payload follows the header.
+const HSM_IMAGE_HEADER_SIZE: usize = 0x410;
+/// The magic of TI's HSM firmware images.
+const HSM_IMAGE_MAGIC: (usize, &[u8; 4]) = (0x404, b"FWr\0");
+/// The offset of the payload size in TI's HSM firmware images.
+const HSM_IMAGE_PAYLOAD_SIZE: usize = 0x408;
+
+/// Returns the HSM firmware image at the start of `data`, without the padding after it.
+fn hsm_image(data: &[u8]) -> Result<&[u8], ArmError> {
+    let (offset, magic) = HSM_IMAGE_MAGIC;
+    if data.len() < HSM_IMAGE_HEADER_SIZE || &data[offset..offset + 4] != magic {
+        return Err(ArmError::Other(
+            "CC27xx: the data in the HSM area is not an HSM firmware image".to_string(),
+        ));
+    }
+    let payload = u32::from_le_bytes(
+        data[HSM_IMAGE_PAYLOAD_SIZE..HSM_IMAGE_PAYLOAD_SIZE + 4]
+            .try_into()
+            .unwrap(),
+    ) as usize;
+    let size = HSM_IMAGE_HEADER_SIZE + payload;
+    if size > data.len() || !size.is_multiple_of(4) {
+        return Err(ArmError::Other(format!(
+            "CC27xx: invalid HSM firmware image size {size:#x}"
+        )));
+    }
+    Ok(&data[..size])
+}
+
+/// Provisions the HSM firmware with HSM_FW_PROVISION: the command word, the image size in words,
+/// then the image. It must be the first command of the SACI session.
+fn provision_hsm(interface: &mut dyn DapAccess, image: &[u8]) -> Result<(), ArmError> {
+    tracing::info!("CC27xx: provisioning {} bytes of HSM firmware", image.len());
+    let mut words = vec![saci::cmd::HSM_FW_PROVISION, (image.len() / 4) as u32];
+    words.extend(saci::pack_words(image, 0xFF));
+    saci::send_words(interface, &words, Duration::from_millis(500))?;
+    let response = saci::read_response(interface, Duration::from_secs(30))?;
+    saci::check_result(response, "HSM_FW_PROVISION")
+}
 
 /// FLASH_ERASE_CHIP, FLASH_ERASE_MAIN_APP: keep the sectors that the CCFG retains.
 const RETAIN_SECTORS: u32 = 1 << 0;
@@ -278,81 +349,134 @@ const BLANK_CHECK: u32 = 1 << 15;
 /// Implements DebugFlashSequence by issuing SACI commands through the SEC-AP
 /// rather than loading a flash algorithm into target RAM.
 ///
-/// The saci_flash_mode flag is shared with CC23xxCC27xx. While this struct is
-/// alive the flag is true, which tells debug_port_start to skip the EXIT_SACI
-/// command so the ROM SACI handler stays active. The flag is automatically reset
-/// to false when this struct is dropped.
+/// The saci_flash_mode flag is shared with CC23xxCC27xx. While it is set, debug_port_start
+/// skips the EXIT_SACI command so the ROM SACI handler stays active. prepare_flash sets it,
+/// and finish_flash or dropping this struct clears it.
 #[derive(Debug)]
 pub struct CC23xxCC27xxFlashSequence {
     /// Shared flag with CC23xxCC27xx to suppress EXIT_SACI during flash.
     saci_flash_mode: Arc<AtomicBool>,
+    /// Shared with CC23xxCC27xx: whether the current download goes through SACI.
+    saci_download: Arc<AtomicBool>,
+    /// Whether the chip is a CC27xx, which has a RAM flash algorithm.
+    cc27xx: bool,
+    /// Whether the current download is an HSM firmware image, which goes alone.
+    hsm_download: AtomicBool,
+    /// The configuration sectors that the current download still has to program through SACI:
+    /// [`PENDING_CCFG`] and [`PENDING_SCFG`].
+    xcfg_pending: AtomicU8,
 }
 
-impl CC23xxCC27xxFlashSequence {
-    /// Create a flash sequence sharing the saci_flash_mode flag with CC23xxCC27xx.
-    ///
-    /// The flag is set to true immediately. CC23xxCC27xx::debug_flash_sequence()
-    /// passes its own `Arc<AtomicBool>` here so that both structs observe the same
-    /// flag. While true, debug_port_start skips EXIT_SACI_HALT so the ROM SACI
-    /// handler stays active across reinitialize() calls during flash programming.
-    /// Drop resets it to false so normal debug sessions are unaffected afterward.
-    pub fn new_with_flag(saci_flash_mode: Arc<AtomicBool>) -> Self {
-        saci_flash_mode.store(true, Ordering::SeqCst);
-        Self { saci_flash_mode }
+const PENDING_CCFG: u8 = 1 << 0;
+const PENDING_SCFG: u8 = 1 << 1;
+
+/// Reset the device and wait for SACI mode, with `saci_flash_mode` set.
+///
+/// debug_port_start exits SACI mode so the AHB-AP is accessible for normal
+/// debug. Before flash commands can be sent the device must be reset back
+/// into SACI mode.
+fn reset_into_saci_mode(
+    interface: &mut dyn ArmDebugInterface,
+    saci_flash_mode: &AtomicBool,
+) -> Result<(), ArmError> {
+    tracing::info!("CC23xx/CC27xx: Re-initializing to enter SACI mode for flash programming");
+
+    // After the reset the ROM waits in SACI. debug_port_start will see
+    // saci_flash_mode == true and skip EXIT_SACI.
+    saci_flash_mode.store(true, Ordering::SeqCst);
+    saci::reset_device(interface);
+    interface.reinitialize()?;
+
+    // Give the ROM time to reach the SACI handler after reinitialize.
+    thread::sleep(Duration::from_millis(100));
+
+    // Confirm SACI mode
+    let start = Instant::now();
+    loop {
+        if matches!(saci::read_device_status(interface), Ok(s) if !s.ahb_ap_available()) {
+            tracing::info!("CC23xx/CC27xx: Device is in SACI mode, ready for flash");
+            return Ok(());
+        }
+        if start.elapsed() >= Duration::from_secs(3) {
+            tracing::error!("CC23xx/CC27xx: Timeout waiting for SACI mode.");
+            return Err(ArmError::Timeout);
+        }
+        thread::sleep(Duration::from_millis(50));
     }
+}
 
-    /// Fallback constructor with no shared flag, for tests or standalone use.
-    pub fn new() -> Self {
-        Self::new_with_flag(Arc::new(AtomicBool::new(false)))
+/// Sends a SACI erase command and returns its result.
+fn erase_command(
+    interface: &mut dyn DapAccess,
+    command: u32,
+    parameters: u32,
+) -> Result<SaciResult, ArmError> {
+    let words = [saci::make_header(command, parameters), saci::cmd::FLASH_KEY];
+    saci::send_words(interface, &words, Duration::from_millis(200))?;
+
+    let response = saci::read_response(interface, Duration::from_secs(30))?;
+    // The retained sector masks follow.
+    for _ in 0..response >> 24 {
+        let mask = saci::read_response(interface, Duration::from_millis(100))?;
+        tracing::debug!("CC23xx/CC27xx: retained sectors {mask:#010x}");
     }
+    Ok(SaciResult::from(((response >> 16) & 0xFF) as u8))
+}
 
-    /// Reset the device and wait for SACI mode.
-    ///
-    /// debug_port_start exits SACI mode so the AHB-AP is accessible for normal
-    /// debug. Before flash commands can be sent the device must be reset back
-    /// into SACI mode.
-    fn reset_into_saci_mode(&self, interface: &mut dyn ArmDebugInterface) -> Result<(), ArmError> {
-        tracing::info!("CC23xx/CC27xx: Re-initializing to enter SACI mode for flash programming");
+/// Erases the application sectors of a CC27xx with FLASH_ERASE_MAIN_APP.
+///
+/// The CCFG, the SCFG and the HSM firmware stay. After a reset, the ROM opens the AHB-AP.
+#[derive(Debug)]
+struct CC27xxEraseSequence {
+    saci_flash_mode: Arc<AtomicBool>,
+}
 
-        // After the reset the ROM waits in SACI. debug_port_start will see
-        // saci_flash_mode == true and skip EXIT_SACI.
+impl DebugEraseSequence for CC27xxEraseSequence {
+    fn erase_all(&self, interface: &mut dyn ArmDebugInterface) -> Result<(), ArmError> {
+        tracing::info!("CC27xx: erasing the application sectors with FLASH_ERASE_MAIN_APP");
+        let result = reset_into_saci_mode(interface, &self.saci_flash_mode)
+            .and_then(|()| erase_command(interface, saci::cmd::FLASH_ERASE_MAIN_APP, 0));
+
+        // The ROM doesn't exit SACI in the session that erased the application: reset again.
+        self.saci_flash_mode.store(false, Ordering::SeqCst);
         saci::reset_device(interface);
         interface.reinitialize()?;
 
-        // Give the ROM time to reach the SACI handler after reinitialize.
-        thread::sleep(Duration::from_millis(100));
-
-        // Confirm SACI mode
-        let start = Instant::now();
-        loop {
-            if matches!(saci::read_device_status(interface), Ok(s) if !s.ahb_ap_available()) {
-                tracing::info!("CC23xx/CC27xx: Device is in SACI mode, ready for flash");
-                return Ok(());
-            }
-            if start.elapsed() >= Duration::from_secs(3) {
-                tracing::error!("CC23xx/CC27xx: Timeout waiting for SACI mode.");
-                return Err(ArmError::Timeout);
-            }
-            thread::sleep(Duration::from_millis(50));
+        match result? {
+            SaciResult::Success => Ok(()),
+            result => Err(ArmError::Other(format!(
+                "SACI FLASH_ERASE_MAIN_APP failed: {result:?}"
+            ))),
         }
     }
+}
 
-    /// Sends a SACI erase command and returns its result.
-    fn erase_command(
-        interface: &mut dyn DapAccess,
-        command: u32,
-        parameters: u32,
-    ) -> Result<SaciResult, ArmError> {
-        let words = [saci::make_header(command, parameters), saci::cmd::FLASH_KEY];
-        saci::send_words(interface, &words, Duration::from_millis(200))?;
-
-        let response = saci::read_response(interface, Duration::from_secs(30))?;
-        // The retained sector masks follow.
-        for _ in 0..response >> 24 {
-            let mask = saci::read_response(interface, Duration::from_millis(100))?;
-            tracing::debug!("CC23xx/CC27xx: retained sectors {mask:#010x}");
+impl CC23xxCC27xxFlashSequence {
+    /// Reads the device's SCFG and compares it with the bytes that the download writes there.
+    fn scfg_differs(session: &mut Session, loader: &FlashLoader) -> Result<bool, crate::Error> {
+        let mut device = vec![0u8; SCFG_SIZE];
+        session.core(0)?.read(SCFG_START, &mut device)?;
+        for (address, data) in loader.data() {
+            let end = address + data.len() as u64;
+            let start = address.max(SCFG_START);
+            let stop = end.min(SCFG_START + SCFG_SIZE as u64);
+            if start >= stop {
+                continue;
+            }
+            let image = &data[(start - address) as usize..(stop - address) as usize];
+            let offset = (start - SCFG_START) as usize;
+            if image != &device[offset..offset + image.len()] {
+                return Ok(true);
+            }
         }
-        Ok(SaciResult::from(((response >> 16) & 0xFF) as u8))
+        Ok(false)
+    }
+
+    /// Whether the download writes into `start..start + size`.
+    fn writes(loader: &FlashLoader, start: u64, size: u64) -> bool {
+        loader
+            .data()
+            .any(|(address, data)| address < start + size && start < address + data.len() as u64)
     }
 
     /// Whether the CCFG passes a FLASH_VERIFY_CCFG_SECTOR check with `parameters`.
@@ -429,11 +553,7 @@ impl CC23xxCC27xxFlashSequence {
 
     /// Program the SCFG sector using FLASH_PROG_SCFG_SECTOR (0x1A).
     fn program_scfg(&self, interface: &mut dyn DapAccess, data: &[u8]) -> Result<(), ArmError> {
-        // Clamp the number of bytes in the SCFG to be 0x400.
-        // The sector and page size for the SCFG region is actually 0x400
-        // This is different than the other pages in main flash which are 0x800
-        // We need this today until probe-rs allows per region page size. Otherwise the loader drops the SCFG
-        let data = &data[..data.len().min(0x400)];
+        let data = &data[..data.len().min(SCFG_SIZE)];
         let byte_count = data.len() as u32;
         let header = saci::make_header(saci::cmd::FLASH_PROG_SCFG_SECTOR, byte_count);
 
@@ -455,12 +575,6 @@ impl Drop for CC23xxCC27xxFlashSequence {
         // leave the flag set and make the AHB-AP permanently inaccessible until
         // the next probe-rs process restart.
         self.saci_flash_mode.store(false, Ordering::SeqCst);
-    }
-}
-
-impl Default for CC23xxCC27xxFlashSequence {
-    fn default() -> Self {
-        Self::new()
     }
 }
 
@@ -579,20 +693,87 @@ impl DebugFlashSequence for CC23xxCC27xxFlashSequence {
     fn prepare_flash(&self, session: &mut Session) -> Result<(), crate::Error> {
         let interface = session.get_arm_interface()?;
 
-        // Ensure the device is in SACI mode before any flash operation. Handles
-        // both the initial call (device was in normal debug mode after
-        // debug_port_start exited SACI) and repeated calls after finish_flash
-        // re-entered normal debug mode (e.g. standalone verify pass).
-        if matches!(saci::read_device_status(interface), Ok(s) if s.ahb_ap_available()) {
-            tracing::info!("CC23xx/CC27xx: prepare_flash -- device not in SACI, re-entering");
-            self.reset_into_saci_mode(interface)?;
-        }
+        // Always reset: a previous phase of this download may have left the device in SACI.
+        reset_into_saci_mode(interface, &self.saci_flash_mode)?;
         Ok(())
     }
 
+    /// On a CC27xx, the RAM flash algorithm flashes the download when the AHB-AP is open and the
+    /// download keeps the device's SCFG, which the boot ROM can't write. Otherwise, SACI does,
+    /// after a chip erase: the download must then hold the CCFG and the SCFG.
+    fn flashes_download(
+        &self,
+        session: &mut Session,
+        loader: &FlashLoader,
+        _chip_erase: bool,
+    ) -> Result<bool, crate::Error> {
+        let hsm =
+            self.cc27xx && Self::writes(loader, HSM_AREA.start, HSM_AREA.end - HSM_AREA.start);
+        self.hsm_download.store(hsm, Ordering::SeqCst);
+        self.xcfg_pending.store(0, Ordering::SeqCst);
+        if hsm {
+            if loader.data().any(|(address, data)| {
+                address < HSM_AREA.start || address + data.len() as u64 > HSM_AREA.end
+            }) {
+                return Err(crate::Error::Other(
+                    "CC27xx: an HSM firmware image must be downloaded on its own".to_string(),
+                ));
+            }
+            tracing::info!("CC27xx: HSM firmware image, provisioning through SACI");
+            self.saci_download.store(true, Ordering::SeqCst);
+            return Ok(true);
+        }
+
+        let saci = if !self.cc27xx {
+            true
+        } else if !saci::read_device_status(session.get_arm_interface()?)?.ahb_ap_available() {
+            tracing::warn!("CC27xx: no AHB-AP, flashing through SACI, which is slower");
+            true
+        } else if Self::scfg_differs(session, loader)? {
+            tracing::warn!(
+                "CC27xx: the download changes the SCFG, flashing through SACI, which is slower"
+            );
+            true
+        } else {
+            false
+        };
+
+        if saci
+            && self.cc27xx
+            && !(Self::writes(loader, CCFG_START, CCFG_SIZE)
+                && Self::writes(loader, SCFG_START, SCFG_SIZE as u64))
+        {
+            return Err(crate::Error::Other(
+                "CC27xx: flashing through SACI starts with a chip erase, which erases the CCFG \
+                 and the SCFG, but the download doesn't hold both"
+                    .to_string(),
+            ));
+        }
+
+        if saci {
+            let mut pending = 0;
+            if Self::writes(loader, CCFG_START, CCFG_SIZE) {
+                pending |= PENDING_CCFG;
+            }
+            if self.cc27xx && Self::writes(loader, SCFG_START, SCFG_SIZE as u64) {
+                pending |= PENDING_SCFG;
+            }
+            self.xcfg_pending.store(pending, Ordering::SeqCst);
+        }
+
+        self.saci_download.store(saci, Ordering::SeqCst);
+        Ok(saci)
+    }
+
     /// The sectors that the CCFG retains are kept when possible. On a CC27xx, they hold the HSM
-    /// firmware, which probe-rs can't provision again.
+    /// firmware.
     fn erase_all(&self, session: &mut Session) -> Result<(), crate::Error> {
+        // Provisioning the HSM firmware needs no erase, and must be alone in its SACI session.
+        if self.hsm_download.load(Ordering::SeqCst) {
+            tracing::info!("CC27xx: HSM firmware image, no erase");
+            return Ok(());
+        }
+
         let interface = session.get_arm_interface()?;
 
         // Retaining sectors needs a valid CCFG. With an invalid one, the ROM doesn't refuse the
@@ -601,21 +782,21 @@ impl DebugFlashSequence for CC23xxCC27xxFlashSequence {
             tracing::info!(
                 "CC23xx/CC27xx: erasing the chip, keeping the sectors that the CCFG retains"
             );
-            Self::erase_command(interface, saci::cmd::FLASH_ERASE_CHIP, RETAIN_SECTORS)?
+            erase_command(interface, saci::cmd::FLASH_ERASE_CHIP, RETAIN_SECTORS)?
         } else if Self::ccfg_is_blank(interface)? {
             // Erasing the application never erases the HSM firmware. Parts without an HSM don't
             // have the command.
             tracing::info!("CC23xx/CC27xx: no CCFG, erasing the application sectors");
-            match Self::erase_command(interface, saci::cmd::FLASH_ERASE_MAIN_APP, 0)? {
+            match erase_command(interface, saci::cmd::FLASH_ERASE_MAIN_APP, 0)? {
                 SaciResult::InvalidCmdId => {
                     tracing::info!("CC23xx/CC27xx: no FLASH_ERASE_MAIN_APP, erasing the chip");
-                    Self::erase_command(interface, saci::cmd::FLASH_ERASE_CHIP, 0)?
+                    erase_command(interface, saci::cmd::FLASH_ERASE_CHIP, 0)?
                 }
                 result => result,
             }
         } else {
             tracing::warn!("CC23xx/CC27xx: invalid CCFG, erasing the retained sectors too");
-            Self::erase_command(interface, saci::cmd::FLASH_ERASE_CHIP, 0)?
+            erase_command(interface, saci::cmd::FLASH_ERASE_CHIP, 0)?
         };
         Self::check_erase(result)
     }
@@ -634,21 +815,43 @@ impl DebugFlashSequence for CC23xxCC27xxFlashSequence {
 
         let interface = session.get_arm_interface()?;
 
-        if address >= SCFG_START {
+        if self.cc27xx && HSM_AREA.contains(&address) {
+            provision_hsm(interface, hsm_image(data)?)?;
+        } else if address >= SCFG_START {
             self.program_scfg(interface, data)?;
+            self.xcfg_pending.fetch_and(!PENDING_SCFG, Ordering::SeqCst);
         } else if address >= CCFG_START {
             self.program_ccfg(interface, data)?;
+            self.xcfg_pending.fetch_and(!PENDING_CCFG, Ordering::SeqCst);
+        } else if data.iter().all(|&byte| byte == 0xFF) {
+            // A SACI download starts with an erase, which leaves the page blank.
+            tracing::debug!("CC23xx/CC27xx: page at {address:#010x} is blank, not programmed");
         } else {
             self.program_main(interface, address, data)?;
         }
         Ok(())
     }
 
+    /// The HSM area needs no erase: for an HSM firmware image, no chip erase either.
     fn supports_sector_erase(&self) -> bool {
-        false
+        self.hsm_download.load(Ordering::SeqCst)
+    }
+
+    fn erase_sector(&self, _session: &mut Session, address: u64) -> Result<(), crate::Error> {
+        if self.hsm_download.load(Ordering::SeqCst) && HSM_AREA.contains(&address) {
+            return Ok(());
+        }
+        Err(crate::Error::NotImplemented("sector erase"))
     }
 
     fn finish_flash(&self, session: &mut Session) -> Result<(), crate::Error> {
+        // The boot ROM only leaves SACI with a valid CCFG and SCFG. A later phase of this download
+        // programs them, and resets into SACI again.
+        if self.xcfg_pending.load(Ordering::SeqCst) != 0 {
+            tracing::debug!("CC23xx/CC27xx: CCFG or SCFG not programmed yet, staying in SACI");
+            return Ok(());
+        }
+
         // The session is reused between the flash operation and post-flash debug
         // access, so the device must be out of SACI mode before we return.
         //

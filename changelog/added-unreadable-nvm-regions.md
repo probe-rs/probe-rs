@@ -1,0 +1,1 @@
+The flash loader programs NVM regions with `access.read: false` without comparing them first, and a verify skips them. `probe-rs verify` says nothing was verified when all the data is in such regions.

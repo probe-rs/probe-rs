@@ -141,6 +141,8 @@ pub mod cmd {
     pub const FLASH_ERASE_MAIN_APP: u32 = 0x1C;
     /// No operation.
     pub const MISC_NO_OPERATION: u32 = 0x01;
+    /// Provision or reprogram the HSM firmware (CC27xx only).
+    pub const HSM_FW_PROVISION: u32 = 0x21;
 }
 
 // ---- SEC-AP register offsets ------------------------------------------------
@@ -191,6 +193,14 @@ pub enum SaciResult {
     Crc32Mismatch = 0x87,
     /// Blank check failed (flash not erased).
     BlankCheckFailed = 0x89,
+    /// The HSM failed to boot.
+    HsmBootFailed = 0x8E,
+    /// HSM firmware update failed: invalid header.
+    HsmFwHeaderInvalid = 0x8F,
+    /// HSM firmware update failed: invalid version (anti-rollback).
+    HsmFwVersionInvalid = 0x90,
+    /// HSM firmware update failed: signature verification or decryption.
+    HsmFwCryptoFail = 0x91,
     /// Unrecognised result code.
     Unknown = 0xFF,
 }
@@ -208,6 +218,10 @@ impl From<u8> for SaciResult {
             0x86 => SaciResult::NotAllowed,
             0x87 => SaciResult::Crc32Mismatch,
             0x89 => SaciResult::BlankCheckFailed,
+            0x8E => SaciResult::HsmBootFailed,
+            0x8F => SaciResult::HsmFwHeaderInvalid,
+            0x90 => SaciResult::HsmFwVersionInvalid,
+            0x91 => SaciResult::HsmFwCryptoFail,
             _ => SaciResult::Unknown,
         }
     }
