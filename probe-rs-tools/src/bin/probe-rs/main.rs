@@ -27,7 +27,7 @@ use time::{OffsetDateTime, UtcOffset};
 use crate::rpc::functions::RpcApp;
 use crate::rpc::probe_broker::ProbeBroker;
 use crate::util::cli::FirmwareExited;
-use crate::util::logging::setup_logging;
+use crate::util::logging::{LogGuard, setup_logging};
 use crate::util::probe_config::{ConfiguredLister, ProbeConfigs};
 use probe_rs_rpc_client::{RemoteParams, RpcClient};
 
@@ -388,7 +388,7 @@ async fn run() -> Result<()> {
 
     let _logger_guard = if matches!(cli.subcommand, Subcommand::DapServer(_)) {
         // The DAP server has special logging requirements, so skip initializing the logger for it.
-        Ok(None)
+        Ok(LogGuard::default())
     } else {
         setup_logging(log_path.as_deref(), None)
     };

@@ -33,6 +33,7 @@ use std::{
     sync::Arc,
     time::{Duration, Instant},
 };
+use tracing::field::Empty;
 
 mod command_compacter;
 mod ftdaye;
@@ -195,6 +196,9 @@ impl JtagAdapter {
 
         let expected_bits = std::mem::take(&mut self.in_bit_counts);
         let reply_slots = expected_bits.len();
+        let span = tracing::trace_span!("usb_read", bytes = reply_slots, reads = Empty);
+        let _span = span.enter();
+        let mut reads = 0;
 
         // Read the exact number of bytes that the commands make. A read of more bytes gets only a
         // status message from the device, and the device sends a status message only one time in
@@ -208,6 +212,7 @@ impl JtagAdapter {
                 .map_err(FtdiError::from)?;
 
             received += read;
+            reads += 1;
 
             if read > 0 {
                 t0 = Instant::now();
@@ -218,6 +223,8 @@ impl JtagAdapter {
                 return Err(DebugProbeError::Timeout);
             }
         }
+
+        span.record("reads", reads);
 
         for (byte, count) in reply.into_iter().zip(expected_bits) {
             let bits = byte >> (8 - count);
@@ -267,6 +274,7 @@ impl JtagAdapter {
         self.commands.push(0x87);
 
         tracing::trace!("Sending buffer: {:X?}", self.commands);
+        let _span = tracing::trace_span!("usb_write", bytes = self.commands.len()).entered();
 
         self.device
             .write_all(&self.commands)
@@ -289,6 +297,12 @@ impl JtagAdapter {
         batch: &Batch<JtagOp, DebugProbeError>,
     ) -> Result<(TapState, Results), BatchExecutionError<DebugProbeError>> {
         let (state, commands) = collect_ftdi_commands(start, batch)?;
+        let _span = tracing::trace_span!(
+            "mpsse_batch",
+            commands = commands.len(),
+            bytes = commands.iter().map(Command::len).sum::<usize>(),
+        )
+        .entered();
         if let Err(error) = self.append_commands(&commands) {
             return Err(BatchExecutionError::new_from_debug_probe(
                 error,

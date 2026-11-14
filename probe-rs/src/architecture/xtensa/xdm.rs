@@ -358,6 +358,7 @@ impl<'probe> Xdm<'probe> {
     }
 
     /// Execute the queued commands.
+    #[tracing::instrument(level = "trace", name = "xtensa_xdm_execute", skip_all, fields(commands = self.state.queue.len()))]
     pub fn execute(&mut self) -> Result<(), XtensaError> {
         let mut queue = std::mem::take(&mut self.state.queue);
 
