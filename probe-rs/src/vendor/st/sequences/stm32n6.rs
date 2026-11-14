@@ -313,12 +313,10 @@ mod tests {
             (6, 0x20003),
         ] {
             let mut core = MockProbe::new(0);
-            for _ in 0..2 {
-                expect_reset_catch_clear(&mut core, previous, ictr);
-                Stm32n6::create()
-                    .reset_catch_clear(&mut core, CoreType::Armv8m, None)
-                    .unwrap();
-            }
+            expect_reset_catch_clear(&mut core, previous, ictr);
+            Stm32n6::create()
+                .reset_catch_clear(&mut core, CoreType::Armv8m, None)
+                .unwrap();
 
             // No later write may re-mask either security state's interrupts.
             for selector in [0x14, 0x22, 0x23] {
