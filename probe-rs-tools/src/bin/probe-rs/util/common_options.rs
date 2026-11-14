@@ -768,6 +768,7 @@ mod tests {
             allow_erase_all: false,
             attach_timeout,
             target_serial: false,
+            short_form: false,
         }
     }
 

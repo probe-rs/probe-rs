@@ -152,6 +152,7 @@ mod tests {
             allow_erase_all: false,
             attach_timeout: None,
             target_serial: false,
+            short_form: false,
         };
 
         attach_probe(client, options, None, false).await?;
