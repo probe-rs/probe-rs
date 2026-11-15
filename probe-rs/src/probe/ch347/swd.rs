@@ -414,7 +414,8 @@ struct Run {
 /// One transfer of a host batch, with its position in that batch.
 struct Transfer {
     index: usize,
-    id: HandleId,
+    /// `None` for a transfer that the driver adds. Nobody reads its value.
+    id: Option<HandleId>,
     op: Op,
 }
 
@@ -431,7 +432,7 @@ fn fetch_posted_before_ap_writes(transfers: &mut Vec<Transfer>) {
         {
             let fetch = Transfer {
                 index,
-                id: HandleId::new(),
+                id: None,
                 op: Op::read(Register::DP_C),
             };
             transfers.insert(position, fetch);
@@ -645,7 +646,7 @@ impl Ch347Device {
                 };
                 transfers.push(Transfer {
                     index,
-                    id: id.clone(),
+                    id: Some(id.clone()),
                     op,
                 });
                 continue;
@@ -699,9 +700,10 @@ impl Ch347Device {
             for (position, (transfer, value)) in chunk.iter().zip(run.values).enumerate() {
                 if let Some(value) = value
                     && position < stop
-                    && transfer.id.should_capture()
+                    && let Some(id) = &transfer.id
+                    && id.should_capture()
                 {
-                    results.push(&transfer.id, CommandResult::U32(value));
+                    results.push(id, CommandResult::U32(value));
                 }
             }
             if let Some((at, error)) = run.failed {
