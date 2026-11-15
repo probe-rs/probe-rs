@@ -129,7 +129,7 @@ impl VerifiedBreakpoint {
                 continue;
             }
 
-            let Ok((complete_line_program, line_sequences)) = line_program.clone().sequences()
+            let Some(Ok((complete_line_program, line_sequences))) = program_unit.line_sequences()
             else {
                 tracing::debug!("Failed to get line sequences for line program");
                 continue;
@@ -139,8 +139,8 @@ impl VerifiedBreakpoint {
                 let instruction_sequence = InstructionSequence::from_line_sequence(
                     debug_info,
                     program_unit,
-                    &complete_line_program,
-                    &line_sequence,
+                    complete_line_program,
+                    line_sequence,
                 );
 
                 for matching_file_index in &matching_file_indices {
@@ -374,24 +374,11 @@ impl<'debug_info> InstructionSequence<'debug_info> {
         program_counter: u64,
     ) -> Result<Self, DebugError> {
         let program_unit = debug_info.compile_unit_info(program_counter)?;
-        let (offset, address_size) = if let Some(line_program) =
-            program_unit.unit.line_program.clone()
-        {
-            (
-                line_program.header().offset(),
-                line_program.header().address_size(),
-            )
-        } else {
+        let Some(line_sequences) = program_unit.line_sequences() else {
             let message = "The specified source location does not have any line_program information available. Please consider using instruction level stepping.".to_string();
             return Err(DebugError::WarnAndContinue { message });
         };
-
-        // Get the sequences of rows from the CompleteLineProgram at the given program_counter.
-        let incomplete_line_program =
-            debug_info
-                .debug_line_section
-                .program(offset, address_size, None, None)?;
-        let (complete_line_program, line_sequences) = incomplete_line_program.sequences()?;
+        let (complete_line_program, line_sequences) = line_sequences?;
 
         // Get the sequence of rows that belongs to the program_counter.
         let Some(line_sequence) = line_sequences.iter().find(|line_sequence| {
@@ -403,7 +390,7 @@ impl<'debug_info> InstructionSequence<'debug_info> {
         let instruction_sequence = Self::from_line_sequence(
             debug_info,
             program_unit,
-            &complete_line_program,
+            complete_line_program,
             line_sequence,
         );
 

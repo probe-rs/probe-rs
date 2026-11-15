@@ -1,6 +1,7 @@
 use std::{
     collections::{HashMap, HashSet},
     ops::Range,
+    sync::OnceLock,
 };
 
 use super::{
@@ -31,13 +32,20 @@ pub struct UnitInfo {
     pub(crate) unit: gimli::Unit<GimliReader, usize>,
     dwarf_language: gimli::DwLang,
     language: Box<dyn language::ProgrammingLanguage + Send + Sync>,
-    // A mapping from child die to parent die.
-    parents: HashMap<UnitOffset, UnitOffset>,
+    // (child DIE, parent DIE), sorted by the child.
+    parents: Vec<(UnitOffset, UnitOffset)>,
     // Address => function DIE offset
     function_dies: Vec<(Range<u64>, UnitOffset)>,
     // Return PC => DW_TAG_call_site_parameter (DW_AT_location bytes, DW_AT_call_value)
     call_sites: HashMap<u64, Vec<CallSiteParameter>>,
+    line_sequences: OnceLock<Result<LineSequences, gimli::Error>>,
 }
+
+/// A line program that ran to completion, and its sequences of rows.
+pub(crate) type LineSequences = (
+    gimli::CompleteLineProgram<GimliReader>,
+    Vec<gimli::LineSequence<GimliReader>>,
+);
 
 mod call_site;
 mod location;
@@ -66,9 +74,10 @@ impl UnitInfo {
             unit,
             dwarf_language,
             language: language::from_dwarf(dwarf_language),
-            parents: HashMap::new(),
+            parents: Vec::new(),
             function_dies: Vec::new(),
             call_sites: HashMap::new(),
+            line_sequences: OnceLock::new(),
         };
 
         this.process_unit(dwarf);
@@ -79,15 +88,21 @@ impl UnitInfo {
     fn process_unit(&mut self, dwarf: &gimli::Dwarf<GimliReader>) {
         let mut entries_cursor = self.unit.entries();
 
-        let mut prev_offset = None;
-        let mut previous_depth = entries_cursor.depth();
+        // The DIEs of a unit are stored in depth-first preorder, so this walk visits them in
+        // order of increasing offset, and `parents` comes out sorted.
+        let mut ancestors = Vec::new();
         let mut active_call_site: Option<(isize, u64)> = None;
         while let Ok(Some(current)) = entries_cursor.next_dfs() {
-            if let Some(offset) = self.dfs_parent(prev_offset, current.depth() - previous_depth) {
-                self.parents.insert(current.offset(), offset);
+            while ancestors
+                .last()
+                .is_some_and(|&(depth, _)| depth >= current.depth())
+            {
+                ancestors.pop();
             }
-            previous_depth = current.depth();
-            prev_offset = Some(current.offset());
+            if let Some(&(_, parent)) = ancestors.last() {
+                self.parents.push((current.offset(), parent));
+            }
+            ancestors.push((current.depth(), current.offset()));
 
             for range in self.subprogram_ranges(current, dwarf) {
                 self.function_dies.push((range, current.offset()));
@@ -102,29 +117,6 @@ impl UnitInfo {
             );
 
             // TODO: assuming the ranges don't overlap, sort function dies by start address
-        }
-    }
-
-    /// The parent of the next DIE in a depth-first walk. `prev_offset` is the previous DIE, and
-    /// `depth_change` the depth of the next DIE minus the depth of the previous one.
-    fn dfs_parent(
-        &self,
-        prev_offset: Option<UnitOffset>,
-        depth_change: isize,
-    ) -> Option<UnitOffset> {
-        match depth_change {
-            // Previous die is our parent.
-            1 => prev_offset,
-            // If 0:  Previous die is a sibling, we have the same parent.
-            // If <0: Previous die is a child of one of our siblings. Trace back as many levels as needed, and grab the parent.
-            levels if levels <= 0 => {
-                let mut cursor = prev_offset.map(|off| self.parent_offset(off))?;
-                for _ in levels..0 {
-                    cursor = cursor.map(|off| self.parent_offset(off))?;
-                }
-                cursor
-            }
-            _ => unreachable!("DFS algorithms never jump down multiple levels in the graph"),
         }
     }
 
@@ -790,7 +782,21 @@ impl UnitInfo {
     }
 
     pub(crate) fn parent_offset(&self, offset: UnitOffset) -> Option<UnitOffset> {
-        self.parents.get(&offset).copied()
+        let index = self
+            .parents
+            .binary_search_by_key(&offset, |&(child, _)| child)
+            .ok()?;
+        Some(self.parents[index].1)
+    }
+
+    /// The line program of this unit run to completion, or `None` if the unit has no line
+    /// program.
+    pub(crate) fn line_sequences(&self) -> Option<Result<&LineSequences, gimli::Error>> {
+        let line_program = self.unit.line_program.as_ref()?;
+        let sequences = self
+            .line_sequences
+            .get_or_init(|| line_program.clone().sequences());
+        Some(sequences.as_ref().map_err(|error| *error))
     }
 }
 
@@ -980,7 +986,47 @@ impl RangeExt for gimli::Range {
 
 #[cfg(test)]
 mod test {
-    use super::start_scope_constant_is_active;
+    use gimli::{EntriesTreeNode, UnitOffset};
+
+    use super::{GimliReader, UnitInfo, start_scope_constant_is_active};
+    use crate::DebugInfo;
+
+    /// Check `parent_offset` of `node` and of every DIE below it.
+    fn check_parents(
+        unit_info: &UnitInfo,
+        node: EntriesTreeNode<'_, '_, GimliReader>,
+        parent: Option<UnitOffset>,
+    ) -> usize {
+        let offset = node.entry().offset();
+        assert_eq!(
+            unit_info.parent_offset(offset),
+            parent,
+            "parent of {offset:?}"
+        );
+
+        let mut checked = 1;
+        let mut children = node.children();
+        while let Some(child) = children.next().unwrap() {
+            checked += check_parents(unit_info, child, Some(offset));
+        }
+        checked
+    }
+
+    #[test]
+    fn every_die_knows_its_parent() {
+        let path = concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/tests/debug-unwind-tests/nRF52833_xxAA_full_unwind.elf"
+        );
+        let debug_info = DebugInfo::from_file(path).unwrap();
+
+        let mut checked = 0;
+        for unit_info in &debug_info.unit_infos {
+            let mut tree = unit_info.unit.entries_tree(None).unwrap();
+            checked += check_parents(unit_info, tree.root().unwrap(), None);
+        }
+        assert!(checked > 1000, "checked only {checked} DIEs");
+    }
 
     #[test]
     fn a_constant_start_scope_is_active_from_the_offset_of_the_enclosing_scope() {

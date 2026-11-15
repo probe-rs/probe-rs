@@ -2,7 +2,7 @@ use super::{
     DebugError, DebugRegisters, StackFrame, VariableCache,
     function_die::{Die, FunctionDie},
     get_object_reference,
-    unit_info::UnitInfo,
+    unit_info::{LineSequences, UnitInfo},
     variable::*,
 };
 use crate::{SourceLocation, VerifiedBreakpoint, stack_frame::StackFrameInfo, unit_info::RangeExt};
@@ -21,6 +21,7 @@ use typed_path::{TypedPath, TypedPathBuf};
 
 mod unwind;
 
+use unwind::FdeIndex;
 pub use unwind::{get_unwind_info, unwind_pc_without_debuginfo, unwind_program_counter_register};
 
 pub(crate) type GimliReader = gimli::EndianReader<RunTimeEndian, std::sync::Arc<[u8]>>;
@@ -35,7 +36,7 @@ pub(crate) type DwarfReader = gimli::read::EndianArcSlice<RunTimeEndian>;
 pub struct DebugInfo {
     pub(crate) dwarf: gimli::Dwarf<DwarfReader>,
     pub(crate) frame_section: gimli::DebugFrame<DwarfReader>,
-    pub(crate) debug_line_section: gimli::DebugLine<DwarfReader>,
+    pub(crate) fde_index: FdeIndex,
 
     pub(crate) unit_infos: Vec<UnitInfo>,
     pub(crate) endianness: gimli::RunTimeEndian,
@@ -88,7 +89,6 @@ impl DebugInfo {
 
         use gimli::Section;
         let mut frame_section = gimli::DebugFrame::load(load_section)?;
-        let debug_line_section = gimli::DebugLine::load(load_section)?;
 
         let mut unit_infos = Vec::new();
 
@@ -110,8 +110,8 @@ impl DebugInfo {
 
         Ok(DebugInfo {
             dwarf: dwarf_cow,
+            fde_index: FdeIndex::new(&frame_section),
             frame_section,
-            debug_line_section,
             unit_infos,
             endianness,
             addr2line: None,
@@ -152,7 +152,7 @@ impl DebugInfo {
             Ok(DebugInfo {
                 dwarf: gimli::Dwarf::load(&load_section)?,
                 frame_section: gimli::DebugFrame::load(load_section)?,
-                debug_line_section: gimli::DebugLine::load(load_section)?,
+                fde_index: FdeIndex::default(),
                 unit_infos: Vec::new(),
                 endianness,
                 addr2line: None,
@@ -183,23 +183,23 @@ impl DebugInfo {
                 continue;
             }
 
-            // Get the DWARF LineProgram.
-            let line_program = unit.line_program.clone()?;
-            if let Some(location) = self.line_program_source_location(unit, line_program, address) {
+            let line_sequences = unit_info.line_sequences()?;
+            if let Some(location) = self.line_program_source_location(unit, line_sequences, address)
+            {
                 return Some(location);
             }
         }
         None
     }
 
-    /// Look up the [`SourceLocation`] of `address` in a line program of `unit`.
+    /// Look up the [`SourceLocation`] of `address` in the line program of `unit`.
     fn line_program_source_location(
         &self,
         unit: &gimli::read::Unit<DwarfReader>,
-        line_program: gimli::IncompleteLineProgram<DwarfReader>,
+        line_sequences: Result<&LineSequences, gimli::Error>,
         address: u64,
     ) -> Option<SourceLocation> {
-        let (program, sequences) = match line_program.sequences() {
+        let (program, sequences) = match line_sequences {
             Ok(value) => value,
             Err(error) => {
                 tracing::warn!(
