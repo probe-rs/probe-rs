@@ -201,7 +201,7 @@ fn extract_file(
 ) -> Option<TypedPathBuf> {
     match attribute_value {
         AttributeValue::FileIndex(index) => {
-            if let Some(path) = debug_info.find_file_and_directory(unit, index) {
+            if let Some(path) = debug_info.get_path(unit, index) {
                 Some(path)
             } else {
                 tracing::warn!("Unable to extract file or path from {:?}.", attribute_value);
