@@ -160,7 +160,6 @@ pub async fn monitor(
     vector_catch: VectorCatchConfig,
 ) -> anyhow::Result<()> {
     let semihosting_options = parse_semihosting_options(&monitor_options.semihosting_file)?;
-    output.route(monitor_options).await?;
 
     let options = MonitorOptions {
         catch_reset: vector_catch.catch_reset,

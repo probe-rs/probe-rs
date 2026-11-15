@@ -236,25 +236,35 @@ pub struct TargetOutput {
 }
 
 impl TargetOutput {
-    pub fn new(decoders: DecoderSettings, rtt_client: Option<CliRttClient>) -> Self {
+    /// Opens the output files and selects the up channels that `monitor_options` name.
+    pub async fn new(
+        decoders: DecoderSettings,
+        rtt_client: Option<CliRttClient>,
+        monitor_options: &MonitoringOptions,
+    ) -> anyhow::Result<Self> {
+        let files = connect_target_output_files(&monitor_options.target_output_file).await?;
+        Ok(Self::from_parts(
+            decoders,
+            rtt_client,
+            files,
+            monitor_options.rtt_up_channels.clone(),
+        ))
+    }
+
+    pub(super) fn from_parts(
+        decoders: DecoderSettings,
+        rtt_client: Option<CliRttClient>,
+        files: TargetOutputFiles,
+        up_channels: Vec<u32>,
+    ) -> Self {
         Self {
             serial: Channel::new("serial".to_string(), decoders.auto_decoder()),
             decoders,
             rtt_client,
             semihosting_streams: HashMap::new(),
-            files: TargetOutputFiles::new(),
-            up_channels: Vec::new(),
+            files,
+            up_channels,
         }
-    }
-
-    /// Opens the output files and selects the up channels that `monitor_options` name.
-    pub(super) async fn route(
-        &mut self,
-        monitor_options: &MonitoringOptions,
-    ) -> anyhow::Result<()> {
-        self.files = connect_target_output_files(&monitor_options.target_output_file).await?;
-        self.up_channels = monitor_options.rtt_up_channels.clone();
-        Ok(())
     }
 
     pub(super) fn rtt_handle(&self) -> Option<Key<RttClient>> {

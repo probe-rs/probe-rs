@@ -36,8 +36,6 @@ pub async fn test(
     tracing::info!("libtest args {:?}", libtest_args);
     let token = CancellationToken::new();
 
-    output.route(monitor_options).await?;
-
     let semihosting_options = parse_semihosting_options(&monitor_options.semihosting_file)?;
 
     let capture = !libtest_args.nocapture;
@@ -336,6 +334,7 @@ mod tests {
     use super::*;
     use crate::util::cli::DecoderSettings;
     use probe_rs_rpc::monitor::SemihostingEvent;
+    use std::collections::HashMap;
 
     /// Sends the semihosting output of each test through the log task. Returns the captured
     /// output of each test.
@@ -358,7 +357,8 @@ mod tests {
         }
         drop(sender);
 
-        let mut output = TargetOutput::new(DecoderSettings::default(), None);
+        let mut output =
+            TargetOutput::from_parts(DecoderSettings::default(), None, HashMap::new(), Vec::new());
         log_test_output(&mut receiver, &mut output, true).await;
 
         let mut captured = Vec::new();
