@@ -188,8 +188,13 @@ impl<Op, E: std::error::Error + Send + Sync + 'static> Batch<Op, E> {
 impl<Op, E: std::error::Error + Send + Sync + 'static> Batch<Op, E> {
     /// Creates a new empty typed batch.
     pub fn new() -> Self {
+        Self::with_capacity(0)
+    }
+
+    /// Creates a new empty typed batch with space for `capacity` commands.
+    pub fn with_capacity(capacity: usize) -> Self {
         Self {
-            batch: ErasedBatch::new(),
+            batch: ErasedBatch::with_capacity(capacity),
             _marker: PhantomData,
         }
     }
@@ -497,10 +502,10 @@ impl<Op> ErasedBatch<Op> {
 }
 
 impl<Op> ErasedBatch<Op> {
-    /// Creates a new empty batch.
-    fn new() -> Self {
+    /// Creates a new empty batch with space for `capacity` commands.
+    fn with_capacity(capacity: usize) -> Self {
         Self {
-            commands: Vec::new(),
+            commands: Vec::with_capacity(capacity),
             cursor: 0,
         }
     }
