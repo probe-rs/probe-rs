@@ -6,10 +6,7 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 use super::saci;
-use super::saci::{
-    BOOT_STATUS_APP_WAITLOOP_DBGPROBE, BOOT_STATUS_BLDR_WAITLOOP_DBGPROBE,
-    BOOT_STATUS_BOOT_WAITLOOP_DBGPROBE, SaciResult,
-};
+use super::saci::{DeviceStatusRegister, SaciResult};
 use crate::MemoryMappedRegister;
 use crate::Session;
 use crate::architecture::arm::ArmDebugInterface;
@@ -44,6 +41,9 @@ pub struct CC23xxCC27xx {
     saci_flash_mode: Arc<AtomicBool>,
     /// AHB-AP state as of the last debug_port_start.
     ahb_ap_available: AtomicBool,
+    /// Set by reset_system when no halt was requested, so debug_port_start
+    /// boots the application instead of halting in the ROM.
+    run_after_reset: AtomicBool,
 }
 
 /// Flash memory region types for CC23xx/CC27xx devices.
@@ -65,11 +65,50 @@ impl CC23xxCC27xx {
             boot_loop: AtomicBool::new(false),
             saci_flash_mode: Arc::new(AtomicBool::new(false)),
             ahb_ap_available: AtomicBool::new(false),
+            run_after_reset: AtomicBool::new(false),
         })
     }
 
     fn is_in_boot_loop(&self) -> bool {
         self.boot_loop.load(Ordering::SeqCst)
+    }
+
+    /// Leave SACI and wait for the ROM to act on the exit command.
+    ///
+    /// Which command is sent depends on `run_after_reset`, set by reset_system:
+    ///
+    /// - Run requested (reset without halt): send BLDR_APP_EXIT_SACI_RUN. The
+    ///   ROM boots the application, which is done once the AHB-AP is available.
+    /// - Halt requested, or a plain connect: send DEBUG_EXIT_SACI_HALT. The ROM
+    ///   stops in its wait loop before running the application, which is done
+    ///   once the boot status reports that wait loop. debug_core_start then
+    ///   halts the core and releases it.
+    ///
+    /// Returns the final device status. If the wanted state is not reached in
+    /// time the last status is returned instead of an error, so the caller can
+    /// inspect it and decide what to report.
+    fn exit_saci(&self, interface: &mut dyn DapAccess) -> Result<DeviceStatusRegister, ArmError> {
+        // In practice, this should take less time and bails early, timeout only prevents forever loop
+        const EXIT_SACI_TIMEOUT: Duration = Duration::from_secs(2);
+
+        let status = if self.run_after_reset.load(Ordering::SeqCst) {
+            saci::send_command(interface, saci::cmd::BLDR_APP_EXIT_SACI_RUN)?;
+            saci::wait_for_device_status(
+                interface,
+                EXIT_SACI_TIMEOUT,
+                DeviceStatusRegister::ahb_ap_available,
+            )
+        } else {
+            saci::send_command(interface, saci::cmd::DEBUG_EXIT_SACI_HALT)?;
+            saci::wait_for_device_status(
+                interface,
+                EXIT_SACI_TIMEOUT,
+                DeviceStatusRegister::in_wait_loop,
+            )
+        };
+
+        // A timeout is not fatal here: the caller checks the status it gets back.
+        status.or_else(|_| saci::read_device_status(interface))
     }
 }
 
@@ -90,7 +129,11 @@ impl ArmDebugSequence for CC23xxCC27xx {
         // Reset from the SEC-AP as CCS does. The ROM then waits in SACI.
         // Unlike an AIRCR write, nothing else is sent while the device resets.
         saci::reset_device(interface);
-        interface.reinitialize()?;
+        self.run_after_reset
+            .store(!demcr.vc_corereset(), Ordering::SeqCst);
+        let reconnected = interface.reinitialize();
+        self.run_after_reset.store(false, Ordering::SeqCst);
+        reconnected?;
         self.debug_core_start(interface, &ap, core_type, debug_base, None)?;
 
         if demcr.vc_corereset() {
@@ -117,7 +160,12 @@ impl ArmDebugSequence for CC23xxCC27xx {
 
         // CC23xx/CC27xx-specific: check device state via CFG-AP and exit SACI
         // if the device is in SACI mode and we are not in a flash operation.
-        let mut device_status = saci::read_device_status(interface)?;
+        // Right after a reset the ROM may not have reached SACI yet.
+        let mut device_status = saci::wait_for_device_status(
+            interface,
+            Duration::from_millis(100),
+            DeviceStatusRegister::has_reached_saci,
+        )?;
 
         if !device_status.ahb_ap_available() {
             if self.saci_flash_mode.load(Ordering::SeqCst) {
@@ -126,33 +174,24 @@ impl ArmDebugSequence for CC23xxCC27xx {
                 tracing::info!(
                     "CC23xx/CC27xx: debug_port_start in flash mode, leaving SACI active"
                 );
+                self.boot_loop.store(false, Ordering::SeqCst);
                 self.ahb_ap_available.store(false, Ordering::SeqCst);
                 return Ok(());
             }
 
             // Normal debug session: exit SACI so the AHB-AP becomes accessible.
-            saci::send_command(interface, saci::cmd::DEBUG_EXIT_SACI_HALT)?;
-
-            thread::sleep(Duration::from_millis(30));
-            device_status = saci::read_device_status(interface)?;
-
-            match device_status.boot_status() {
-                BOOT_STATUS_BOOT_WAITLOOP_DBGPROBE
-                | BOOT_STATUS_BLDR_WAITLOOP_DBGPROBE
-                | BOOT_STATUS_APP_WAITLOOP_DBGPROBE => {
-                    tracing::info!("BOOT_WAITLOOP_DBGPROBE");
-                    self.boot_loop.store(true, Ordering::SeqCst);
-                }
-                _ => {
-                    if !device_status.ahb_ap_available() {
-                        tracing::warn!(
-                            "CC23xx/CC27xx: Device stayed in SACI mode (no valid image or debug locked), only flashing is available"
-                        );
-                    }
-                }
+            device_status = self.exit_saci(interface)?;
+            if !device_status.ahb_ap_available() {
+                tracing::warn!(
+                    "CC23xx/CC27xx: Device stayed in SACI mode (no valid image or debug locked), only flashing is available"
+                );
             }
         }
 
+        // Set on every connect, so a stale flag never makes debug_core_start
+        // halt a core that was booted.
+        self.boot_loop
+            .store(device_status.in_wait_loop(), Ordering::SeqCst);
         self.ahb_ap_available
             .store(device_status.ahb_ap_available(), Ordering::SeqCst);
 
