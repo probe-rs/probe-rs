@@ -22,6 +22,7 @@ variants:
           num_aregs: 64
         fpu:
           double_precision: false
+      skip_bulk_write_status: true
   - name: app
     type: xtensa
     core_access_options: !Xtensa
@@ -33,6 +34,7 @@ variants:
           num_aregs: 64
         fpu:
           double_precision: false
+      skip_bulk_write_status: true
   memory_map:
   - !Nvm
     range:

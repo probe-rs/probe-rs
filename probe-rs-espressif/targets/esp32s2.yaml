@@ -19,6 +19,7 @@ variants:
         hw_breakpoint_num: 2
         window_properties:
           num_aregs: 64
+      skip_bulk_write_status: true
   memory_map:
   - !Nvm
     range:

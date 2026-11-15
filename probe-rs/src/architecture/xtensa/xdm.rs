@@ -177,6 +177,16 @@ pub(crate) struct XdmState {
     /// On the ESP32, a load that misses the flash cache stays busy when the next debug module
     /// access comes in while it runs.
     exec_idle_cycles: u32,
+
+    /// Whether the NAR scan of a fast memory store skips the status capture of the access before
+    /// it.
+    skip_bulk_write_status: bool,
+}
+
+impl XdmState {
+    pub(crate) fn set_skip_bulk_write_status(&mut self, skip: bool) {
+        self.skip_bulk_write_status = skip;
+    }
 }
 
 /// The lower level functions of the Xtensa Debug Module.
@@ -465,11 +475,14 @@ impl<'probe> Xdm<'probe> {
 
     /// Schedule a NAR scan with `nar`, then an NDR scan with `ndr` and `idle_cycles` TCK cycles in
     /// Run-Test/Idle after it.
+    ///
+    /// With `check_status`, the NAR scan captures the status of the previous access.
     fn do_nexus_op(
         &mut self,
         nar: u8,
         ndr: u32,
         idle_cycles: u32,
+        check_status: bool,
         transform: TransformFn,
     ) -> Handle<CommandResult> {
         let nar_idx = self.state.queue.schedule(JtagWriteCommand {
@@ -501,7 +514,9 @@ impl<'probe> Xdm<'probe> {
         });
 
         // We save the nar reader because we want to capture the previous status.
-        self.state.status_idxs.push(nar_idx);
+        if check_status {
+            self.state.status_idxs.push(nar_idx);
+        }
 
         self.state.queue.schedule(ShiftDrCommand {
             inner: ShiftDrData {
@@ -524,7 +539,7 @@ impl<'probe> Xdm<'probe> {
     ) -> Handle<CommandResult> {
         let regdata = address << 1;
 
-        self.do_nexus_op(regdata, 0, idle_cycles, transform)
+        self.do_nexus_op(regdata, 0, idle_cycles, true, transform)
     }
 
     /// Perform an access to a register
@@ -539,9 +554,21 @@ impl<'probe> Xdm<'probe> {
         value: u32,
         idle_cycles: u32,
     ) -> Handle<CommandResult> {
+        self.schedule_dbg_write_with_check(address, value, idle_cycles, true)
+    }
+
+    /// Perform an access to a register. With `check_status`, check the status of the previous
+    /// access.
+    fn schedule_dbg_write_with_check(
+        &mut self,
+        address: u8,
+        value: u32,
+        idle_cycles: u32,
+        check_status: bool,
+    ) -> Handle<CommandResult> {
         let regdata = (address << 1) | 1;
 
-        self.do_nexus_op(regdata, value, idle_cycles, transform_noop)
+        self.do_nexus_op(regdata, value, idle_cycles, check_status, transform_noop)
     }
 
     fn pwr_write(&mut self, dev: PowerDevice, value: u8) -> Result<u8, XtensaError> {
@@ -791,10 +818,16 @@ impl<'probe> Xdm<'probe> {
     }
 
     /// Write a register that starts the last instruction.
+    ///
+    /// With `skip_bulk_write_status`, the NAR scan of a bulk store (`SDDR32.P`) does not capture
+    /// the status of the access before it. The debug module reports an error or busy status only
+    /// for variable-time registers (TRAXDATA), and the capture makes the probe read the data back.
     fn schedule_write_exec_register<R: NexusRegister>(&mut self, register: R) {
         tracing::debug!("Writing {}: {:08x}", R::NAME, register.bits());
         let idle_cycles = self.exec_idle_cycles();
-        self.schedule_dbg_write(R::ADDRESS, register.bits(), idle_cycles);
+        let check_status = !(self.state.skip_bulk_write_status
+            && matches!(self.state.last_instruction, Some(Instruction::Sddr32P(_))));
+        self.schedule_dbg_write_with_check(R::ADDRESS, register.bits(), idle_cycles, check_status);
     }
 
     pub(crate) fn reset_and_halt(&mut self) -> Result<(), XtensaError> {
