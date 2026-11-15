@@ -1,7 +1,8 @@
 use std::{collections::HashSet, ops::ControlFlow};
 
 use gimli::{
-    BaseAddresses, DebugFrame, UnwindContext, UnwindSection, UnwindTableRow, read::RegisterRule,
+    BaseAddresses, DebugFrame, FrameDescriptionEntry, UnwindContext, UnwindSection, UnwindTableRow,
+    read::RegisterRule,
 };
 use probe_rs::{
     CoreRegister, Error, InstructionSet, MemoryInterface, RegisterRole, RegisterValue,
@@ -9,11 +10,15 @@ use probe_rs::{
 };
 
 use super::{DebugInfo, DwarfReader, GimliReaderOffset, unknown_function_name};
+
+mod fde_index;
+
 use crate::{
     DebugError, DebugRegister, DebugRegisters, StackFrame,
     exception_handling::{ExceptionInfo, ExceptionInterface, ReturnAddressRecovery},
     get_object_reference,
 };
+pub(crate) use fde_index::FdeIndex;
 
 impl DebugInfo {
     /// Performs the logical unwind of the stack and returns a `Vec<StackFrame>`
@@ -154,7 +159,15 @@ impl<M: MemoryInterface> Unwinder<'_, M> {
         tracing::trace!(
             "UNWIND: Will generate `StackFrame` for function at address (PC) {frame_pc_register_value:#}"
         );
-        let unwind_info = get_unwind_info(unwind_context, &self.debug_info.frame_section, frame_pc);
+        let frame_section = &self.debug_info.frame_section;
+        let unwind_info = unwind_info_for_fde(
+            unwind_context,
+            frame_section,
+            self.debug_info
+                .fde_index
+                .fde_for_address(frame_section, frame_pc),
+            frame_pc,
+        );
 
         // Determining the frame base may need the CFA (Canonical Frame Address) to be calculated first.
         let cfa = unwind_info
@@ -551,6 +564,27 @@ pub fn get_unwind_info<'a>(
     frame_section: &DebugFrame<DwarfReader>,
     frame_program_counter: u64,
 ) -> Result<(&'a UnwindTableRow<GimliReaderOffset>, gimli::Register), DebugError> {
+    let frame_descriptor_entry = frame_section.fde_for_address(
+        &BaseAddresses::default(),
+        frame_program_counter,
+        DebugFrame::cie_from_offset,
+    );
+
+    unwind_info_for_fde(
+        unwind_context,
+        frame_section,
+        frame_descriptor_entry,
+        frame_program_counter,
+    )
+}
+
+/// The [`gimli::UnwindTableRow`] at `frame_program_counter` in `frame_descriptor_entry`.
+fn unwind_info_for_fde<'a>(
+    unwind_context: &'a mut UnwindContext<GimliReaderOffset>,
+    frame_section: &DebugFrame<DwarfReader>,
+    frame_descriptor_entry: gimli::Result<FrameDescriptionEntry<DwarfReader>>,
+    frame_program_counter: u64,
+) -> Result<(&'a UnwindTableRow<GimliReaderOffset>, gimli::Register), DebugError> {
     let transform_error = |error| {
         DebugError::Other(format!(
             "UNWIND: Error reading FrameDescriptorEntry at PC={frame_program_counter:x} : {error}"
@@ -559,13 +593,7 @@ pub fn get_unwind_info<'a>(
 
     let unwind_bases = BaseAddresses::default();
 
-    let frame_descriptor_entry = frame_section
-        .fde_for_address(
-            &unwind_bases,
-            frame_program_counter,
-            DebugFrame::cie_from_offset,
-        )
-        .map_err(transform_error)?;
+    let frame_descriptor_entry = frame_descriptor_entry.map_err(transform_error)?;
 
     let return_address_register = frame_descriptor_entry.cie().return_address_register();
 

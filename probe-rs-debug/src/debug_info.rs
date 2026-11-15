@@ -21,6 +21,7 @@ use typed_path::{TypedPath, TypedPathBuf};
 
 mod unwind;
 
+use unwind::FdeIndex;
 pub use unwind::{get_unwind_info, unwind_pc_without_debuginfo, unwind_program_counter_register};
 
 pub(crate) type GimliReader = gimli::EndianReader<RunTimeEndian, std::sync::Arc<[u8]>>;
@@ -35,6 +36,7 @@ pub(crate) type DwarfReader = gimli::read::EndianArcSlice<RunTimeEndian>;
 pub struct DebugInfo {
     pub(crate) dwarf: gimli::Dwarf<DwarfReader>,
     pub(crate) frame_section: gimli::DebugFrame<DwarfReader>,
+    pub(crate) fde_index: FdeIndex,
     pub(crate) debug_line_section: gimli::DebugLine<DwarfReader>,
 
     pub(crate) unit_infos: Vec<UnitInfo>,
@@ -110,6 +112,7 @@ impl DebugInfo {
 
         Ok(DebugInfo {
             dwarf: dwarf_cow,
+            fde_index: FdeIndex::new(&frame_section),
             frame_section,
             debug_line_section,
             unit_infos,
@@ -152,6 +155,7 @@ impl DebugInfo {
             Ok(DebugInfo {
                 dwarf: gimli::Dwarf::load(&load_section)?,
                 frame_section: gimli::DebugFrame::load(load_section)?,
+                fde_index: FdeIndex::default(),
                 debug_line_section: gimli::DebugLine::load(load_section)?,
                 unit_infos: Vec::new(),
                 endianness,
