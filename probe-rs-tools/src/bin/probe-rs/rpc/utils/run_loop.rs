@@ -262,6 +262,8 @@ impl RunLoop {
                         }
                         Ok(Some(reason)) => return Ok(reason),
                         Ok(None) => {
+                            // The core left lock-up, e.g. it was restarted by the primary core.
+                            locked_up[idx] = false;
                             *wakeup = Instant::now() + duration;
                             next_poll = next_poll.min(duration);
                         }
