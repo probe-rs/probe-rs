@@ -960,6 +960,18 @@ impl RangeExt for &mut gimli::RngListIter<GimliReader> {
     }
 }
 
+impl RangeExt for &mut gimli::RangeIter<GimliReader> {
+    fn contains(self, addr: u64) -> bool {
+        while let Ok(Some(range)) = self.next() {
+            if range.contains(addr) {
+                return true;
+            }
+        }
+
+        false
+    }
+}
+
 impl RangeExt for gimli::Range {
     fn contains(self, addr: u64) -> bool {
         self.begin <= addr && addr < self.end

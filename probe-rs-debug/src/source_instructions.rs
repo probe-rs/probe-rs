@@ -307,7 +307,7 @@ impl SourceLocation {
         instruction_location: &InstructionLocation,
     ) -> Option<SourceLocation> {
         debug_info
-            .find_file_and_directory(&program_unit.unit, instruction_location.file_index)
+            .get_path(&program_unit.unit, instruction_location.file_index)
             .map(|path| SourceLocation {
                 line: instruction_location.line.map(std::num::NonZeroU64::get),
                 column: Some(instruction_location.column),
