@@ -676,9 +676,15 @@ impl SwdProbe for CmsisDap {
 mod tests {
     use super::*;
     use crate::probe::{
+        Handle,
         cmsisdap::commands::{Request, transfer::LastTransferResponse},
         swd::{Direction, Port, SwdOp},
     };
+
+    /// An ID whose handle is gone, so its operation does not capture.
+    fn unread_id() -> HandleId {
+        Handle::unconverted().id().clone()
+    }
 
     fn block_response(count: u16, ack: Ack) -> TransferBlockResponse {
         TransferBlockResponse {
@@ -863,7 +869,7 @@ mod tests {
 
     fn transfer(port: Port, addr: u8, direction: Direction, data: u32) -> (HandleId, SwdOp) {
         (
-            HandleId::new(),
+            unread_id(),
             SwdOp::Transfer {
                 port,
                 addr,
@@ -978,7 +984,7 @@ mod tests {
 
         let ops = vec![
             transfer(Port::Ap, 0b1100, Direction::Read, 0),
-            (HandleId::new(), SwdOp::Idle { cycles: 8 }),
+            (unread_id(), SwdOp::Idle { cycles: 8 }),
             transfer(Port::Ap, 0b1100, Direction::Read, 0),
         ];
         assert_eq!(run_length(&ops, 0), 1);
@@ -1036,7 +1042,7 @@ mod tests {
     fn pending_transfers(n: usize) -> Vec<PendingTransfer> {
         (0..n)
             .map(|i| PendingTransfer {
-                id: HandleId::new(),
+                id: unread_id(),
                 direction: Direction::Read,
                 batch_index: 100 + i,
             })

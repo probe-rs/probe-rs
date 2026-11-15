@@ -77,7 +77,7 @@ impl<'p> SwdPort<'p> {
             self.block_read_counts.push(count);
             self.block_read_handles.push(held);
 
-            return Handle::from_parts(last.id().clone(), Box::new(decode_block_read));
+            return last.with_convert(Box::new(decode_block_read));
         }
 
         let _ = batch.read(Port::Ap, addr);
@@ -97,7 +97,7 @@ impl<'p> SwdPort<'p> {
         self.block_read_counts.push(count);
         self.block_read_handles.push(held);
 
-        Handle::from_parts(trailing.id().clone(), Box::new(decode_block_read))
+        trailing.with_convert(Box::new(decode_block_read))
     }
 
     /// Schedule an AP block write on `batch`.
@@ -411,9 +411,9 @@ fn schedule_transfer(
         direction,
         data,
     };
-    // Keep the logical handle: the logical batch is dropped before this one runs, so a handle
-    // nobody holds still reports that nothing is to be captured.
-    let _ = batch.schedule_preserved(handle_id.clone(), op);
+    // The expanded operation keeps the logical ID, so it captures only while the logical handle
+    // lives.
+    batch.schedule_preserved(handle_id.clone(), op);
 }
 
 fn bump_write_idle(batch: &mut SwdBatch, extra: u32) {

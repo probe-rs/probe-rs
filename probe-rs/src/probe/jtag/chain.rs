@@ -510,13 +510,9 @@ fn skip_loaded_ir(
     let mut kept = JtagBatch::new();
     for ((id, op), keep) in ops.into_iter().zip(keep) {
         if keep {
-            let _ = kept.schedule_preserved(id.clone(), op.clone());
+            kept.schedule_preserved(id.clone(), op.clone());
         }
     }
-    // A handle counts as read while two owners hold its ID, so the old batch must go before the
-    // probe runs the new one.
-    drop(batch);
-
     (kept, loaded)
 }
 

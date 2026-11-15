@@ -17,14 +17,14 @@ use std::time::Duration;
 /// DMI operation for the pending queue.
 #[derive(Debug)]
 enum DmiOp {
-    Read(u64),
+    Read(u64, HandleId),
     Write(u64, u32),
 }
 
 /// DTM that performs DMI accesses via a CoreSight memory access port.
 pub struct MemApDtm<'state> {
     memory: Box<dyn ArmMemoryInterface + 'state>,
-    pending: Vec<(HandleId, DmiOp)>,
+    pending: Vec<DmiOp>,
     results: Results,
 }
 
@@ -94,15 +94,15 @@ impl DtmAccess for MemApDtm<'_> {
     }
 
     fn execute(&mut self) -> Result<(), RiscvError> {
-        for (index, op) in std::mem::take(&mut self.pending) {
+        for op in std::mem::take(&mut self.pending) {
             match op {
-                DmiOp::Read(addr) => {
+                DmiOp::Read(addr, id) => {
                     let byte_addr = self.dmi_register_to_ap_address(addr);
                     let value = self
                         .memory
                         .read_word_32(byte_addr)
                         .map_err(arm_error_to_riscv)?;
-                    self.results.push(&index, CommandResult::U32(value));
+                    self.results.push(&id, CommandResult::U32(value));
                 }
                 DmiOp::Write(addr, value) => {
                     let byte_addr = self.dmi_register_to_ap_address(addr);
@@ -123,15 +123,14 @@ impl DtmAccess for MemApDtm<'_> {
         address: u64,
         value: u32,
     ) -> Result<Option<Handle<CommandResult>>, RiscvError> {
-        let id = HandleId::new();
-        self.pending.push((id, DmiOp::Write(address, value)));
+        self.pending.push(DmiOp::Write(address, value));
         Ok(None)
     }
 
     fn schedule_read(&mut self, address: u64) -> Result<Handle<CommandResult>, RiscvError> {
-        let id = HandleId::new();
-        self.pending.push((id.clone(), DmiOp::Read(address)));
-        Ok(Handle::from_id(id))
+        let handle = Handle::unconverted();
+        self.pending.push(DmiOp::Read(address, handle.id().clone()));
+        Ok(handle)
     }
 
     fn read_with_timeout(&mut self, address: u64, _timeout: Duration) -> Result<u32, RiscvError> {
