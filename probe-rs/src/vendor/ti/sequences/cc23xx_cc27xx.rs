@@ -15,7 +15,9 @@ use crate::architecture::arm::armv6m::{BpCtrl, Demcr, Dhcsr};
 use crate::architecture::arm::core::cortex_m;
 use crate::architecture::arm::dp::DpAddress;
 use crate::architecture::arm::memory::ArmMemoryInterface;
-use crate::architecture::arm::sequences::{ArmDebugSequence, cortex_m_core_start};
+use crate::architecture::arm::sequences::{
+    ArmDebugSequence, ArmDebugSequenceError, cortex_m_core_start,
+};
 use crate::architecture::arm::traits::DebugPortWire;
 use crate::architecture::arm::{ArmError, FullyQualifiedApAddress};
 use crate::config::NvmRegion;
@@ -23,7 +25,7 @@ use crate::flashing::{
     CompareContext, CompareCost, CompareOutcome, DebugFlashSequence, FlashCompare, FlashError,
     SectorCheck,
 };
-use crate::probe::DebugProbeError;
+use crate::probe::{DebugProbeError, WireProtocol};
 use probe_rs_target::CoreType;
 
 /// Marker struct for debug and flash sequencing on CC23xx/CC27xx family parts.
@@ -273,6 +275,14 @@ impl ArmDebugSequence for CC23xxCC27xx {
         interface: &mut dyn DebugPortWire,
         dp: DpAddress,
     ) -> Result<(), ArmError> {
+        // Refuse anything besides SWD
+        if interface.active_protocol() != Some(WireProtocol::Swd) {
+            return Err(ArmDebugSequenceError::SequenceSpecific(
+                "The CC23xx/CC27xx family supports SWD only".into(),
+            )
+            .into());
+        }
+
         let Err(error) = self.debug_port_setup_default(interface, dp) else {
             return Ok(());
         };
