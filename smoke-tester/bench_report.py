@@ -20,7 +20,7 @@ The script writes:
   nearest commit first.
 - `summary.md`: all records, with the change from the baseline.
 - `comment.md`: a summary, and a table of the changes beyond the noise threshold. The script writes
-  it only if such changes exist.
+  it only if such changes exist. Short accesses do not count: see `is_short`.
 - `clear.md`: the PR comment text if no changes exist.
 
 The records can come from PR code. Each table cell is a code span, so that the records cannot add
@@ -43,6 +43,10 @@ HISTORY = 30
 MIN_RUNS = 10
 # A change is an outlier if it is this many interquartile ranges above the third quartile.
 IQR_MULTIPLIER = 3.0
+# Metrics of one short access.
+SHORT_METRICS = ("read_word_32", "read_core_reg")
+# Block transfers below this size in bytes are short accesses.
+SHORT_BLOCK_SIZE = 1024
 
 KEY = ("runner", "chip", "probe", "protocol", "speed_khz", "metric", "size")
 
@@ -134,6 +138,19 @@ def noise(history: list[Record]) -> float:
     return q3 + IQR_MULTIPLIER * (q3 - q1)
 
 
+def is_short(record: Record) -> bool:
+    """Return whether `record` measures a short access.
+
+    A short access takes a few USB microframes of 125 us, so its result changes by a whole
+    microframe between runs.
+    """
+    metric = record.get("metric")
+    size = record.get("size")
+    if metric in SHORT_METRICS:
+        return True
+    return metric in ("read_32", "write_32") and number(size) and size < SHORT_BLOCK_SIZE
+
+
 def compare(current: Record, history: list[Record]) -> tuple[float | None, str | None]:
     """Return the relative change and "better", "worse" or None if not significant."""
     if not history or not history[0]["median"]:
@@ -190,7 +207,10 @@ CAUTION = (
     "> [!NOTE]\n"
     "> The benchmarks run on real hardware, and the results change from run to run. "
     "A change in this report can be noise, and noise can hide a small change. "
-    "If a change looks wrong, run the smoke test again."
+    "If a change looks wrong, run the smoke test again.\n"
+    ">\n"
+    f"> This comment leaves out single accesses and blocks under {SHORT_BLOCK_SIZE} B, because "
+    "their results change by whole USB microframes. All results lists them."
 )
 
 
@@ -225,6 +245,8 @@ def main() -> None:
     for record in records:
         change, outcome = compare(record, baseline.get(key(record), []))
         rows.append(row(record, change, outcome))
+        if is_short(record):
+            continue
         if change is not None:
             outcomes[outcome] += 1
         if outcome:
