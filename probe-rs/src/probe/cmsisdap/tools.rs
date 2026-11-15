@@ -399,11 +399,21 @@ pub fn open_device_from_selector(
     #[cfg(feature = "cmsisdap_v1")]
     let mut hid_device_info = None;
 
+    #[cfg(feature = "cmsisdap_v1")]
+    let mut hid_may_find = true;
+
     // Try using nusb to open a v2 device. This might fail if
     // the device does not support v2 operation or due to driver
     // or permission issues with opening bulk devices.
     match nusb::list_devices().wait() {
         Ok(devices) => {
+            let devices: Vec<_> = devices.collect();
+
+            #[cfg(feature = "cmsisdap_v1")]
+            {
+                hid_may_find = v1::may_find_device(selector, &devices);
+            }
+
             for device in devices {
                 tracing::trace!("Trying device {:?}", device);
 
@@ -441,6 +451,17 @@ pub fn open_device_from_selector(
 
     #[cfg(not(feature = "cmsisdap_v1"))]
     return Err(ProbeCreationError::NotFound);
+
+    // hidapi cannot open a device without a HID interface, and enumerating HID devices is slow.
+    #[cfg(feature = "cmsisdap_v1")]
+    if !hid_may_find {
+        tracing::debug!(
+            "No HID interface on {:04x}:{:04x}",
+            selector.vendor_id,
+            selector.product_id
+        );
+        return Err(ProbeCreationError::NotFound);
+    }
 
     #[cfg(feature = "cmsisdap_v1")]
     v1::open_device(selector, hid_device_info)

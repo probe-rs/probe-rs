@@ -1,6 +1,6 @@
 //! CMSIS-DAP v1 probes, which use HID.
 
-use super::{is_cmsis_dap, reject_probe_by_version};
+use super::{USB_CLASS_HID, is_cmsis_dap, reject_probe_by_version};
 use crate::probe::{
     DebugProbeInfo, ProbeCreationError, ProbeTransport, UsbSelector,
     cmsisdap::{CmsisDapDevice, CmsisDapFactory, commands::DEFAULT_USB_TIMEOUT},
@@ -62,6 +62,22 @@ fn get_cmsisdap_hid_info(device: &hidapi::DeviceInfo) -> Option<DebugProbeInfo> 
     } else {
         None
     }
+}
+
+/// Whether hidapi may find the device that `selector` selects: unless nusb lists a matching
+/// device, and none of the matching devices has a HID interface.
+pub(super) fn may_find_device(selector: &UsbSelector, devices: &[nusb::DeviceInfo]) -> bool {
+    let mut matching = devices
+        .iter()
+        .filter(|device| selector.matches(device))
+        .peekable();
+    matching.peek().is_none() || matching.any(may_have_hid_interface)
+}
+
+/// Whether `device` can have a HID interface. A device for which nusb lists no interfaces can.
+fn may_have_hid_interface(device: &nusb::DeviceInfo) -> bool {
+    let mut interfaces = device.interfaces().peekable();
+    interfaces.peek().is_none() || interfaces.any(|interface| interface.class() == USB_CLASS_HID)
 }
 
 /// Attempt to open the device matching `selector` in CMSIS-DAP v1 mode.
