@@ -170,6 +170,13 @@ impl<Op, E: std::error::Error + Send + Sync + 'static> Batch<Op, E> {
         self.batch.replace_remaining(ops);
     }
 
+    /// Removes each remaining command whose entry in `keep` is `false`.
+    ///
+    /// `keep` has one entry for each command that [`Batch::iter`] returns.
+    pub(crate) fn retain_remaining(&mut self, keep: &[bool]) {
+        self.batch.retain_remaining(keep);
+    }
+
     pub(crate) fn remaining_with_ids(&self) -> Vec<(HandleId, Op)>
     where
         Op: Clone,
@@ -475,6 +482,17 @@ impl<Op> ErasedBatch<Op> {
     fn replace_remaining(&mut self, ops: Vec<(HandleId, Op)>) {
         self.commands.truncate(self.cursor);
         self.commands.extend(ops);
+    }
+
+    fn retain_remaining(&mut self, keep: &[bool]) {
+        debug_assert_eq!(keep.len(), self.len());
+        let cursor = self.cursor;
+        let mut index = 0;
+        self.commands.retain(|_| {
+            let kept = index < cursor || keep[index - cursor];
+            index += 1;
+            kept
+        });
     }
 }
 

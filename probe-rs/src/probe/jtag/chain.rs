@@ -442,7 +442,7 @@ impl<'p> JtagChain<'p> {
 fn skip_loaded_ir(
     start: TapState,
     mut loaded: Option<BitSequence>,
-    batch: JtagBatch,
+    mut batch: JtagBatch,
 ) -> (JtagBatch, Option<BitSequence>) {
     let ops: Vec<_> = batch.iter().collect();
     let mut keep = vec![true; ops.len()];
@@ -503,17 +503,11 @@ fn skip_loaded_ir(
         index += 1;
     }
 
-    if keep.iter().all(|keep| *keep) {
-        return (batch, loaded);
+    if !keep.iter().all(|keep| *keep) {
+        batch.retain_remaining(&keep);
     }
 
-    let mut kept = JtagBatch::new();
-    for ((id, op), keep) in ops.into_iter().zip(keep) {
-        if keep {
-            kept.schedule_preserved(id.clone(), op.clone());
-        }
-    }
-    (kept, loaded)
+    (batch, loaded)
 }
 
 #[cfg(test)]
