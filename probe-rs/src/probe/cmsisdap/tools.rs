@@ -399,11 +399,21 @@ pub fn open_device_from_selector(
     #[cfg(feature = "cmsisdap_v1")]
     let mut hid_device_info = None;
 
+    #[cfg(feature = "cmsisdap_v1")]
+    let mut hid_may_find = true;
+
     // Try using nusb to open a v2 device. This might fail if
     // the device does not support v2 operation or due to driver
     // or permission issues with opening bulk devices.
     match nusb::list_devices().wait() {
         Ok(devices) => {
+            let devices: Vec<_> = devices.collect();
+
+            #[cfg(feature = "cmsisdap_v1")]
+            {
+                hid_may_find = hid_may_find_device(selector, &devices);
+            }
+
             for device in devices {
                 tracing::trace!("Trying device {:?}", device);
 
@@ -442,8 +452,37 @@ pub fn open_device_from_selector(
     #[cfg(not(feature = "cmsisdap_v1"))]
     return Err(ProbeCreationError::NotFound);
 
+    // hidapi cannot open a device without a HID interface, and enumerating HID devices is slow.
+    #[cfg(feature = "cmsisdap_v1")]
+    if !hid_may_find {
+        tracing::debug!(
+            "No HID interface on {:04x}:{:04x}",
+            selector.vendor_id,
+            selector.product_id
+        );
+        return Err(ProbeCreationError::NotFound);
+    }
+
     #[cfg(feature = "cmsisdap_v1")]
     v1::open_device(selector, hid_device_info)
+}
+
+/// Whether hidapi may find the device that `selector` selects: unless nusb lists a matching
+/// device, and none of the matching devices has a HID interface.
+#[cfg(feature = "cmsisdap_v1")]
+fn hid_may_find_device(selector: &crate::probe::UsbSelector, devices: &[DeviceInfo]) -> bool {
+    let mut matching = devices
+        .iter()
+        .filter(|device| selector.matches(device))
+        .peekable();
+    matching.peek().is_none() || matching.any(may_have_hid_interface)
+}
+
+/// Whether `device` can have a HID interface. A device for which nusb lists no interfaces can.
+#[cfg(feature = "cmsisdap_v1")]
+fn may_have_hid_interface(device: &DeviceInfo) -> bool {
+    let mut interfaces = device.interfaces().peekable();
+    interfaces.peek().is_none() || interfaces.any(|interface| interface.class() == USB_CLASS_HID)
 }
 
 /// We recognise cmsis dap interfaces if they have string like "CMSIS-DAP"
