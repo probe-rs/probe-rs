@@ -230,6 +230,7 @@ fn create_core(processor: &Processor) -> Result<ProbeCore> {
                     fpu: None,
                     window_properties: Some(XtensaWindowProperties { num_aregs: 64 }),
                 },
+                skip_bulk_write_status: false,
             }),
         },
     })
