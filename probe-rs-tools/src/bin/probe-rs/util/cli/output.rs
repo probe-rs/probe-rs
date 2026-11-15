@@ -348,8 +348,6 @@ impl TargetOutput {
     }
 }
 
-/// Returns the writer for the semihosting `stream`: `error_writer` for `stderr`, `shared_writer`
-/// for the other streams.
 fn semihosting_writer(
     stream: &str,
     shared_writer: &impl AsyncFn(&str),
