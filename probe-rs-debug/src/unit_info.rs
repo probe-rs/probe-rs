@@ -1,6 +1,7 @@
 use std::{
     collections::{HashMap, HashSet},
     ops::Range,
+    sync::OnceLock,
 };
 
 use super::{
@@ -37,7 +38,14 @@ pub struct UnitInfo {
     function_dies: Vec<(Range<u64>, UnitOffset)>,
     // Return PC => DW_TAG_call_site_parameter (DW_AT_location bytes, DW_AT_call_value)
     call_sites: HashMap<u64, Vec<CallSiteParameter>>,
+    line_sequences: OnceLock<Result<LineSequences, gimli::Error>>,
 }
+
+/// A line program that ran to completion, and its sequences of rows.
+pub(crate) type LineSequences = (
+    gimli::CompleteLineProgram<GimliReader>,
+    Vec<gimli::LineSequence<GimliReader>>,
+);
 
 mod call_site;
 mod location;
@@ -69,6 +77,7 @@ impl UnitInfo {
             parents: HashMap::new(),
             function_dies: Vec::new(),
             call_sites: HashMap::new(),
+            line_sequences: OnceLock::new(),
         };
 
         this.process_unit(dwarf);
@@ -791,6 +800,16 @@ impl UnitInfo {
 
     pub(crate) fn parent_offset(&self, offset: UnitOffset) -> Option<UnitOffset> {
         self.parents.get(&offset).copied()
+    }
+
+    /// The line program of this unit run to completion, or `None` if the unit has no line
+    /// program.
+    pub(crate) fn line_sequences(&self) -> Option<Result<&LineSequences, gimli::Error>> {
+        let line_program = self.unit.line_program.as_ref()?;
+        let sequences = self
+            .line_sequences
+            .get_or_init(|| line_program.clone().sequences());
+        Some(sequences.as_ref().map_err(|error| *error))
     }
 }
 
