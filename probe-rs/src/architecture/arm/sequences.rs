@@ -791,7 +791,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
         // Dispatch based on core type (Cortex-A/R vs M)
         match core_type {
             CoreType::Armv7a | CoreType::Armv7r => armv7ar_core_start(&mut *core, debug_base),
-            CoreType::Armv8a => armv8a_core_start(&mut *core, debug_base, cti_base),
+            CoreType::Armv8a | CoreType::Armv8r => armv8a_core_start(&mut *core, debug_base, cti_base),
             CoreType::Armv6m | CoreType::Armv7m | CoreType::Armv7em | CoreType::Armv8m => {
                 cortex_m_core_start(&mut *core)
             }
@@ -814,7 +814,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
         // Dispatch based on core type (Cortex-A/R vs M)
         match core_type {
             CoreType::Armv7a | CoreType::Armv7r => armv7ar_reset_catch_set(core, debug_base),
-            CoreType::Armv8a => armv8a_reset_catch_set(core, debug_base),
+            CoreType::Armv8a | CoreType::Armv8r => armv8a_reset_catch_set(core, debug_base),
             CoreType::Armv6m | CoreType::Armv7m | CoreType::Armv7em | CoreType::Armv8m => {
                 cortex_m_reset_catch_set(core)
             }
@@ -837,7 +837,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
         // Dispatch based on core type (Cortex-A/R vs M)
         match core_type {
             CoreType::Armv7a | CoreType::Armv7r => armv7ar_reset_catch_clear(core, debug_base),
-            CoreType::Armv8a => armv8a_reset_catch_clear(core, debug_base),
+            CoreType::Armv8a | CoreType::Armv8r => armv8a_reset_catch_clear(core, debug_base),
             CoreType::Armv6m | CoreType::Armv7m | CoreType::Armv7em | CoreType::Armv8m => {
                 cortex_m_reset_catch_clear(core)
             }
@@ -890,7 +890,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
         // Dispatch based on core type (Cortex-A/R vs M)
         match core_type {
             CoreType::Armv7a | CoreType::Armv7r => armv7ar_reset_system(interface, debug_base),
-            CoreType::Armv8a => armv8a_reset_system(interface, debug_base),
+            CoreType::Armv8a | CoreType::Armv8r => armv8a_reset_system(interface, debug_base),
             CoreType::Armv6m | CoreType::Armv7m | CoreType::Armv7em | CoreType::Armv8m => {
                 cortex_m_reset_system(interface)
             }
@@ -1195,7 +1195,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
         let mut core = session.core(core_id)?;
         let core_type = core.core_type();
         match core_type {
-            CoreType::Armv7a | CoreType::Armv7r | CoreType::Armv8a => {
+            CoreType::Armv7a | CoreType::Armv7r | CoreType::Armv8a | CoreType::Armv8r => {
                 tracing::debug!("RAM flash start for Cortex-A/R core with ID {}", core_id);
                 core.write_core_reg(PC.id, vector_table_addr)?;
             }

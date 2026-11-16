@@ -235,6 +235,7 @@ pub enum WireCoreType {
     Armv7m,
     Armv7em,
     Armv8a,
+    Armv8r,
     Armv8m,
     Riscv,
     Riscv64,

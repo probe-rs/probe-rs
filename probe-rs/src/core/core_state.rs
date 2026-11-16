@@ -131,6 +131,18 @@ impl CombinedCoreState {
                     debug_sequence,
                 )?,
             ),
+            SpecificCoreState::Armv8r(s) => Core::new(
+                self.id,
+                name,
+                target,
+                crate::architecture::arm::core::armv8r::Armv8r::new(
+                    memory,
+                    s,
+                    options.debug_base.expect("base_address not specified"),
+                    options.cti_base.expect("cti_address not specified"),
+                    debug_sequence,
+                )?,
+            ),
             SpecificCoreState::Armv8m(s) => Core::new(
                 self.id,
                 name,
@@ -332,6 +344,8 @@ pub enum SpecificCoreState {
     Armv7em(CortexMState),
     /// The state of an ARMv8-A core.
     Armv8a(CortexARState),
+    /// The state of an ARMv8-R core.
+    Armv8r(CortexARState),
     /// The state of an ARMv8-M core.
     Armv8m(CortexMState),
     /// The state of a 32-bit RISC-V core.
@@ -351,6 +365,7 @@ impl SpecificCoreState {
             CoreType::Armv7m => SpecificCoreState::Armv7m(CortexMState::new()),
             CoreType::Armv7em => SpecificCoreState::Armv7m(CortexMState::new()),
             CoreType::Armv8a => SpecificCoreState::Armv8a(CortexARState::new()),
+            CoreType::Armv8r => SpecificCoreState::Armv8r(CortexARState::new()),
             CoreType::Armv8m => SpecificCoreState::Armv8m(CortexMState::new()),
             CoreType::Riscv => SpecificCoreState::Riscv(RiscvCoreState::new()),
             CoreType::Riscv64 => SpecificCoreState::Riscv64(RiscvCoreState::new()),
@@ -366,6 +381,7 @@ impl SpecificCoreState {
             SpecificCoreState::Armv7m(_) => CoreType::Armv7m,
             SpecificCoreState::Armv7em(_) => CoreType::Armv7em,
             SpecificCoreState::Armv8a(_) => CoreType::Armv8a,
+            SpecificCoreState::Armv8r(_) => CoreType::Armv8r,
             SpecificCoreState::Armv8m(_) => CoreType::Armv8m,
             SpecificCoreState::Riscv(_) => CoreType::Riscv,
             SpecificCoreState::Riscv64(_) => CoreType::Riscv64,

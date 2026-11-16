@@ -119,6 +119,8 @@ impl FlashAlgorithm {
     const ARM_ASSEMBLY_BKPT_A32: u32 = 0xE1200070;
     /// ARM hlt instruction, Thumb2 (x2)
     const ARM_ASSEMBLY_HLT: u32 = 0xBA80_BA80;
+    /// ARM hlt instruction, A32: `HLT #0`
+    const ARM_ASSEMBLY_HLT_A32: u32 = 0xE100_0070;
 
     // On ARMv8-A and -R, `BKPT` does not enter debug state, but the debug exception,
     // so use `HLT`.
@@ -129,6 +131,8 @@ impl FlashAlgorithm {
     const ARM_FLASH_BLOB_HEADER_BKPT_A32_BE: [u32; 1] = [Self::ARM_ASSEMBLY_BKPT_A32.swap_bytes()];
     const ARM_FLASH_BLOB_HEADER_HLT_LE: [u32; 1] = [Self::ARM_ASSEMBLY_HLT];
     const ARM_FLASH_BLOB_HEADER_HLT_BE: [u32; 1] = [Self::ARM_ASSEMBLY_HLT.swap_bytes()];
+    const ARM_FLASH_BLOB_HEADER_HLT_A32_LE: [u32; 1] = [Self::ARM_ASSEMBLY_HLT_A32];
+    const ARM_FLASH_BLOB_HEADER_HLT_A32_BE: [u32; 1] = [Self::ARM_ASSEMBLY_HLT_A32.swap_bytes()];
 
     const XTENSA_FLASH_BLOB_HEADER: [u32; 0] = [];
 
@@ -170,6 +174,10 @@ impl FlashAlgorithm {
             CoreType::Armv7a | CoreType::Armv7r => match endian {
                 Endian::Little => &Self::ARM_FLASH_BLOB_HEADER_BKPT_A32_LE,
                 Endian::Big => &Self::ARM_FLASH_BLOB_HEADER_BKPT_A32_BE,
+            },
+            CoreType::Armv8r => match endian {
+                Endian::Little => &Self::ARM_FLASH_BLOB_HEADER_HLT_A32_LE,
+                Endian::Big => &Self::ARM_FLASH_BLOB_HEADER_HLT_A32_BE,
             },
             CoreType::Armv8a => match endian {
                 Endian::Little => &Self::ARM_FLASH_BLOB_HEADER_HLT_LE,

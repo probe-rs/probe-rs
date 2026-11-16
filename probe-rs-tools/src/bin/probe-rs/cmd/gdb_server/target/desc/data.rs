@@ -69,6 +69,7 @@ impl TargetDescription {
                 InstructionSet::A64 => "aarch64",
                 _ => "armv8-a",
             },
+            CoreType::Armv8r => "armv8-r",
             CoreType::Armv8m => "armv8-m.main",
             CoreType::Riscv => "riscv:rv32",
             CoreType::Riscv64 => "riscv:rv64",
@@ -251,7 +252,9 @@ pub fn build_target_description(
         CoreType::Armv6m | CoreType::Armv7em | CoreType::Armv7m | CoreType::Armv8m => {
             build_cortex_m_registers(&mut desc, regs)
         }
-        CoreType::Armv7a | CoreType::Armv7r => build_aarch32_registers(&mut desc, regs),
+        CoreType::Armv7a | CoreType::Armv7r | CoreType::Armv8r => {
+            build_aarch32_registers(&mut desc, regs)
+        }
         CoreType::Armv8a => match isa {
             InstructionSet::A32 => build_aarch32_registers(&mut desc, regs),
             InstructionSet::A64 => build_aarch64_registers(&mut desc, regs),

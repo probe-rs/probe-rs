@@ -77,6 +77,8 @@ pub enum CoreType {
     Armv7em,
     /// ARMv8-A: Cortex A35, A55, A72
     Armv8a,
+    /// ARMv8-R (AArch32): Cortex R52, R52+
+    Armv8r,
     /// ARMv8-M: Cortex M23, M33
     Armv8m,
     /// RISC-V (32-bit)

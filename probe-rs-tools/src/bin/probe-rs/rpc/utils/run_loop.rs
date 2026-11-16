@@ -101,13 +101,13 @@ impl RunLoop {
                     core.halt(Duration::from_millis(100))?;
                 }
 
-                // For ARMv7-A/R and ARMv8-A cores: if we're at the reset vector (PC = 0), step
-                // past it first. This happens after reset_and_halt - enabling the reset catch
-                // while at the reset vector causes an immediate halt.
+                // For ARMv7-A/R and ARMv8-A/R cores: if we're at the reset vector (PC = 0),
+                // step past it first. This happens after reset_and_halt - enabling the reset
+                // catch while at the reset vector causes an immediate halt.
                 if catch_reset
                     && matches!(
                         core.core_type(),
-                        CoreType::Armv7a | CoreType::Armv7r | CoreType::Armv8a
+                        CoreType::Armv7a | CoreType::Armv7r | CoreType::Armv8a | CoreType::Armv8r
                     )
                 {
                     let pc: u64 = core.read_core_reg(core.program_counter())?;

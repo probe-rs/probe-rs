@@ -514,11 +514,13 @@ impl CoreRegisters {
 
         match core_type {
             CoreType::Armv6m => &CORTEX_M_CORE_REGISTERS,
-            CoreType::Armv7a | CoreType::Armv7r => match floating_point_register_count {
-                Some(16) => &AARCH32_WITH_FP_16_CORE_REGISTERS,
-                Some(32) => &AARCH32_WITH_FP_32_CORE_REGISTERS,
-                _ => &AARCH32_CORE_REGISTERS,
-            },
+            CoreType::Armv7a | CoreType::Armv7r | CoreType::Armv8r => {
+                match floating_point_register_count {
+                    Some(16) => &AARCH32_WITH_FP_16_CORE_REGISTERS,
+                    Some(32) => &AARCH32_WITH_FP_32_CORE_REGISTERS,
+                    _ => &AARCH32_CORE_REGISTERS,
+                }
+            }
             CoreType::Armv7m | CoreType::Armv7em | CoreType::Armv8m => {
                 if fpu_support {
                     &CORTEX_M_WITH_FP_CORE_REGISTERS

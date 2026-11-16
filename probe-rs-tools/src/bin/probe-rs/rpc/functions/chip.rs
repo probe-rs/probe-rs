@@ -106,6 +106,7 @@ pub(crate) mod convert {
             probe_rs_target::CoreType::Armv7m => CoreType::Armv7m,
             probe_rs_target::CoreType::Armv7em => CoreType::Armv7em,
             probe_rs_target::CoreType::Armv8a => CoreType::Armv8a,
+            probe_rs_target::CoreType::Armv8r => CoreType::Armv8r,
             probe_rs_target::CoreType::Armv8m => CoreType::Armv8m,
             probe_rs_target::CoreType::Riscv => CoreType::Riscv,
             probe_rs_target::CoreType::Riscv64 => CoreType::Riscv64,

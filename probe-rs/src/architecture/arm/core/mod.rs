@@ -16,6 +16,7 @@ pub mod armv7ar;
 pub mod armv7m;
 pub mod armv8a;
 pub mod armv8m;
+pub mod armv8r;
 
 pub(crate) mod armv7ar_debug_regs;
 pub(crate) mod armv8a_debug_regs;
