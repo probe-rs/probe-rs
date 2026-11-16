@@ -51,6 +51,10 @@ pub struct CC23xxCC27xx {
     ///
     /// Set by the flash sequence for each download.
     is_saci_download: Arc<AtomicBool>,
+    /// Whether the current download has provisioned the HSM firmware.
+    ///
+    /// Set by the flash sequence, read by the SACI compare.
+    hsm_provisioned: Arc<AtomicBool>,
 }
 
 /// Flash memory region types for CC23xx/CC27xx devices.
@@ -62,6 +66,8 @@ pub enum FlashRegion {
     Ccfg,
     /// Security Configuration (SCFG) sector, on the parts that have one.
     Scfg,
+    /// HSM firmware, on the parts that have one. The boot ROM read-protects it.
+    Hsm,
 }
 
 impl FlashRegion {
@@ -70,6 +76,7 @@ impl FlashRegion {
         match region.name.as_deref() {
             Some(CCFG_REGION) => Self::Ccfg,
             Some(SCFG_REGION) => Self::Scfg,
+            Some(HSM_REGION) => Self::Hsm,
             _ => Self::Main,
         }
     }
@@ -79,6 +86,8 @@ impl FlashRegion {
 const CCFG_REGION: &str = "CCFG";
 /// The name of the SCFG region in the target description.
 const SCFG_REGION: &str = "SCFG";
+/// The name of the HSM firmware region in the target description.
+const HSM_REGION: &str = "HSM";
 
 /// The configuration sectors of a device, from the named regions of its memory map.
 #[derive(Debug)]
@@ -86,6 +95,8 @@ struct ConfigSectors {
     ccfg: Range<u64>,
     /// `None` on parts without an SCFG.
     scfg: Option<Range<u64>>,
+    /// `None` on parts without an HSM.
+    hsm: Option<Range<u64>>,
 }
 
 impl ConfigSectors {
@@ -104,6 +115,7 @@ impl ConfigSectors {
         Ok(Self {
             ccfg,
             scfg: region(SCFG_REGION),
+            hsm: region(HSM_REGION),
         })
     }
 
@@ -123,6 +135,8 @@ impl ConfigSectors {
             .is_some_and(|scfg| scfg.contains(&address))
         {
             FlashRegion::Scfg
+        } else if self.hsm.as_ref().is_some_and(|hsm| hsm.contains(&address)) {
+            FlashRegion::Hsm
         } else {
             FlashRegion::Main
         }
@@ -139,6 +153,7 @@ impl CC23xxCC27xx {
             ahb_ap_available: AtomicBool::new(false),
             run_after_reset: AtomicBool::new(false),
             is_saci_download: Arc::new(AtomicBool::new(true)),
+            hsm_provisioned: Arc::new(AtomicBool::new(false)),
         })
     }
 
@@ -346,6 +361,8 @@ impl ArmDebugSequence for CC23xxCC27xx {
         Some(Arc::new(CC23xxCC27xxFlashSequence {
             saci_flash_mode: Arc::clone(&self.saci_flash_mode),
             is_saci_download: Arc::clone(&self.is_saci_download),
+            hsm_provisioned: Arc::clone(&self.hsm_provisioned),
+            hsm_download: AtomicBool::new(false),
             xcfgs_pending: AtomicU8::new(0),
         }))
     }
@@ -354,7 +371,9 @@ impl ArmDebugSequence for CC23xxCC27xx {
         if !self.is_saci_download.load(Ordering::SeqCst) {
             return None;
         }
-        Some(Arc::new(SaciCompare))
+        Some(Arc::new(SaciCompare {
+            hsm_provisioned: Arc::clone(&self.hsm_provisioned),
+        }))
     }
 
     fn debug_erase_sequence(&self) -> Option<Arc<dyn DebugEraseSequence>> {
@@ -407,6 +426,35 @@ impl ArmDebugSequence for CC23xxCC27xx {
 
 // ---- Flash sequence ---------------------------------------------------------
 
+/// The header of TI's HSM firmware images: the payload follows the header.
+const HSM_IMAGE_HEADER_SIZE: usize = 0x410;
+/// The magic of TI's HSM firmware images.
+const HSM_IMAGE_MAGIC: (usize, &[u8; 4]) = (0x404, b"FWr\0");
+/// The offset of the payload size in TI's HSM firmware images.
+const HSM_IMAGE_PAYLOAD_SIZE: usize = 0x408;
+
+/// Returns the HSM firmware image at the start of `data`, without the padding after it.
+fn hsm_image(data: &[u8]) -> Result<&[u8], ArmError> {
+    let (offset, magic) = HSM_IMAGE_MAGIC;
+    if data.len() < HSM_IMAGE_HEADER_SIZE || &data[offset..offset + 4] != magic {
+        return Err(ArmError::Other(
+            "CC23xx/CC27xx: the data in the HSM region is not an HSM firmware image".to_string(),
+        ));
+    }
+    let payload = u32::from_le_bytes(
+        data[HSM_IMAGE_PAYLOAD_SIZE..HSM_IMAGE_PAYLOAD_SIZE + 4]
+            .try_into()
+            .unwrap(),
+    ) as usize;
+    let size = HSM_IMAGE_HEADER_SIZE + payload;
+    if size > data.len() || !size.is_multiple_of(4) {
+        return Err(ArmError::Other(format!(
+            "CC23xx/CC27xx: invalid HSM firmware image size {size:#x}"
+        )));
+    }
+    Ok(&data[..size])
+}
+
 /// Host-side flash programming implementation for CC23xx/CC27xx devices.
 ///
 /// Implements DebugFlashSequence by issuing SACI commands through the SEC-AP
@@ -421,6 +469,10 @@ pub struct CC23xxCC27xxFlashSequence {
     saci_flash_mode: Arc<AtomicBool>,
     /// Shared with CC23xxCC27xx: whether the current download goes through SACI.
     is_saci_download: Arc<AtomicBool>,
+    /// Shared with CC23xxCC27xx: whether the current download has provisioned the HSM firmware.
+    hsm_provisioned: Arc<AtomicBool>,
+    /// Whether the current download is an HSM firmware image, which goes alone.
+    hsm_download: AtomicBool,
     /// The configuration sectors that the current download still has to program through SACI:
     /// [`PENDING_CCFG`] and [`PENDING_SCFG`].
     xcfgs_pending: AtomicU8,
@@ -704,8 +756,14 @@ impl Drop for CC23xxCC27xxFlashSequence {
 /// CRCs in CCFG, and only 0xE4 bytes of SCFG. A standalone verify can pass on a different, valid
 /// configuration. A download is not affected: these devices have no sector erase, so a compare
 /// never skips programming. A read-back is not possible: SACI mode has no AHB-AP.
+///
+/// The HSM firmware can't be read back. Before it is provisioned, its sectors count as changed.
+/// After the download provisioned it, they match if the HSM firmware runs.
 #[derive(Debug)]
-pub struct SaciCompare;
+pub struct SaciCompare {
+    /// Whether the current download has provisioned the HSM firmware.
+    hsm_provisioned: Arc<AtomicBool>,
+}
 
 impl FlashCompare for SaciCompare {
     fn name(&self) -> &str {
@@ -723,6 +781,9 @@ impl FlashCompare for SaciCompare {
         checks: &mut [SectorCheck<'_>],
     ) -> Result<(), FlashError> {
         let kind = FlashRegion::from_nvm_region(region);
+        if kind == FlashRegion::Hsm {
+            return self.compare_hsm(context, checks);
+        }
         let interface = context
             .session()?
             .get_arm_interface()
@@ -751,6 +812,37 @@ fn ccfg_crcs(data: &[u8]) -> Option<[u32; 4]> {
         return None;
     }
     Some(CRC_OFFSETS.map(|offset| u32::from_le_bytes(data[offset..offset + 4].try_into().unwrap())))
+}
+
+impl SaciCompare {
+    fn compare_hsm(
+        &self,
+        context: &mut CompareContext<'_>,
+        checks: &mut [SectorCheck<'_>],
+    ) -> Result<(), FlashError> {
+        let outcome = if self.hsm_provisioned.load(Ordering::SeqCst) {
+            let interface = context
+                .session()?
+                .get_arm_interface()
+                .map_err(|error| FlashError::Core(error.into()))?;
+            if saci::hsm_runs(interface).map_err(|error| FlashError::Core(error.into()))? {
+                CompareOutcome::Match
+            } else {
+                CompareOutcome::Mismatch
+            }
+        } else {
+            tracing::warn!(
+                "CC23xx/CC27xx: the HSM firmware can't be read back, it is checked only right \
+                 after it is provisioned"
+            );
+            CompareOutcome::Mismatch
+        };
+
+        for check in checks {
+            check.set_outcome(outcome);
+        }
+        Ok(())
+    }
 }
 
 /// Checks `data` at `address` with a SACI verify command.
@@ -831,8 +923,11 @@ impl DebugFlashSequence for CC23xxCC27xxFlashSequence {
         let interface = session.get_arm_interface()?;
 
         // The device is still in SACI if a previous phase of this download left it there, or if it
-        // couldn't leave SACI when the session attached.
-        if matches!(saci::read_device_status(interface), Ok(s) if s.ahb_ap_available()) {
+        // couldn't leave SACI when the session attached. HSM_FW_PROVISION must be the first command
+        // of a SACI session.
+        if self.hsm_download.load(Ordering::SeqCst)
+            || matches!(saci::read_device_status(interface), Ok(s) if s.ahb_ap_available())
+        {
             reset_into_saci_mode(interface, &self.saci_flash_mode)?;
         } else {
             self.saci_flash_mode.store(true, Ordering::SeqCst);
@@ -851,6 +946,7 @@ impl DebugFlashSequence for CC23xxCC27xxFlashSequence {
         chip_erase: bool,
     ) -> Result<bool, crate::Error> {
         self.xcfgs_pending.store(0, Ordering::SeqCst);
+        self.hsm_provisioned.store(false, Ordering::SeqCst);
 
         let sectors = ConfigSectors::try_from_target(session.target())?;
         // A partly written configuration sector is invalid, and the ROM then stays in SACI.
@@ -860,6 +956,25 @@ impl DebugFlashSequence for CC23xxCC27xxFlashSequence {
                     "CC23xx/CC27xx: the download writes part of the {name} sector, but not all of it"
                 )));
             }
+        }
+
+        let hsm = sectors
+            .hsm
+            .as_ref()
+            .is_some_and(|hsm| Self::writes(loader, hsm));
+        self.hsm_download.store(hsm, Ordering::SeqCst);
+        if let Some(range) = sectors.hsm.as_ref().filter(|_| hsm) {
+            if loader.data().any(|(address, data)| {
+                address < range.start || address + data.len() as u64 > range.end
+            }) {
+                return Err(crate::Error::Other(
+                    "CC23xx/CC27xx: an HSM firmware image must be downloaded on its own"
+                        .to_string(),
+                ));
+            }
+            tracing::info!("CC23xx/CC27xx: HSM firmware image, through SACI");
+            self.is_saci_download.store(true, Ordering::SeqCst);
+            return Ok(true);
         }
 
         let ram_algorithm = session
@@ -917,6 +1032,12 @@ impl DebugFlashSequence for CC23xxCC27xxFlashSequence {
     /// The sectors that the CCFG retains are kept when possible. On parts with an HSM, they hold
     /// its firmware, which probe-rs can't provision again.
     fn erase_all(&self, session: &mut Session) -> Result<(), crate::Error> {
+        // Provisioning the HSM firmware needs no erase, and must be alone in its SACI session.
+        if self.hsm_download.load(Ordering::SeqCst) {
+            tracing::info!("CC23xx/CC27xx: HSM firmware image, no erase");
+            return Ok(());
+        }
+
         let result = saci::erase_chip(session.get_arm_interface()?)?;
         Self::check_erase(result)
     }
@@ -937,6 +1058,10 @@ impl DebugFlashSequence for CC23xxCC27xxFlashSequence {
         let interface = session.get_arm_interface()?;
 
         match sectors.flash_region_at(address) {
+            FlashRegion::Hsm => {
+                saci::provision_hsm(interface, hsm_image(data)?)?;
+                self.hsm_provisioned.store(true, Ordering::SeqCst);
+            }
             FlashRegion::Scfg => {
                 let scfg = sectors.scfg.unwrap_or_default();
                 self.program_scfg(interface, data, (scfg.end - scfg.start) as usize)?;
@@ -958,8 +1083,16 @@ impl DebugFlashSequence for CC23xxCC27xxFlashSequence {
         Ok(())
     }
 
+    /// The HSM region needs no erase: for an HSM firmware image, no chip erase either.
     fn supports_sector_erase(&self) -> bool {
-        false
+        self.hsm_download.load(Ordering::SeqCst)
+    }
+
+    fn erase_sector(&self, _session: &mut Session, _address: u64) -> Result<(), crate::Error> {
+        if self.hsm_download.load(Ordering::SeqCst) {
+            return Ok(());
+        }
+        Err(crate::Error::NotImplemented("sector erase"))
     }
 
     fn finish_flash(&self, session: &mut Session) -> Result<(), crate::Error> {
