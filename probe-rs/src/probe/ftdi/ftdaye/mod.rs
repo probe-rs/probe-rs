@@ -35,6 +35,25 @@ pub enum ChipType {
     FT4232HA,
 }
 
+impl ChipType {
+    /// The channels with an MPSSE.
+    pub fn mpsse_channels(self) -> &'static [Interface] {
+        match self {
+            ChipType::FT2232C | ChipType::FT232H | ChipType::FT233HP | ChipType::FT232HP => {
+                &[Interface::A]
+            }
+            ChipType::FT2232H
+            | ChipType::FT4232H
+            | ChipType::FT2233HP
+            | ChipType::FT4233HP
+            | ChipType::FT2232HP
+            | ChipType::FT4232HP
+            | ChipType::FT4232HA => &[Interface::A, Interface::B],
+            ChipType::Am | ChipType::Bm | ChipType::R | ChipType::FT230X => &[],
+        }
+    }
+}
+
 #[repr(C)]
 #[expect(unused)]
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -416,7 +435,9 @@ impl Device {
         }
 
         let Some((intf, max_packet_size)) = usb_interface else {
-            Err(FtdiError::Other("device is not a FTDI device".to_string()))?
+            Err(FtdiError::Other(format!(
+                "The device has no channel {interface:?}"
+            )))?
         };
 
         let chip_type = match (

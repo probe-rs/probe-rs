@@ -90,6 +90,15 @@ impl JtagAdapter {
             .usb_open(usb_device)?;
 
         let ftdi = FtdiProperties::try_from((ftdi, device.chip_type()))?;
+        if let Some(chip_type) = device.chip_type()
+            && !chip_type.mpsse_channels().contains(&interface)
+        {
+            return Err(FtdiError::NoMpsse {
+                chip_type,
+                channel: interface,
+            }
+            .into());
+        }
 
         Ok(Self {
             device,
@@ -374,8 +383,14 @@ impl ProbeFactory for FtdiProbeFactory {
             .wait()
             .map_err(|e| DebugProbeError::from(FtdiError::Usb(e.into())))?;
 
+        // The interface selects the channel, which `JtagAdapter::open` checks. So match the
+        // device without it, as `list_probes_filtered` does.
+        let device_selector = UsbSelector {
+            interface: None,
+            ..selector.clone()
+        };
         let mut probes = devices
-            .filter(|usb_info| selector.matches(usb_info))
+            .filter(|usb_info| device_selector.matches(usb_info))
             .collect::<Vec<_>>();
 
         if probes.is_empty() {
