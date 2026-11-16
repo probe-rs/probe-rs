@@ -580,9 +580,15 @@ impl DebugPortWire for JtagDebugPortWire<'_> {
     }
 
     fn swj_sequence(&mut self, bits: &BitSequence) -> Result<(), ArmError> {
-        let mut batch = SwdBatch::new();
-        batch.sequence(bits.clone());
-        self.run_swj_batch(&batch)?;
+        // On a JTAG link the SWJ bits go out on TMS.
+        match self.probe.tms_sequence(bits) {
+            Err(DebugProbeError::CommandNotSupportedByProbe { .. }) => {
+                let mut batch = SwdBatch::new();
+                batch.sequence(bits.clone());
+                self.run_swj_batch(&batch)?;
+            }
+            other => other.map_err(ArmError::Probe)?,
+        }
 
         // The bits clock the TAP with TMS. If they end in a state that is not stable, the
         // tracked state stays, and the caller must reset the TAP with five clocks with TMS

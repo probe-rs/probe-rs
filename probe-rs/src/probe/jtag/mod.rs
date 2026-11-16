@@ -352,6 +352,18 @@ pub trait JtagProbe: DebugProbe {
     fn configure_jtag(&mut self, _skip_scan: bool) -> Result<(), DebugProbeError> {
         Ok(())
     }
+
+    /// Clock `bits` out on TMS, with TDI low and TDO not captured.
+    ///
+    /// This is for SWJ-DP line sequences on a JTAG link, such as the SWD-to-JTAG switch. These are
+    /// TMS patterns, not TAP state modifications.
+    ///
+    /// NOTE: Only the caller updates the TAP state.
+    fn tms_sequence(&mut self, _bits: &BitSequence) -> Result<(), DebugProbeError> {
+        Err(DebugProbeError::CommandNotSupportedByProbe {
+            command_name: "tms_sequence",
+        })
+    }
 }
 
 /// A probe that runs JTAG batches and holds the state of its scan chain.
@@ -616,6 +628,13 @@ impl<P: BitbangJtag> JtagProbe for P {
     ) -> Result<Results, BatchExecutionError<DebugProbeError>> {
         let start = *self.tap_state();
         run_bitbang_batch(self, start, batch)
+    }
+
+    fn tms_sequence(&mut self, bits: &BitSequence) -> Result<(), DebugProbeError> {
+        for tms in bits.iter() {
+            self.shift(tms, false, false)?;
+        }
+        BitbangJtag::flush(self)
     }
 }
 
