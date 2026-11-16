@@ -72,10 +72,12 @@ impl<'probe> Armv8a<'probe> {
         cti_address: u64,
         sequence: Arc<dyn ArmDebugSequence>,
     ) -> Result<Self, Error> {
+        let mut connect_edscr = None;
         if !state.initialized() {
             // determine current state
             let address = Edscr::get_mmio_address_from_base(base_address)?;
             let edscr = Edscr(memory.read_word_32(address)?);
+            connect_edscr = Some(edscr);
 
             tracing::debug!("State when connecting: {:x?}", edscr);
 
@@ -107,9 +109,55 @@ impl<'probe> Armv8a<'probe> {
         if !core.state.initialized() {
             core.reset_register_cache();
             core.state.initialize();
+
+            if let Some(edscr) = connect_edscr
+                && edscr.halted()
+                && (edscr.rxfull() || edscr.txfull() || edscr.err())
+                && let Err(error) = core.drain_stale_dcc(edscr)
+            {
+                tracing::warn!("Could not clear stale debug communication state: {error}");
+            }
         }
 
         Ok(core)
+    }
+
+    /// Clear debug communication state left behind by an interrupted debugger session.
+    ///
+    /// A debugger killed in the middle of a memory or register access can leave the halted core
+    /// with a word in DBGDTRRX (or DBGDTRTX).
+    fn drain_stale_dcc(&mut self, edscr: Edscr) -> Result<(), Error> {
+        tracing::warn!(
+            "Core halted with stale debug communication state ({edscr:x?}), clearing it"
+        );
+
+        if edscr.err() {
+            let edrcr_address = Edrcr::get_mmio_address_from_base(self.base_address)?;
+            let mut edrcr = Edrcr(0);
+            edrcr.set_cse(true);
+            self.memory.write_word_32(edrcr_address, edrcr.into())?;
+        }
+
+        // An external read of DBGDTRTX empties it.
+        if edscr.txfull() {
+            let dbgdtrtx_address = Dbgdtrtx::get_mmio_address_from_base(self.base_address)?;
+            let _ = self.memory.read_word_32(dbgdtrtx_address)?;
+        }
+
+        // Only the core can empty DBGDTRRX: consume it into r0/x0.
+        if edscr.rxfull() {
+            self.prepare_for_clobber(0)?;
+            let instruction = if self.state.is_64_bit {
+                // MRS X0, DBGDTRRX_EL0
+                aarch64::build_mrs(2, 3, 0, 5, 0, 0)
+            } else {
+                // MRC p14, 0, R0, c0, c5, 0
+                build_mrc(14, 0, 0, 0, 5, 0)
+            };
+            self.execute_instruction(instruction)?;
+        }
+
+        Ok(())
     }
 
     /// Execute an instruction
@@ -2940,5 +2988,48 @@ mod test {
         let mut data = [0u8; 2];
         armv8a.read_8(MEMORY_ADDRESS, &mut data).unwrap();
         assert_eq!(data, MEMORY_VALUE);
+    }
+
+    #[test]
+    fn armv8a_new_drains_stale_rx() {
+        let mut probe = MockProbe::new(TEST_BASE_ADDRESS);
+
+        // Halted at connect, with a word left in DBGDTRRX.
+        let mut edscr = Edscr(0);
+        edscr.set_status(0b010011);
+        edscr.set_rxfull(true);
+        probe.expected_read(
+            Edscr::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap(),
+            edscr.into(),
+        );
+
+        // r0 is saved, then DBGDTRRX is consumed into it.
+        add_read_reg_expectations(&mut probe, 0, 0x1234);
+        let mut edscr = Edscr(0);
+        edscr.set_ite(true);
+        probe.expected_write(
+            Editr::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap(),
+            prep_instr_for_itr_32(build_mrc(14, 0, 0, 0, 5, 0)),
+        );
+        probe.expected_read(
+            Edscr::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap(),
+            edscr.into(),
+        );
+
+        let mut state = CortexARState::new();
+        let core = Armv8a::new(
+            Box::new(probe),
+            &mut state,
+            TEST_BASE_ADDRESS,
+            TEST_CTI_ADDRESS,
+            DefaultArmSequence::create(),
+        )
+        .unwrap();
+
+        // r0 is marked for writeback so resuming restores it.
+        assert_eq!(
+            core.state.register_cache[0],
+            Some((RegisterValue::from(0x1234u32), true))
+        );
     }
 }
