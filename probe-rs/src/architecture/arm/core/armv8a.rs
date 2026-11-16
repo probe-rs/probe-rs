@@ -1451,7 +1451,10 @@ impl CoreInterface for Armv8a<'_> {
         if self.state.is_64_bit {
             Ok(InstructionSet::A64)
         } else {
-            let cpsr: u32 = self.read_core_reg(RegisterId(16))?.try_into()?;
+            // Reading CPSR executes instructions through the ITR. Halt briefly.
+            let cpsr: u32 = self
+                .with_core_halted(|core| core.read_core_reg(RegisterId(16)))?
+                .try_into()?;
 
             // CPSR bit 5 - T - Thumb mode
             match (cpsr >> 5) & 1 {
