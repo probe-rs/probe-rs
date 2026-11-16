@@ -303,6 +303,16 @@ impl<'probe> Armv8a<'probe> {
                         let instruction = build_mcr(15, 3, 0, 4, 5, 1);
                         self.execute_instruction(instruction)?;
                     }
+                    16 => {
+                        // Move val to r0
+                        let instruction = build_mrc(14, 0, 0, 0, 5, 0);
+
+                        self.execute_instruction_with_input_32(instruction, val.try_into()?)?;
+
+                        // MCR p15, 3, r0, c4, c5, 0
+                        let instruction = build_mcr(15, 3, 0, 4, 5, 0);
+                        self.execute_instruction(instruction)?;
+                    }
                     17..=48 => {
                         // Move value to r0, r1
                         let value: u64 = val.try_into()?;
