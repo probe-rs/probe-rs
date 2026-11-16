@@ -53,8 +53,25 @@ const DEVICE_STATUS_ADDRESS: u64 = 0x0C;
 pub const BOOT_STATUS_APP_WAITLOOP_DBGPROBE: u8 = 0xC1;
 /// Boot status value indicating the bootloader is halted waiting for a debugger.
 pub const BOOT_STATUS_BLDR_WAITLOOP_DBGPROBE: u8 = 0x81;
-/// Boot status value indicating the ROM boot is halted waiting for a debugger.
-pub const BOOT_STATUS_BOOT_WAITLOOP_DBGPROBE: u8 = 0x38;
+/// Boot status value indicating the ROM is in SACI. Lower values are earlier boot steps.
+pub const BOOT_STATUS_BOOT_ENTERED_SACI: u8 = 0x20;
+
+impl DeviceStatusRegister {
+    /// Whether the ROM has booted far enough that the status is meaningful.
+    ///
+    /// True once the AHB-AP is available or the ROM has reached SACI.
+    pub fn has_reached_saci(&self) -> bool {
+        self.ahb_ap_available() || self.boot_status() >= BOOT_STATUS_BOOT_ENTERED_SACI
+    }
+
+    /// Whether the ROM is halted in a wait loop for the debugger.
+    pub fn in_wait_loop(&self) -> bool {
+        matches!(
+            self.boot_status(),
+            BOOT_STATUS_BLDR_WAITLOOP_DBGPROBE | BOOT_STATUS_APP_WAITLOOP_DBGPROBE
+        )
+    }
+}
 
 bitfield! {
     /// TX_CTRL Register, part of SEC-AP.
@@ -350,6 +367,41 @@ pub fn reset_device(interface: &mut dyn DapAccess) {
     let reset = [(regs::RSTCTL, Some(regs::RSTCTL_RESET))];
     let _ = interface.access_raw_ap_registers(&sec_ap, &reset, &mut []);
     let _ = interface.flush();
+}
+
+/// Poll the Device Status Register until the device reaches a wanted state.
+///
+/// The ROM changes state on its own schedule after a reset or a SACI command,
+/// so the status is read repeatedly (about once per millisecond) instead of
+/// sleeping a fixed time and reading once.
+///
+/// `is_wanted_state` is called with each status read and returns true once the
+/// device is in the state the caller is waiting for, for example
+/// `|status| status.ahb_ap_available()`.
+///
+/// Returns the status that satisfied `is_wanted_state`. Returns
+/// `ArmError::Timeout` if the state is not reached within `timeout`, and any
+/// error from reading the register immediately.
+pub fn wait_for_device_status(
+    interface: &mut dyn DapAccess,
+    timeout: Duration,
+    is_wanted_state: impl Fn(&DeviceStatusRegister) -> bool,
+) -> Result<DeviceStatusRegister, ArmError> {
+    let start = Instant::now();
+    loop {
+        let status = read_device_status(interface)?;
+        if is_wanted_state(&status) {
+            return Ok(status);
+        }
+        if start.elapsed() >= timeout {
+            tracing::debug!(
+                "CC23xx/CC27xx: timeout waiting for wanted device status. Current device status {:#010x}",
+                status.0
+            );
+            return Err(ArmError::Timeout);
+        }
+        thread::sleep(Duration::from_millis(1));
+    }
 }
 
 // ---- Utility functions ------------------------------------------------------

@@ -53,9 +53,10 @@ impl CombinedCoreState {
             );
         };
 
-        Ok(XtensaDebugInterfaceState::new(
-            (&options.core_properties).try_into()?,
-        ))
+        Ok(
+            XtensaDebugInterfaceState::new((&options.core_properties).try_into()?)
+                .with_skip_bulk_write_status(options.skip_bulk_write_status),
+        )
     }
 
     pub(crate) fn attach_arm<'probe>(

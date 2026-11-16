@@ -287,6 +287,14 @@ pub struct XtensaCoreAccessOptions {
 
     /// CPU properties for this core
     pub core_properties: XtensaCoreProperties,
+
+    /// In a fast memory write, do not capture the debug module status of the access before each
+    /// stored word.
+    ///
+    /// The debug module reports an error or busy status only for variable-time registers, so the
+    /// capture only slows the write down.
+    #[serde(default)]
+    pub skip_bulk_write_status: bool,
 }
 
 /// Xtensa CPU properties from a target description

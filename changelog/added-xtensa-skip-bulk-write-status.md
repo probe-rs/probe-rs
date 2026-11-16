@@ -1,0 +1,1 @@
+Xtensa: added the `skip_bulk_write_status` core access option. With it, a fast memory write does not capture the debug module status of the access before each stored word. The ESP32, ESP32-S2 and ESP32-S3 targets enable it.
