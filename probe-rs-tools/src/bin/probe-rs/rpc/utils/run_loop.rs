@@ -64,7 +64,7 @@ impl RunLoop {
     /// Vector catch, the initial resume, and the poller run only on [`Self::core_id`]. Other cores
     /// are observed with `status()` only. A disabled hart is skipped and retried later. An
     /// unexpected halt or semihosting result on any observed core uses the same predicate as the
-    /// primary core. A lock-up of another core is logged once and does not end the run loop.
+    /// primary core. A lock-up of another core does not end the run loop.
     ///
     /// Upon halt the predicate is invoked with the halt reason:
     /// * If the predicate returns `Ok(Some(r))` the run loop returns `Ok(ReturnReason::Predicate(r))`.
@@ -180,7 +180,6 @@ impl RunLoop {
         let start = Instant::now();
         let core_count = shared_session.session_blocking().target().cores.len();
         let mut next_wakeup = vec![start; core_count];
-        let mut locked_up = vec![false; core_count];
 
         loop {
             let mut next_poll;
@@ -253,17 +252,12 @@ impl RunLoop {
                         // A core that is not being run, e.g. one with nothing flashed, may lock up
                         // without affecting the program on the primary core.
                         Ok(Some(ReturnReason::LockedUp)) => {
-                            if !locked_up[idx] {
-                                tracing::warn!("Core {idx} is locked up");
-                                locked_up[idx] = true;
-                            }
+                            tracing::debug!("Core {idx} is locked up");
                             *wakeup = Instant::now() + WATCH_POLL_INTERVAL;
                             next_poll = next_poll.min(WATCH_POLL_INTERVAL);
                         }
                         Ok(Some(reason)) => return Ok(reason),
                         Ok(None) => {
-                            // The core left lock-up, e.g. it was restarted by the primary core.
-                            locked_up[idx] = false;
                             *wakeup = Instant::now() + duration;
                             next_poll = next_poll.min(duration);
                         }
