@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use probe_rs_target::{MemoryRange, MemoryRegion, NvmRegion};
+use probe_rs_target::{MemoryRange, MemoryRegion, NvmRegion, SectorInfo};
 
 use crate::Session;
 use crate::flashing::progress::ProgressOperation;
@@ -169,27 +169,45 @@ pub fn erase_all(
                 })
                 .collect::<Vec<_>>();
 
-            flasher.run_erase(session, progress, |active, _| {
-                for info in sectors {
-                    tracing::debug!(
-                        "    sector: {:#010x}-{:#010x} ({} bytes)",
-                        info.base_address,
-                        info.base_address + info.size,
-                        info.size
-                    );
-                    let sector = FlashSector {
-                        address: info.base_address,
-                        size: info.size,
-                    };
-
-                    active.erase_sector(&sector)?;
-                }
-                Ok(())
-            })?;
+            erase_sectors(&mut flasher, session, progress, &sectors)?;
         }
     }
 
     Ok(())
+}
+
+/// Erases `sectors` one by one with the flash algorithm of `flasher`.
+fn erase_sectors(
+    flasher: &mut Flasher,
+    session: &mut Session,
+    progress: &mut FlashProgress<'_>,
+    sectors: &[SectorInfo],
+) -> Result<(), FlashError> {
+    progress.started_erasing();
+    let result = flasher.run_erase(session, progress, |active, _| {
+        for info in sectors {
+            tracing::debug!(
+                "    sector: {:#010x}-{:#010x} ({} bytes)",
+                info.base_address,
+                info.base_address + info.size,
+                info.size
+            );
+
+            let sector = FlashSector {
+                address: info.base_address,
+                size: info.size,
+            };
+
+            active.erase_sector(&sector)?;
+        }
+        Ok(())
+    });
+
+    match result.is_ok() {
+        true => progress.finished_erasing(),
+        false => progress.failed_erasing(),
+    }
+    result
 }
 
 /// Erases flash covering `address_start..address_end`.
@@ -289,24 +307,7 @@ pub fn erase(
             Vec::new()
         };
 
-        flasher.run_erase(session, progress, |active, _| {
-            for info in &sectors {
-                tracing::debug!(
-                    "    sector: {:#010x}-{:#010x} ({} bytes)",
-                    info.base_address,
-                    info.base_address + info.size,
-                    info.size
-                );
-
-                let sector = FlashSector {
-                    address: info.base_address,
-                    size: info.size,
-                };
-
-                active.erase_sector(&sector)?;
-            }
-            Ok(())
-        })?;
+        erase_sectors(&mut flasher, session, progress, &sectors)?;
 
         if !restore_data.is_empty() {
             let mut loader = session.target().flash_loader();

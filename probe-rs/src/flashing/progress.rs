@@ -206,6 +206,9 @@ pub enum ProgressEvent {
     Started(ProgressOperation),
 
     /// An operation has made progress.
+    ///
+    /// Progress before the `Started` event of its operation is work that the download skips,
+    /// because the target holds that data already.
     Progress {
         /// The operation that made progress.
         operation: ProgressOperation,

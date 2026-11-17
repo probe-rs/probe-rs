@@ -154,15 +154,20 @@ impl HostSideFlasher {
     ) -> Result<(), FlashError> {
         self.run_with_flash(session, |this, session| {
             tracing::info!("Host-side: Running chip erase");
+            progress.started_erasing();
 
-            this.flash_sequence
-                .erase_all(session)
-                .map_err(|e| FlashError::ChipEraseFailed {
-                    source: Box::new(e),
-                })?;
+            let result =
+                this.flash_sequence
+                    .erase_all(session)
+                    .map_err(|e| FlashError::ChipEraseFailed {
+                        source: Box::new(e),
+                    });
 
-            progress.finished_erasing();
-            Ok(())
+            match result.is_ok() {
+                true => progress.finished_erasing(),
+                false => progress.failed_erasing(),
+            }
+            result
         })
     }
 
@@ -261,63 +266,93 @@ impl HostSideFlasher {
             .map(|r| (&r.region, r.flash_layout()))
             .collect();
 
-        if self
-            .flash_sequence
-            .program_image(session, &region_layouts)
-            .map_err(FlashError::Core)?
-        {
+        progress.started_programming();
+        let whole_image = match self.flash_sequence.program_image(session, &region_layouts) {
+            Ok(whole_image) => whole_image,
+            Err(error) => {
+                progress.failed_programming();
+                return Err(FlashError::Core(error));
+            }
+        };
+
+        if whole_image {
             // Progress reporting for whole-image: report all pages as programmed.
             for r in &self.regions {
-                let layout = r.flash_layout();
-                for page in layout.pages() {
+                for page in r.flash_layout().pages() {
                     progress.page_programmed(page.size() as u64, std::time::Duration::ZERO);
                 }
-                progress.finished_programming();
             }
-        } else {
-            // Process each region with the per-page loop.
-            for region in &self.regions {
-                let layout = region.flash_layout();
+            progress.finished_programming();
+            return Ok(());
+        }
 
-                // Erase sectors if not skipping and sector erase is supported.
-                if !skip_erasing && self.flash_sequence.supports_sector_erase() {
-                    tracing::debug!("Host-side: Erasing sectors");
-                    for sector in layout.sectors() {
-                        tracing::debug!(
-                            "Host-side: Erasing sector at 0x{:08X} ({} bytes)",
-                            sector.address(),
-                            sector.size()
-                        );
-                        self.flash_sequence
-                            .erase_sector(session, sector.address())
-                            .map_err(|e| FlashError::EraseFailed {
-                                sector_address: sector.address(),
-                                source: Box::new(e),
-                            })?;
-                    }
-                    progress.finished_erasing();
-                }
+        // A flasher has one Erase bar and one Program bar, so all regions are erased before any
+        // is programmed.
+        if !skip_erasing && self.flash_sequence.supports_sector_erase() {
+            progress.started_erasing();
+            let result = self.erase_sectors(session);
+            match result.is_ok() {
+                true => progress.finished_erasing(),
+                false => progress.failed_erasing(),
+            }
+            result?;
+        }
 
-                // Program pages
-                tracing::debug!("Host-side: Programming pages");
-                let mut t = Instant::now();
-                for page in layout.pages() {
-                    tracing::debug!(
-                        "Host-side: Programming page at 0x{:08X} ({} bytes)",
-                        page.address(),
-                        page.data().len()
-                    );
-                    self.flash_sequence
-                        .program(session, page.address(), page.data())
-                        .map_err(|e| FlashError::PageWrite {
-                            page_address: page.address(),
-                            source: Box::new(e),
-                        })?;
+        progress.started_programming();
+        let result = self.program_pages(session, progress);
+        match result.is_ok() {
+            true => progress.finished_programming(),
+            false => progress.failed_programming(),
+        }
+        result
+    }
 
-                    progress.page_programmed(page.size() as u64, t.elapsed());
-                    t = Instant::now();
-                }
-                progress.finished_programming();
+    /// Erases the sectors of each region.
+    fn erase_sectors(&self, session: &mut Session) -> Result<(), FlashError> {
+        tracing::debug!("Host-side: Erasing sectors");
+        for region in &self.regions {
+            for sector in region.flash_layout().sectors() {
+                tracing::debug!(
+                    "Host-side: Erasing sector at 0x{:08X} ({} bytes)",
+                    sector.address(),
+                    sector.size()
+                );
+                self.flash_sequence
+                    .erase_sector(session, sector.address())
+                    .map_err(|e| FlashError::EraseFailed {
+                        sector_address: sector.address(),
+                        source: Box::new(e),
+                    })?;
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Programs the pages of each region.
+    fn program_pages(
+        &self,
+        session: &mut Session,
+        progress: &mut FlashProgress<'_>,
+    ) -> Result<(), FlashError> {
+        tracing::debug!("Host-side: Programming pages");
+        for region in &self.regions {
+            let mut t = Instant::now();
+            for page in region.flash_layout().pages() {
+                tracing::debug!(
+                    "Host-side: Programming page at 0x{:08X} ({} bytes)",
+                    page.address(),
+                    page.data().len()
+                );
+                self.flash_sequence
+                    .program(session, page.address(), page.data())
+                    .map_err(|e| FlashError::PageWrite {
+                        page_address: page.address(),
+                        source: Box::new(e),
+                    })?;
+
+                progress.page_programmed(page.size() as u64, t.elapsed());
+                t = Instant::now();
             }
         }
 

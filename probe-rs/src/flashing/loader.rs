@@ -336,6 +336,9 @@ trait DownloadMethod {
     /// Adds the progress bar of a verify.
     fn add_verify_progress_bar(&mut self, progress: &mut FlashProgress<'_>);
 
+    /// Ends the progress bar of a verify that does not run.
+    fn skip_verify(&mut self, progress: &mut FlashProgress<'_>);
+
     /// Runs all steps of the download.
     ///
     /// If `chip_erase_pending` is `true`, a flash method runs the chip erase before its own steps.
@@ -387,7 +390,7 @@ impl FlashDownload {
         if options.keep_unwritten_bytes && fill_size > 0 {
             bars.push((ProgressOperation::Fill, fill_size));
         }
-        if !options.do_chip_erase {
+        if !options.do_chip_erase && !options.skip_erase {
             bars.push((ProgressOperation::Erase, erase_size));
         }
         bars.push((ProgressOperation::Program, program_size));
@@ -486,6 +489,10 @@ impl DownloadMethod for FlashDownload {
         progress.add_progress_bar(ProgressOperation::Verify, Some(program_size));
     }
 
+    fn skip_verify(&mut self, progress: &mut FlashProgress<'_>) {
+        progress.failed(ProgressOperation::Verify);
+    }
+
     fn download(
         &mut self,
         session: &mut Session,
@@ -526,11 +533,17 @@ impl DownloadMethod for FlashDownload {
             do_use_double_buffering = false;
         }
 
+        // The fill sends its events only if it has a bar. Without a bar the flasher has no fills.
+        let fill = self
+            .bars
+            .iter()
+            .any(|(operation, _)| *operation == ProgressOperation::Fill);
+
         // Program the data.
         flasher.program(
             session,
             &mut options.progress,
-            options.keep_unwritten_bytes,
+            fill,
             do_use_double_buffering,
             options.skip_erase || options.do_chip_erase,
             options.verify,
@@ -587,6 +600,8 @@ impl DownloadMethod for RamDownload<'_> {
     }
 
     fn add_verify_progress_bar(&mut self, _progress: &mut FlashProgress<'_>) {}
+
+    fn skip_verify(&mut self, _progress: &mut FlashProgress<'_>) {}
 
     fn download(
         &mut self,
@@ -1228,8 +1243,15 @@ impl FlashLoader {
             method.add_verify_progress_bar(progress);
         }
 
-        for mut method in plan {
-            method.verify(session, progress)?;
+        let mut plan = plan.into_iter();
+        while let Some(mut method) = plan.next() {
+            if let Err(error) = method.verify(session, progress) {
+                // Each Verify bar needs an end, or a later Verify bar takes its events.
+                for mut method in plan {
+                    method.skip_verify(progress);
+                }
+                return Err(error);
+            }
         }
 
         Ok(())
