@@ -122,6 +122,9 @@ enum TargetGen {
     Reformat {
         /// The path of the YAML definition file or folder.
         yaml_path: PathBuf,
+        /// Do not write the files, fail if any of them would change.
+        #[clap(long)]
+        check: bool,
     },
 }
 
@@ -187,24 +190,7 @@ async fn main() -> Result<()> {
             speed,
             protocol,
         )?,
-        TargetGen::Reformat { yaml_path } => {
-            if yaml_path.is_dir() {
-                let entries = std::fs::read_dir(&yaml_path).context(format!(
-                    "Failed to read directory '{}'.",
-                    yaml_path.display()
-                ))?;
-
-                for entry in entries {
-                    let entry = entry.context("Failed to read directory entry.")?;
-                    let path = entry.path();
-                    if path.extension().is_some_and(|ext| ext == "yaml") {
-                        refresh_yaml(&path)?;
-                    }
-                }
-            } else {
-                refresh_yaml(&yaml_path)?;
-            }
-        }
+        TargetGen::Reformat { yaml_path, check } => cmd_reformat(&yaml_path, check)?,
     }
 
     println!("Finished in {:?}", t.elapsed());
@@ -288,28 +274,74 @@ async fn cmd_arm(out_dir: Option<PathBuf>, chip_family: Option<String>, list: bo
     Ok(())
 }
 
-fn refresh_yaml(yaml_path: &Path) -> Result<()> {
-    let yaml = std::fs::read_to_string(yaml_path)
-        .context(format!("Failed to read file '{}'.", yaml_path.display()))?;
+/// Handle the reformat subcommand. With `check`, fail instead of writing the files that would
+/// change.
+fn cmd_reformat(yaml_path: &Path, check: bool) -> Result<()> {
+    let mut unformatted = 0;
+    for path in yaml_files(yaml_path)? {
+        let original = std::fs::read_to_string(&path)
+            .context(format!("Failed to read file '{}'.", path.display()))?;
+        let reformatted = reformat_yaml(&path, &original)?;
+        if reformatted == original {
+            continue;
+        }
 
-    let family = yaml_serde::from_str::<ChipFamily>(&yaml)
+        if check {
+            println!("Not formatted: {}", path.display());
+            unformatted += 1;
+        } else {
+            std::fs::write(&path, reformatted)
+                .context(format!("Failed to write file '{}'.", path.display()))?;
+        }
+    }
+
+    ensure!(
+        unformatted == 0,
+        "{unformatted} target description(s) are not formatted. Run `target-gen reformat` on them."
+    );
+
+    Ok(())
+}
+
+/// `yaml_path` itself, or the YAML files in it if it is a directory.
+fn yaml_files(yaml_path: &Path) -> Result<Vec<PathBuf>> {
+    if !yaml_path.is_dir() {
+        return Ok(vec![yaml_path.to_owned()]);
+    }
+
+    let entries = std::fs::read_dir(yaml_path).context(format!(
+        "Failed to read directory '{}'.",
+        yaml_path.display()
+    ))?;
+
+    let mut paths = vec![];
+    for entry in entries {
+        let path = entry.context("Failed to read directory entry.")?.path();
+        if path
+            .extension()
+            .is_some_and(|ext| ext == "yaml" || ext == "yml")
+        {
+            paths.push(path);
+        }
+    }
+    paths.sort();
+    Ok(paths)
+}
+
+fn reformat_yaml(yaml_path: &Path, yaml: &str) -> Result<String> {
+    let family = yaml_serde::from_str::<ChipFamily>(yaml)
         .context(format!("Failed to parse file '{}'.", yaml_path.display()))?;
 
-    let yaml = match yaml_update::reformat(&yaml, &family) {
-        Ok(yaml) => yaml,
+    match yaml_update::reformat(yaml, &family) {
+        Ok(yaml) => Ok(yaml),
         Err(error) => {
             log::warn!(
                 "Rewriting the whole of '{}', comments are lost: {error:#}",
                 yaml_path.display()
             );
-            serialize_to_yaml_string(&family)?
+            serialize_to_yaml_string(&family)
         }
-    };
-
-    std::fs::write(yaml_path, yaml)
-        .context(format!("Failed to write file '{}'.", yaml_path.display()))?;
-
-    Ok(())
+    }
 }
 
 fn save_files(out_dir: &Path, families: &[ChipFamily]) -> Result<()> {
