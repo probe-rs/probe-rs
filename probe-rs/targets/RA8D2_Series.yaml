@@ -6,17 +6,6 @@ chip_detection:
 - !RenesasPnr
   target_id: 0x500
   mcu_pn_base: 0x2c1ec38
-  variants:
-  - R7JA8D2JR
-  - R7JA8D2JS
-  - R7JA8D2KR
-  - R7JA8D2KS
-  - R7KA8D2AD
-  - R7KA8D2AF
-  - R7KA8D2BD
-  - R7KA8D2BF
-  - R7KA8D2JF
-  - R7KA8D2KF
 generated_from_pack: true
 pack_file_release: 6.4.0
 variants:

@@ -9,7 +9,7 @@ use probe_rs::{
     architecture::riscv::registers::DWARF_CSR_BASE,
 };
 
-use super::{DebugInfo, DwarfReader, GimliReaderOffset, unknown_function_name};
+use super::{DebugInfo, DwarfReader, GimliReaderOffset, stack_frame::unknown_function_name};
 
 mod fde_index;
 

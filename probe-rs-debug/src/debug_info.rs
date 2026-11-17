@@ -1,14 +1,13 @@
 use super::{
-    DebugError, DebugRegisters, StackFrame, VariableCache,
+    DebugError, VariableCache,
     function_die::{Die, FunctionDie},
-    get_object_reference,
     unit_info::{LineSequences, UnitInfo},
     variable::*,
 };
 use crate::{SourceLocation, VerifiedBreakpoint, stack_frame::StackFrameInfo, unit_info::RangeExt};
 use gimli::{DebugInfoOffset, RunTimeEndian};
 use object::read::{Object, ObjectSection};
-use probe_rs::{Endian, MemoryInterface, RegisterValue};
+use probe_rs::{Endian, MemoryInterface};
 use std::{
     borrow,
     cmp::Ordering,
@@ -19,6 +18,7 @@ use std::{
 };
 use typed_path::{TypedPath, TypedPathBuf};
 
+mod stack_frame;
 mod unwind;
 
 use unwind::FdeIndex;
@@ -265,21 +265,6 @@ impl DebugInfo {
         VariableCache::new_static_cache()
     }
 
-    /// Creates the unpopulated cache for `function` variables
-    pub(crate) fn create_function_scope_cache(
-        &self,
-        die_cursor_state: &FunctionDie,
-        unit_info: &UnitInfo,
-    ) -> Result<VariableCache, DebugError> {
-        let function_variable_cache = VariableCache::new_dwarf_cache(
-            die_cursor_state.function_die.offset(),
-            VariableName::LocalScopeRoot,
-            unit_info,
-        )?;
-
-        Ok(function_variable_cache)
-    }
-
     fn unit_info_at(&self, header_offset: DebugInfoOffset) -> Result<&UnitInfo, DebugError> {
         self.unit_infos
             .iter()
@@ -363,16 +348,11 @@ impl DebugInfo {
 
                 // Look up static variables from all units
                 for unit_info in self.unit_infos.iter() {
-                    let mut entries = unit_info.unit.entries();
-
                     // Only process statics for this unit header.
                     // Navigate the current unit from the header down.
-                    let unit_node = entries.next_dfs()?.unwrap();
-                    let unit_offset = unit_node.offset();
-
                     unit_info.collect_static_variables(
                         self,
-                        unit_offset,
+                        unit_info.unit.header.root_offset(),
                         parent_variable.variable_key(),
                         memory,
                         cache,
@@ -392,156 +372,6 @@ impl DebugInfo {
         // `Loader` is not `Sync`; serialize lookups against the shared cache.
         let addr2line = self.addr2line.as_ref()?.lock().ok()?;
         addr2line.find_symbol(address).map(str::to_string)
-    }
-
-    /// Best-effort way to look up a function name without debuginfo.
-    fn get_stackframe_from_symbols(
-        &self,
-        address: u64,
-        unwind_registers: &DebugRegisters,
-    ) -> Result<Vec<StackFrame>, DebugError> {
-        let Some(mut fn_name) = self.find_symbol(address) else {
-            return Ok(vec![]);
-        };
-
-        for lang in [
-            gimli::DW_LANG_Rust,
-            gimli::DW_LANG_C_plus_plus,
-            gimli::DW_LANG_C_plus_plus_03,
-            gimli::DW_LANG_C_plus_plus_11,
-            gimli::DW_LANG_C_plus_plus_14,
-        ] {
-            if let Some(demangle) = addr2line::demangle(&fn_name, lang) {
-                fn_name = crate::language::from_dwarf(lang).compact_debug_name(&demangle);
-                break;
-            }
-        }
-
-        Ok(vec![StackFrame {
-            id: get_object_reference(),
-            function_name: fn_name,
-            source_location: None,
-            registers: unwind_registers.clone(),
-            pc: unwind_registers.address_to_register_value(address),
-            frame_base: None,
-            is_inlined: false,
-            local_variables: None,
-            canonical_frame_address: None,
-        }])
-    }
-
-    /// Returns a populated (resolved) [`StackFrame`] struct.
-    /// This function will also populate the `DebugInfo::VariableCache` with in scope `Variable`s for each `StackFrame`,
-    /// while taking into account the appropriate strategy for lazy-loading of variables.
-    pub fn get_stackframe_info(
-        &self,
-        memory: &mut impl MemoryInterface,
-        address: u64,
-        cfa: Option<u64>,
-        unwind_registers: &DebugRegisters,
-    ) -> Result<Vec<StackFrame>, DebugError> {
-        let unknown_function = || unknown_function_name(address, unwind_registers);
-
-        let Ok((unit_info, functions)) = self.get_function_dies(address) else {
-            // No function found at the given address.
-            return self.get_stackframe_from_symbols(address, unwind_registers);
-        };
-        let (Some(first_function), Some(last_function)) = (functions.first(), functions.last())
-        else {
-            // No function found at the given address.
-            return self.get_stackframe_from_symbols(address, unwind_registers);
-        };
-
-        // The first function is the non-inlined function, and the rest are inlined functions.
-        // The frame base only exists for the non-inlined function, so we can reuse it for all the inlined functions.
-        let frame_base = first_function.frame_base(
-            self,
-            memory,
-            &StackFrameInfo {
-                registers: unwind_registers,
-                frame_base: None,
-                canonical_frame_address: cfa,
-                caller: None,
-            },
-        )?;
-
-        let stack_frame = |function_die: &FunctionDie<'_>,
-                           function_name: String,
-                           source_location: Option<SourceLocation>,
-                           pc: RegisterValue| {
-            // Now that we have the function_name and function_source_location, we can create the appropriate variable caches for this stack frame.
-            // Resolve and cache the function variables.
-            let local_variables = self
-                .create_function_scope_cache(function_die, unit_info)
-                .inspect_err(|error| {
-                    tracing::error!("Could not resolve function variables. {error}. Continuing...");
-                })
-                .ok();
-
-            StackFrame {
-                id: get_object_reference(),
-                function_name,
-                source_location,
-                registers: unwind_registers.clone(),
-                pc,
-                frame_base,
-                is_inlined: function_die.is_inline(),
-                local_variables,
-                canonical_frame_address: cfa,
-            }
-        };
-
-        let mut frames = Vec::new();
-
-        // Handle all functions which contain further inlined functions. For
-        // these functions, the location is the call site of the inlined function.
-        for (function_die, next_function) in functions.iter().zip(&functions[1..]) {
-            let function_name = function_die
-                .function_name(self)
-                .unwrap_or_else(unknown_function);
-
-            tracing::debug!("UNWIND: Function name: {}", function_name);
-
-            assert!(next_function.is_inline());
-
-            let Some(call_site) = inlined_call_site(next_function, unit_info, &function_name)
-            else {
-                continue;
-            };
-            let inlined_call_site = unwind_registers.address_to_register_value(call_site);
-
-            tracing::debug!(
-                "UNWIND: Callsite for inlined function {:?}",
-                next_function.function_name(self)
-            );
-
-            let inlined_caller_source_location = next_function.inline_call_location(self);
-
-            tracing::debug!("UNWIND: Call site: {inlined_caller_source_location:?}");
-
-            frames.push(stack_frame(
-                function_die,
-                function_name,
-                inlined_caller_source_location,
-                inlined_call_site,
-            ));
-        }
-
-        // Handle last function, which contains no further inlined functions
-        let function_name = last_function
-            .function_name(self)
-            .unwrap_or_else(unknown_function);
-
-        let function_location = self.get_source_location(address);
-
-        frames.push(stack_frame(
-            last_function,
-            function_name,
-            function_location,
-            unwind_registers.address_to_register_value(address),
-        ));
-
-        Ok(frames)
     }
 
     /// Find the program counter where a breakpoint should be set,
@@ -721,39 +551,6 @@ impl DebugInfo {
             offset.0
         )))
     }
-}
-
-/// The name of a frame at `address` whose function is unknown.
-///
-/// The address is a hex string, with the width matching the configured size of the datatype
-/// used in the `RegisterValue` address.
-fn unknown_function_name(address: u64, registers: &DebugRegisters) -> String {
-    format!(
-        "<unknown function @ {address:#0width$x}>",
-        width = (registers.get_address_size_bytes() * 2 + 2)
-    )
-}
-
-/// The call site of the inlined `function`, which is its first instruction. `caller_name` names
-/// the function that `function` is inlined into.
-fn inlined_call_site(
-    function: &FunctionDie,
-    unit_info: &UnitInfo,
-    caller_name: &str,
-) -> Option<u64> {
-    let address_size = unit_info.unit.header.address_size() as u64;
-
-    let Some(low_pc) = function.low_pc() else {
-        tracing::warn!("UNWIND: Unknown starting address for inlined function {caller_name}.");
-        return None;
-    };
-
-    if !(low_pc > address_size && low_pc < u32::MAX as u64) {
-        tracing::warn!("UNWIND: Unknown call site for inlined function {caller_name}.");
-        return None;
-    }
-
-    Some(low_pc)
 }
 
 /// Returns `true` if `full_path` matches `partial_path`.

@@ -93,8 +93,6 @@ impl Cmd {
                 println!();
 
                 let mut events = vec![];
-                let mut successes = vec![];
-                let mut errors = vec![];
 
                 let req = TargetInfoRequest {
                     target_sel: self.target_sel,
@@ -106,24 +104,7 @@ impl Cmd {
                     scan_chain: self.scan_chain.clone(),
                 };
 
-                let result = client
-                    .info(req, async |message| {
-                        events.push(message.clone());
-
-                        let is_success = is_success(&message);
-
-                        if matches!(message, InfoEvent::Message(_)) {
-                            successes.push(message.clone());
-                            errors.push(message.clone());
-                        }
-
-                        if is_success {
-                            successes.push(message);
-                        } else {
-                            errors.push(message);
-                        }
-                    })
-                    .await;
+                let result = client.info(req, async |message| events.push(message)).await;
 
                 if let Err(error) = result {
                     println!("Error while probing target: {error}");
@@ -135,17 +116,13 @@ impl Cmd {
                     .iter()
                     .any(|event| matches!(event, InfoEvent::JtagScanChain(_)));
 
+                any_success |= events.iter().any(is_success);
+
                 if scanned_chain {
-                    any_success |= events.iter().any(is_success);
                     println!("{}", format_jtag_scan_chain(&events));
-                } else if successes.is_empty() {
-                    for message in errors {
-                        println!("{}", format_info_event(&message));
-                    }
                 } else {
-                    any_success = true;
-                    for message in successes {
-                        println!("{}", format_info_event(&message));
+                    for event in shown_events(&events) {
+                        println!("{}", format_info_event(event));
                     }
                 }
             }
@@ -182,8 +159,39 @@ impl Cmd {
 fn is_success(event: &InfoEvent) -> bool {
     matches!(
         event,
-        InfoEvent::Idcode { .. } | InfoEvent::ArmDp(_) | InfoEvent::RiscvDebugModule(_)
+        InfoEvent::Idcode {
+            idcode: Some(_),
+            ..
+        } | InfoEvent::ArmDp(_)
+            | InfoEvent::RiscvDebugModule(_)
+            | InfoEvent::WchChip { .. }
     )
+}
+
+/// Whether the event only says that the chip is not of the architecture that was tried.
+fn is_wrong_guess(event: &InfoEvent) -> bool {
+    matches!(
+        event,
+        InfoEvent::Idcode { idcode: None, .. }
+            | InfoEvent::Error { .. }
+            | InfoEvent::ProtocolNotSupportedByArch { .. }
+            | InfoEvent::ProbeInterfaceMissing { .. }
+            | InfoEvent::ArmError {
+                dp_found: false,
+                ..
+            }
+    )
+}
+
+/// Picks the events to show for one protocol.
+///
+/// When an architecture answered, the wrong guesses at the others are hidden. A debug port that
+/// answered and then failed is not a wrong guess, so its error stays.
+fn shown_events(events: &[InfoEvent]) -> impl Iterator<Item = &InfoEvent> {
+    let found = events.iter().any(is_success);
+    events
+        .iter()
+        .filter(move |event| !found || !is_wrong_guess(event))
 }
 
 fn format_info_event(event: &InfoEvent) -> String {
@@ -222,7 +230,7 @@ fn format_info_event(event: &InfoEvent) -> String {
             )
             .unwrap();
         }
-        InfoEvent::ArmError { dp_addr, error } => {
+        InfoEvent::ArmError { dp_addr, error, .. } => {
             writeln!(
                 output,
                 "Error showing ARM chip information for Debug Port {dp_addr:?}: {error}",
@@ -265,6 +273,15 @@ fn format_info_event(event: &InfoEvent) -> String {
         }
         InfoEvent::RiscvDebugModule(info) => {
             writeln!(output, "{}", riscv_debug_module_tree(info)).unwrap();
+        }
+        InfoEvent::WchChip {
+            family,
+            family_name,
+            chip_id,
+        } => {
+            writeln!(output, "RISC-V Chip:").unwrap();
+            writeln!(output, "  Family:  {family:#04x} ({family_name})").unwrap();
+            writeln!(output, "  Chip ID: {chip_id:#010x}").unwrap();
         }
     }
     output
@@ -589,6 +606,45 @@ mod tests {
         assert!(
             !super::format_debug_port_info_node(&node(DebugPortVersion::DPv1)).contains("Part: ")
         );
+    }
+
+    #[test]
+    fn shown_events_hide_errors_only_after_a_result() {
+        use probe_rs_rpc::info::{DpAddress, InfoEvent};
+
+        let message = || InfoEvent::Message("note".to_string());
+        let error = || InfoEvent::Error {
+            architecture: "Xtensa".to_string(),
+            error: "no".to_string(),
+        };
+        let wch = || InfoEvent::WchChip {
+            family: 1,
+            family_name: "CH32V103".to_string(),
+            chip_id: 0x2500_0410,
+        };
+        let arm_error = |dp_found| InfoEvent::ArmError {
+            dp_addr: DpAddress::Default,
+            error: "no".to_string(),
+            dp_found,
+        };
+        let not_riscv = || InfoEvent::Idcode {
+            architecture: "RISC-V".to_string(),
+            idcode: None,
+        };
+        let shown = |events: &[InfoEvent]| super::shown_events(events).count();
+
+        // Nothing answered: show everything, once each.
+        assert_eq!(shown(&[message(), error()]), 2);
+        // A message alone is not a result, and neither is a missing IDCODE.
+        assert!(!super::is_success(&message()));
+        assert!(!super::is_success(&not_riscv()));
+        // A result hides the wrong guesses, but not the messages.
+        assert_eq!(
+            shown(&[message(), arm_error(false), not_riscv(), error(), wch()]),
+            2
+        );
+        // A debug port that answered and then failed is not a wrong guess.
+        assert_eq!(shown(&[arm_error(true), wch()]), 2);
     }
 
     #[test]

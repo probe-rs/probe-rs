@@ -7,9 +7,6 @@ chip_detection:
   target_id: 0x2f0
   reverse_string: true
   mcu_pn_base: 0x1001c10
-  variants:
-  - R7FA2L1A9
-  - R7FA2L1AB
 generated_from_pack: true
 pack_file_release: 6.4.0
 variants:
