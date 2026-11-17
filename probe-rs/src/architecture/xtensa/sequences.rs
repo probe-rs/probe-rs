@@ -4,7 +4,8 @@ use std::{fmt::Debug, sync::Arc, time::Duration};
 
 use crate::architecture::xtensa::Xtensa;
 use crate::architecture::xtensa::communication_interface::XtensaCommunicationInterface;
-use crate::flashing::{DebugFlashSequence, FlashCompare};
+use crate::config::MemoryRegion;
+use crate::flashing::{DebugFlashSequence, FlashCompare, FlashError};
 use crate::semihosting::{SemihostingCommand, UnknownCommandDetails};
 
 /// A interface to operate debug sequences for Xtensa targets.
@@ -65,6 +66,17 @@ pub trait XtensaDebugSequence: Send + Sync + Debug {
     /// This sequence is called before an image that boots from RAM is written, after the cores
     /// that boot from it were reset and halted.
     fn prepare_loading_to_ram(&self, _session: &mut crate::Session) -> Result<(), crate::Error> {
+        Ok(())
+    }
+
+    /// Called once per session, before the first flash loader is built. Changes to
+    /// `memory_map`, which starts as a copy of the session target's memory map, replace that
+    /// memory map.
+    fn detect_memory_map(
+        &self,
+        _session: &mut crate::Session,
+        _memory_map: &mut Vec<MemoryRegion>,
+    ) -> Result<(), FlashError> {
         Ok(())
     }
 

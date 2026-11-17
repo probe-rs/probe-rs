@@ -1,6 +1,10 @@
+use std::ops::Range;
+
 use probe_rs::{
-    CoreInterface, MemoryInterface,
+    CoreInterface, MemoryInterface, Session,
     architecture::{riscv::Riscv32, xtensa::Xtensa},
+    config::MemoryRegion,
+    flashing::{FlashError, FlashProgress, Flasher},
     semihosting::{SemihostingCommand, UnknownCommandDetails, WriteConsoleRequest},
 };
 
@@ -55,5 +59,66 @@ impl EspBreakpointHandler {
         Ok(Some(SemihostingCommand::WriteConsole(
             WriteConsoleRequest::new(address, Some(length)),
         )))
+    }
+}
+
+/// Caps the flash region and its aliases at the flash size that the flash algorithm reads
+/// from the flash chip.
+pub(super) fn detect_flash_size(
+    session: &mut Session,
+    memory_map: &mut [MemoryRegion],
+) -> Result<(), FlashError> {
+    let target = session.target();
+    let mut flasher = Flasher::new(target, 0, &target.flash_algorithms[0])?;
+
+    let size = flasher.run_verify(session, &mut FlashProgress::empty(), |flasher, _| {
+        flasher.call_vendor_function("FlashSize", [None; 4])
+    })?;
+
+    if size == 0 {
+        return Err(FlashError::RoutineCallFailed {
+            name: "FlashSize".to_string(),
+            error_code: size,
+        });
+    }
+
+    for region in memory_map {
+        if let MemoryRegion::Nvm(region) = region {
+            cap_region(&mut region.range, size.into());
+        }
+    }
+
+    Ok(())
+}
+
+// An alias window maps flash pages through the MMU, so it cannot address more distinct flash
+// than the chip has.
+fn cap_region(range: &mut Range<u64>, size: u64) {
+    range.end = range.end.min(range.start + size);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn cap_region_shrinks_larger_region() {
+        let mut range = 0x4200_0000..0x4300_0000;
+        cap_region(&mut range, 0x40_0000);
+        assert_eq!(range, 0x4200_0000..0x4240_0000);
+    }
+
+    #[test]
+    fn cap_region_keeps_smaller_region() {
+        let mut range = 0x400c_2000..0x40c0_0000;
+        cap_region(&mut range, 0x100_0000);
+        assert_eq!(range, 0x400c_2000..0x40c0_0000);
+    }
+
+    #[test]
+    fn cap_region_keeps_region_of_equal_size() {
+        let mut range = 0x0..0x100_0000;
+        cap_region(&mut range, 0x100_0000);
+        assert_eq!(range, 0x0..0x100_0000);
     }
 }

@@ -122,7 +122,7 @@ impl Vendor for Espressif {
             DebugSequence::Riscv(ESP32P4::create())
         } else if chip.name.eq_ignore_ascii_case("esp32s31") {
             DebugSequence::Riscv(ESP32S31::create())
-        } else if chip.name.starts_with("esp32") {
+        } else if chip.name.eq_ignore_ascii_case("esp32") {
             DebugSequence::Xtensa(ESP32::create())
         } else {
             return None;

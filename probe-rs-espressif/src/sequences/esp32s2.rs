@@ -5,9 +5,9 @@ use std::{
     time::{Duration, Instant},
 };
 
-use crate::sequences::esp::EspBreakpointHandler;
+use crate::sequences::esp::{EspBreakpointHandler, detect_flash_size};
 use probe_rs::{
-    Error, MemoryInterface,
+    Error, MemoryInterface, Session,
     architecture::xtensa::{
         Xtensa,
         communication_interface::{
@@ -16,6 +16,8 @@ use probe_rs::{
         sequences::XtensaDebugSequence,
         xdm::{self, DebugControlBits, DebugRegisterError},
     },
+    config::MemoryRegion,
+    flashing::FlashError,
     semihosting::{SemihostingCommand, UnknownCommandDetails},
 };
 
@@ -257,5 +259,13 @@ impl XtensaDebugSequence for ESP32S2 {
         details: UnknownCommandDetails,
     ) -> Result<Option<SemihostingCommand>, Error> {
         EspBreakpointHandler::handle_xtensa_idf_semihosting(interface, details)
+    }
+
+    fn detect_memory_map(
+        &self,
+        session: &mut Session,
+        memory_map: &mut Vec<MemoryRegion>,
+    ) -> Result<(), FlashError> {
+        detect_flash_size(session, memory_map)
     }
 }

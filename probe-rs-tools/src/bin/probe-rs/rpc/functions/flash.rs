@@ -101,7 +101,8 @@ pub async fn new_flash_loader(
     _header: VarHeader,
     request: NewFlashLoaderRequest,
 ) -> NewFlashLoaderResponse {
-    let session = ctx.session(request.sessid).await;
+    let mut session = ctx.session(request.sessid).await;
+    lift(session.detect_memory_map())?;
     let mut loader = session.target().flash_loader();
     loader.read_rtt_output(request.read_flasher_rtt);
     Ok(ctx.store_object(loader).await)

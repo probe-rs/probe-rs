@@ -8,10 +8,10 @@ use std::{
     time::{Duration, Instant},
 };
 
-use probe_rs_target::CoreType;
+use probe_rs_target::{CoreType, MemoryRegion};
 
 pub use crate::flashing::DebugFlashSequence;
-use crate::flashing::FlashCompare;
+use crate::flashing::{FlashCompare, FlashError};
 
 use crate::{
     MemoryInterface, MemoryMappedRegister,
@@ -1226,6 +1226,17 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
     /// This sequence is called before an image that boots from RAM is written, after the cores
     /// that boot from it were reset and halted.
     fn prepare_loading_to_ram(&self, _session: &mut crate::Session) -> Result<(), crate::Error> {
+        Ok(())
+    }
+
+    /// Called once per session, before the first flash loader is built. Changes to
+    /// `memory_map`, which starts as a copy of the session target's memory map, replace that
+    /// memory map.
+    fn detect_memory_map(
+        &self,
+        _session: &mut crate::Session,
+        _memory_map: &mut Vec<MemoryRegion>,
+    ) -> Result<(), FlashError> {
         Ok(())
     }
 
