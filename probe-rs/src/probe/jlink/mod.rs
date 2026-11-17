@@ -1183,7 +1183,7 @@ impl DebugProbe for JLink {
 
         // Set a default speed if not already set
         if self.speed_khz == 0 {
-            self.set_speed(400)?;
+            self.set_speed(4000)?;
         }
 
         if self.protocol == WireProtocol::CJtag {
