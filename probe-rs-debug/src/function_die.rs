@@ -274,14 +274,11 @@ impl<'a> FunctionDie<'a> {
         memory: &mut dyn MemoryInterface,
         frame_info: &StackFrameInfo,
     ) -> Result<Option<u64>, DebugError> {
-        match self.unit_info.extract_location(
-            debug_info,
-            &self.function_die,
-            &VariableLocation::Unknown,
-            None,
-            memory,
-            frame_info,
-        )? {
+        match self
+            .unit_info
+            .location_evaluator(debug_info, memory, frame_info)
+            .extract_location(&self.function_die, &VariableLocation::Unknown, None)?
+        {
             ExpressionResult::Location(VariableLocation::Address(address)) => Ok(Some(address)),
             ExpressionResult::Location(VariableLocation::RegisterValue(value)) => {
                 Ok(value.try_into().ok())

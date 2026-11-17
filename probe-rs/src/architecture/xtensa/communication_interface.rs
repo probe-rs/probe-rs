@@ -306,6 +306,13 @@ impl XtensaDebugInterfaceState {
             ..Default::default()
         }
     }
+
+    /// Sets whether the NAR scan of a fast memory store skips the status capture of the access
+    /// before it.
+    pub(crate) fn with_skip_bulk_write_status(mut self, skip: bool) -> Self {
+        self.xdm_state.set_skip_bulk_write_status(skip);
+        self
+    }
 }
 
 /// The higher level of the XDM functionality.

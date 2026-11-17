@@ -1,6 +1,14 @@
 use core::fmt;
 use rustc_hash::FxBuildHasher;
-use std::{collections::HashMap, marker::PhantomData, sync::Arc};
+use std::{
+    cell::RefCell,
+    collections::HashMap,
+    marker::PhantomData,
+    sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+    },
+};
 
 use crate::probe::{CommandResult, DebugProbeError, JtagCommand};
 
@@ -152,16 +160,21 @@ impl<Op, E: std::error::Error + Send + Sync + 'static> Batch<Op, E> {
         self.batch.rewind(by)
     }
 
-    pub(crate) fn schedule_preserved(
-        &mut self,
-        id: HandleId,
-        cmd: impl Into<Op>,
-    ) -> Handle<CommandResult> {
+    /// Schedule a command under the ID of an earlier command. The handle of that ID gets the
+    /// result.
+    pub(crate) fn schedule_preserved(&mut self, id: HandleId, cmd: impl Into<Op>) {
         self.batch.schedule_preserved(id, cmd)
     }
 
     pub(crate) fn replace_remaining(&mut self, ops: Vec<(HandleId, Op)>) {
         self.batch.replace_remaining(ops);
+    }
+
+    /// Removes each remaining command whose entry in `keep` is `false`.
+    ///
+    /// `keep` has one entry for each command that [`Batch::iter`] returns.
+    pub(crate) fn retain_remaining(&mut self, keep: &[bool]) {
+        self.batch.retain_remaining(keep);
     }
 
     pub(crate) fn remaining_with_ids(&self) -> Vec<(HandleId, Op)>
@@ -175,8 +188,13 @@ impl<Op, E: std::error::Error + Send + Sync + 'static> Batch<Op, E> {
 impl<Op, E: std::error::Error + Send + Sync + 'static> Batch<Op, E> {
     /// Creates a new empty typed batch.
     pub fn new() -> Self {
+        Self::with_capacity(0)
+    }
+
+    /// Creates a new empty typed batch with space for `capacity` commands.
+    pub fn with_capacity(capacity: usize) -> Self {
         Self {
-            batch: ErasedBatch::new(),
+            batch: ErasedBatch::with_capacity(capacity),
             _marker: PhantomData,
         }
     }
@@ -264,38 +282,81 @@ impl Results {
     }
 
     /// Takes a result from the set.
-    pub fn take<T>(&mut self, handle: Handle<T>) -> Result<T, Handle<T>> {
-        let Handle { id, convert } = handle;
-        match self.0.remove(&id) {
-            Some(result) => Ok(convert(result)),
-            None => Err(Handle { id, convert }),
+    pub fn take<T>(&mut self, mut handle: Handle<T>) -> Result<T, Handle<T>> {
+        match self.0.remove(&handle.id) {
+            Some(result) => Ok(handle.take_convert()(result)),
+            None => Err(handle),
         }
     }
+}
+
+const HANDLE_BLOCK_SLOTS: usize = 1024;
+
+/// Whether the handle of each of [`HANDLE_BLOCK_SLOTS`] IDs was abandoned.
+///
+/// The IDs of one batch share a block, so a driver that checks them reads neighbouring memory.
+struct HandleBlock {
+    abandoned: [AtomicBool; HANDLE_BLOCK_SLOTS],
+}
+
+impl HandleBlock {
+    fn new() -> Arc<Self> {
+        Arc::new(Self {
+            abandoned: [const { AtomicBool::new(false) }; HANDLE_BLOCK_SLOTS],
+        })
+    }
+}
+
+thread_local! {
+    /// The block that new IDs take their slot from, and the next free slot in it.
+    static CURRENT_HANDLE_BLOCK: RefCell<(Arc<HandleBlock>, usize)> =
+        RefCell::new((HandleBlock::new(), 0));
 }
 
 /// Identifier for a scheduled command result.
 ///
 /// The batch stores a clone of this value. The caller holds a [`Handle`].
-#[derive(Eq)]
-pub struct HandleId(Arc<()>);
+#[derive(Clone)]
+pub struct HandleId {
+    block: Arc<HandleBlock>,
+    slot: usize,
+}
 
 impl PartialEq for HandleId {
     fn eq(&self, other: &Self) -> bool {
-        Arc::ptr_eq(&self.0, &other.0)
+        Arc::ptr_eq(&self.block, &other.block) && self.slot == other.slot
     }
 }
+
+impl Eq for HandleId {}
 
 impl fmt::Debug for HandleId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("HandleId")
-            .field(&(Arc::as_ptr(&self.0) as usize))
+            .field(&(Arc::as_ptr(&self.block) as usize))
+            .field(&self.slot)
             .finish()
     }
 }
 
 impl HandleId {
-    pub(crate) fn new() -> Self {
-        Self(Arc::new(()))
+    /// Takes the next slot. Only [`Handle::new`] calls this, so each ID has exactly one handle.
+    fn new() -> Self {
+        let take_slot = |(block, next): &mut (Arc<HandleBlock>, usize)| {
+            if *next == HANDLE_BLOCK_SLOTS {
+                *block = HandleBlock::new();
+                *next = 0;
+            }
+            let slot = *next;
+            *next += 1;
+            (block.clone(), slot)
+        };
+        // The thread-local is gone while its thread exits. Such an ID gets a block of its own.
+        let (block, slot) = CURRENT_HANDLE_BLOCK
+            .try_with(|current| take_slot(&mut current.borrow_mut()))
+            .unwrap_or_else(|_| (HandleBlock::new(), 0));
+
+        Self { block, slot }
     }
 
     /// Report whether the caller still holds the handle of this operation.
@@ -303,31 +364,37 @@ impl HandleId {
     /// A probe driver skips the capture of an operation whose handle is gone,
     /// because nobody can read the answer.
     pub fn should_capture(&self) -> bool {
-        // Both the batch and the user code may hold on to at most one of the references. The batch
-        // execution will be able to detect if the user dropped their read reference, meaning
-        // the read data would be inaccessible.
-        Arc::strong_count(&self.0) > 1
+        !self.abandoned().load(Ordering::Relaxed)
     }
-}
 
-impl Clone for HandleId {
-    fn clone(&self) -> Self {
-        Self(Arc::clone(&self.0))
+    fn abandoned(&self) -> &AtomicBool {
+        &self.block.abandoned[self.slot]
     }
 }
 
 impl std::hash::Hash for HandleId {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        (Arc::as_ptr(&self.0) as usize).hash(state)
+        (Arc::as_ptr(&self.block) as usize).hash(state);
+        self.slot.hash(state);
     }
 }
 
 /// A handle used to retrieve the result of a scheduled command.
 ///
-/// This type can detect if the result of a command is not used.
+/// This type can detect if the result of a command is not used. Each ID has exactly one handle.
+/// When the handle drops before [`Results::take`], the operations of its ID stop to capture.
 pub struct Handle<T> {
     id: HandleId,
-    convert: Box<dyn FnOnce(CommandResult) -> T + Send>,
+    /// `None` after the handle gave its conversion away, so that the drop does not abandon the ID.
+    convert: Option<Box<dyn FnOnce(CommandResult) -> T + Send>>,
+}
+
+impl<T> Drop for Handle<T> {
+    fn drop(&mut self) {
+        if self.convert.is_some() {
+            self.id.abandoned().store(true, Ordering::Relaxed);
+        }
+    }
 }
 
 impl<T> PartialEq for Handle<T> {
@@ -350,14 +417,26 @@ impl<T> Handle<T> {
     pub(crate) fn id(&self) -> &HandleId {
         &self.id
     }
+
+    /// Creates a handle with a new ID. The operations of the ID capture until the handle drops.
+    pub(crate) fn new(convert: Box<dyn FnOnce(CommandResult) -> T + Send>) -> Self {
+        Self {
+            id: HandleId::new(),
+            convert: Some(convert),
+        }
+    }
+
+    fn take_convert(&mut self) -> Box<dyn FnOnce(CommandResult) -> T + Send> {
+        self.convert
+            .take()
+            .expect("a handle holds its conversion until it gives it away")
+    }
 }
 
 impl Handle<CommandResult> {
-    pub(crate) fn from_id(id: HandleId) -> Self {
-        Self {
-            id,
-            convert: Box::new(|result| result),
-        }
+    /// Creates a handle with a new ID that returns the result as it is.
+    pub(crate) fn unconverted() -> Self {
+        Self::new(Box::new(|result| result))
     }
 }
 
@@ -365,20 +444,24 @@ impl<T: 'static> Handle<T> {
     /// Maps the result when the caller redeems the handle.
     ///
     /// The mapping does not touch the probe. It cannot fail.
-    pub fn map<U>(self, f: impl FnOnce(T) -> U + Send + 'static) -> Handle<U> {
-        let id = self.id;
-        let convert = self.convert;
+    pub fn map<U>(mut self, f: impl FnOnce(T) -> U + Send + 'static) -> Handle<U> {
+        let convert = self.take_convert();
         Handle {
-            id,
-            convert: Box::new(move |result| f(convert(result))),
+            id: self.id.clone(),
+            convert: Some(Box::new(move |result| f(convert(result)))),
         }
     }
 
-    pub(crate) fn from_parts(
-        id: HandleId,
-        convert: Box<dyn FnOnce(CommandResult) -> T + Send>,
-    ) -> Self {
-        Self { id, convert }
+    /// Replaces the conversion of the result. The ID stays in use.
+    pub(crate) fn with_convert<U>(
+        mut self,
+        convert: Box<dyn FnOnce(CommandResult) -> U + Send>,
+    ) -> Handle<U> {
+        drop(self.take_convert());
+        Handle {
+            id: self.id.clone(),
+            convert: Some(convert),
+        }
     }
 }
 
@@ -405,13 +488,24 @@ impl<Op> ErasedBatch<Op> {
         self.commands.truncate(self.cursor);
         self.commands.extend(ops);
     }
+
+    fn retain_remaining(&mut self, keep: &[bool]) {
+        debug_assert_eq!(keep.len(), self.len());
+        let cursor = self.cursor;
+        let mut index = 0;
+        self.commands.retain(|_| {
+            let kept = index < cursor || keep[index - cursor];
+            index += 1;
+            kept
+        });
+    }
 }
 
 impl<Op> ErasedBatch<Op> {
-    /// Creates a new empty batch.
-    fn new() -> Self {
+    /// Creates a new empty batch with space for `capacity` commands.
+    fn with_capacity(capacity: usize) -> Self {
         Self {
-            commands: Vec::new(),
+            commands: Vec::with_capacity(capacity),
             cursor: 0,
         }
     }
@@ -420,18 +514,13 @@ impl<Op> ErasedBatch<Op> {
     ///
     /// Returns a token value that can be used to retrieve the result of the command.
     fn schedule(&mut self, command: impl Into<Op>) -> Handle<CommandResult> {
-        let id = HandleId::new();
-        self.commands.push((id.clone(), command.into()));
-        Handle::from_id(id)
+        let handle = Handle::unconverted();
+        self.commands.push((handle.id().clone(), command.into()));
+        handle
     }
 
-    fn schedule_preserved(
-        &mut self,
-        id: HandleId,
-        command: impl Into<Op>,
-    ) -> Handle<CommandResult> {
-        self.commands.push((id.clone(), command.into()));
-        Handle::from_id(id)
+    fn schedule_preserved(&mut self, id: HandleId, command: impl Into<Op>) {
+        self.commands.push((id, command.into()));
     }
 
     /// Returns the number of commands in the batch.

@@ -277,6 +277,8 @@ impl Cmd {
         )
         .await?;
 
+        let output = TargetOutput::new(decoders, Some(rtt_client), &self.monitor_options).await?;
+
         // Run firmware based on run mode
         if let RunMode::Test(elf_info) = run_mode {
             cli::test(
@@ -302,7 +304,7 @@ impl Cmd {
                 },
                 &self.monitor_options,
                 &self.path,
-                TargetOutput::new(decoders, Some(rtt_client)),
+                output,
             )
             .await
         } else {
@@ -311,7 +313,7 @@ impl Cmd {
                 MonitorMode::Run(boot_info),
                 Some(&self.path),
                 &self.monitor_options,
-                TargetOutput::new(decoders, Some(rtt_client)),
+                output,
                 VectorCatchConfig {
                     catch_hardfault: !self.run_options.no_catch_hardfault,
                     catch_reset: !self.run_options.no_catch_reset,
