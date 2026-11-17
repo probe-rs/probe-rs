@@ -122,6 +122,36 @@ impl AlgorithmSignatures {
         })
     }
 
+    /// Returns the name of the hash that the signature function computes.
+    pub(crate) fn hash_name(&self) -> &'static str {
+        self.hash.name
+    }
+
+    /// Sets the result of each check that the signature function can sign.
+    pub(crate) fn compare_checks(
+        &self,
+        active: &mut ActiveFlasher<'_, '_, Verify>,
+        checks: &mut [SectorCheck<'_>],
+    ) -> Result<(), FlashError> {
+        let erased = active.flash_algorithm().flash_properties.erased_byte_value;
+        let entries = self.entries(checks, erased);
+        let results = self.sign(active, &entries)?;
+
+        for (idx, check) in checks.iter_mut().enumerate() {
+            let mut of_check = entries
+                .iter()
+                .zip(&results)
+                .filter(|(entry, _)| entry.check == idx)
+                .peekable();
+            if of_check.peek().is_none() {
+                continue;
+            }
+            check.outcome = check_outcome(of_check);
+        }
+
+        Ok(())
+    }
+
     /// Builds the entries for the checks. A check that cannot be signed gets no entry.
     fn entries(&self, checks: &[SectorCheck<'_>], erased: u8) -> Vec<Entry> {
         let mut entries = Vec::new();
@@ -200,6 +230,25 @@ impl AlgorithmSignatures {
     }
 }
 
+/// Compares `checks` with the signature function of the flash algorithm.
+///
+/// Sets the result of each check, and returns the name of the hash. Returns `None` if the
+/// algorithm has no known signature function.
+///
+/// Do not use, only exposed with `pub` visibility for target-gen.
+pub fn compare_with_signatures(
+    active: &mut ActiveFlasher<'_, '_, Verify>,
+    checks: &mut [SectorCheck<'_>],
+) -> Result<Option<&'static str>, FlashError> {
+    let Some(backend) = AlgorithmSignatures::new(active.flash_algorithm()) else {
+        return Ok(None);
+    };
+
+    backend.compare_checks(active, checks)?;
+
+    Ok(Some(backend.hash_name()))
+}
+
 /// Returns the result of a check from the results of its entries.
 fn check_outcome<'a>(
     results: impl Iterator<Item = (&'a Entry, &'a (u32, Vec<u8>))>,
@@ -234,23 +283,7 @@ impl FlashCompare for AlgorithmSignatures {
         checks: &mut [SectorCheck<'_>],
     ) -> Result<(), FlashError> {
         let mut active = context.algorithm()?;
-        let erased = active.flash_algorithm().flash_properties.erased_byte_value;
-        let entries = self.entries(checks, erased);
-        let results = self.sign(&mut active, &entries)?;
-
-        for (idx, check) in checks.iter_mut().enumerate() {
-            let mut of_check = entries
-                .iter()
-                .zip(&results)
-                .filter(|(entry, _)| entry.check == idx)
-                .peekable();
-            if of_check.peek().is_none() {
-                continue;
-            }
-            check.outcome = check_outcome(of_check);
-        }
-
-        Ok(())
+        self.compare_checks(&mut active, checks)
     }
 }
 
