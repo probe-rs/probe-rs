@@ -55,6 +55,16 @@ variants:
       ap: !v2 0xf0002000
   memory_map:
   - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12000000
+      end: 0x12020000
+    cores:
+    - cortex-m33
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22000000
@@ -91,16 +101,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12000000
-      end: 0x12020000
-    cores:
-    - cortex-m33
-    access:
-      write: false
   - !Nvm
     name: IROM4
     is_alias: true
@@ -132,6 +132,16 @@ variants:
       ap: !v2 0xf0002000
   memory_map:
   - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12000000
+      end: 0x12020000
+    cores:
+    - cortex-m33
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22000000
@@ -168,16 +178,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12000000
-      end: 0x12020000
-    cores:
-    - cortex-m33
-    access:
-      write: false
   - !Nvm
     name: IROM4
     is_alias: true
@@ -209,6 +209,16 @@ variants:
       ap: !v2 0xf0002000
   memory_map:
   - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12000000
+      end: 0x12020000
+    cores:
+    - cortex-m33
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22000000
@@ -245,16 +255,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12000000
-      end: 0x12020000
-    cores:
-    - cortex-m33
-    access:
-      write: false
   - !Nvm
     name: IROM4
     is_alias: true
@@ -286,6 +286,16 @@ variants:
       ap: !v2 0xf0002000
   memory_map:
   - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12000000
+      end: 0x12020000
+    cores:
+    - cortex-m33
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22000000
@@ -322,16 +332,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12000000
-      end: 0x12020000
-    cores:
-    - cortex-m33
-    access:
-      write: false
   - !Nvm
     name: IROM4
     is_alias: true
@@ -363,6 +363,16 @@ variants:
       ap: !v2 0xf0002000
   memory_map:
   - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12000000
+      end: 0x12040000
+    cores:
+    - cortex-m33
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22000000
@@ -399,16 +409,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12000000
-      end: 0x12040000
-    cores:
-    - cortex-m33
-    access:
-      write: false
   - !Nvm
     name: IROM4
     is_alias: true
@@ -440,6 +440,16 @@ variants:
       ap: !v2 0xf0002000
   memory_map:
   - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12000000
+      end: 0x12040000
+    cores:
+    - cortex-m33
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22000000
@@ -476,16 +486,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12000000
-      end: 0x12040000
-    cores:
-    - cortex-m33
-    access:
-      write: false
   - !Nvm
     name: IROM4
     is_alias: true
@@ -517,6 +517,16 @@ variants:
       ap: !v2 0xf0002000
   memory_map:
   - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12000000
+      end: 0x12040000
+    cores:
+    - cortex-m33
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22000000
@@ -553,16 +563,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12000000
-      end: 0x12040000
-    cores:
-    - cortex-m33
-    access:
-      write: false
   - !Nvm
     name: IROM4
     is_alias: true
@@ -594,6 +594,16 @@ variants:
       ap: !v2 0xf0002000
   memory_map:
   - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12000000
+      end: 0x12040000
+    cores:
+    - cortex-m33
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22000000
@@ -630,16 +640,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12000000
-      end: 0x12040000
-    cores:
-    - cortex-m33
-    access:
-      write: false
   - !Nvm
     name: IROM4
     is_alias: true
@@ -671,6 +671,16 @@ variants:
       ap: !v2 0xf0002000
   memory_map:
   - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12000000
+      end: 0x12020000
+    cores:
+    - cortex-m33
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22000000
@@ -707,16 +717,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12000000
-      end: 0x12020000
-    cores:
-    - cortex-m33
-    access:
-      write: false
   - !Nvm
     name: IROM4
     is_alias: true
@@ -748,6 +748,16 @@ variants:
       ap: !v2 0xf0002000
   memory_map:
   - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12000000
+      end: 0x12020000
+    cores:
+    - cortex-m33
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22000000
@@ -784,16 +794,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12000000
-      end: 0x12020000
-    cores:
-    - cortex-m33
-    access:
-      write: false
   - !Nvm
     name: IROM4
     is_alias: true
@@ -825,6 +825,16 @@ variants:
       ap: !v2 0xf0002000
   memory_map:
   - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12000000
+      end: 0x12020000
+    cores:
+    - cortex-m33
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22000000
@@ -861,16 +871,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12000000
-      end: 0x12020000
-    cores:
-    - cortex-m33
-    access:
-      write: false
   - !Nvm
     name: IROM4
     is_alias: true
@@ -902,6 +902,16 @@ variants:
       ap: !v2 0xf0002000
   memory_map:
   - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12000000
+      end: 0x12020000
+    cores:
+    - cortex-m33
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22000000
@@ -938,16 +948,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12000000
-      end: 0x12020000
-    cores:
-    - cortex-m33
-    access:
-      write: false
   - !Nvm
     name: IROM4
     is_alias: true
@@ -979,6 +979,16 @@ variants:
       ap: !v2 0xf0002000
   memory_map:
   - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12000000
+      end: 0x12020000
+    cores:
+    - cortex-m33
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22000000
@@ -1015,16 +1025,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12000000
-      end: 0x12020000
-    cores:
-    - cortex-m33
-    access:
-      write: false
   - !Nvm
     name: IROM4
     is_alias: true
@@ -1056,6 +1056,16 @@ variants:
       ap: !v2 0xf0002000
   memory_map:
   - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12000000
+      end: 0x12040000
+    cores:
+    - cortex-m33
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22000000
@@ -1092,16 +1102,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12000000
-      end: 0x12040000
-    cores:
-    - cortex-m33
-    access:
-      write: false
   - !Nvm
     name: IROM4
     is_alias: true
@@ -1133,6 +1133,16 @@ variants:
       ap: !v2 0xf0002000
   memory_map:
   - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12000000
+      end: 0x12040000
+    cores:
+    - cortex-m33
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22000000
@@ -1169,16 +1179,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12000000
-      end: 0x12040000
-    cores:
-    - cortex-m33
-    access:
-      write: false
   - !Nvm
     name: IROM4
     is_alias: true
@@ -1210,6 +1210,16 @@ variants:
       ap: !v2 0xf0002000
   memory_map:
   - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12000000
+      end: 0x12040000
+    cores:
+    - cortex-m33
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22000000
@@ -1246,16 +1256,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12000000
-      end: 0x12040000
-    cores:
-    - cortex-m33
-    access:
-      write: false
   - !Nvm
     name: IROM4
     is_alias: true
@@ -1287,6 +1287,16 @@ variants:
       ap: !v2 0xf0002000
   memory_map:
   - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12000000
+      end: 0x12040000
+    cores:
+    - cortex-m33
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22000000
@@ -1323,16 +1333,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12000000
-      end: 0x12040000
-    cores:
-    - cortex-m33
-    access:
-      write: false
   - !Nvm
     name: IROM4
     is_alias: true
@@ -1364,6 +1364,16 @@ variants:
       ap: !v2 0xf0002000
   memory_map:
   - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12000000
+      end: 0x12040000
+    cores:
+    - cortex-m33
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22000000
@@ -1400,16 +1410,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12000000
-      end: 0x12040000
-    cores:
-    - cortex-m33
-    access:
-      write: false
   - !Nvm
     name: IROM4
     is_alias: true
@@ -1441,6 +1441,16 @@ variants:
       ap: !v2 0xf0002000
   memory_map:
   - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12000000
+      end: 0x12020000
+    cores:
+    - cortex-m33
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22000000
@@ -1477,16 +1487,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12000000
-      end: 0x12020000
-    cores:
-    - cortex-m33
-    access:
-      write: false
   - !Nvm
     name: IROM4
     is_alias: true
@@ -1518,6 +1518,16 @@ variants:
       ap: !v2 0xf0002000
   memory_map:
   - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12000000
+      end: 0x12020000
+    cores:
+    - cortex-m33
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22000000
@@ -1554,16 +1564,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12000000
-      end: 0x12020000
-    cores:
-    - cortex-m33
-    access:
-      write: false
   - !Nvm
     name: IROM4
     is_alias: true
@@ -1595,6 +1595,16 @@ variants:
       ap: !v2 0xf0002000
   memory_map:
   - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12000000
+      end: 0x12020000
+    cores:
+    - cortex-m33
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22000000
@@ -1631,16 +1641,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12000000
-      end: 0x12020000
-    cores:
-    - cortex-m33
-    access:
-      write: false
   - !Nvm
     name: IROM4
     is_alias: true
@@ -1672,6 +1672,16 @@ variants:
       ap: !v2 0xf0002000
   memory_map:
   - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12000000
+      end: 0x12020000
+    cores:
+    - cortex-m33
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22000000
@@ -1708,16 +1718,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12000000
-      end: 0x12020000
-    cores:
-    - cortex-m33
-    access:
-      write: false
   - !Nvm
     name: IROM4
     is_alias: true
@@ -1749,6 +1749,16 @@ variants:
       ap: !v2 0xf0002000
   memory_map:
   - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12000000
+      end: 0x12040000
+    cores:
+    - cortex-m33
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22000000
@@ -1785,16 +1795,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12000000
-      end: 0x12040000
-    cores:
-    - cortex-m33
-    access:
-      write: false
   - !Nvm
     name: IROM4
     is_alias: true
@@ -1826,6 +1826,16 @@ variants:
       ap: !v2 0xf0002000
   memory_map:
   - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12000000
+      end: 0x12040000
+    cores:
+    - cortex-m33
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22000000
@@ -1862,16 +1872,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12000000
-      end: 0x12040000
-    cores:
-    - cortex-m33
-    access:
-      write: false
   - !Nvm
     name: IROM4
     is_alias: true
@@ -1903,6 +1903,16 @@ variants:
       ap: !v2 0xf0002000
   memory_map:
   - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12000000
+      end: 0x12040000
+    cores:
+    - cortex-m33
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22000000
@@ -1939,16 +1949,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12000000
-      end: 0x12040000
-    cores:
-    - cortex-m33
-    access:
-      write: false
   - !Nvm
     name: IROM4
     is_alias: true
@@ -1980,6 +1980,16 @@ variants:
       ap: !v2 0xf0002000
   memory_map:
   - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12000000
+      end: 0x12040000
+    cores:
+    - cortex-m33
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22000000
@@ -2016,16 +2026,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12000000
-      end: 0x12040000
-    cores:
-    - cortex-m33
-    access:
-      write: false
   - !Nvm
     name: IROM4
     is_alias: true
@@ -2057,6 +2057,16 @@ variants:
       ap: !v2 0xf0002000
   memory_map:
   - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12000000
+      end: 0x12020000
+    cores:
+    - cortex-m33
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22000000
@@ -2093,16 +2103,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12000000
-      end: 0x12020000
-    cores:
-    - cortex-m33
-    access:
-      write: false
   - !Nvm
     name: IROM4
     is_alias: true
@@ -2134,6 +2134,16 @@ variants:
       ap: !v2 0xf0002000
   memory_map:
   - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12000000
+      end: 0x12020000
+    cores:
+    - cortex-m33
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22000000
@@ -2170,16 +2180,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12000000
-      end: 0x12020000
-    cores:
-    - cortex-m33
-    access:
-      write: false
   - !Nvm
     name: IROM4
     is_alias: true
@@ -2211,6 +2211,16 @@ variants:
       ap: !v2 0xf0002000
   memory_map:
   - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12000000
+      end: 0x12020000
+    cores:
+    - cortex-m33
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22000000
@@ -2247,16 +2257,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12000000
-      end: 0x12020000
-    cores:
-    - cortex-m33
-    access:
-      write: false
   - !Nvm
     name: IROM4
     is_alias: true
@@ -2288,6 +2288,16 @@ variants:
       ap: !v2 0xf0002000
   memory_map:
   - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12000000
+      end: 0x12020000
+    cores:
+    - cortex-m33
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22000000
@@ -2325,16 +2335,6 @@ variants:
       write: false
       boot: true
   - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12000000
-      end: 0x12020000
-    cores:
-    - cortex-m33
-    access:
-      write: false
-  - !Nvm
     name: IROM4
     is_alias: true
     range:
@@ -2364,6 +2364,16 @@ variants:
     core_access_options: !Arm
       ap: !v2 0xf0002000
   memory_map:
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12000000
+      end: 0x12040000
+    cores:
+    - cortex-m33
+    access:
+      write: false
   - !Nvm
     name: IROM1
     range:
@@ -2401,16 +2411,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12000000
-      end: 0x12040000
-    cores:
-    - cortex-m33
-    access:
-      write: false
   - !Nvm
     name: IROM4
     is_alias: true
@@ -2442,6 +2442,16 @@ variants:
       ap: !v2 0xf0002000
   memory_map:
   - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12000000
+      end: 0x12040000
+    cores:
+    - cortex-m33
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22000000
@@ -2478,16 +2488,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12000000
-      end: 0x12040000
-    cores:
-    - cortex-m33
-    access:
-      write: false
   - !Nvm
     name: IROM4
     is_alias: true
@@ -2519,6 +2519,16 @@ variants:
       ap: !v2 0xf0002000
   memory_map:
   - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12000000
+      end: 0x12040000
+    cores:
+    - cortex-m33
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22000000
@@ -2555,16 +2565,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12000000
-      end: 0x12040000
-    cores:
-    - cortex-m33
-    access:
-      write: false
   - !Nvm
     name: IROM4
     is_alias: true
@@ -2596,6 +2596,16 @@ variants:
       ap: !v2 0xf0002000
   memory_map:
   - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12000000
+      end: 0x12040000
+    cores:
+    - cortex-m33
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22000000
@@ -2632,16 +2642,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12000000
-      end: 0x12040000
-    cores:
-    - cortex-m33
-    access:
-      write: false
   - !Nvm
     name: IROM4
     is_alias: true

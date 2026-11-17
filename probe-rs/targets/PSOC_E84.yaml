@@ -79,6 +79,28 @@ variants:
       ap: !v2 0xf0006000
   memory_map:
   - !Nvm
+    name: IROM3_XIP
+    is_alias: true
+    range:
+      start: 0x08000000
+      end: 0x09000000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12011000
+      end: 0x12040000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22011000
@@ -108,17 +130,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12011000
-      end: 0x12040000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
   - !Ram
     name: IRAM2
     is_alias: true
@@ -144,17 +155,6 @@ variants:
     range:
       start: 0x70000000
       end: 0x71000000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
-  - !Nvm
-    name: IROM3_XIP
-    is_alias: true
-    range:
-      start: 0x08000000
-      end: 0x09000000
     cores:
     - cortex-m33
     - cortex-m55
@@ -181,6 +181,28 @@ variants:
       ir_len: 8
   memory_map:
   - !Nvm
+    name: IROM3_XIP
+    is_alias: true
+    range:
+      start: 0x08000000
+      end: 0x09000000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12011000
+      end: 0x1206a000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22011000
@@ -210,17 +232,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12011000
-      end: 0x1206a000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
   - !Ram
     name: IRAM2
     is_alias: true
@@ -246,17 +257,6 @@ variants:
     range:
       start: 0x70000000
       end: 0x71000000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
-  - !Nvm
-    name: IROM3_XIP
-    is_alias: true
-    range:
-      start: 0x08000000
-      end: 0x09000000
     cores:
     - cortex-m33
     - cortex-m55
@@ -279,6 +279,28 @@ variants:
       ap: !v2 0xf0006000
   memory_map:
   - !Nvm
+    name: IROM3_XIP
+    is_alias: true
+    range:
+      start: 0x08000000
+      end: 0x09000000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12011000
+      end: 0x1206a000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22011000
@@ -308,17 +330,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12011000
-      end: 0x1206a000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
   - !Ram
     name: IRAM2
     is_alias: true
@@ -344,17 +355,6 @@ variants:
     range:
       start: 0x70000000
       end: 0x71000000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
-  - !Nvm
-    name: IROM3_XIP
-    is_alias: true
-    range:
-      start: 0x08000000
-      end: 0x09000000
     cores:
     - cortex-m33
     - cortex-m55
@@ -377,6 +377,28 @@ variants:
       ap: !v2 0xf0006000
   memory_map:
   - !Nvm
+    name: IROM3_XIP
+    is_alias: true
+    range:
+      start: 0x08000000
+      end: 0x09000000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12011000
+      end: 0x1206a000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22011000
@@ -406,17 +428,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12011000
-      end: 0x1206a000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
   - !Ram
     name: IRAM2
     is_alias: true
@@ -442,17 +453,6 @@ variants:
     range:
       start: 0x70000000
       end: 0x71000000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
-  - !Nvm
-    name: IROM3_XIP
-    is_alias: true
-    range:
-      start: 0x08000000
-      end: 0x09000000
     cores:
     - cortex-m33
     - cortex-m55
@@ -475,6 +475,28 @@ variants:
       ap: !v2 0xf0006000
   memory_map:
   - !Nvm
+    name: IROM3_XIP
+    is_alias: true
+    range:
+      start: 0x08000000
+      end: 0x09000000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12011000
+      end: 0x1206a000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22011000
@@ -504,17 +526,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12011000
-      end: 0x1206a000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
   - !Ram
     name: IRAM2
     is_alias: true
@@ -540,17 +551,6 @@ variants:
     range:
       start: 0x70000000
       end: 0x71000000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
-  - !Nvm
-    name: IROM3_XIP
-    is_alias: true
-    range:
-      start: 0x08000000
-      end: 0x09000000
     cores:
     - cortex-m33
     - cortex-m55
@@ -573,6 +573,28 @@ variants:
       ap: !v2 0xf0006000
   memory_map:
   - !Nvm
+    name: IROM3_XIP
+    is_alias: true
+    range:
+      start: 0x08000000
+      end: 0x09000000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12011000
+      end: 0x1206a000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22011000
@@ -602,17 +624,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12011000
-      end: 0x1206a000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
   - !Ram
     name: IRAM2
     is_alias: true
@@ -638,17 +649,6 @@ variants:
     range:
       start: 0x70000000
       end: 0x71000000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
-  - !Nvm
-    name: IROM3_XIP
-    is_alias: true
-    range:
-      start: 0x08000000
-      end: 0x09000000
     cores:
     - cortex-m33
     - cortex-m55
@@ -671,6 +671,28 @@ variants:
       ap: !v2 0xf0006000
   memory_map:
   - !Nvm
+    name: IROM3_XIP
+    is_alias: true
+    range:
+      start: 0x08000000
+      end: 0x09000000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12011000
+      end: 0x12040000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22011000
@@ -700,17 +722,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12011000
-      end: 0x12040000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
   - !Ram
     name: IRAM2
     is_alias: true
@@ -736,17 +747,6 @@ variants:
     range:
       start: 0x70000000
       end: 0x71000000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
-  - !Nvm
-    name: IROM3_XIP
-    is_alias: true
-    range:
-      start: 0x08000000
-      end: 0x09000000
     cores:
     - cortex-m33
     - cortex-m55
@@ -769,6 +769,28 @@ variants:
       ap: !v2 0xf0006000
   memory_map:
   - !Nvm
+    name: IROM3_XIP
+    is_alias: true
+    range:
+      start: 0x08000000
+      end: 0x09000000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12011000
+      end: 0x1206a000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22011000
@@ -798,17 +820,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12011000
-      end: 0x1206a000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
   - !Ram
     name: IRAM2
     is_alias: true
@@ -834,17 +845,6 @@ variants:
     range:
       start: 0x70000000
       end: 0x71000000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
-  - !Nvm
-    name: IROM3_XIP
-    is_alias: true
-    range:
-      start: 0x08000000
-      end: 0x09000000
     cores:
     - cortex-m33
     - cortex-m55
@@ -867,6 +867,28 @@ variants:
       ap: !v2 0xf0006000
   memory_map:
   - !Nvm
+    name: IROM3_XIP
+    is_alias: true
+    range:
+      start: 0x08000000
+      end: 0x09000000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12011000
+      end: 0x12040000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22011000
@@ -896,17 +918,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12011000
-      end: 0x12040000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
   - !Ram
     name: IRAM2
     is_alias: true
@@ -932,17 +943,6 @@ variants:
     range:
       start: 0x70000000
       end: 0x71000000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
-  - !Nvm
-    name: IROM3_XIP
-    is_alias: true
-    range:
-      start: 0x08000000
-      end: 0x09000000
     cores:
     - cortex-m33
     - cortex-m55
@@ -965,6 +965,28 @@ variants:
       ap: !v2 0xf0006000
   memory_map:
   - !Nvm
+    name: IROM3_XIP
+    is_alias: true
+    range:
+      start: 0x08000000
+      end: 0x09000000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12011000
+      end: 0x1206a000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22011000
@@ -994,17 +1016,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12011000
-      end: 0x1206a000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
   - !Ram
     name: IRAM2
     is_alias: true
@@ -1030,17 +1041,6 @@ variants:
     range:
       start: 0x70000000
       end: 0x71000000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
-  - !Nvm
-    name: IROM3_XIP
-    is_alias: true
-    range:
-      start: 0x08000000
-      end: 0x09000000
     cores:
     - cortex-m33
     - cortex-m55
@@ -1063,6 +1063,28 @@ variants:
       ap: !v2 0xf0006000
   memory_map:
   - !Nvm
+    name: IROM3_XIP
+    is_alias: true
+    range:
+      start: 0x08000000
+      end: 0x09000000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12011000
+      end: 0x12040000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22011000
@@ -1092,17 +1114,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12011000
-      end: 0x12040000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
   - !Ram
     name: IRAM2
     is_alias: true
@@ -1128,17 +1139,6 @@ variants:
     range:
       start: 0x70000000
       end: 0x71000000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
-  - !Nvm
-    name: IROM3_XIP
-    is_alias: true
-    range:
-      start: 0x08000000
-      end: 0x09000000
     cores:
     - cortex-m33
     - cortex-m55
@@ -1161,6 +1161,28 @@ variants:
       ap: !v2 0xf0006000
   memory_map:
   - !Nvm
+    name: IROM3_XIP
+    is_alias: true
+    range:
+      start: 0x08000000
+      end: 0x09000000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12011000
+      end: 0x1206a000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22011000
@@ -1190,17 +1212,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12011000
-      end: 0x1206a000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
   - !Ram
     name: IRAM2
     is_alias: true
@@ -1226,17 +1237,6 @@ variants:
     range:
       start: 0x70000000
       end: 0x71000000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
-  - !Nvm
-    name: IROM3_XIP
-    is_alias: true
-    range:
-      start: 0x08000000
-      end: 0x09000000
     cores:
     - cortex-m33
     - cortex-m55
@@ -1259,6 +1259,28 @@ variants:
       ap: !v2 0xf0006000
   memory_map:
   - !Nvm
+    name: IROM3_XIP
+    is_alias: true
+    range:
+      start: 0x08000000
+      end: 0x09000000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12011000
+      end: 0x1206a000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22011000
@@ -1288,17 +1310,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12011000
-      end: 0x1206a000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
   - !Ram
     name: IRAM2
     is_alias: true
@@ -1324,17 +1335,6 @@ variants:
     range:
       start: 0x70000000
       end: 0x71000000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
-  - !Nvm
-    name: IROM3_XIP
-    is_alias: true
-    range:
-      start: 0x08000000
-      end: 0x09000000
     cores:
     - cortex-m33
     - cortex-m55
@@ -1357,6 +1357,28 @@ variants:
       ap: !v2 0xf0006000
   memory_map:
   - !Nvm
+    name: IROM3_XIP
+    is_alias: true
+    range:
+      start: 0x08000000
+      end: 0x09000000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12011000
+      end: 0x12040000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22011000
@@ -1386,17 +1408,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12011000
-      end: 0x12040000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
   - !Ram
     name: IRAM2
     is_alias: true
@@ -1422,17 +1433,6 @@ variants:
     range:
       start: 0x70000000
       end: 0x71000000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
-  - !Nvm
-    name: IROM3_XIP
-    is_alias: true
-    range:
-      start: 0x08000000
-      end: 0x09000000
     cores:
     - cortex-m33
     - cortex-m55
@@ -1455,6 +1455,28 @@ variants:
       ap: !v2 0xf0006000
   memory_map:
   - !Nvm
+    name: IROM3_XIP
+    is_alias: true
+    range:
+      start: 0x08000000
+      end: 0x09000000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12011000
+      end: 0x12040000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22011000
@@ -1484,17 +1506,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12011000
-      end: 0x12040000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
   - !Ram
     name: IRAM2
     is_alias: true
@@ -1520,17 +1531,6 @@ variants:
     range:
       start: 0x70000000
       end: 0x71000000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
-  - !Nvm
-    name: IROM3_XIP
-    is_alias: true
-    range:
-      start: 0x08000000
-      end: 0x09000000
     cores:
     - cortex-m33
     - cortex-m55
@@ -1553,6 +1553,28 @@ variants:
       ap: !v2 0xf0006000
   memory_map:
   - !Nvm
+    name: IROM3_XIP
+    is_alias: true
+    range:
+      start: 0x08000000
+      end: 0x09000000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12011000
+      end: 0x1206a000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22011000
@@ -1582,17 +1604,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12011000
-      end: 0x1206a000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
   - !Ram
     name: IRAM2
     is_alias: true
@@ -1618,17 +1629,6 @@ variants:
     range:
       start: 0x70000000
       end: 0x71000000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
-  - !Nvm
-    name: IROM3_XIP
-    is_alias: true
-    range:
-      start: 0x08000000
-      end: 0x09000000
     cores:
     - cortex-m33
     - cortex-m55
@@ -1651,6 +1651,28 @@ variants:
       ap: !v2 0xf0006000
   memory_map:
   - !Nvm
+    name: IROM3_XIP
+    is_alias: true
+    range:
+      start: 0x08000000
+      end: 0x09000000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12011000
+      end: 0x1206a000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22011000
@@ -1680,17 +1702,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12011000
-      end: 0x1206a000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
   - !Ram
     name: IRAM2
     is_alias: true
@@ -1716,17 +1727,6 @@ variants:
     range:
       start: 0x70000000
       end: 0x71000000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
-  - !Nvm
-    name: IROM3_XIP
-    is_alias: true
-    range:
-      start: 0x08000000
-      end: 0x09000000
     cores:
     - cortex-m33
     - cortex-m55
@@ -1749,6 +1749,28 @@ variants:
       ap: !v2 0xf0006000
   memory_map:
   - !Nvm
+    name: IROM3_XIP
+    is_alias: true
+    range:
+      start: 0x08000000
+      end: 0x09000000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12011000
+      end: 0x12040000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22011000
@@ -1778,17 +1800,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12011000
-      end: 0x12040000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
   - !Ram
     name: IRAM2
     is_alias: true
@@ -1814,17 +1825,6 @@ variants:
     range:
       start: 0x70000000
       end: 0x71000000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
-  - !Nvm
-    name: IROM3_XIP
-    is_alias: true
-    range:
-      start: 0x08000000
-      end: 0x09000000
     cores:
     - cortex-m33
     - cortex-m55
@@ -1847,6 +1847,28 @@ variants:
       ap: !v2 0xf0006000
   memory_map:
   - !Nvm
+    name: IROM3_XIP
+    is_alias: true
+    range:
+      start: 0x08000000
+      end: 0x09000000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12011000
+      end: 0x1206a000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22011000
@@ -1876,17 +1898,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12011000
-      end: 0x1206a000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
   - !Ram
     name: IRAM2
     is_alias: true
@@ -1912,17 +1923,6 @@ variants:
     range:
       start: 0x70000000
       end: 0x71000000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
-  - !Nvm
-    name: IROM3_XIP
-    is_alias: true
-    range:
-      start: 0x08000000
-      end: 0x09000000
     cores:
     - cortex-m33
     - cortex-m55
@@ -1945,6 +1945,28 @@ variants:
       ap: !v2 0xf0006000
   memory_map:
   - !Nvm
+    name: IROM3_XIP
+    is_alias: true
+    range:
+      start: 0x08000000
+      end: 0x09000000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12011000
+      end: 0x12040000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22011000
@@ -1974,17 +1996,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12011000
-      end: 0x12040000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
   - !Ram
     name: IRAM2
     is_alias: true
@@ -2010,17 +2021,6 @@ variants:
     range:
       start: 0x70000000
       end: 0x71000000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
-  - !Nvm
-    name: IROM3_XIP
-    is_alias: true
-    range:
-      start: 0x08000000
-      end: 0x09000000
     cores:
     - cortex-m33
     - cortex-m55
@@ -2043,6 +2043,28 @@ variants:
       ap: !v2 0xf0006000
   memory_map:
   - !Nvm
+    name: IROM3_XIP
+    is_alias: true
+    range:
+      start: 0x08000000
+      end: 0x09000000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12011000
+      end: 0x1206a000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22011000
@@ -2072,17 +2094,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12011000
-      end: 0x1206a000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
   - !Ram
     name: IRAM2
     is_alias: true
@@ -2108,17 +2119,6 @@ variants:
     range:
       start: 0x70000000
       end: 0x71000000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
-  - !Nvm
-    name: IROM3_XIP
-    is_alias: true
-    range:
-      start: 0x08000000
-      end: 0x09000000
     cores:
     - cortex-m33
     - cortex-m55
@@ -2141,6 +2141,28 @@ variants:
       ap: !v2 0xf0006000
   memory_map:
   - !Nvm
+    name: IROM3_XIP
+    is_alias: true
+    range:
+      start: 0x08000000
+      end: 0x09000000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12011000
+      end: 0x12040000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22011000
@@ -2170,17 +2192,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12011000
-      end: 0x12040000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
   - !Ram
     name: IRAM2
     is_alias: true
@@ -2206,17 +2217,6 @@ variants:
     range:
       start: 0x70000000
       end: 0x71000000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
-  - !Nvm
-    name: IROM3_XIP
-    is_alias: true
-    range:
-      start: 0x08000000
-      end: 0x09000000
     cores:
     - cortex-m33
     - cortex-m55
@@ -2239,6 +2239,28 @@ variants:
       ap: !v2 0xf0006000
   memory_map:
   - !Nvm
+    name: IROM3_XIP
+    is_alias: true
+    range:
+      start: 0x08000000
+      end: 0x09000000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12011000
+      end: 0x1206a000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22011000
@@ -2268,17 +2290,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12011000
-      end: 0x1206a000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
   - !Ram
     name: IRAM2
     is_alias: true
@@ -2304,17 +2315,6 @@ variants:
     range:
       start: 0x70000000
       end: 0x71000000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
-  - !Nvm
-    name: IROM3_XIP
-    is_alias: true
-    range:
-      start: 0x08000000
-      end: 0x09000000
     cores:
     - cortex-m33
     - cortex-m55
@@ -2337,6 +2337,28 @@ variants:
       ap: !v2 0xf0006000
   memory_map:
   - !Nvm
+    name: IROM3_XIP
+    is_alias: true
+    range:
+      start: 0x08000000
+      end: 0x09000000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12011000
+      end: 0x1206a000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22011000
@@ -2366,17 +2388,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12011000
-      end: 0x1206a000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
   - !Ram
     name: IRAM2
     is_alias: true
@@ -2402,17 +2413,6 @@ variants:
     range:
       start: 0x70000000
       end: 0x71000000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
-  - !Nvm
-    name: IROM3_XIP
-    is_alias: true
-    range:
-      start: 0x08000000
-      end: 0x09000000
     cores:
     - cortex-m33
     - cortex-m55
@@ -2435,6 +2435,28 @@ variants:
       ap: !v2 0xf0006000
   memory_map:
   - !Nvm
+    name: IROM3_XIP
+    is_alias: true
+    range:
+      start: 0x08000000
+      end: 0x09000000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12011000
+      end: 0x12040000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22011000
@@ -2464,17 +2486,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12011000
-      end: 0x12040000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
   - !Ram
     name: IRAM2
     is_alias: true
@@ -2500,17 +2511,6 @@ variants:
     range:
       start: 0x70000000
       end: 0x71000000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
-  - !Nvm
-    name: IROM3_XIP
-    is_alias: true
-    range:
-      start: 0x08000000
-      end: 0x09000000
     cores:
     - cortex-m33
     - cortex-m55
@@ -2533,6 +2533,28 @@ variants:
       ap: !v2 0xf0006000
   memory_map:
   - !Nvm
+    name: IROM3_XIP
+    is_alias: true
+    range:
+      start: 0x08000000
+      end: 0x09000000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12011000
+      end: 0x12040000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22011000
@@ -2562,17 +2584,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12011000
-      end: 0x12040000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
   - !Ram
     name: IRAM2
     is_alias: true
@@ -2598,17 +2609,6 @@ variants:
     range:
       start: 0x70000000
       end: 0x71000000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
-  - !Nvm
-    name: IROM3_XIP
-    is_alias: true
-    range:
-      start: 0x08000000
-      end: 0x09000000
     cores:
     - cortex-m33
     - cortex-m55
@@ -2631,6 +2631,28 @@ variants:
       ap: !v2 0xf0006000
   memory_map:
   - !Nvm
+    name: IROM3_XIP
+    is_alias: true
+    range:
+      start: 0x08000000
+      end: 0x09000000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12011000
+      end: 0x1206a000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22011000
@@ -2660,17 +2682,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12011000
-      end: 0x1206a000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
   - !Ram
     name: IRAM2
     is_alias: true
@@ -2696,17 +2707,6 @@ variants:
     range:
       start: 0x70000000
       end: 0x71000000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
-  - !Nvm
-    name: IROM3_XIP
-    is_alias: true
-    range:
-      start: 0x08000000
-      end: 0x09000000
     cores:
     - cortex-m33
     - cortex-m55
@@ -2729,6 +2729,28 @@ variants:
       ap: !v2 0xf0006000
   memory_map:
   - !Nvm
+    name: IROM3_XIP
+    is_alias: true
+    range:
+      start: 0x08000000
+      end: 0x09000000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12011000
+      end: 0x1206a000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22011000
@@ -2758,17 +2780,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12011000
-      end: 0x1206a000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
   - !Ram
     name: IRAM2
     is_alias: true
@@ -2794,17 +2805,6 @@ variants:
     range:
       start: 0x70000000
       end: 0x71000000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
-  - !Nvm
-    name: IROM3_XIP
-    is_alias: true
-    range:
-      start: 0x08000000
-      end: 0x09000000
     cores:
     - cortex-m33
     - cortex-m55
@@ -2827,6 +2827,28 @@ variants:
       ap: !v2 0xf0006000
   memory_map:
   - !Nvm
+    name: IROM3_XIP
+    is_alias: true
+    range:
+      start: 0x08000000
+      end: 0x09000000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12011000
+      end: 0x12040000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22011000
@@ -2856,17 +2878,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12011000
-      end: 0x12040000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
   - !Ram
     name: IRAM2
     is_alias: true
@@ -2892,17 +2903,6 @@ variants:
     range:
       start: 0x70000000
       end: 0x71000000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
-  - !Nvm
-    name: IROM3_XIP
-    is_alias: true
-    range:
-      start: 0x08000000
-      end: 0x09000000
     cores:
     - cortex-m33
     - cortex-m55
@@ -2925,6 +2925,28 @@ variants:
       ap: !v2 0xf0006000
   memory_map:
   - !Nvm
+    name: IROM3_XIP
+    is_alias: true
+    range:
+      start: 0x08000000
+      end: 0x09000000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12011000
+      end: 0x12040000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22011000
@@ -2954,17 +2976,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12011000
-      end: 0x12040000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
   - !Ram
     name: IRAM2
     is_alias: true
@@ -2990,17 +3001,6 @@ variants:
     range:
       start: 0x70000000
       end: 0x71000000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
-  - !Nvm
-    name: IROM3_XIP
-    is_alias: true
-    range:
-      start: 0x08000000
-      end: 0x09000000
     cores:
     - cortex-m33
     - cortex-m55
@@ -3023,6 +3023,28 @@ variants:
       ap: !v2 0xf0006000
   memory_map:
   - !Nvm
+    name: IROM3_XIP
+    is_alias: true
+    range:
+      start: 0x08000000
+      end: 0x09000000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12011000
+      end: 0x1206a000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22011000
@@ -3052,17 +3074,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12011000
-      end: 0x1206a000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
   - !Ram
     name: IRAM2
     is_alias: true
@@ -3088,17 +3099,6 @@ variants:
     range:
       start: 0x70000000
       end: 0x71000000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
-  - !Nvm
-    name: IROM3_XIP
-    is_alias: true
-    range:
-      start: 0x08000000
-      end: 0x09000000
     cores:
     - cortex-m33
     - cortex-m55
@@ -3121,6 +3121,28 @@ variants:
       ap: !v2 0xf0006000
   memory_map:
   - !Nvm
+    name: IROM3_XIP
+    is_alias: true
+    range:
+      start: 0x08000000
+      end: 0x09000000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12011000
+      end: 0x12040000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22011000
@@ -3150,17 +3172,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12011000
-      end: 0x12040000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
   - !Ram
     name: IRAM2
     is_alias: true
@@ -3186,17 +3197,6 @@ variants:
     range:
       start: 0x70000000
       end: 0x71000000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
-  - !Nvm
-    name: IROM3_XIP
-    is_alias: true
-    range:
-      start: 0x08000000
-      end: 0x09000000
     cores:
     - cortex-m33
     - cortex-m55
@@ -3219,6 +3219,28 @@ variants:
       ap: !v2 0xf0006000
   memory_map:
   - !Nvm
+    name: IROM3_XIP
+    is_alias: true
+    range:
+      start: 0x08000000
+      end: 0x09000000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12011000
+      end: 0x1206a000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22011000
@@ -3248,17 +3270,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12011000
-      end: 0x1206a000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
   - !Ram
     name: IRAM2
     is_alias: true
@@ -3284,17 +3295,6 @@ variants:
     range:
       start: 0x70000000
       end: 0x71000000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
-  - !Nvm
-    name: IROM3_XIP
-    is_alias: true
-    range:
-      start: 0x08000000
-      end: 0x09000000
     cores:
     - cortex-m33
     - cortex-m55
@@ -3317,6 +3317,28 @@ variants:
       ap: !v2 0xf0006000
   memory_map:
   - !Nvm
+    name: IROM3_XIP
+    is_alias: true
+    range:
+      start: 0x08000000
+      end: 0x09000000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12011000
+      end: 0x12040000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22011000
@@ -3346,17 +3368,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12011000
-      end: 0x12040000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
   - !Ram
     name: IRAM2
     is_alias: true
@@ -3382,17 +3393,6 @@ variants:
     range:
       start: 0x70000000
       end: 0x71000000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
-  - !Nvm
-    name: IROM3_XIP
-    is_alias: true
-    range:
-      start: 0x08000000
-      end: 0x09000000
     cores:
     - cortex-m33
     - cortex-m55
@@ -3415,6 +3415,28 @@ variants:
       ap: !v2 0xf0006000
   memory_map:
   - !Nvm
+    name: IROM3_XIP
+    is_alias: true
+    range:
+      start: 0x08000000
+      end: 0x09000000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12011000
+      end: 0x1206a000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22011000
@@ -3444,17 +3466,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12011000
-      end: 0x1206a000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
   - !Ram
     name: IRAM2
     is_alias: true
@@ -3480,17 +3491,6 @@ variants:
     range:
       start: 0x70000000
       end: 0x71000000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
-  - !Nvm
-    name: IROM3_XIP
-    is_alias: true
-    range:
-      start: 0x08000000
-      end: 0x09000000
     cores:
     - cortex-m33
     - cortex-m55
@@ -3513,6 +3513,28 @@ variants:
       ap: !v2 0xf0006000
   memory_map:
   - !Nvm
+    name: IROM3_XIP
+    is_alias: true
+    range:
+      start: 0x08000000
+      end: 0x09000000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12011000
+      end: 0x1206a000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22011000
@@ -3542,17 +3564,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12011000
-      end: 0x1206a000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
   - !Ram
     name: IRAM2
     is_alias: true
@@ -3578,17 +3589,6 @@ variants:
     range:
       start: 0x70000000
       end: 0x71000000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
-  - !Nvm
-    name: IROM3_XIP
-    is_alias: true
-    range:
-      start: 0x08000000
-      end: 0x09000000
     cores:
     - cortex-m33
     - cortex-m55
@@ -3611,6 +3611,28 @@ variants:
       ap: !v2 0xf0006000
   memory_map:
   - !Nvm
+    name: IROM3_XIP
+    is_alias: true
+    range:
+      start: 0x08000000
+      end: 0x09000000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12011000
+      end: 0x12040000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22011000
@@ -3640,17 +3662,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12011000
-      end: 0x12040000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
   - !Ram
     name: IRAM2
     is_alias: true
@@ -3676,17 +3687,6 @@ variants:
     range:
       start: 0x70000000
       end: 0x71000000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
-  - !Nvm
-    name: IROM3_XIP
-    is_alias: true
-    range:
-      start: 0x08000000
-      end: 0x09000000
     cores:
     - cortex-m33
     - cortex-m55
@@ -3709,6 +3709,28 @@ variants:
       ap: !v2 0xf0006000
   memory_map:
   - !Nvm
+    name: IROM3_XIP
+    is_alias: true
+    range:
+      start: 0x08000000
+      end: 0x09000000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12011000
+      end: 0x12040000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22011000
@@ -3738,17 +3760,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12011000
-      end: 0x12040000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
   - !Ram
     name: IRAM2
     is_alias: true
@@ -3774,17 +3785,6 @@ variants:
     range:
       start: 0x70000000
       end: 0x71000000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
-  - !Nvm
-    name: IROM3_XIP
-    is_alias: true
-    range:
-      start: 0x08000000
-      end: 0x09000000
     cores:
     - cortex-m33
     - cortex-m55
@@ -3807,6 +3807,28 @@ variants:
       ap: !v2 0xf0006000
   memory_map:
   - !Nvm
+    name: IROM3_XIP
+    is_alias: true
+    range:
+      start: 0x08000000
+      end: 0x09000000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12011000
+      end: 0x1206a000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22011000
@@ -3836,17 +3858,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12011000
-      end: 0x1206a000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
   - !Ram
     name: IRAM2
     is_alias: true
@@ -3872,17 +3883,6 @@ variants:
     range:
       start: 0x70000000
       end: 0x71000000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
-  - !Nvm
-    name: IROM3_XIP
-    is_alias: true
-    range:
-      start: 0x08000000
-      end: 0x09000000
     cores:
     - cortex-m33
     - cortex-m55
@@ -3905,6 +3905,28 @@ variants:
       ap: !v2 0xf0006000
   memory_map:
   - !Nvm
+    name: IROM3_XIP
+    is_alias: true
+    range:
+      start: 0x08000000
+      end: 0x09000000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12011000
+      end: 0x1206a000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22011000
@@ -3934,17 +3956,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12011000
-      end: 0x1206a000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
   - !Ram
     name: IRAM2
     is_alias: true
@@ -3970,17 +3981,6 @@ variants:
     range:
       start: 0x70000000
       end: 0x71000000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
-  - !Nvm
-    name: IROM3_XIP
-    is_alias: true
-    range:
-      start: 0x08000000
-      end: 0x09000000
     cores:
     - cortex-m33
     - cortex-m55
@@ -4003,6 +4003,28 @@ variants:
       ap: !v2 0xf0006000
   memory_map:
   - !Nvm
+    name: IROM3_XIP
+    is_alias: true
+    range:
+      start: 0x08000000
+      end: 0x09000000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12011000
+      end: 0x12040000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22011000
@@ -4032,17 +4054,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12011000
-      end: 0x12040000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
   - !Ram
     name: IRAM2
     is_alias: true
@@ -4068,17 +4079,6 @@ variants:
     range:
       start: 0x70000000
       end: 0x71000000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
-  - !Nvm
-    name: IROM3_XIP
-    is_alias: true
-    range:
-      start: 0x08000000
-      end: 0x09000000
     cores:
     - cortex-m33
     - cortex-m55
@@ -4101,6 +4101,28 @@ variants:
       ap: !v2 0xf0006000
   memory_map:
   - !Nvm
+    name: IROM3_XIP
+    is_alias: true
+    range:
+      start: 0x08000000
+      end: 0x09000000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12011000
+      end: 0x12040000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22011000
@@ -4130,17 +4152,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12011000
-      end: 0x12040000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
   - !Ram
     name: IRAM2
     is_alias: true
@@ -4166,17 +4177,6 @@ variants:
     range:
       start: 0x70000000
       end: 0x71000000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
-  - !Nvm
-    name: IROM3_XIP
-    is_alias: true
-    range:
-      start: 0x08000000
-      end: 0x09000000
     cores:
     - cortex-m33
     - cortex-m55
@@ -4199,6 +4199,28 @@ variants:
       ap: !v2 0xf0006000
   memory_map:
   - !Nvm
+    name: IROM3_XIP
+    is_alias: true
+    range:
+      start: 0x08000000
+      end: 0x09000000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12011000
+      end: 0x1206a000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22011000
@@ -4228,17 +4250,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12011000
-      end: 0x1206a000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
   - !Ram
     name: IRAM2
     is_alias: true
@@ -4264,17 +4275,6 @@ variants:
     range:
       start: 0x70000000
       end: 0x71000000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
-  - !Nvm
-    name: IROM3_XIP
-    is_alias: true
-    range:
-      start: 0x08000000
-      end: 0x09000000
     cores:
     - cortex-m33
     - cortex-m55
@@ -4297,6 +4297,28 @@ variants:
       ap: !v2 0xf0006000
   memory_map:
   - !Nvm
+    name: IROM3_XIP
+    is_alias: true
+    range:
+      start: 0x08000000
+      end: 0x09000000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12011000
+      end: 0x1206a000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22011000
@@ -4326,17 +4348,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12011000
-      end: 0x1206a000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
   - !Ram
     name: IRAM2
     is_alias: true
@@ -4362,17 +4373,6 @@ variants:
     range:
       start: 0x70000000
       end: 0x71000000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
-  - !Nvm
-    name: IROM3_XIP
-    is_alias: true
-    range:
-      start: 0x08000000
-      end: 0x09000000
     cores:
     - cortex-m33
     - cortex-m55
@@ -4395,6 +4395,28 @@ variants:
       ap: !v2 0xf0006000
   memory_map:
   - !Nvm
+    name: IROM3_XIP
+    is_alias: true
+    range:
+      start: 0x08000000
+      end: 0x09000000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12011000
+      end: 0x12040000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22011000
@@ -4424,17 +4446,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12011000
-      end: 0x12040000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
   - !Ram
     name: IRAM2
     is_alias: true
@@ -4460,17 +4471,6 @@ variants:
     range:
       start: 0x70000000
       end: 0x71000000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
-  - !Nvm
-    name: IROM3_XIP
-    is_alias: true
-    range:
-      start: 0x08000000
-      end: 0x09000000
     cores:
     - cortex-m33
     - cortex-m55
@@ -4493,6 +4493,28 @@ variants:
       ap: !v2 0xf0006000
   memory_map:
   - !Nvm
+    name: IROM3_XIP
+    is_alias: true
+    range:
+      start: 0x08000000
+      end: 0x09000000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12011000
+      end: 0x12040000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22011000
@@ -4522,17 +4544,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12011000
-      end: 0x12040000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
   - !Ram
     name: IRAM2
     is_alias: true
@@ -4558,17 +4569,6 @@ variants:
     range:
       start: 0x70000000
       end: 0x71000000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
-  - !Nvm
-    name: IROM3_XIP
-    is_alias: true
-    range:
-      start: 0x08000000
-      end: 0x09000000
     cores:
     - cortex-m33
     - cortex-m55
@@ -4591,6 +4591,28 @@ variants:
       ap: !v2 0xf0006000
   memory_map:
   - !Nvm
+    name: IROM3_XIP
+    is_alias: true
+    range:
+      start: 0x08000000
+      end: 0x09000000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12011000
+      end: 0x1206a000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22011000
@@ -4620,17 +4642,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12011000
-      end: 0x1206a000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
   - !Ram
     name: IRAM2
     is_alias: true
@@ -4656,17 +4667,6 @@ variants:
     range:
       start: 0x70000000
       end: 0x71000000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
-  - !Nvm
-    name: IROM3_XIP
-    is_alias: true
-    range:
-      start: 0x08000000
-      end: 0x09000000
     cores:
     - cortex-m33
     - cortex-m55
@@ -4689,6 +4689,28 @@ variants:
       ap: !v2 0xf0006000
   memory_map:
   - !Nvm
+    name: IROM3_XIP
+    is_alias: true
+    range:
+      start: 0x08000000
+      end: 0x09000000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12011000
+      end: 0x1206a000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22011000
@@ -4718,17 +4740,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12011000
-      end: 0x1206a000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
   - !Ram
     name: IRAM2
     is_alias: true
@@ -4754,17 +4765,6 @@ variants:
     range:
       start: 0x70000000
       end: 0x71000000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
-  - !Nvm
-    name: IROM3_XIP
-    is_alias: true
-    range:
-      start: 0x08000000
-      end: 0x09000000
     cores:
     - cortex-m33
     - cortex-m55
@@ -4787,6 +4787,28 @@ variants:
       ap: !v2 0xf0006000
   memory_map:
   - !Nvm
+    name: IROM3_XIP
+    is_alias: true
+    range:
+      start: 0x08000000
+      end: 0x09000000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12011000
+      end: 0x12040000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22011000
@@ -4816,17 +4838,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12011000
-      end: 0x12040000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
   - !Ram
     name: IRAM2
     is_alias: true
@@ -4852,17 +4863,6 @@ variants:
     range:
       start: 0x70000000
       end: 0x71000000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
-  - !Nvm
-    name: IROM3_XIP
-    is_alias: true
-    range:
-      start: 0x08000000
-      end: 0x09000000
     cores:
     - cortex-m33
     - cortex-m55
@@ -4885,6 +4885,28 @@ variants:
       ap: !v2 0xf0006000
   memory_map:
   - !Nvm
+    name: IROM3_XIP
+    is_alias: true
+    range:
+      start: 0x08000000
+      end: 0x09000000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12011000
+      end: 0x12040000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22011000
@@ -4914,17 +4936,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12011000
-      end: 0x12040000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
   - !Ram
     name: IRAM2
     is_alias: true
@@ -4950,17 +4961,6 @@ variants:
     range:
       start: 0x70000000
       end: 0x71000000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
-  - !Nvm
-    name: IROM3_XIP
-    is_alias: true
-    range:
-      start: 0x08000000
-      end: 0x09000000
     cores:
     - cortex-m33
     - cortex-m55
@@ -4983,6 +4983,28 @@ variants:
       ap: !v2 0xf0006000
   memory_map:
   - !Nvm
+    name: IROM3_XIP
+    is_alias: true
+    range:
+      start: 0x08000000
+      end: 0x09000000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12011000
+      end: 0x1206a000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22011000
@@ -5012,17 +5034,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12011000
-      end: 0x1206a000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
   - !Ram
     name: IRAM2
     is_alias: true
@@ -5048,17 +5059,6 @@ variants:
     range:
       start: 0x70000000
       end: 0x71000000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
-  - !Nvm
-    name: IROM3_XIP
-    is_alias: true
-    range:
-      start: 0x08000000
-      end: 0x09000000
     cores:
     - cortex-m33
     - cortex-m55
@@ -5081,6 +5081,28 @@ variants:
       ap: !v2 0xf0006000
   memory_map:
   - !Nvm
+    name: IROM3_XIP
+    is_alias: true
+    range:
+      start: 0x08000000
+      end: 0x09000000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12011000
+      end: 0x1206a000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22011000
@@ -5110,17 +5132,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12011000
-      end: 0x1206a000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
   - !Ram
     name: IRAM2
     is_alias: true
@@ -5146,17 +5157,6 @@ variants:
     range:
       start: 0x70000000
       end: 0x71000000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
-  - !Nvm
-    name: IROM3_XIP
-    is_alias: true
-    range:
-      start: 0x08000000
-      end: 0x09000000
     cores:
     - cortex-m33
     - cortex-m55
@@ -5179,6 +5179,28 @@ variants:
       ap: !v2 0xf0006000
   memory_map:
   - !Nvm
+    name: IROM3_XIP
+    is_alias: true
+    range:
+      start: 0x08000000
+      end: 0x09000000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12011000
+      end: 0x12040000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22011000
@@ -5208,17 +5230,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12011000
-      end: 0x12040000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
   - !Ram
     name: IRAM2
     is_alias: true
@@ -5244,17 +5255,6 @@ variants:
     range:
       start: 0x70000000
       end: 0x71000000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
-  - !Nvm
-    name: IROM3_XIP
-    is_alias: true
-    range:
-      start: 0x08000000
-      end: 0x09000000
     cores:
     - cortex-m33
     - cortex-m55
@@ -5277,6 +5277,28 @@ variants:
       ap: !v2 0xf0006000
   memory_map:
   - !Nvm
+    name: IROM3_XIP
+    is_alias: true
+    range:
+      start: 0x08000000
+      end: 0x09000000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12011000
+      end: 0x12040000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22011000
@@ -5306,17 +5328,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12011000
-      end: 0x12040000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
   - !Ram
     name: IRAM2
     is_alias: true
@@ -5342,17 +5353,6 @@ variants:
     range:
       start: 0x70000000
       end: 0x71000000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
-  - !Nvm
-    name: IROM3_XIP
-    is_alias: true
-    range:
-      start: 0x08000000
-      end: 0x09000000
     cores:
     - cortex-m33
     - cortex-m55
@@ -5375,6 +5375,28 @@ variants:
       ap: !v2 0xf0006000
   memory_map:
   - !Nvm
+    name: IROM3_XIP
+    is_alias: true
+    range:
+      start: 0x08000000
+      end: 0x09000000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12011000
+      end: 0x1206a000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22011000
@@ -5404,17 +5426,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12011000
-      end: 0x1206a000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
   - !Ram
     name: IRAM2
     is_alias: true
@@ -5440,17 +5451,6 @@ variants:
     range:
       start: 0x70000000
       end: 0x71000000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
-  - !Nvm
-    name: IROM3_XIP
-    is_alias: true
-    range:
-      start: 0x08000000
-      end: 0x09000000
     cores:
     - cortex-m33
     - cortex-m55
@@ -5473,6 +5473,28 @@ variants:
       ap: !v2 0xf0006000
   memory_map:
   - !Nvm
+    name: IROM3_XIP
+    is_alias: true
+    range:
+      start: 0x08000000
+      end: 0x09000000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12011000
+      end: 0x1206a000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
     name: IROM1
     range:
       start: 0x22011000
@@ -5502,17 +5524,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12011000
-      end: 0x1206a000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
   - !Ram
     name: IRAM2
     is_alias: true
@@ -5543,17 +5554,6 @@ variants:
     - cortex-m55
     access:
       write: false
-  - !Nvm
-    name: IROM3_XIP
-    is_alias: true
-    range:
-      start: 0x08000000
-      end: 0x09000000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
   flash_algorithms:
   - pse84_rram_nvm
   - pse84_rram_nvm_s
@@ -5570,6 +5570,28 @@ variants:
     core_access_options: !Arm
       ap: !v2 0xf0006000
   memory_map:
+  - !Nvm
+    name: IROM3_XIP
+    is_alias: true
+    range:
+      start: 0x08000000
+      end: 0x09000000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12011000
+      end: 0x12040000
+    cores:
+    - cortex-m33
+    - cortex-m55
+    access:
+      write: false
   - !Nvm
     name: IROM1
     range:
@@ -5600,17 +5622,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12011000
-      end: 0x12040000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
   - !Ram
     name: IRAM2
     is_alias: true
@@ -5636,17 +5647,6 @@ variants:
     range:
       start: 0x70000000
       end: 0x71000000
-    cores:
-    - cortex-m33
-    - cortex-m55
-    access:
-      write: false
-  - !Nvm
-    name: IROM3_XIP
-    is_alias: true
-    range:
-      start: 0x08000000
-      end: 0x09000000
     cores:
     - cortex-m33
     - cortex-m55
@@ -5684,7 +5684,6 @@ flash_algorithms:
   stack_size: 4096
 - name: pse84_rram_nvm_s
   description: PSE84_RRAM_NVM
-  default: false
   instructions: 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AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
   pc_init: 0x1
   pc_uninit: 0xd09

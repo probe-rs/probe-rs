@@ -43,6 +43,31 @@ variants:
     core_access_options: !Arm
       ap: !v2 0xf0006000
   memory_map:
+  - !Ram
+    name: PPCA_CODE_SRAM
+    range:
+      start: 0x00000000
+      end: 0x00008000
+    cores:
+    - cortex-m33-ppca0
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12000000
+      end: 0x12040000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    access:
+      write: false
+  - !Ram
+    name: PPCA_DATA_SRAM
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - cortex-m33-ppca0
   - !Nvm
     name: IROM1
     range:
@@ -85,17 +110,6 @@ variants:
       write: false
       boot: true
   - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12000000
-      end: 0x12040000
-    cores:
-    - cortex-m33
-    - cortex-m33-ppca0
-    access:
-      write: false
-  - !Nvm
     name: IROM4
     is_alias: true
     range:
@@ -129,20 +143,6 @@ variants:
       end: 0x43024000
     cores:
     - cortex-m33
-  - !Ram
-    name: PPCA_CODE_SRAM
-    range:
-      start: 0x00000000
-      end: 0x00008000
-    cores:
-    - cortex-m33-ppca0
-  - !Ram
-    name: PPCA_DATA_SRAM
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - cortex-m33-ppca0
   flash_algorithms:
   - psc3xxf
   - psc3xxf_s
@@ -159,6 +159,31 @@ variants:
     core_access_options: !Arm
       ap: !v2 0xf0006000
   memory_map:
+  - !Ram
+    name: PPCA_CODE_SRAM
+    range:
+      start: 0x00000000
+      end: 0x00008000
+    cores:
+    - cortex-m33-ppca0
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12000000
+      end: 0x12040000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    access:
+      write: false
+  - !Ram
+    name: PPCA_DATA_SRAM
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - cortex-m33-ppca0
   - !Nvm
     name: IROM1
     range:
@@ -201,17 +226,6 @@ variants:
       write: false
       boot: true
   - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12000000
-      end: 0x12040000
-    cores:
-    - cortex-m33
-    - cortex-m33-ppca0
-    access:
-      write: false
-  - !Nvm
     name: IROM4
     is_alias: true
     range:
@@ -245,20 +259,6 @@ variants:
       end: 0x43024000
     cores:
     - cortex-m33
-  - !Ram
-    name: PPCA_CODE_SRAM
-    range:
-      start: 0x00000000
-      end: 0x00008000
-    cores:
-    - cortex-m33-ppca0
-  - !Ram
-    name: PPCA_DATA_SRAM
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - cortex-m33-ppca0
   flash_algorithms:
   - psc3xxf
   - psc3xxf_s
@@ -275,6 +275,31 @@ variants:
     core_access_options: !Arm
       ap: !v2 0xf0006000
   memory_map:
+  - !Ram
+    name: PPCA_CODE_SRAM
+    range:
+      start: 0x00000000
+      end: 0x00008000
+    cores:
+    - cortex-m33-ppca0
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12000000
+      end: 0x12080000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    access:
+      write: false
+  - !Ram
+    name: PPCA_DATA_SRAM
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - cortex-m33-ppca0
   - !Nvm
     name: IROM1
     range:
@@ -317,17 +342,6 @@ variants:
       write: false
       boot: true
   - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12000000
-      end: 0x12080000
-    cores:
-    - cortex-m33
-    - cortex-m33-ppca0
-    access:
-      write: false
-  - !Nvm
     name: IROM4
     is_alias: true
     range:
@@ -361,20 +375,6 @@ variants:
       end: 0x43024000
     cores:
     - cortex-m33
-  - !Ram
-    name: PPCA_CODE_SRAM
-    range:
-      start: 0x00000000
-      end: 0x00008000
-    cores:
-    - cortex-m33-ppca0
-  - !Ram
-    name: PPCA_DATA_SRAM
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - cortex-m33-ppca0
   flash_algorithms:
   - psc3xxg
   - psc3xxg_s
@@ -395,6 +395,42 @@ variants:
     core_access_options: !Arm
       ap: !v2 0xf0008000
   memory_map:
+  - !Ram
+    name: PPCA_CODE_SRAM
+    range:
+      start: 0x00000000
+      end: 0x00008000
+    cores:
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12000000
+      end: 0x12040000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+  - !Ram
+    name: PPCA_DATA_SRAM
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+  - !Ram
+    name: PPCA_SHARED_SRAM
+    range:
+      start: 0x20004000
+      end: 0x20008000
+    cores:
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
   - !Nvm
     name: IROM1
     range:
@@ -440,18 +476,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12000000
-      end: 0x12040000
-    cores:
-    - cortex-m33
-    - cortex-m33-ppca0
-    - cortex-m33-ppca1
-    access:
-      write: false
   - !Nvm
     name: IROM4
     is_alias: true
@@ -502,30 +526,6 @@ variants:
       end: 0x43044000
     cores:
     - cortex-m33
-  - !Ram
-    name: PPCA_CODE_SRAM
-    range:
-      start: 0x00000000
-      end: 0x00008000
-    cores:
-    - cortex-m33-ppca0
-    - cortex-m33-ppca1
-  - !Ram
-    name: PPCA_DATA_SRAM
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - cortex-m33-ppca0
-    - cortex-m33-ppca1
-  - !Ram
-    name: PPCA_SHARED_SRAM
-    range:
-      start: 0x20004000
-      end: 0x20008000
-    cores:
-    - cortex-m33-ppca0
-    - cortex-m33-ppca1
   - !Ram
     name: PPCA_SHARED_SRAM
     range:
@@ -553,6 +553,42 @@ variants:
     core_access_options: !Arm
       ap: !v2 0xf0008000
   memory_map:
+  - !Ram
+    name: PPCA_CODE_SRAM
+    range:
+      start: 0x00000000
+      end: 0x00008000
+    cores:
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12000000
+      end: 0x12040000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+  - !Ram
+    name: PPCA_DATA_SRAM
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+  - !Ram
+    name: PPCA_SHARED_SRAM
+    range:
+      start: 0x20004000
+      end: 0x20008000
+    cores:
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
   - !Nvm
     name: IROM1
     range:
@@ -598,18 +634,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12000000
-      end: 0x12040000
-    cores:
-    - cortex-m33
-    - cortex-m33-ppca0
-    - cortex-m33-ppca1
-    access:
-      write: false
   - !Nvm
     name: IROM4
     is_alias: true
@@ -660,30 +684,6 @@ variants:
       end: 0x43044000
     cores:
     - cortex-m33
-  - !Ram
-    name: PPCA_CODE_SRAM
-    range:
-      start: 0x00000000
-      end: 0x00008000
-    cores:
-    - cortex-m33-ppca0
-    - cortex-m33-ppca1
-  - !Ram
-    name: PPCA_DATA_SRAM
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - cortex-m33-ppca0
-    - cortex-m33-ppca1
-  - !Ram
-    name: PPCA_SHARED_SRAM
-    range:
-      start: 0x20004000
-      end: 0x20008000
-    cores:
-    - cortex-m33-ppca0
-    - cortex-m33-ppca1
   - !Ram
     name: PPCA_SHARED_SRAM
     range:
@@ -711,6 +711,42 @@ variants:
     core_access_options: !Arm
       ap: !v2 0xf0008000
   memory_map:
+  - !Ram
+    name: PPCA_CODE_SRAM
+    range:
+      start: 0x00000000
+      end: 0x00008000
+    cores:
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12000000
+      end: 0x12080000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+  - !Ram
+    name: PPCA_DATA_SRAM
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+  - !Ram
+    name: PPCA_SHARED_SRAM
+    range:
+      start: 0x20004000
+      end: 0x20008000
+    cores:
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
   - !Nvm
     name: IROM1
     range:
@@ -756,18 +792,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12000000
-      end: 0x12080000
-    cores:
-    - cortex-m33
-    - cortex-m33-ppca0
-    - cortex-m33-ppca1
-    access:
-      write: false
   - !Nvm
     name: IROM4
     is_alias: true
@@ -818,30 +842,6 @@ variants:
       end: 0x43044000
     cores:
     - cortex-m33
-  - !Ram
-    name: PPCA_CODE_SRAM
-    range:
-      start: 0x00000000
-      end: 0x00008000
-    cores:
-    - cortex-m33-ppca0
-    - cortex-m33-ppca1
-  - !Ram
-    name: PPCA_DATA_SRAM
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - cortex-m33-ppca0
-    - cortex-m33-ppca1
-  - !Ram
-    name: PPCA_SHARED_SRAM
-    range:
-      start: 0x20004000
-      end: 0x20008000
-    cores:
-    - cortex-m33-ppca0
-    - cortex-m33-ppca1
   - !Ram
     name: PPCA_SHARED_SRAM
     range:
@@ -869,6 +869,42 @@ variants:
     core_access_options: !Arm
       ap: !v2 0xf0008000
   memory_map:
+  - !Ram
+    name: PPCA_CODE_SRAM
+    range:
+      start: 0x00000000
+      end: 0x00008000
+    cores:
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12000000
+      end: 0x12080000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+  - !Ram
+    name: PPCA_DATA_SRAM
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+  - !Ram
+    name: PPCA_SHARED_SRAM
+    range:
+      start: 0x20004000
+      end: 0x20008000
+    cores:
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
   - !Nvm
     name: IROM1
     range:
@@ -914,18 +950,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12000000
-      end: 0x12080000
-    cores:
-    - cortex-m33
-    - cortex-m33-ppca0
-    - cortex-m33-ppca1
-    access:
-      write: false
   - !Nvm
     name: IROM4
     is_alias: true
@@ -976,30 +1000,6 @@ variants:
       end: 0x43044000
     cores:
     - cortex-m33
-  - !Ram
-    name: PPCA_CODE_SRAM
-    range:
-      start: 0x00000000
-      end: 0x00008000
-    cores:
-    - cortex-m33-ppca0
-    - cortex-m33-ppca1
-  - !Ram
-    name: PPCA_DATA_SRAM
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - cortex-m33-ppca0
-    - cortex-m33-ppca1
-  - !Ram
-    name: PPCA_SHARED_SRAM
-    range:
-      start: 0x20004000
-      end: 0x20008000
-    cores:
-    - cortex-m33-ppca0
-    - cortex-m33-ppca1
   - !Ram
     name: PPCA_SHARED_SRAM
     range:
@@ -1027,6 +1027,42 @@ variants:
     core_access_options: !Arm
       ap: !v2 0xf0008000
   memory_map:
+  - !Ram
+    name: PPCA_CODE_SRAM
+    range:
+      start: 0x00000000
+      end: 0x00008000
+    cores:
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12000000
+      end: 0x12080000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+  - !Ram
+    name: PPCA_DATA_SRAM
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+  - !Ram
+    name: PPCA_SHARED_SRAM
+    range:
+      start: 0x20004000
+      end: 0x20008000
+    cores:
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
   - !Nvm
     name: IROM1
     range:
@@ -1072,18 +1108,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12000000
-      end: 0x12080000
-    cores:
-    - cortex-m33
-    - cortex-m33-ppca0
-    - cortex-m33-ppca1
-    access:
-      write: false
   - !Nvm
     name: IROM4
     is_alias: true
@@ -1134,30 +1158,6 @@ variants:
       end: 0x43044000
     cores:
     - cortex-m33
-  - !Ram
-    name: PPCA_CODE_SRAM
-    range:
-      start: 0x00000000
-      end: 0x00008000
-    cores:
-    - cortex-m33-ppca0
-    - cortex-m33-ppca1
-  - !Ram
-    name: PPCA_DATA_SRAM
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - cortex-m33-ppca0
-    - cortex-m33-ppca1
-  - !Ram
-    name: PPCA_SHARED_SRAM
-    range:
-      start: 0x20004000
-      end: 0x20008000
-    cores:
-    - cortex-m33-ppca0
-    - cortex-m33-ppca1
   - !Ram
     name: PPCA_SHARED_SRAM
     range:
@@ -1185,6 +1185,42 @@ variants:
     core_access_options: !Arm
       ap: !v2 0xf0008000
   memory_map:
+  - !Ram
+    name: PPCA_CODE_SRAM
+    range:
+      start: 0x00000000
+      end: 0x00008000
+    cores:
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12000000
+      end: 0x12080000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+  - !Ram
+    name: PPCA_DATA_SRAM
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+  - !Ram
+    name: PPCA_SHARED_SRAM
+    range:
+      start: 0x20004000
+      end: 0x20008000
+    cores:
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
   - !Nvm
     name: IROM1
     range:
@@ -1230,18 +1266,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12000000
-      end: 0x12080000
-    cores:
-    - cortex-m33
-    - cortex-m33-ppca0
-    - cortex-m33-ppca1
-    access:
-      write: false
   - !Nvm
     name: IROM4
     is_alias: true
@@ -1292,30 +1316,6 @@ variants:
       end: 0x43044000
     cores:
     - cortex-m33
-  - !Ram
-    name: PPCA_CODE_SRAM
-    range:
-      start: 0x00000000
-      end: 0x00008000
-    cores:
-    - cortex-m33-ppca0
-    - cortex-m33-ppca1
-  - !Ram
-    name: PPCA_DATA_SRAM
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - cortex-m33-ppca0
-    - cortex-m33-ppca1
-  - !Ram
-    name: PPCA_SHARED_SRAM
-    range:
-      start: 0x20004000
-      end: 0x20008000
-    cores:
-    - cortex-m33-ppca0
-    - cortex-m33-ppca1
   - !Ram
     name: PPCA_SHARED_SRAM
     range:
@@ -1343,6 +1343,42 @@ variants:
     core_access_options: !Arm
       ap: !v2 0xf0008000
   memory_map:
+  - !Ram
+    name: PPCA_CODE_SRAM
+    range:
+      start: 0x00000000
+      end: 0x00008000
+    cores:
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12000000
+      end: 0x12080000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+  - !Ram
+    name: PPCA_DATA_SRAM
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+  - !Ram
+    name: PPCA_SHARED_SRAM
+    range:
+      start: 0x20004000
+      end: 0x20008000
+    cores:
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
   - !Nvm
     name: IROM1
     range:
@@ -1388,18 +1424,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12000000
-      end: 0x12080000
-    cores:
-    - cortex-m33
-    - cortex-m33-ppca0
-    - cortex-m33-ppca1
-    access:
-      write: false
   - !Nvm
     name: IROM4
     is_alias: true
@@ -1450,30 +1474,6 @@ variants:
       end: 0x43044000
     cores:
     - cortex-m33
-  - !Ram
-    name: PPCA_CODE_SRAM
-    range:
-      start: 0x00000000
-      end: 0x00008000
-    cores:
-    - cortex-m33-ppca0
-    - cortex-m33-ppca1
-  - !Ram
-    name: PPCA_DATA_SRAM
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - cortex-m33-ppca0
-    - cortex-m33-ppca1
-  - !Ram
-    name: PPCA_SHARED_SRAM
-    range:
-      start: 0x20004000
-      end: 0x20008000
-    cores:
-    - cortex-m33-ppca0
-    - cortex-m33-ppca1
   - !Ram
     name: PPCA_SHARED_SRAM
     range:
@@ -1501,6 +1501,42 @@ variants:
     core_access_options: !Arm
       ap: !v2 0xf0008000
   memory_map:
+  - !Ram
+    name: PPCA_CODE_SRAM
+    range:
+      start: 0x00000000
+      end: 0x00008000
+    cores:
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12000000
+      end: 0x12080000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+  - !Ram
+    name: PPCA_DATA_SRAM
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+  - !Ram
+    name: PPCA_SHARED_SRAM
+    range:
+      start: 0x20004000
+      end: 0x20008000
+    cores:
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
   - !Nvm
     name: IROM1
     range:
@@ -1546,18 +1582,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12000000
-      end: 0x12080000
-    cores:
-    - cortex-m33
-    - cortex-m33-ppca0
-    - cortex-m33-ppca1
-    access:
-      write: false
   - !Nvm
     name: IROM4
     is_alias: true
@@ -1608,30 +1632,6 @@ variants:
       end: 0x43044000
     cores:
     - cortex-m33
-  - !Ram
-    name: PPCA_CODE_SRAM
-    range:
-      start: 0x00000000
-      end: 0x00008000
-    cores:
-    - cortex-m33-ppca0
-    - cortex-m33-ppca1
-  - !Ram
-    name: PPCA_DATA_SRAM
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - cortex-m33-ppca0
-    - cortex-m33-ppca1
-  - !Ram
-    name: PPCA_SHARED_SRAM
-    range:
-      start: 0x20004000
-      end: 0x20008000
-    cores:
-    - cortex-m33-ppca0
-    - cortex-m33-ppca1
   - !Ram
     name: PPCA_SHARED_SRAM
     range:
@@ -1655,6 +1655,31 @@ variants:
     core_access_options: !Arm
       ap: !v2 0xf0006000
   memory_map:
+  - !Ram
+    name: PPCA_CODE_SRAM
+    range:
+      start: 0x00000000
+      end: 0x00008000
+    cores:
+    - cortex-m33-ppca0
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12000000
+      end: 0x12040000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    access:
+      write: false
+  - !Ram
+    name: PPCA_DATA_SRAM
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - cortex-m33-ppca0
   - !Nvm
     name: IROM1
     range:
@@ -1697,17 +1722,6 @@ variants:
       write: false
       boot: true
   - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12000000
-      end: 0x12040000
-    cores:
-    - cortex-m33
-    - cortex-m33-ppca0
-    access:
-      write: false
-  - !Nvm
     name: IROM4
     is_alias: true
     range:
@@ -1741,20 +1755,6 @@ variants:
       end: 0x43024000
     cores:
     - cortex-m33
-  - !Ram
-    name: PPCA_CODE_SRAM
-    range:
-      start: 0x00000000
-      end: 0x00008000
-    cores:
-    - cortex-m33-ppca0
-  - !Ram
-    name: PPCA_DATA_SRAM
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - cortex-m33-ppca0
   flash_algorithms:
   - psc3xxf
   - psc3xxf_s
@@ -1771,6 +1771,31 @@ variants:
     core_access_options: !Arm
       ap: !v2 0xf0006000
   memory_map:
+  - !Ram
+    name: PPCA_CODE_SRAM
+    range:
+      start: 0x00000000
+      end: 0x00008000
+    cores:
+    - cortex-m33-ppca0
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12000000
+      end: 0x12040000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    access:
+      write: false
+  - !Ram
+    name: PPCA_DATA_SRAM
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - cortex-m33-ppca0
   - !Nvm
     name: IROM1
     range:
@@ -1813,17 +1838,6 @@ variants:
       write: false
       boot: true
   - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12000000
-      end: 0x12040000
-    cores:
-    - cortex-m33
-    - cortex-m33-ppca0
-    access:
-      write: false
-  - !Nvm
     name: IROM4
     is_alias: true
     range:
@@ -1857,20 +1871,6 @@ variants:
       end: 0x43024000
     cores:
     - cortex-m33
-  - !Ram
-    name: PPCA_CODE_SRAM
-    range:
-      start: 0x00000000
-      end: 0x00008000
-    cores:
-    - cortex-m33-ppca0
-  - !Ram
-    name: PPCA_DATA_SRAM
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - cortex-m33-ppca0
   flash_algorithms:
   - psc3xxf
   - psc3xxf_s
@@ -1887,6 +1887,31 @@ variants:
     core_access_options: !Arm
       ap: !v2 0xf0006000
   memory_map:
+  - !Ram
+    name: PPCA_CODE_SRAM
+    range:
+      start: 0x00000000
+      end: 0x00008000
+    cores:
+    - cortex-m33-ppca0
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12000000
+      end: 0x12040000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    access:
+      write: false
+  - !Ram
+    name: PPCA_DATA_SRAM
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - cortex-m33-ppca0
   - !Nvm
     name: IROM1
     range:
@@ -1929,17 +1954,6 @@ variants:
       write: false
       boot: true
   - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12000000
-      end: 0x12040000
-    cores:
-    - cortex-m33
-    - cortex-m33-ppca0
-    access:
-      write: false
-  - !Nvm
     name: IROM4
     is_alias: true
     range:
@@ -1973,20 +1987,6 @@ variants:
       end: 0x43024000
     cores:
     - cortex-m33
-  - !Ram
-    name: PPCA_CODE_SRAM
-    range:
-      start: 0x00000000
-      end: 0x00008000
-    cores:
-    - cortex-m33-ppca0
-  - !Ram
-    name: PPCA_DATA_SRAM
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - cortex-m33-ppca0
   flash_algorithms:
   - psc3xxf
   - psc3xxf_s
@@ -2003,6 +2003,31 @@ variants:
     core_access_options: !Arm
       ap: !v2 0xf0006000
   memory_map:
+  - !Ram
+    name: PPCA_CODE_SRAM
+    range:
+      start: 0x00000000
+      end: 0x00008000
+    cores:
+    - cortex-m33-ppca0
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12000000
+      end: 0x12080000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    access:
+      write: false
+  - !Ram
+    name: PPCA_DATA_SRAM
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - cortex-m33-ppca0
   - !Nvm
     name: IROM1
     range:
@@ -2045,17 +2070,6 @@ variants:
       write: false
       boot: true
   - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12000000
-      end: 0x12080000
-    cores:
-    - cortex-m33
-    - cortex-m33-ppca0
-    access:
-      write: false
-  - !Nvm
     name: IROM4
     is_alias: true
     range:
@@ -2089,20 +2103,6 @@ variants:
       end: 0x43024000
     cores:
     - cortex-m33
-  - !Ram
-    name: PPCA_CODE_SRAM
-    range:
-      start: 0x00000000
-      end: 0x00008000
-    cores:
-    - cortex-m33-ppca0
-  - !Ram
-    name: PPCA_DATA_SRAM
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - cortex-m33-ppca0
   flash_algorithms:
   - psc3xxg
   - psc3xxg_s
@@ -2123,6 +2123,42 @@ variants:
     core_access_options: !Arm
       ap: !v2 0xf0008000
   memory_map:
+  - !Ram
+    name: PPCA_CODE_SRAM
+    range:
+      start: 0x00000000
+      end: 0x00008000
+    cores:
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12000000
+      end: 0x12040000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+  - !Ram
+    name: PPCA_DATA_SRAM
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+  - !Ram
+    name: PPCA_SHARED_SRAM
+    range:
+      start: 0x20004000
+      end: 0x20008000
+    cores:
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
   - !Nvm
     name: IROM1
     range:
@@ -2168,18 +2204,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12000000
-      end: 0x12040000
-    cores:
-    - cortex-m33
-    - cortex-m33-ppca0
-    - cortex-m33-ppca1
-    access:
-      write: false
   - !Nvm
     name: IROM4
     is_alias: true
@@ -2230,30 +2254,6 @@ variants:
       end: 0x43044000
     cores:
     - cortex-m33
-  - !Ram
-    name: PPCA_CODE_SRAM
-    range:
-      start: 0x00000000
-      end: 0x00008000
-    cores:
-    - cortex-m33-ppca0
-    - cortex-m33-ppca1
-  - !Ram
-    name: PPCA_DATA_SRAM
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - cortex-m33-ppca0
-    - cortex-m33-ppca1
-  - !Ram
-    name: PPCA_SHARED_SRAM
-    range:
-      start: 0x20004000
-      end: 0x20008000
-    cores:
-    - cortex-m33-ppca0
-    - cortex-m33-ppca1
   - !Ram
     name: PPCA_SHARED_SRAM
     range:
@@ -2281,6 +2281,42 @@ variants:
     core_access_options: !Arm
       ap: !v2 0xf0008000
   memory_map:
+  - !Ram
+    name: PPCA_CODE_SRAM
+    range:
+      start: 0x00000000
+      end: 0x00008000
+    cores:
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12000000
+      end: 0x12040000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+  - !Ram
+    name: PPCA_DATA_SRAM
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+  - !Ram
+    name: PPCA_SHARED_SRAM
+    range:
+      start: 0x20004000
+      end: 0x20008000
+    cores:
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
   - !Nvm
     name: IROM1
     range:
@@ -2326,18 +2362,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12000000
-      end: 0x12040000
-    cores:
-    - cortex-m33
-    - cortex-m33-ppca0
-    - cortex-m33-ppca1
-    access:
-      write: false
   - !Nvm
     name: IROM4
     is_alias: true
@@ -2389,30 +2413,6 @@ variants:
     cores:
     - cortex-m33
   - !Ram
-    name: PPCA_CODE_SRAM
-    range:
-      start: 0x00000000
-      end: 0x00008000
-    cores:
-    - cortex-m33-ppca0
-    - cortex-m33-ppca1
-  - !Ram
-    name: PPCA_DATA_SRAM
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - cortex-m33-ppca0
-    - cortex-m33-ppca1
-  - !Ram
-    name: PPCA_SHARED_SRAM
-    range:
-      start: 0x20004000
-      end: 0x20008000
-    cores:
-    - cortex-m33-ppca0
-    - cortex-m33-ppca1
-  - !Ram
     name: PPCA_SHARED_SRAM
     range:
       start: 0x43050000
@@ -2439,6 +2439,42 @@ variants:
     core_access_options: !Arm
       ap: !v2 0xf0008000
   memory_map:
+  - !Ram
+    name: PPCA_CODE_SRAM
+    range:
+      start: 0x00000000
+      end: 0x00008000
+    cores:
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12000000
+      end: 0x12080000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+  - !Ram
+    name: PPCA_DATA_SRAM
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+  - !Ram
+    name: PPCA_SHARED_SRAM
+    range:
+      start: 0x20004000
+      end: 0x20008000
+    cores:
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
   - !Nvm
     name: IROM1
     range:
@@ -2484,18 +2520,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12000000
-      end: 0x12080000
-    cores:
-    - cortex-m33
-    - cortex-m33-ppca0
-    - cortex-m33-ppca1
-    access:
-      write: false
   - !Nvm
     name: IROM4
     is_alias: true
@@ -2546,30 +2570,6 @@ variants:
       end: 0x43044000
     cores:
     - cortex-m33
-  - !Ram
-    name: PPCA_CODE_SRAM
-    range:
-      start: 0x00000000
-      end: 0x00008000
-    cores:
-    - cortex-m33-ppca0
-    - cortex-m33-ppca1
-  - !Ram
-    name: PPCA_DATA_SRAM
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - cortex-m33-ppca0
-    - cortex-m33-ppca1
-  - !Ram
-    name: PPCA_SHARED_SRAM
-    range:
-      start: 0x20004000
-      end: 0x20008000
-    cores:
-    - cortex-m33-ppca0
-    - cortex-m33-ppca1
   - !Ram
     name: PPCA_SHARED_SRAM
     range:
@@ -2597,6 +2597,42 @@ variants:
     core_access_options: !Arm
       ap: !v2 0xf0008000
   memory_map:
+  - !Ram
+    name: PPCA_CODE_SRAM
+    range:
+      start: 0x00000000
+      end: 0x00008000
+    cores:
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12000000
+      end: 0x12080000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+  - !Ram
+    name: PPCA_DATA_SRAM
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+  - !Ram
+    name: PPCA_SHARED_SRAM
+    range:
+      start: 0x20004000
+      end: 0x20008000
+    cores:
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
   - !Nvm
     name: IROM1
     range:
@@ -2642,18 +2678,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12000000
-      end: 0x12080000
-    cores:
-    - cortex-m33
-    - cortex-m33-ppca0
-    - cortex-m33-ppca1
-    access:
-      write: false
   - !Nvm
     name: IROM4
     is_alias: true
@@ -2704,30 +2728,6 @@ variants:
       end: 0x43044000
     cores:
     - cortex-m33
-  - !Ram
-    name: PPCA_CODE_SRAM
-    range:
-      start: 0x00000000
-      end: 0x00008000
-    cores:
-    - cortex-m33-ppca0
-    - cortex-m33-ppca1
-  - !Ram
-    name: PPCA_DATA_SRAM
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - cortex-m33-ppca0
-    - cortex-m33-ppca1
-  - !Ram
-    name: PPCA_SHARED_SRAM
-    range:
-      start: 0x20004000
-      end: 0x20008000
-    cores:
-    - cortex-m33-ppca0
-    - cortex-m33-ppca1
   - !Ram
     name: PPCA_SHARED_SRAM
     range:
@@ -2755,6 +2755,42 @@ variants:
     core_access_options: !Arm
       ap: !v2 0xf0008000
   memory_map:
+  - !Ram
+    name: PPCA_CODE_SRAM
+    range:
+      start: 0x00000000
+      end: 0x00008000
+    cores:
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12000000
+      end: 0x12080000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+  - !Ram
+    name: PPCA_DATA_SRAM
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+  - !Ram
+    name: PPCA_SHARED_SRAM
+    range:
+      start: 0x20004000
+      end: 0x20008000
+    cores:
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
   - !Nvm
     name: IROM1
     range:
@@ -2800,18 +2836,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12000000
-      end: 0x12080000
-    cores:
-    - cortex-m33
-    - cortex-m33-ppca0
-    - cortex-m33-ppca1
-    access:
-      write: false
   - !Nvm
     name: IROM4
     is_alias: true
@@ -2862,30 +2886,6 @@ variants:
       end: 0x43044000
     cores:
     - cortex-m33
-  - !Ram
-    name: PPCA_CODE_SRAM
-    range:
-      start: 0x00000000
-      end: 0x00008000
-    cores:
-    - cortex-m33-ppca0
-    - cortex-m33-ppca1
-  - !Ram
-    name: PPCA_DATA_SRAM
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - cortex-m33-ppca0
-    - cortex-m33-ppca1
-  - !Ram
-    name: PPCA_SHARED_SRAM
-    range:
-      start: 0x20004000
-      end: 0x20008000
-    cores:
-    - cortex-m33-ppca0
-    - cortex-m33-ppca1
   - !Ram
     name: PPCA_SHARED_SRAM
     range:
@@ -2913,6 +2913,42 @@ variants:
     core_access_options: !Arm
       ap: !v2 0xf0008000
   memory_map:
+  - !Ram
+    name: PPCA_CODE_SRAM
+    range:
+      start: 0x00000000
+      end: 0x00008000
+    cores:
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12000000
+      end: 0x12080000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+  - !Ram
+    name: PPCA_DATA_SRAM
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+  - !Ram
+    name: PPCA_SHARED_SRAM
+    range:
+      start: 0x20004000
+      end: 0x20008000
+    cores:
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
   - !Nvm
     name: IROM1
     range:
@@ -2958,18 +2994,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12000000
-      end: 0x12080000
-    cores:
-    - cortex-m33
-    - cortex-m33-ppca0
-    - cortex-m33-ppca1
-    access:
-      write: false
   - !Nvm
     name: IROM4
     is_alias: true
@@ -3020,30 +3044,6 @@ variants:
       end: 0x43044000
     cores:
     - cortex-m33
-  - !Ram
-    name: PPCA_CODE_SRAM
-    range:
-      start: 0x00000000
-      end: 0x00008000
-    cores:
-    - cortex-m33-ppca0
-    - cortex-m33-ppca1
-  - !Ram
-    name: PPCA_DATA_SRAM
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - cortex-m33-ppca0
-    - cortex-m33-ppca1
-  - !Ram
-    name: PPCA_SHARED_SRAM
-    range:
-      start: 0x20004000
-      end: 0x20008000
-    cores:
-    - cortex-m33-ppca0
-    - cortex-m33-ppca1
   - !Ram
     name: PPCA_SHARED_SRAM
     range:
@@ -3071,6 +3071,42 @@ variants:
     core_access_options: !Arm
       ap: !v2 0xf0008000
   memory_map:
+  - !Ram
+    name: PPCA_CODE_SRAM
+    range:
+      start: 0x00000000
+      end: 0x00008000
+    cores:
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12000000
+      end: 0x12080000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+  - !Ram
+    name: PPCA_DATA_SRAM
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+  - !Ram
+    name: PPCA_SHARED_SRAM
+    range:
+      start: 0x20004000
+      end: 0x20008000
+    cores:
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
   - !Nvm
     name: IROM1
     range:
@@ -3116,18 +3152,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12000000
-      end: 0x12080000
-    cores:
-    - cortex-m33
-    - cortex-m33-ppca0
-    - cortex-m33-ppca1
-    access:
-      write: false
   - !Nvm
     name: IROM4
     is_alias: true
@@ -3178,30 +3202,6 @@ variants:
       end: 0x43044000
     cores:
     - cortex-m33
-  - !Ram
-    name: PPCA_CODE_SRAM
-    range:
-      start: 0x00000000
-      end: 0x00008000
-    cores:
-    - cortex-m33-ppca0
-    - cortex-m33-ppca1
-  - !Ram
-    name: PPCA_DATA_SRAM
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - cortex-m33-ppca0
-    - cortex-m33-ppca1
-  - !Ram
-    name: PPCA_SHARED_SRAM
-    range:
-      start: 0x20004000
-      end: 0x20008000
-    cores:
-    - cortex-m33-ppca0
-    - cortex-m33-ppca1
   - !Ram
     name: PPCA_SHARED_SRAM
     range:
@@ -3229,6 +3229,42 @@ variants:
     core_access_options: !Arm
       ap: !v2 0xf0008000
   memory_map:
+  - !Ram
+    name: PPCA_CODE_SRAM
+    range:
+      start: 0x00000000
+      end: 0x00008000
+    cores:
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+  - !Nvm
+    name: IROM_S_CBUS
+    is_alias: true
+    range:
+      start: 0x12000000
+      end: 0x12080000
+    cores:
+    - cortex-m33
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+    access:
+      write: false
+  - !Ram
+    name: PPCA_DATA_SRAM
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
+  - !Ram
+    name: PPCA_SHARED_SRAM
+    range:
+      start: 0x20004000
+      end: 0x20008000
+    cores:
+    - cortex-m33-ppca0
+    - cortex-m33-ppca1
   - !Nvm
     name: IROM1
     range:
@@ -3274,18 +3310,6 @@ variants:
     access:
       write: false
       boot: true
-  - !Nvm
-    name: IROM_S_CBUS
-    is_alias: true
-    range:
-      start: 0x12000000
-      end: 0x12080000
-    cores:
-    - cortex-m33
-    - cortex-m33-ppca0
-    - cortex-m33-ppca1
-    access:
-      write: false
   - !Nvm
     name: IROM4
     is_alias: true
@@ -3336,30 +3360,6 @@ variants:
       end: 0x43044000
     cores:
     - cortex-m33
-  - !Ram
-    name: PPCA_CODE_SRAM
-    range:
-      start: 0x00000000
-      end: 0x00008000
-    cores:
-    - cortex-m33-ppca0
-    - cortex-m33-ppca1
-  - !Ram
-    name: PPCA_DATA_SRAM
-    range:
-      start: 0x20000000
-      end: 0x20004000
-    cores:
-    - cortex-m33-ppca0
-    - cortex-m33-ppca1
-  - !Ram
-    name: PPCA_SHARED_SRAM
-    range:
-      start: 0x20004000
-      end: 0x20008000
-    cores:
-    - cortex-m33-ppca0
-    - cortex-m33-ppca1
   - !Ram
     name: PPCA_SHARED_SRAM
     range:

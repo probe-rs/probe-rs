@@ -2,7 +2,6 @@ name: OL23D0
 manufacturer:
   id: 0x15
   cc: 0x0
-generated_from_pack: false
 variants:
 - name: OL23D0
   cores:

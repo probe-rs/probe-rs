@@ -107,6 +107,21 @@ jobs:
       - name: Run cargo clippy
         run: cargo clippy --all-features --all-targets --locked -- -D warnings
 
+  target-descriptions:
+    name: Target descriptions
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v7
+
+      - name: Cache Dependencies
+        uses: Swatinem/rust-cache@v2.9.3
+
+      - name: Check that the target descriptions are formatted
+        run: |
+          cargo run --locked -p target-gen -- reformat --check probe-rs/targets
+          cargo run --locked -p target-gen -- reformat --check probe-rs-espressif/targets
+
   cargo-deny:
     runs-on: ubuntu-latest
     steps:
