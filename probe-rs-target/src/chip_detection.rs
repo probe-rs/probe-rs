@@ -253,9 +253,6 @@ pub struct RenesasPnrDetection {
     /// <https://en-support.renesas.com/knowledgeBase/21397541>
     #[serde(serialize_with = "hex_u_int")]
     pub mcu_pn_base: u32,
-
-    /// Chip part number
-    pub variants: Vec<String>,
 }
 
 /// WCH-Link probe-firmware-based chip detection information.

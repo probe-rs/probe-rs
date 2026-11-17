@@ -6,9 +6,6 @@ chip_detection:
 - !RenesasPnr
   target_id: 0x340
   mcu_pn_base: 0x10080f0
-  variants:
-  - R7FA4E10D
-  - R7FA4E10B
 generated_from_pack: true
 pack_file_release: 6.4.0
 variants:

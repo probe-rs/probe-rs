@@ -7,9 +7,6 @@ chip_detection:
   target_id: 0x670
   reverse_string: true
   mcu_pn_base: 0x1011120
-  variants:
-  - R7FA2L207
-  - R7FA2L209
 generated_from_pack: true
 pack_file_release: 6.4.0
 variants:

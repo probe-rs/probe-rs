@@ -84,10 +84,10 @@ impl Vendor for Renesas {
                 };
                 let part_number = part_number.trim();
 
-                for variant in info.variants.iter() {
-                    if part_number.starts_with(variant) {
-                        tracing::info!("Variant match: {}", variant);
-                        return Ok(Some(variant.clone()));
+                for variant in family.variants.iter() {
+                    if part_number.starts_with(&variant.name) {
+                        tracing::info!("Variant match: {}", variant.name);
+                        return Ok(Some(variant.name.clone()));
                     }
                 }
             }
