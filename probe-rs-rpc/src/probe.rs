@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use crate::{Key, RpcResult, Session};
 
 // Separate from DebugProbeInfo because we can't serialize a &dyn ProbeFactory
-#[derive(Debug, Serialize, Deserialize, Clone, Schema)]
+#[derive(Debug, Serialize, Deserialize, Clone, Schema, PartialEq)]
 pub struct DebugProbeEntry {
     /// The name of the debug probe.
     pub identifier: String,
@@ -23,7 +23,7 @@ pub struct DebugProbeEntry {
 }
 
 /// How a debug probe is reached. See `probe_rs::probe::ProbeTransport`.
-#[derive(Debug, Serialize, Deserialize, Clone, Schema)]
+#[derive(Debug, Serialize, Deserialize, Clone, Schema, PartialEq)]
 pub enum ProbeTransport {
     /// A USB probe, or for now a probe that is not on USB but is listed with a placeholder VID and
     /// PID. See `probe_rs::probe::ProbeTransport::Usb`.
@@ -31,7 +31,7 @@ pub enum ProbeTransport {
 }
 
 /// A USB debug probe. See `probe_rs::probe::UsbProbeInfo`.
-#[derive(Debug, Serialize, Deserialize, Clone, Schema)]
+#[derive(Debug, Serialize, Deserialize, Clone, Schema, PartialEq)]
 pub struct UsbProbeEntry {
     /// The USB vendor ID of the debug probe.
     pub vendor_id: u16,
