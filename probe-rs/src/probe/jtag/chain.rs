@@ -4,7 +4,7 @@ use std::fmt;
 
 use probe_rs_target::ScanChainElement;
 
-use super::{JtagBatch, JtagChainAccess, TapState};
+use super::{JtagBatch, JtagChainAccess, JtagOp, TapState};
 use crate::probe::common::{
     bit_sequence_to_bitvec, common_sequence, extract_idcodes, extract_ir_lengths,
 };
@@ -124,6 +124,7 @@ impl<'p> JtagChain<'p> {
         let state = self.probe.chain_state();
         state.scan_chain = chain.to_vec();
         state.idcodes.clear();
+        state.loaded_ir = None;
     }
 
     /// Return the current scan chain.
@@ -234,6 +235,80 @@ impl<'p> JtagChain<'p> {
         Ok(&state.scan_chain)
     }
 
+    /// Check whether the TAP at `tap` of [`Self::chain`] is a JTAG-DP, and reset the TAPs
+    /// afterwards.
+    ///
+    /// ADIv5 and ADIv6 give a JTAG-DP a 4-bit IR and a 35-bit DR behind DPACC. A boundary-scan
+    /// TAP can also have a 4-bit IR, but its DR behind that instruction has a different length.
+    /// The check shifts a marker through DPACC and measures the delay. It ends with a read of
+    /// RDBUFF in the DR, so the DR update on a JTAG-DP has no side effects.
+    ///
+    /// Returns an error when the TAP is not in the chain, when it does not have a 4-bit IR, when
+    /// the other TAPs do not behave as BYPASS, or when the probe fails.
+    pub fn is_jtag_dp(&mut self, tap: usize) -> Result<bool, DebugProbeError> {
+        const DPACC: u64 = 0xA;
+        const DPACC_LEN: usize = 35;
+        /// RnW set, A[3:2] = 0b11.
+        const RDBUFF_READ: u64 = 0b111;
+        const MARKER: u64 = 0x6A5C_3E19;
+        const MARKER_LEN: usize = 32;
+
+        let chain = &(*self.probe).chain_state_ref().scan_chain;
+        let Some(params) = ChainParams::from_jtag_chain(chain, tap) else {
+            return Err(DebugProbeError::TargetNotFound);
+        };
+        if params.irlen != 4 {
+            return Err(DebugProbeError::Other(format!(
+                "TAP {tap} has an IR length of {}, not 4",
+                params.irlen
+            )));
+        }
+        let taps = chain.len();
+        let ir_len = params.irpre + params.irlen + params.irpost;
+
+        let saved = self.probe.chain_state().chain_params;
+        self.probe.chain_state().chain_params = params;
+
+        let marker = BitSequence::from_u64(MARKER_LEN, MARKER);
+        let mut batch = JtagBatch::new();
+
+        // Put all TAPs in BYPASS. Each one delays the marker by one bit.
+        batch.enter(TapState::ShiftIr);
+        batch.exchange_no_capture(BitSequence::repeat(true, ir_len));
+        let mut dr = marker.clone();
+        dr.extend(&BitSequence::repeat(false, taps));
+        batch.enter(TapState::ShiftDr);
+        let bypass_handle = batch.exchange(dr);
+
+        // Put DPACC in the TAP. The other TAPs stay in BYPASS.
+        let mut dr = marker.clone();
+        dr.extend(&BitSequence::repeat(false, params.drpre + params.drpost));
+        dr.extend(&BitSequence::from_u64(DPACC_LEN, RDBUFF_READ));
+        self.shift_ir(&mut batch, &BitSequence::from_u64(params.irlen, DPACC));
+        let dpacc_handle = self.exchange_dr(&mut batch, &dr);
+        self.tap_reset(&mut batch);
+
+        let result = self.run(batch).and_then(|mut results| {
+            let bypass = take_sequence(&mut results, bypass_handle)?;
+            let dpacc = take_sequence(&mut results, dpacc_handle)?;
+            Ok((bypass, dpacc))
+        });
+        self.probe.chain_state().chain_params = saved;
+        let (bypass, dpacc) = result?;
+
+        tracing::debug!("BYPASS scan: {}", bypass.as_bits());
+        tracing::debug!("DPACC scan of TAP {tap}: {}", dpacc.as_bits());
+
+        if bypass.slice(taps, MARKER_LEN) != marker {
+            return Err(DebugProbeError::Other(
+                "the TAPs do not behave as BYPASS".to_string(),
+            ));
+        }
+
+        let delay = params.drpre + params.drpost + DPACC_LEN;
+        Ok(dpacc.slice(delay, MARKER_LEN) == marker)
+    }
+
     /// Return the IDCODEs that the scan found, with one entry for each TAP of [`Self::chain`].
     ///
     /// The entry is `None` for a TAP without an IDCODE register. The result is empty when the
@@ -291,23 +366,48 @@ impl<'p> JtagChain<'p> {
         batch.enter(TapState::RunTestIdle);
     }
 
+    /// Shift the next IR scan, also when the IR should hold its bits already.
+    ///
+    /// Call this when the target did not take the earlier IR scans, for example after a switch
+    /// of the wire protocol.
+    pub fn forget_loaded_ir(&mut self) {
+        self.probe.chain_state().loaded_ir = None;
+    }
+
     /// Run a batch on the probe.
+    ///
+    /// Skips each IR scan that loads the bits that the IR already holds.
     pub fn run(&mut self, batch: JtagBatch) -> Result<Results, DebugProbeError> {
-        self.probe
+        let state = self.probe.chain_state();
+        let start = state.tap_state;
+        let loaded = match state.loaded_ir.take() {
+            Some((end, ir)) if end == start => Some(ir),
+            _ => None,
+        };
+        let (batch, loaded) = skip_loaded_ir(start, loaded, batch);
+
+        let results = self
+            .probe
             .run_batch(&batch)
             .map_err(|error| match error.error {
                 BatchError::Probe(error) => error,
                 BatchError::Specific(error) => DebugProbeError::Other(error.to_string()),
-            })
+            })?;
+
+        let state = self.probe.chain_state();
+        state.loaded_ir = loaded.map(|ir| (state.tap_state, ir));
+        Ok(results)
     }
 
     /// Assert target reset through the underlying probe.
     pub fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
+        self.probe.chain_state().loaded_ir = None;
         self.probe.target_reset_assert()
     }
 
     /// Deassert target reset through the underlying probe.
     pub fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
+        self.probe.chain_state().loaded_ir = None;
         self.probe.target_reset_deassert()
     }
 
@@ -319,7 +419,8 @@ impl<'p> JtagChain<'p> {
         let max_ir = self.probe.chain_state_ref().chain_params.max_ir_address();
         let ir_len = self.probe.chain_state_ref().chain_params.irlen;
 
-        let mut batch = JtagBatch::new();
+        // A register write schedules up to 6 operations.
+        let mut batch = JtagBatch::with_capacity(writes.len() * 6);
         let mut capture_handles = Vec::new();
 
         for (idx, command) in writes.iter() {
@@ -409,6 +510,81 @@ impl<'p> JtagChain<'p> {
     }
 }
 
+/// Leave out each IR scan that shifts the bits that the IR holds.
+///
+/// `loaded` is the content of the IR when the batch starts in `start`. Returns the batch to run,
+/// and the content of the IR after it, when it is known.
+fn skip_loaded_ir(
+    start: TapState,
+    mut loaded: Option<BitSequence>,
+    mut batch: JtagBatch,
+) -> (JtagBatch, Option<BitSequence>) {
+    let ops: Vec<_> = batch.iter().collect();
+    let mut keep = vec![true; ops.len()];
+    let mut state = start;
+    if matches!(start, TapState::ShiftIr | TapState::PauseIr) {
+        loaded = None;
+    }
+
+    let mut index = 0;
+    while index < ops.len() {
+        match &ops[index].1 {
+            // The path from outside Shift-IR and Pause-IR passes Capture-IR, so a new scan starts.
+            JtagOp::EnterState(TapState::ShiftIr)
+                if !matches!(state, TapState::ShiftIr | TapState::PauseIr) =>
+            {
+                let mut end = index + 1;
+                let mut bits = BitSequence::new();
+                let mut captured = false;
+                while let Some((id, JtagOp::Exchange { data, capture })) = ops.get(end) {
+                    bits.extend(data);
+                    captured |= *capture && id.should_capture();
+                    end += 1;
+                }
+
+                // Each path out of Shift-IR passes Update-IR, except the path to Pause-IR.
+                match ops.get(end) {
+                    Some((
+                        _,
+                        JtagOp::EnterState(
+                            TapState::RunTestIdle | TapState::ShiftDr | TapState::PauseDr,
+                        ),
+                    )) => {
+                        if !captured && loaded.as_ref() == Some(&bits) {
+                            keep[index..end].fill(false);
+                        } else {
+                            loaded = Some(bits);
+                        }
+                    }
+                    _ => loaded = None,
+                }
+
+                state = TapState::ShiftIr;
+                index = end;
+                continue;
+            }
+            JtagOp::EnterState(target) => {
+                if *target == TapState::TestLogicReset {
+                    loaded = None;
+                }
+                state = *target;
+            }
+            JtagOp::Exchange { .. } | JtagOp::ClockTck { .. } => {
+                if state == TapState::ShiftIr {
+                    loaded = None;
+                }
+            }
+        }
+        index += 1;
+    }
+
+    if !keep.iter().all(|keep| *keep) {
+        batch.retain_remaining(&keep);
+    }
+
+    (batch, loaded)
+}
+
 #[cfg(test)]
 mod tests {
     use std::collections::VecDeque;
@@ -422,6 +598,7 @@ mod tests {
 
     struct BatchRecorder {
         exchanges: Vec<BitSequence>,
+        states: Vec<TapState>,
         jtag_state: JtagChainState,
         /// For each capturing exchange in order, the bits that the chain shifts out before the
         /// shifted-in data.
@@ -432,6 +609,7 @@ mod tests {
         fn new() -> Self {
             Self {
                 exchanges: Vec::new(),
+                states: Vec::new(),
                 jtag_state: JtagChainState::default(),
                 chain_bits: VecDeque::new(),
             }
@@ -515,6 +693,9 @@ mod tests {
         ) -> Result<Results, BatchExecutionError<DebugProbeError>> {
             let mut results = Results::new();
             for (id, op) in batch.iter() {
+                if let JtagOp::EnterState(state) = op {
+                    self.states.push(*state);
+                }
                 if let JtagOp::Exchange { data, capture } = op {
                     self.exchanges.push(data.clone());
                     if *capture && id.should_capture() {
@@ -701,6 +882,71 @@ mod tests {
         assert_eq!(chain.idcodes(), [None, Some(0x4BA0_0477)]);
     }
 
+    fn is_jtag_dp(
+        chain: &[ScanChainElement],
+        tap: usize,
+        chain_bits: [Vec<bool>; 2],
+    ) -> (Result<bool, DebugProbeError>, BatchRecorder) {
+        let mut probe = BatchRecorder::new();
+        probe.jtag_state.scan_chain = chain.to_vec();
+        probe.chain_bits = VecDeque::from(chain_bits);
+        let result = JtagChain::new(&mut probe).is_jtag_dp(tap);
+        (result, probe)
+    }
+
+    #[test]
+    fn is_jtag_dp_finds_dpacc_between_bypassed_taps() {
+        // TAP 1 has a 35-bit DPACC, and TAPs 0 and 2 are in BYPASS.
+        let (result, probe) = is_jtag_dp(&three_tap_chain(), 1, [vec![false; 3], vec![false; 37]]);
+        assert!(result.unwrap());
+
+        let ir = &probe.exchanges[2];
+        assert_eq!(ir.slice(0, 4), BitSequence::repeat(true, 4));
+        assert_eq!(ir.slice(4, 4), BitSequence::from_u64(4, 0xA));
+        assert_eq!(ir.slice(8, 4), BitSequence::repeat(true, 4));
+
+        // The DP holds an RDBUFF read when the DR updates.
+        let dr = &probe.exchanges[3];
+        assert_eq!(
+            dr.slice(dr.len() - 36, 35),
+            BitSequence::from_u64(35, 0b111)
+        );
+        assert!(matches!(
+            probe.states[..],
+            [.., TapState::TestLogicReset, TapState::RunTestIdle]
+        ));
+        assert_eq!(probe.jtag_state.chain_params.irlen, 0);
+    }
+
+    #[test]
+    fn is_jtag_dp_rejects_boundary_scan_tap() {
+        // DPACC of the TAP selects a 1-bit register.
+        let (result, _) = is_jtag_dp(&three_tap_chain()[..1], 0, [vec![false], vec![false]]);
+        assert!(!result.unwrap());
+    }
+
+    #[test]
+    fn is_jtag_dp_errors_when_bypass_check_fails() {
+        // The BYPASS register of a TAP is 2 bits long.
+        let (result, _) = is_jtag_dp(
+            &three_tap_chain()[..1],
+            0,
+            [vec![false; 2], vec![false; 35]],
+        );
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn is_jtag_dp_errors_on_other_ir_length() {
+        let chain = [ScanChainElement {
+            name: None,
+            ir_len: Some(5),
+        }];
+        let (result, probe) = is_jtag_dp(&chain, 0, [vec![], vec![]]);
+        assert!(result.is_err());
+        assert!(probe.exchanges.is_empty());
+    }
+
     #[test]
     fn set_chain_clears_idcodes() {
         let mut probe = BatchRecorder::new();
@@ -709,6 +955,46 @@ mod tests {
         let mut chain = JtagChain::new(&mut probe);
         chain.set_chain(&three_tap_chain());
         assert!(chain.idcodes().is_empty());
+    }
+
+    fn register_access(chain: &mut JtagChain<'_>, batch: &mut JtagBatch) {
+        chain.shift_ir(batch, &BitSequence::from_u64(5, 0x11));
+        let _ = chain.exchange_dr(batch, &BitSequence::repeat(false, 41));
+        chain.run_test_idle(batch, 0);
+    }
+
+    fn ir_scans(probe: &BatchRecorder) -> usize {
+        probe
+            .exchanges
+            .iter()
+            .filter(|data| data.len() == 5)
+            .count()
+    }
+
+    #[test]
+    fn an_ir_scan_of_the_loaded_bits_is_skipped() {
+        let mut probe = BatchRecorder::new();
+        let mut chain = JtagChain::new(&mut probe);
+        for _ in 0..2 {
+            let mut batch = JtagBatch::new();
+            register_access(&mut chain, &mut batch);
+            register_access(&mut chain, &mut batch);
+            chain.run(batch).unwrap();
+        }
+        assert_eq!(ir_scans(&probe), 1);
+    }
+
+    #[test]
+    fn an_ir_scan_after_a_tap_reset_is_kept() {
+        let mut probe = BatchRecorder::new();
+        let mut chain = JtagChain::new(&mut probe);
+        let mut batch = JtagBatch::new();
+        register_access(&mut chain, &mut batch);
+        chain.tap_reset(&mut batch);
+        register_access(&mut chain, &mut batch);
+        chain.run(batch).unwrap();
+
+        assert_eq!(ir_scans(&probe), 2);
     }
 
     #[test]

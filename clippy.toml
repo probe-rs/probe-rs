@@ -1,0 +1,2 @@
+# The hash and the equality of a `HandleId` do not use its atomic clone counter.
+ignore-interior-mutability = ["..", "probe_rs::probe::queue::HandleId"]

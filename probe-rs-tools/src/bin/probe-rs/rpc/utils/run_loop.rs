@@ -63,8 +63,8 @@ impl RunLoop {
     ///
     /// Vector catch, the initial resume, and the poller run only on [`Self::core_id`]. Other cores
     /// are observed with `status()` only. A disabled hart is skipped and retried later. An
-    /// unexpected halt, lock-up, or semihosting result on any observed core uses the same predicate
-    /// as the primary core.
+    /// unexpected halt or semihosting result on any observed core uses the same predicate as the
+    /// primary core. A lock-up of another core does not end the run loop.
     ///
     /// Upon halt the predicate is invoked with the halt reason:
     /// * If the predicate returns `Ok(Some(r))` the run loop returns `Ok(ReturnReason::Predicate(r))`.
@@ -249,6 +249,13 @@ impl RunLoop {
                         .check_core(&mut core, &mut duration, predicate)
                         .and_then(Option::transpose)
                     {
+                        // A core that is not being run, e.g. one with nothing flashed, may lock up
+                        // without affecting the program on the primary core.
+                        Ok(Some(ReturnReason::LockedUp)) => {
+                            tracing::debug!("Core {idx} is locked up");
+                            *wakeup = Instant::now() + WATCH_POLL_INTERVAL;
+                            next_poll = next_poll.min(WATCH_POLL_INTERVAL);
+                        }
                         Ok(Some(reason)) => return Ok(reason),
                         Ok(None) => {
                             *wakeup = Instant::now() + duration;

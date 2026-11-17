@@ -587,13 +587,16 @@ impl DebugPortWire for JtagDebugPortWire<'_> {
         // The bits clock the TAP with TMS. If they end in a state that is not stable, the
         // tracked state stays, and the caller must reset the TAP with five clocks with TMS
         // high.
-        let state = &mut self.probe.chain_state().tap_state;
-        let end = bits
-            .iter()
-            .fold(FullTapState::from(*state), FullTapState::step);
+        let chain_state = self.probe.chain_state();
+        let end = bits.iter().fold(
+            FullTapState::from(chain_state.tap_state),
+            FullTapState::step,
+        );
         if let Some(end) = end.stable() {
-            *state = end;
+            chain_state.tap_state = end;
         }
+        // The bits can pass Test-Logic-Reset or Update-IR and still end in the same state.
+        chain_state.loaded_ir = None;
         Ok(())
     }
 

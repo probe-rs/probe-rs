@@ -42,16 +42,8 @@ impl BitSequence {
 
     /// Build a sequence from `bytes`, using `len` bits in LSB-first byte order.
     pub fn from_bytes(bytes: &[u8], len: usize) -> Self {
-        let mut sequence = Self::with_capacity(len);
-        for byte in bytes {
-            for i in 0..8 {
-                if sequence.len() == len {
-                    return sequence;
-                }
-                sequence.0.push(byte & (1 << i) != 0);
-            }
-        }
-        sequence
+        let bits = BitSlice::<u8, Lsb0>::from_slice(bytes);
+        Self(bits[..len.min(bits.len())].to_bitvec())
     }
 
     /// Build a sequence that repeats one bit value.

@@ -236,11 +236,12 @@ impl DtmAccess for WchLinkDtm<'_> {
         address: u64,
         value: u32,
     ) -> Result<Option<Handle<CommandResult>>, RiscvError> {
-        let id = HandleId::new();
-        self.state
-            .pending
-            .push((Some(id.clone()), DmiOperation::Write { address, value }));
-        Ok(Some(Handle::from_id(id)))
+        let handle = Handle::unconverted();
+        self.state.pending.push((
+            Some(handle.id().clone()),
+            DmiOperation::Write { address, value },
+        ));
+        Ok(Some(handle))
     }
 
     fn schedule_read(&mut self, address: u64) -> Result<Handle<CommandResult>, RiscvError> {
@@ -248,11 +249,11 @@ impl DtmAccess for WchLinkDtm<'_> {
             .pending
             .push((None, DmiOperation::Read { address }));
 
-        let id = HandleId::new();
+        let handle = Handle::unconverted();
         self.state
             .pending
-            .push((Some(id.clone()), DmiOperation::NoOp));
-        Ok(Handle::from_id(id))
+            .push((Some(handle.id().clone()), DmiOperation::NoOp));
+        Ok(handle)
     }
 
     fn read_with_timeout(&mut self, address: u64, timeout: Duration) -> Result<u32, RiscvError> {

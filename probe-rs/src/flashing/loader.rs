@@ -324,6 +324,9 @@ trait DownloadMethod {
     /// Returns `true` if this method writes flash that a chip erase cannot erase.
     fn blocks_chip_erase(&self, session: &Session) -> bool;
 
+    /// Returns `true` if this method can only erase the whole chip.
+    fn erases_chip_only(&self) -> bool;
+
     /// Returns `true` if this method skips the parts of the target that hold the data already.
     fn skips_unchanged(&self, options: &DownloadOptions) -> bool;
 
@@ -451,6 +454,10 @@ impl DownloadMethod for FlashDownload {
         !self.flasher.is_chip_erase_supported(session)
     }
 
+    fn erases_chip_only(&self) -> bool {
+        !self.flasher.can_skip_sectors()
+    }
+
     fn skips_unchanged(&self, options: &DownloadOptions) -> bool {
         self.compares(options)
     }
@@ -550,6 +557,10 @@ struct RamDownload<'a> {
 
 impl DownloadMethod for RamDownload<'_> {
     fn blocks_chip_erase(&self, _session: &Session) -> bool {
+        false
+    }
+
+    fn erases_chip_only(&self) -> bool {
         false
     }
 
@@ -1569,6 +1580,15 @@ impl FlashLoader {
         session: &Session,
         options: &mut DownloadOptions,
     ) {
+        // A method that can only erase the whole chip erases it once, for the whole download.
+        if !options.do_chip_erase
+            && !options.skip_erase
+            && plan.iter().any(|method| method.erases_chip_only())
+        {
+            tracing::info!("No sector erase: the download starts with a chip erase");
+            options.do_chip_erase = true;
+        }
+
         for method in plan.iter() {
             // If a flash algo doesn't support erase all, disable chip erase.
             // TODO: we could sort by support but it's unlikely to make a difference.

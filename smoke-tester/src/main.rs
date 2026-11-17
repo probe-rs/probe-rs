@@ -90,12 +90,13 @@ fn run_test(mut args: Arguments, definitions: &[DutDefinition]) -> Result<ExitCo
         //println!(" Probe: {:?}", probe.get_name());
         //println!(" Chip:  {:?}", &definition.chip.name);
 
-        let chip_name = definition.chip.name.clone();
+        // The file name keeps the test names of DUTs with the same chip apart.
+        let dut_name = format!("{} {}", definition.chip.name, definition.name);
 
         // Verify the probe shows up when listing, and is reported as accessible.
         {
             let definition = definition.clone();
-            let trial = trial("List probe", &chip_name, move || {
+            let trial = trial("List probe", &dut_name, move || {
                 definition.assert_listed()?;
                 Ok(())
             });
@@ -106,7 +107,7 @@ fn run_test(mut args: Arguments, definitions: &[DutDefinition]) -> Result<ExitCo
         for test in SESSION_TESTS {
             let session_definition = definition.clone();
 
-            let trial = trial(test.name, &chip_name, move || {
+            let trial = trial(test.name, &dut_name, move || {
                 let probe = session_definition.open_probe()?;
 
                 // We don't care about existing flash contents
@@ -129,7 +130,7 @@ fn run_test(mut args: Arguments, definitions: &[DutDefinition]) -> Result<ExitCo
         if definition.reset_connected {
             let definition = definition.clone();
 
-            let trial = trial("Hard Reset", &chip_name, move || {
+            let trial = trial("Hard Reset", &dut_name, move || {
                 let probe = definition.open_probe()?;
 
                 let _session =
@@ -153,7 +154,7 @@ fn run_test(mut args: Arguments, definitions: &[DutDefinition]) -> Result<ExitCo
         for (core_index, core_type) in cores.into_iter().take(1) {
             for test_struct in CORE_TESTS {
                 let definition_for_cores = definition.clone();
-                let cores_trial = trial(test_struct.name, &chip_name, move || {
+                let cores_trial = trial(test_struct.name, &dut_name, move || {
                     let definition = definition_for_cores;
 
                     let probe = definition.open_probe()?;

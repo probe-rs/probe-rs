@@ -714,12 +714,18 @@ impl TryFrom<(FtdiDevice, Option<ChipType>)> for FtdiProperties {
         };
 
         let properties = match chip_type {
-            ChipType::FT2232H | ChipType::FT4232H => Self {
+            ChipType::FT2232H
+            | ChipType::FT4232H
+            | ChipType::FT2233HP
+            | ChipType::FT4233HP
+            | ChipType::FT2232HP
+            | ChipType::FT4232HP
+            | ChipType::FT4232HA => Self {
                 buffer_size: 4096,
                 max_clock: 30_000,
                 has_divide_by_5: true,
             },
-            ChipType::FT232H => Self {
+            ChipType::FT232H | ChipType::FT233HP | ChipType::FT232HP => Self {
                 buffer_size: 1024,
                 max_clock: 30_000,
                 has_divide_by_5: true,
@@ -778,6 +784,41 @@ static FTDI_COMPAT_DEVICES: &[FtdiDevice] = &[
     FtdiDevice {
         id: (0x0403, 0x6014),
         fallback_chip_type: ChipType::FT232H,
+    },
+    // FTDI Ltd. FT2233HP Dual HS USB-UART/MPSSE IC with Type-C/PD
+    FtdiDevice {
+        id: (0x0403, 0x6040),
+        fallback_chip_type: ChipType::FT2233HP,
+    },
+    // FTDI Ltd. FT4233HP Quad HS USB-UART/MPSSE IC with Type-C/PD
+    FtdiDevice {
+        id: (0x0403, 0x6041),
+        fallback_chip_type: ChipType::FT4233HP,
+    },
+    // FTDI Ltd. FT2232HP Dual HS USB-UART/MPSSE IC with Type-C/PD
+    FtdiDevice {
+        id: (0x0403, 0x6042),
+        fallback_chip_type: ChipType::FT2232HP,
+    },
+    // FTDI Ltd. FT4232HP Quad HS USB-UART/MPSSE IC with Type-C/PD
+    FtdiDevice {
+        id: (0x0403, 0x6043),
+        fallback_chip_type: ChipType::FT4232HP,
+    },
+    // FTDI Ltd. FT233HP Single HS USB-UART/MPSSE IC with Type-C/PD
+    FtdiDevice {
+        id: (0x0403, 0x6044),
+        fallback_chip_type: ChipType::FT233HP,
+    },
+    // FTDI Ltd. FT232HP Single HS USB-UART/MPSSE IC with Type-C/PD
+    FtdiDevice {
+        id: (0x0403, 0x6045),
+        fallback_chip_type: ChipType::FT232HP,
+    },
+    // FTDI Ltd. FT4232HA Quad HS USB-UART/MPSSE IC (automotive)
+    FtdiDevice {
+        id: (0x0403, 0x6048),
+        fallback_chip_type: ChipType::FT4232HA,
     },
     //
     // --- Third-party VID/PID pairs ---

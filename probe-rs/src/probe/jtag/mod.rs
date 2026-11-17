@@ -53,6 +53,13 @@ pub struct JtagChainState {
 
     /// The parameters of the scan chain.
     pub chain_params: ChainParams,
+
+    /// The bits that the IR holds, and the TAP state that the batch which loaded them left.
+    /// A different TAP state means that the TAP moved outside a batch.
+    ///
+    /// A driver that moves the TAP outside a batch through Update-IR or Test-Logic-Reset, and
+    /// returns to the same state, must clear this.
+    pub loaded_ir: Option<(TapState, BitSequence)>,
 }
 
 impl Default for JtagChainState {
@@ -63,6 +70,7 @@ impl Default for JtagChainState {
             scan_chain: Vec::new(),
             idcodes: Vec::new(),
             chain_params: ChainParams::default(),
+            loaded_ir: None,
         }
     }
 }

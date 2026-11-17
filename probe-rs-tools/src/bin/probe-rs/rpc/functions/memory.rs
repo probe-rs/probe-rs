@@ -88,6 +88,17 @@ pub async fn write_memory<W: Word>(
     Ok(())
 }
 
+pub async fn write_bytes(
+    ctx: &mut RpcContext,
+    _header: VarHeader,
+    request: WriteMemoryRequest<u8>,
+) -> NoResponse {
+    let mut session = ctx.session(request.sessid).await;
+    let mut core = lift(session.core(request.core as usize))?;
+    lift(core.write(request.address, &request.data))?;
+    Ok(())
+}
+
 pub async fn read_memory<W: Word>(
     ctx: &mut RpcContext,
     _header: VarHeader,

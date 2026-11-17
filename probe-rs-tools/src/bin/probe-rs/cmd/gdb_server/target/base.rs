@@ -122,7 +122,7 @@ impl MultiThreadBase for RuntimeTarget {
 
     fn write_addrs(&mut self, start_addr: u64, data: &[u8], tid: Tid) -> TargetResult<(), Self> {
         let core = self.core(tid.get() - 1);
-        self.block_on(core.write_memory_8(start_addr, data.to_vec()))
+        self.block_on(core.write_bytes(start_addr, data.to_vec()))
             .into_target_result_non_fatal()
     }
 

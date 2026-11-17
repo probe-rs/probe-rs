@@ -1,0 +1,1 @@
+CC23xx/CC27xx: the SACI chip erase keeps the sectors that the CCFG retains, which hold the HSM firmware on CC27xx. When the CCFG is blank, it erases only the application sectors on parts that support it.

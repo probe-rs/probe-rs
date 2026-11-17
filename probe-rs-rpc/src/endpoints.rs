@@ -62,6 +62,7 @@ type WriteMemory8Request = WriteMemoryRequest<u8>;
 type WriteMemory16Request = WriteMemoryRequest<u16>;
 type WriteMemory32Request = WriteMemoryRequest<u32>;
 type WriteMemory64Request = WriteMemoryRequest<u64>;
+type WriteBytesRequest = WriteMemoryRequest<u8>;
 
 type CoreStatusResponse = RpcResult<WireCoreStatus>;
 type CoreInfoResponse = RpcResult<WireCoreInformation>;
@@ -155,6 +156,7 @@ endpoints! {
     | WriteMemory16Endpoint     | WriteMemory16Request    | NoResponse              | "memory/write16"   |
     | WriteMemory32Endpoint     | WriteMemory32Request    | NoResponse              | "memory/write32"   |
     | WriteMemory64Endpoint     | WriteMemory64Request    | NoResponse              | "memory/write64"   |
+    | WriteBytesEndpoint        | WriteBytesRequest       | NoResponse              | "memory/write_bytes" |
 }
 
 topics! {

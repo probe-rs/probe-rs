@@ -127,8 +127,8 @@ pub trait DebugFlashSequence: Send + Sync + Debug {
 
     /// Returns whether this device supports per-sector erase.
     ///
-    /// When `false`, [`HostSideFlasher`](super::HostSideFlasher) performs a single chip erase
-    /// via [`erase_all`](Self::erase_all) before programming instead of calling
+    /// When `false`, the download starts with a single chip erase through
+    /// [`erase_all`](Self::erase_all), for all flash algorithms, instead of calling
     /// [`erase_sector`](Self::erase_sector) for each sector.
     ///
     /// Defaults to `true`.

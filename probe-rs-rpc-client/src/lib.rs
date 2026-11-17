@@ -104,8 +104,8 @@ use probe_rs_rpc::{
     SelectProbeEndpoint, SemihostingTopic, SerialTopic, SerialWriteEndpoint, SetVariableEndpoint,
     TakeRichStackTraceEndpoint, TakeStackTraceEndpoint, TargetInfoDataTopic, TargetInfoEndpoint,
     TargetMetadataEndpoint, TempFileDataEndpoint, TestKickoffEndpoint, TokioSpawner,
-    VariablesEndpoint, VerifyEndpoint, WriteMemory8Endpoint, WriteMemory16Endpoint,
-    WriteMemory32Endpoint, WriteMemory64Endpoint,
+    VariablesEndpoint, VerifyEndpoint, WriteBytesEndpoint, WriteMemory8Endpoint,
+    WriteMemory16Endpoint, WriteMemory32Endpoint, WriteMemory64Endpoint,
 };
 use probe_rs_rpc::{FlashLoader, Key, RttClient, Session};
 
@@ -1617,6 +1617,17 @@ impl CoreInterface {
     pub async fn write_memory_64(&self, address: u64, data: Vec<u64>) -> Result<(), ClientError> {
         self.client
             .send_resp::<WriteMemory64Endpoint, _>(&WriteMemoryRequest {
+                sessid: self.sessid,
+                core: self.core,
+                address,
+                data,
+            })
+            .await
+    }
+    /// Writes `data` with 32-bit accesses where the address and length allow.
+    pub async fn write_bytes(&self, address: u64, data: Vec<u8>) -> Result<(), ClientError> {
+        self.client
+            .send_resp::<WriteBytesEndpoint, _>(&WriteMemoryRequest {
                 sessid: self.sessid,
                 core: self.core,
                 address,

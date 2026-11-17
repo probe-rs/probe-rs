@@ -21,12 +21,15 @@ rust-version.workspace = true
 exclude = ["tests/"]
 
 [features]
-default = ["builtin-targets", "cmsisdap_v1", "builtin-formats", "coredump"]
+default = ["builtin-targets", "cmsisdap_v1", "hidapi-basic-udev", "builtin-formats", "coredump"]
 flate2 = ["dep:flate2"]
 
 # Enable all built in targets.
 builtin-targets = ["dep:bincode", "dep:probe-rs-target"]
 cmsisdap_v1 = ["dep:hidapi"]
+# Selects hidapi's Linux backend for CMSIS-DAP v1. An application with its own hidapi
+# dependency can turn default features off and select the backend there.
+hidapi-basic-udev = ["hidapi?/linux-native-basic-udev"]
 
 # Enables the bin, hex, elf image formats
 builtin-formats = ["dep:uf2-decode", "object", "flate2", "dep:ihex"]
@@ -48,7 +51,6 @@ bincode = { version = "2", features = ["serde"], optional = true }
 bitfield = "0.20.0"
 bitvec = "1"
 hidapi = { version = "2.6.4", default-features = false, features = [
-    "linux-native-basic-udev",
     "windows-native",
 ], optional = true }
 itertools = "0.15"

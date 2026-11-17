@@ -347,6 +347,9 @@ mod tests {
         assert!(filter.matches(&port("/dev/ttyX", None, None)));
     }
 
+    // The FTDI driver on Windows. On macOS, the interface of a port without one comes from the
+    // port name.
+    #[cfg(not(target_os = "macos"))]
     #[test]
     fn ftdi_channel_comes_from_the_serial_number() {
         let ftdi = |serial_number: &str| UsbSerialPort {

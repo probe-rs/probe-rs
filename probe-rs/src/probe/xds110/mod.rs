@@ -8,6 +8,7 @@
 //! the JTAG state machine, which switches the probe to JTAG; the probe goes back to SWD before
 //! the next transfer.
 
+mod cjtag;
 mod jtag;
 mod swd;
 
@@ -374,6 +375,18 @@ pub struct Xds110 {
 }
 
 impl Xds110 {
+    /// Sets the TCK speed, pulses TRST and clocks TCK with TMS high.
+    fn reset_lines(&mut self) -> Result<(), DebugProbeError> {
+        self.set_speed(self.speed_khz)?;
+        self.command(&[XDS_SET_TRST, 0])?;
+        self.command_u32(XDS_CYCLE_TCK, 50)?;
+        self.command(&[XDS_SET_TRST, 1])?;
+        self.command_u32(XDS_CYCLE_TCK, 50)?;
+        self.swd_connected = false;
+        self.tms_state = None;
+        Ok(())
+    }
+
     fn command(&mut self, payload: &[u8]) -> Result<(), DebugProbeError> {
         self.usb.execute(payload, 0)?;
         Ok(())
@@ -485,13 +498,7 @@ impl DebugProbe for Xds110 {
 
     fn attach(&mut self) -> Result<(), DebugProbeError> {
         tracing::debug!("Attaching with {} at {} kHz", self.protocol, self.speed_khz);
-        self.set_speed(self.speed_khz)?;
-        self.command(&[XDS_SET_TRST, 0])?;
-        self.command_u32(XDS_CYCLE_TCK, 50)?;
-        self.command(&[XDS_SET_TRST, 1])?;
-        self.command_u32(XDS_CYCLE_TCK, 50)?;
-        self.swd_connected = false;
-        self.tms_state = None;
+        self.reset_lines()?;
         match self.protocol {
             WireProtocol::Swd => {
                 self.swd_connect()?;
@@ -516,7 +523,7 @@ impl DebugProbe for Xds110 {
                 self.jtag_state.tap_state = crate::probe::TapState::TestLogicReset;
                 self.goto_state(jtag::XdsState::Reset)
             }
-            WireProtocol::CJtag => Err(DebugProbeError::UnsupportedProtocol(self.protocol)),
+            WireProtocol::CJtag => self.cjtag_attach(),
         }
     }
 
@@ -524,7 +531,7 @@ impl DebugProbe for Xds110 {
         if self.swd_connected {
             self.command(&[SWD_DISCONNECT])?;
             self.swd_connected = false;
-        } else if self.protocol == WireProtocol::Jtag {
+        } else if self.protocol.is_jtag() {
             self.command(&[CJTAG_DISCONNECT])?;
         }
         Ok(())
@@ -550,9 +557,6 @@ impl DebugProbe for Xds110 {
     }
 
     fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError> {
-        if protocol == WireProtocol::CJtag {
-            return Err(DebugProbeError::UnsupportedProtocol(protocol));
-        }
         self.protocol = protocol;
         Ok(())
     }
@@ -585,9 +589,10 @@ impl DebugProbe for Xds110 {
     }
 
     fn try_as_swd_probe(self: Box<Self>) -> Result<Box<dyn SwdProbe>, Box<dyn DebugProbe>> {
-        match self.protocol {
-            WireProtocol::Jtag => Err(self.into_probe()),
-            _ => Ok(self),
+        if self.protocol.is_jtag() {
+            Err(self.into_probe())
+        } else {
+            Ok(self)
         }
     }
 

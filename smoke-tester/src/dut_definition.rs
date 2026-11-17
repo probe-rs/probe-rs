@@ -58,6 +58,9 @@ impl RawDutDefinition {
 
 #[derive(Debug, Clone)]
 pub struct DutDefinition {
+    /// Name of the definition file without the extension. Several DUTs can have the same chip.
+    pub name: String,
+
     pub chip: Target,
 
     /// Selector for the debug probe to be used.
@@ -226,7 +229,14 @@ impl DutDefinition {
             None
         };
 
+        let name = source_file
+            .file_stem()
+            .expect("Source file should have a name")
+            .to_string_lossy()
+            .into_owned();
+
         Ok(Self {
+            name,
             chip: target,
             probe_speed: raw_definition.probe_speed,
             protocol: raw_definition.protocol,

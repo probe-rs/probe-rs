@@ -376,6 +376,8 @@ impl TestData {
                 .write_64(self.address, test_data)
                 .context("Writing the sample data failed")?,
         }
+        // A core can queue the writes. The data is in the target only after the flush.
+        core.flush().context("Writing the sample data failed")?;
         let write_duration = write_start.elapsed();
         let data_size_bytes = self.data_type.size() * self.word_qty;
         let write_throughput = (data_size_bytes as f64) / write_duration.as_secs_f64();

@@ -1,1 +1,1 @@
-RISC-V system bus memory accesses now wait for the bus to become idle before a retry, and time out instead of hanging.
+Fixed RISC-V system bus accesses hanging on a busy bus. They now retry with a timeout.
