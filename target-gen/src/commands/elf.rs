@@ -6,15 +6,17 @@ use probe_rs_target::{
 };
 use std::{
     borrow::Cow,
-    collections::HashMap,
+    collections::{BTreeMap, BTreeSet, HashMap},
     fmt::Write,
-    fs::{File, OpenOptions},
+    fs::OpenOptions,
     io::Write as _,
     ops::Range,
     path::Path,
+    sync::Mutex,
 };
+use yaml_serde::Value;
 
-use crate::parser::extract_flash_algo;
+use crate::{parser::extract_flash_algo, yaml_update};
 
 /// Prepare a target config based on an ELF file containing a flash algorithm.
 pub fn cmd_elf(
@@ -39,15 +41,16 @@ pub fn cmd_elf(
 
         let target_description_file = output.unwrap(); // Argument is checked by structopt, so we know its present.
 
-        let target_description = File::open(target_description_file).with_context(|| {
+        let original = std::fs::read_to_string(target_description_file).with_context(|| {
             format!(
                 "Unable to open target specification '{}'",
                 target_description_file.display()
             )
         })?;
 
-        let mut family: ChipFamily = yaml_serde::from_reader(target_description)
+        let mut family: ChipFamily = yaml_serde::from_str(&original)
             .context("Failed to deserialize target description file")?;
+        let original_family = family.clone();
 
         let Some(algorithm_to_update) = family
             .flash_algorithms
@@ -86,8 +89,14 @@ pub fn cmd_elf(
 
         family.flash_algorithms[algorithm_to_update] = algorithm;
 
-        let output_yaml = serialize_to_yaml_string(&family)
-            .context("Failed to serialize updated target description")?;
+        let output_yaml = match yaml_update::apply_change(&original, &original_family, &family) {
+            Ok(edited) => edited,
+            Err(error) => {
+                log::warn!("Rewriting the whole target description, comments are lost: {error:#}");
+                serialize_to_yaml_string(&family)
+                    .context("Failed to serialize updated target description")?
+            }
+        };
         std::fs::write(target_description_file, output_yaml)?;
     } else {
         // Create a complete target specification, with place holder values
@@ -171,13 +180,38 @@ pub fn cmd_elf(
     Ok(())
 }
 
-fn compact(family: &ChipFamily) -> ChipFamily {
+pub(crate) fn compact(family: &ChipFamily) -> ChipFamily {
     let mut out = family.clone();
 
     sort_memory_regions(&mut out);
+    clear_default_memory_access(&mut out);
+    clear_default_stack_overflow_check(&mut out);
     compact_flash_algos(&mut out);
 
     out
+}
+
+fn clear_default_stack_overflow_check(out: &mut ChipFamily) {
+    for algo in &mut out.flash_algorithms {
+        if algo.stack_overflow_check == Some(true) {
+            algo.stack_overflow_check = None;
+        }
+    }
+}
+
+fn clear_default_memory_access(out: &mut ChipFamily) {
+    for variant in &mut out.variants {
+        for region in &mut variant.memory_map {
+            let access = match region {
+                MemoryRegion::Ram(region) => &mut region.access,
+                MemoryRegion::Generic(region) => &mut region.access,
+                MemoryRegion::Nvm(region) => &mut region.access,
+            };
+            if *access == Some(MemoryAccess::default()) {
+                *access = None;
+            }
+        }
+    }
 }
 
 fn sort_memory_regions(out: &mut ChipFamily) {
@@ -286,47 +320,37 @@ fn compact_flash_algos(out: &mut ChipFamily) {
 }
 
 /// Some optimizations to improve the readability of the `yaml_serde` output:
-/// - If `Option<T>` is `None`, it is serialized as `null` ... we want to omit it.
-/// - If `Vec<T>` is empty, it is serialized as `[]` ... we want to omit it.
+/// - Fields that hold their default value (`null`, `[]`, `{}`, `false`, and a few others) are
+///   omitted, if the output loads back the same without them.
 /// - `yaml_serde` serializes hex formatted integers as single quoted strings, e.g. '0x1234' ... we need to remove the single quotes so that it round-trips properly.
 pub fn serialize_to_yaml_string(family: &ChipFamily) -> Result<String> {
-    let family = compact(family);
-    let raw_yaml_string = yaml_serde::to_string(&family)?;
+    serialize_uncompacted(&compact(family))
+}
+
+/// Serializes `family` like [`serialize_to_yaml_string`], but keeps the order of its items.
+pub(crate) fn serialize_uncompacted(family: &ChipFamily) -> Result<String> {
+    let mut value = yaml_serde::to_value(family)?;
+    omit_defaults(&mut value);
+    to_yaml_string(&value)
+}
+
+fn to_yaml_string(value: &Value) -> Result<String> {
+    let raw_yaml_string = yaml_serde::to_string(value)?;
 
     let mut yaml_string = String::with_capacity(raw_yaml_string.len());
     for reader_line in raw_yaml_string.lines() {
-        let trimmed_line = reader_line.trim();
-        if reader_line.ends_with(": null")
-            || reader_line.ends_with(": []")
-            || reader_line.ends_with(": {}")
-            || reader_line.ends_with(": false")
-        {
-            // Some fields have default-looking, but significant values that we want to keep.
-            let keep_default = [
-                "rtt_scan_ranges: []",
-                "read: false",
-                "write: false",
-                "execute: false",
-                "stack_overflow_check: false",
-            ];
-            if !keep_default.contains(&trimmed_line) {
-                // Skip the line
-                continue;
+        // Write `!Tag {}` as `!Tag`.
+        let reader_line = match reader_line.strip_suffix(" {}") {
+            Some(tagged)
+                if tagged
+                    .rsplit(' ')
+                    .next()
+                    .is_some_and(|t| t.starts_with('!')) =>
+            {
+                tagged
             }
-        } else {
-            // Some fields have different default values than the type may indicate.
-            let trim_nondefault = [
-                "read: true",
-                "write: true",
-                "execute: true",
-                "stack_overflow_check: true",
-                "rtt_poll_interval: 20",
-            ];
-            if trim_nondefault.contains(&trimmed_line) {
-                // Skip the line
-                continue;
-            }
-        }
+            _ => reader_line,
+        };
 
         let mut reader_line = Cow::Borrowed(reader_line);
         if (reader_line.contains("'0x") || reader_line.contains("'0X"))
@@ -340,29 +364,123 @@ pub fn serialize_to_yaml_string(family: &ChipFamily) -> Result<String> {
         yaml_string.push('\n');
     }
 
-    // Second pass: remove empty `access:` objects
-    let mut output = String::with_capacity(yaml_string.len());
-    let mut lines = yaml_string.lines().peekable();
-    while let Some(line) = lines.next() {
-        if line.trim() == "access:" {
-            let Some(next) = lines.peek() else {
-                // No other lines, access is empty, skip it
-                continue;
-            };
+    Ok(yaml_string)
+}
 
-            let indent_level = line.find(|c: char| c != ' ').unwrap_or(0);
-            let next_indent_level = next.find(|c: char| c != ' ').unwrap_or(0);
-            if next_indent_level <= indent_level {
-                // Access is empty, skip it
-                continue;
-            }
+/// Removes the fields of the serialized family `value` that look like a default value, and that
+/// the family loads back the same without.
+///
+/// The fields are tried in groups of the same path and value.
+fn omit_defaults(value: &mut Value) {
+    // Whether a group can be omitted depends only on the types of the family, so the verdict
+    // holds for every family.
+    static OMITTABLE: Mutex<BTreeMap<String, bool>> = Mutex::new(BTreeMap::new());
+
+    let expected = value.clone();
+    let loads_back = |value: &Value| {
+        to_yaml_string(value)
+            .ok()
+            .and_then(|yaml| yaml_serde::from_str::<ChipFamily>(&yaml).ok())
+            .and_then(|family| yaml_serde::to_value(family).ok())
+            .is_some_and(|loaded| loaded == expected)
+    };
+
+    loop {
+        let mut omit = BTreeSet::new();
+        let mut unknown = vec![];
+        {
+            let verdicts = OMITTABLE.lock().unwrap();
+            remove_default_like(value, "", &mut |group| {
+                match verdicts.get(&group) {
+                    Some(true) => _ = omit.insert(group),
+                    Some(false) => {}
+                    None if unknown.contains(&group) => {}
+                    None => unknown.push(group),
+                }
+                false
+            });
+        }
+        if omit.is_empty() && unknown.is_empty() {
+            return;
         }
 
-        output.push_str(line);
-        output.push('\n');
-    }
+        let omittable = omittable_groups(value, &unknown, &loads_back);
+        let mut verdicts = OMITTABLE.lock().unwrap();
+        for group in unknown {
+            let omittable = omittable.contains(&group);
+            verdicts.insert(group.clone(), omittable);
+            if omittable {
+                omit.insert(group);
+            }
+        }
+        drop(verdicts);
 
-    Ok(output)
+        remove_default_like(value, "", &mut |group| omit.contains(&group));
+    }
+}
+
+/// Returns the `groups` that `value` loads back the same without. Halves the groups until they
+/// load back, so that a few groups that must stay cost a few loads.
+fn omittable_groups(
+    value: &Value,
+    groups: &[String],
+    loads_back: &impl Fn(&Value) -> bool,
+) -> BTreeSet<String> {
+    if groups.is_empty() {
+        return BTreeSet::new();
+    }
+    let mut trimmed = value.clone();
+    remove_default_like(&mut trimmed, "", &mut |group| groups.contains(&group));
+    if loads_back(&trimmed) {
+        return groups.iter().cloned().collect();
+    }
+    if groups.len() == 1 {
+        return BTreeSet::new();
+    }
+    let (first, second) = groups.split_at(groups.len() / 2);
+    let mut omittable = omittable_groups(value, first, loads_back);
+    omittable.extend(omittable_groups(value, second, loads_back));
+    omittable
+}
+
+/// Removes the default-like fields whose group `remove` returns `true` for. The group names the
+/// path of the field, without sequence indices, and its value.
+fn remove_default_like(value: &mut Value, path: &str, remove: &mut impl FnMut(String) -> bool) {
+    match value {
+        Value::Sequence(items) => {
+            for item in items {
+                remove_default_like(item, path, remove);
+            }
+        }
+        Value::Mapping(fields) => fields.retain(|key, field| {
+            let Some(key) = key.as_str() else {
+                return true;
+            };
+            let path = format!("{path}.{key}");
+            remove_default_like(field, &path, remove);
+            !default_like(key, field).is_some_and(|value| remove(format!("{path}={value}")))
+        }),
+        Value::Tagged(tagged) => {
+            let path = format!("{path}{}", tagged.tag);
+            remove_default_like(&mut tagged.value, &path, remove);
+        }
+        _ => {}
+    }
+}
+
+/// Returns `field` as text if it can be the default value of the field `key`.
+fn default_like(key: &str, field: &Value) -> Option<String> {
+    match field {
+        Value::Null => Some("null".to_owned()),
+        Value::Sequence(items) if items.is_empty() => Some("[]".to_owned()),
+        Value::Mapping(fields) if fields.is_empty() => Some("{}".to_owned()),
+        Value::Bool(value) => Some(value.to_string()),
+        Value::String(string) if string.is_empty() => Some("''".to_owned()),
+        // These fields have a default that is not the default of their type.
+        Value::Number(number) if key == "rtt_poll_interval" => Some(number.to_string()),
+        Value::String(string) if key == "scan_mode" => Some(string.clone()),
+        _ => None,
+    }
 }
 
 #[cfg(test)]
@@ -417,5 +535,68 @@ mod test {
         };
         let yaml_string = serialize_to_yaml_string(&family).unwrap();
         insta::assert_snapshot!("serialization_cleanup", yaml_string);
+    }
+
+    #[test]
+    fn serialize_to_yaml_string_round_trips_builtin_targets() {
+        let workspace = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
+        let mut failures = vec![];
+        for dir in ["probe-rs/targets", "probe-rs-espressif/targets"] {
+            for entry in std::fs::read_dir(workspace.join(dir)).unwrap() {
+                let path = entry.unwrap().path();
+                let yaml = std::fs::read_to_string(&path).unwrap();
+                let family: ChipFamily = yaml_serde::from_str(&yaml).unwrap();
+
+                let serialized = serialize_to_yaml_string(&family).unwrap();
+                let round_tripped = match yaml_serde::from_str::<ChipFamily>(&serialized) {
+                    Ok(round_tripped) => round_tripped,
+                    Err(error) => {
+                        failures.push(format!("{}: {error}", path.display()));
+                        continue;
+                    }
+                };
+
+                let expected = yaml_serde::to_value(compact(&family)).unwrap();
+                if yaml_serde::to_value(round_tripped).unwrap() != expected {
+                    failures.push(format!("{}: contents changed", path.display()));
+                }
+            }
+        }
+        assert!(failures.is_empty(), "{}", failures.join("\n"));
+    }
+
+    #[test]
+    fn serialize_to_yaml_string_keeps_required_empty_fields() {
+        let yaml = "\
+name: Test Family
+chip_detection:
+- !TiIcepick
+  icepick_id: 0x1234
+  variants: []
+- !NordicConfigId
+  configid_address: 0x10000130
+  hwid: {}
+variants:
+- name: Test Chip
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores: []
+";
+        let family: ChipFamily = yaml_serde::from_str(yaml).unwrap();
+
+        let serialized = serialize_to_yaml_string(&family).unwrap();
+        let round_tripped: ChipFamily = yaml_serde::from_str(&serialized).unwrap();
+        assert_eq!(
+            yaml_serde::to_value(round_tripped).unwrap(),
+            yaml_serde::to_value(compact(&family)).unwrap()
+        );
     }
 }

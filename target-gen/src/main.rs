@@ -15,7 +15,7 @@ use target_gen::{
         elf::{cmd_elf, serialize_to_yaml_string},
         test::cmd_test,
     },
-    generate,
+    generate, yaml_update,
 };
 
 #[derive(clap::Parser)]
@@ -295,7 +295,16 @@ fn refresh_yaml(yaml_path: &Path) -> Result<()> {
     let family = yaml_serde::from_str::<ChipFamily>(&yaml)
         .context(format!("Failed to parse file '{}'.", yaml_path.display()))?;
 
-    let yaml = serialize_to_yaml_string(&family)?;
+    let yaml = match yaml_update::reformat(&yaml, &family) {
+        Ok(yaml) => yaml,
+        Err(error) => {
+            log::warn!(
+                "Rewriting the whole of '{}', comments are lost: {error:#}",
+                yaml_path.display()
+            );
+            serialize_to_yaml_string(&family)?
+        }
+    };
 
     std::fs::write(yaml_path, yaml)
         .context(format!("Failed to write file '{}'.", yaml_path.display()))?;
