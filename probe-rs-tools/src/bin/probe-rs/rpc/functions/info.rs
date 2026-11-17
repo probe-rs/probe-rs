@@ -155,8 +155,8 @@ pub async fn target_info(
             ..
         }) => {
             lift(
-                ctx.publish::<TargetInfoDataTopic>(
-                    VarSeq::Seq2(0),
+                publish_event(
+                    ctx,
                     &InfoEvent::Message(format!("The probe does not support {protocol}.")),
                 )
                 .await,
@@ -177,8 +177,8 @@ pub async fn target_info(
     .await
     {
         lift(
-            ctx.publish::<TargetInfoDataTopic>(
-                VarSeq::Seq2(0),
+            publish_event(
+                ctx,
                 &InfoEvent::Message(format!(
                     "Failed to identify target using protocol {}: {e:?}",
                     request.protocol
@@ -189,6 +189,12 @@ pub async fn target_info(
     }
 
     Ok(())
+}
+
+/// Sends one event of the `info` output to the client.
+async fn publish_event(ctx: &RpcContext, event: &InfoEvent) -> anyhow::Result<()> {
+    ctx.publish::<TargetInfoDataTopic>(VarSeq::Seq2(0), event)
+        .await
 }
 
 async fn try_show_info(
@@ -247,19 +253,15 @@ async fn try_show_info(
                             "Debug port version {dp_version} does not support SWD multidrop. Stopping here."
                         );
 
-                        ctx.publish::<TargetInfoDataTopic>(
-                            VarSeq::Seq2(0),
-                            &InfoEvent::Message(message),
-                        )
-                        .await?;
+                        publish_event(ctx, &InfoEvent::Message(message)).await?;
                         break;
                     }
                 }
                 (probe_moved, Err(e)) => {
                     probe = probe_moved;
 
-                    ctx.publish::<TargetInfoDataTopic>(
-                        VarSeq::Seq2(0),
+                    publish_event(
+                        ctx,
                         &InfoEvent::ArmError {
                             dp_addr: convert::to_wire_dp_address(address),
                             error: format!("{e:?}"),
@@ -270,8 +272,8 @@ async fn try_show_info(
             }
         }
     } else {
-        ctx.publish::<TargetInfoDataTopic>(
-            VarSeq::Seq2(0),
+        publish_event(
+            ctx,
             &InfoEvent::ProbeInterfaceMissing {
                 interface: "DAP".to_string(),
                 architecture: "ARM".to_string(),
@@ -281,8 +283,8 @@ async fn try_show_info(
     }
 
     if let Err(error) = try_read_riscv_info(ctx, &mut probe, protocol).await {
-        ctx.publish::<TargetInfoDataTopic>(
-            VarSeq::Seq2(0),
+        publish_event(
+            ctx,
             &InfoEvent::Error {
                 architecture: "RISC-V".to_string(),
                 error: format!("{error:?}"),
@@ -292,8 +294,8 @@ async fn try_show_info(
     }
 
     if let Err(error) = try_read_xtensa_info(ctx, &mut probe, protocol).await {
-        ctx.publish::<TargetInfoDataTopic>(
-            VarSeq::Seq2(0),
+        publish_event(
+            ctx,
             &InfoEvent::Error {
                 architecture: "Xtensa".to_string(),
                 error: format!("{error:?}"),
@@ -378,12 +380,11 @@ async fn show_jtag_scan_chain_info(
     mut probe: Probe,
     taps: Vec<JtagTapInfo>,
 ) -> anyhow::Result<()> {
-    ctx.publish::<TargetInfoDataTopic>(VarSeq::Seq2(0), &InfoEvent::JtagScanChain(taps.clone()))
-        .await?;
+    publish_event(ctx, &InfoEvent::JtagScanChain(taps.clone())).await?;
 
     for (index, tap) in taps.iter().enumerate() {
-        ctx.publish::<TargetInfoDataTopic>(
-            VarSeq::Seq2(0),
+        publish_event(
+            ctx,
             &InfoEvent::JtagTap {
                 index: index as u32,
             },
@@ -393,8 +394,8 @@ async fn show_jtag_scan_chain_info(
         if let Some(mut chain) = probe.try_as_jtag_chain()
             && let Err(error) = chain.select(index)
         {
-            ctx.publish::<TargetInfoDataTopic>(
-                VarSeq::Seq2(0),
+            publish_event(
+                ctx,
                 &InfoEvent::Message(format!("Unable to select the TAP: {error}")),
             )
             .await?;
@@ -439,8 +440,8 @@ fn may_be_jtag_dp(probe: &mut Probe, index: usize) -> bool {
 }
 
 async fn show_unsupported_tap(ctx: &mut RpcContext) -> anyhow::Result<()> {
-    ctx.publish::<TargetInfoDataTopic>(
-        VarSeq::Seq2(0),
+    publish_event(
+        ctx,
         &InfoEvent::Message("No supported debug interface.".to_string()),
     )
     .await?;
@@ -449,8 +450,8 @@ async fn show_unsupported_tap(ctx: &mut RpcContext) -> anyhow::Result<()> {
 
 async fn show_arm_tap_info(ctx: &mut RpcContext, probe: Probe) -> anyhow::Result<Probe> {
     if !probe.has_arm_debug_interface() {
-        ctx.publish::<TargetInfoDataTopic>(
-            VarSeq::Seq2(0),
+        publish_event(
+            ctx,
             &InfoEvent::ProbeInterfaceMissing {
                 interface: "DAP".to_string(),
                 architecture: "ARM".to_string(),
@@ -463,8 +464,8 @@ async fn show_arm_tap_info(ctx: &mut RpcContext, probe: Probe) -> anyhow::Result
     let address = dp::DpAddress::Default;
     let (probe, result) = try_show_arm_dp_info(ctx, probe, address, false).await;
     if let Err(e) = result {
-        ctx.publish::<TargetInfoDataTopic>(
-            VarSeq::Seq2(0),
+        publish_event(
+            ctx,
             &InfoEvent::ArmError {
                 dp_addr: convert::to_wire_dp_address(address),
                 error: format!("{e:?}"),
@@ -480,8 +481,8 @@ async fn show_arm_tap_info(ctx: &mut RpcContext, probe: Probe) -> anyhow::Result
 /// DTM, and shows nothing then.
 async fn show_riscv_tap_info(ctx: &mut RpcContext, probe: &mut Probe) -> anyhow::Result<bool> {
     if !probe.has_riscv_interface() {
-        ctx.publish::<TargetInfoDataTopic>(
-            VarSeq::Seq2(0),
+        publish_event(
+            ctx,
             &InfoEvent::ProbeInterfaceMissing {
                 interface: "RISC-V".to_string(),
                 architecture: "RISC-V".to_string(),
@@ -511,8 +512,7 @@ async fn show_riscv_tap_info(ctx: &mut RpcContext, probe: &mut Probe) -> anyhow:
             error: format!("{error:?}"),
         },
     };
-    ctx.publish::<TargetInfoDataTopic>(VarSeq::Seq2(0), &event)
-        .await?;
+    publish_event(ctx, &event).await?;
 
     Ok(true)
 }
@@ -589,8 +589,8 @@ fn read_hart_isa(interface: &mut RiscvCommunicationInterface, hart: u32) -> Risc
 
 async fn show_xtensa_tap_info(ctx: &mut RpcContext, probe: &mut Probe) -> anyhow::Result<()> {
     if let Err(error) = try_read_xtensa_info(ctx, probe, WireProtocol::Jtag).await {
-        ctx.publish::<TargetInfoDataTopic>(
-            VarSeq::Seq2(0),
+        publish_event(
+            ctx,
             &InfoEvent::Error {
                 architecture: "Xtensa".to_string(),
                 error: format!("{error:?}"),
@@ -617,8 +617,8 @@ async fn try_read_riscv_info(
             .map(|wlink| (wlink.chip_family(), wlink.chip_id()))
         {
             let (family, chip_id) = wch_info;
-            ctx.publish::<TargetInfoDataTopic>(
-                VarSeq::Seq2(0),
+            publish_event(
+                ctx,
                 &InfoEvent::WchChip {
                     family: family as u8,
                     family_name: format!("{family:?}"),
@@ -637,8 +637,8 @@ async fn try_read_riscv_info(
         };
         show_riscv_info(ctx, idcode).await?;
     } else if protocol == WireProtocol::Swd {
-        ctx.publish::<TargetInfoDataTopic>(
-            VarSeq::Seq2(0),
+        publish_event(
+            ctx,
             &InfoEvent::ProtocolNotSupportedByArch {
                 architecture: "RISC-V".to_string(),
                 protocol,
@@ -646,8 +646,8 @@ async fn try_read_riscv_info(
         )
         .await?;
     } else {
-        ctx.publish::<TargetInfoDataTopic>(
-            VarSeq::Seq2(0),
+        publish_event(
+            ctx,
             &InfoEvent::ProbeInterfaceMissing {
                 interface: "RISC-V".to_string(),
                 architecture: "RISC-V".to_string(),
@@ -671,8 +671,8 @@ async fn try_read_xtensa_info(
 
         show_xtensa_info(ctx, &mut interface).await?;
     } else if protocol == WireProtocol::Swd {
-        ctx.publish::<TargetInfoDataTopic>(
-            VarSeq::Seq2(0),
+        publish_event(
+            ctx,
             &InfoEvent::ProtocolNotSupportedByArch {
                 architecture: "Xtensa".to_string(),
                 protocol,
@@ -680,8 +680,8 @@ async fn try_read_xtensa_info(
         )
         .await?;
     } else {
-        ctx.publish::<TargetInfoDataTopic>(
-            VarSeq::Seq2(0),
+        publish_event(
+            ctx,
             &InfoEvent::ProbeInterfaceMissing {
                 interface: "Xtensa".to_string(),
                 architecture: "Xtensa".to_string(),
@@ -731,9 +731,7 @@ async fn show_arm_info(
     let dp_info = match interface.read_raw_dp_register(dp, DPIDR::ADDRESS) {
         Ok(dp_info) => dp::DebugPortId::from(DPIDR(dp_info)),
         Err(ArmError::NotImplemented(_)) => {
-            ctx.publish::<TargetInfoDataTopic>(
-                VarSeq::Seq2(0),
-                &InfoEvent::Message(
+            publish_event(ctx, &InfoEvent::Message(
                     "This probe does not implement DAP register access, ID'ing target via memory access instead.".to_string(),
                 ),
             )
@@ -785,8 +783,8 @@ async fn show_arm_info(
     };
 
     if announce_dp {
-        ctx.publish::<TargetInfoDataTopic>(
-            VarSeq::Seq2(0),
+        publish_event(
+            ctx,
             &InfoEvent::Message(format!("ARM Chip with debug port {dp:x?}:")),
         )
         .await?;
@@ -846,8 +844,7 @@ async fn show_arm_info(
         info.aps.push(ApInfo::ApV2Root { component_tree });
     }
 
-    ctx.publish::<TargetInfoDataTopic>(VarSeq::Seq2(0), &InfoEvent::ArmDp(info))
-        .await?;
+    publish_event(ctx, &InfoEvent::ArmDp(info)).await?;
 
     Ok(dp_info.version)
 }
@@ -1125,8 +1122,8 @@ fn cpu_info_tree(scs: &mut Scs) -> anyhow::Result<ComponentTreeNode> {
 }
 
 async fn show_riscv_info(ctx: &mut RpcContext, idcode: Option<u32>) -> anyhow::Result<()> {
-    ctx.publish::<TargetInfoDataTopic>(
-        VarSeq::Seq2(0),
+    publish_event(
+        ctx,
         &InfoEvent::Idcode {
             architecture: "RISC-V".to_string(),
             idcode,
@@ -1141,8 +1138,8 @@ async fn show_xtensa_info(
 ) -> anyhow::Result<()> {
     let idcode = interface.read_idcode()?;
 
-    ctx.publish::<TargetInfoDataTopic>(
-        VarSeq::Seq2(0),
+    publish_event(
+        ctx,
         &InfoEvent::Idcode {
             architecture: "Xtensa".to_string(),
             idcode,
