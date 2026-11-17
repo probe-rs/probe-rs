@@ -32,7 +32,7 @@ use probe_rs::{
             XtensaCommunicationInterface, XtensaDebugInterfaceState,
         },
     },
-    probe::{Probe, wlink::WchLink},
+    probe::{DebugProbeError, Probe, wlink::WchLink},
 };
 use probe_rs_rpc::info::{
     ApInfo, ComponentTreeNode, DebugPortId, DebugPortInfo, DebugPortInfoNode, DebugPortVersion,
@@ -48,7 +48,7 @@ use crate::rpc::functions::core_ops::convert::to_wire_core_type;
 use crate::rpc::functions::probe::convert::from_wire_protocol;
 use crate::{
     rpc::functions::{RpcContext, convert::lift},
-    util::common_options::ProbeOptions,
+    util::common_options::{OperationError, ProbeOptions},
 };
 
 pub async fn target_metadata(
@@ -147,7 +147,24 @@ pub async fn target_info(
     let mut registry = ctx.registry().await;
     let probe_options = ProbeOptions::from(&request).load(&mut registry)?;
 
-    let probe = probe_options.attach_probe(&ctx.lister())?;
+    let attached = probe_options.attach_probe(&ctx.lister());
+    let probe = match attached {
+        // Not an error: the probe simply cannot speak this protocol.
+        Err(OperationError::FailedToSelectProtocol {
+            source: DebugProbeError::UnsupportedProtocol(protocol),
+            ..
+        }) => {
+            lift(
+                ctx.publish::<TargetInfoDataTopic>(
+                    VarSeq::Seq2(0),
+                    &InfoEvent::Message(format!("The probe does not support {protocol}.")),
+                )
+                .await,
+            )?;
+            return Ok(());
+        }
+        result => result?,
+    };
 
     if let Err(e) = try_show_info(
         ctx,
@@ -602,10 +619,11 @@ async fn try_read_riscv_info(
             let (family, chip_id) = wch_info;
             ctx.publish::<TargetInfoDataTopic>(
                 VarSeq::Seq2(0),
-                &InfoEvent::Message(format!(
-                    "RISC-V Chip:\n  Family:  {:#04x} ({family:?})\n  Chip ID: {chip_id:#010x}",
-                    family as u8
-                )),
+                &InfoEvent::WchChip {
+                    family: family as u8,
+                    family_name: format!("{family:?}"),
+                    chip_id,
+                },
             )
             .await?;
             return Ok(());

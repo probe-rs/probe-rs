@@ -88,8 +88,6 @@ impl Cmd {
                 println!();
 
                 let mut events = vec![];
-                let mut successes = vec![];
-                let mut errors = vec![];
 
                 let req = TargetInfoRequest {
                     target_sel: self.target_sel,
@@ -101,24 +99,7 @@ impl Cmd {
                     scan_chain: self.scan_chain.clone(),
                 };
 
-                let result = client
-                    .info(req, async |message| {
-                        events.push(message.clone());
-
-                        let is_success = is_success(&message);
-
-                        if matches!(message, InfoEvent::Message(_)) {
-                            successes.push(message.clone());
-                            errors.push(message.clone());
-                        }
-
-                        if is_success {
-                            successes.push(message);
-                        } else {
-                            errors.push(message);
-                        }
-                    })
-                    .await;
+                let result = client.info(req, async |message| events.push(message)).await;
 
                 if let Err(error) = result {
                     println!("Error while probing target: {error}");
@@ -130,17 +111,13 @@ impl Cmd {
                     .iter()
                     .any(|event| matches!(event, InfoEvent::JtagScanChain(_)));
 
+                any_success |= events.iter().any(is_success);
+
                 if scanned_chain {
-                    any_success |= events.iter().any(is_success);
                     println!("{}", format_jtag_scan_chain(&events));
-                } else if successes.is_empty() {
-                    for message in errors {
-                        println!("{}", format_info_event(&message));
-                    }
                 } else {
-                    any_success = true;
-                    for message in successes {
-                        println!("{}", format_info_event(&message));
+                    for event in shown_events(&events) {
+                        println!("{}", format_info_event(event));
                     }
                 }
             }
@@ -177,8 +154,22 @@ impl Cmd {
 fn is_success(event: &InfoEvent) -> bool {
     matches!(
         event,
-        InfoEvent::Idcode { .. } | InfoEvent::ArmDp(_) | InfoEvent::RiscvDebugModule(_)
+        InfoEvent::Idcode { .. }
+            | InfoEvent::ArmDp(_)
+            | InfoEvent::RiscvDebugModule(_)
+            | InfoEvent::WchChip { .. }
     )
+}
+
+/// Picks the events to show for one protocol.
+///
+/// When an architecture answered, the errors of the others only say that the chip is not of that
+/// architecture, so only the results and the messages are shown.
+fn shown_events(events: &[InfoEvent]) -> impl Iterator<Item = &InfoEvent> {
+    let found = events.iter().any(is_success);
+    events
+        .iter()
+        .filter(move |event| !found || is_success(event) || matches!(event, InfoEvent::Message(_)))
 }
 
 fn format_info_event(event: &InfoEvent) -> String {
@@ -260,6 +251,15 @@ fn format_info_event(event: &InfoEvent) -> String {
         }
         InfoEvent::RiscvDebugModule(info) => {
             writeln!(output, "{}", riscv_debug_module_tree(info)).unwrap();
+        }
+        InfoEvent::WchChip {
+            family,
+            family_name,
+            chip_id,
+        } => {
+            writeln!(output, "RISC-V Chip:").unwrap();
+            writeln!(output, "  Family:  {family:#04x} ({family_name})").unwrap();
+            writeln!(output, "  Chip ID: {chip_id:#010x}").unwrap();
         }
     }
     output
@@ -584,6 +584,30 @@ mod tests {
         assert!(
             !super::format_debug_port_info_node(&node(DebugPortVersion::DPv1)).contains("Part: ")
         );
+    }
+
+    #[test]
+    fn shown_events_hide_errors_only_after_a_result() {
+        use probe_rs_rpc::info::InfoEvent;
+
+        let message = || InfoEvent::Message("note".to_string());
+        let error = || InfoEvent::Error {
+            architecture: "Xtensa".to_string(),
+            error: "no".to_string(),
+        };
+        let wch = || InfoEvent::WchChip {
+            family: 1,
+            family_name: "CH32V103".to_string(),
+            chip_id: 0x2500_0410,
+        };
+        let shown = |events: &[InfoEvent]| super::shown_events(events).count();
+
+        // Nothing answered: show everything, once each.
+        assert_eq!(shown(&[message(), error()]), 2);
+        // A message alone is not a result.
+        assert!(!super::is_success(&message()));
+        // A result hides the errors, but not the messages.
+        assert_eq!(shown(&[message(), error(), wch()]), 2);
     }
 
     #[test]

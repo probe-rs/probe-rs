@@ -82,6 +82,12 @@ pub enum InfoEvent {
         index: u32,
     },
     RiscvDebugModule(RiscvDebugModuleInfo),
+    /// The chip that a WCH-Link probe reported when it attached.
+    WchChip {
+        family: u8,
+        family_name: String,
+        chip_id: u32,
+    },
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, Schema)]
