@@ -27,7 +27,7 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
+  - !Nvm
     name: ConfigROM
     range:
       start: 0x1010000
@@ -44,7 +44,7 @@ variants:
       end: 0x2000c000
     cores:
     - main
-  - !Generic
+  - !Nvm
     name: DataFlash
     range:
       start: 0x40100000
@@ -75,7 +75,7 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
+  - !Nvm
     name: ConfigROM
     range:
       start: 0x1010000
@@ -92,7 +92,7 @@ variants:
       end: 0x2000c000
     cores:
     - main
-  - !Generic
+  - !Nvm
     name: DataFlash
     range:
       start: 0x40100000
@@ -120,7 +120,6 @@ flash_algorithms:
   pc_verify: 0xad1
   pc_blank_check: 0xcc9
   data_section_offset: 0xde0
-  rtt_poll_interval: 0
   flash_properties:
     address_range:
       start: 0x0
@@ -145,7 +144,6 @@ flash_algorithms:
   pc_verify: 0xa6d
   pc_blank_check: 0xc65
   data_section_offset: 0xd7c
-  rtt_poll_interval: 0
   flash_properties:
     address_range:
       start: 0x40100000
@@ -170,7 +168,6 @@ flash_algorithms:
   pc_verify: 0xbd1
   pc_blank_check: 0xdc9
   data_section_offset: 0xee0
-  rtt_poll_interval: 0
   flash_properties:
     address_range:
       start: 0x1010000

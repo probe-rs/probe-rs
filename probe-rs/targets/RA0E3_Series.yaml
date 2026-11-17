@@ -27,7 +27,7 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
+  - !Nvm
     name: ConfigROM
     range:
       start: 0x1010000
@@ -61,7 +61,6 @@ flash_algorithms:
   pc_verify: 0x575
   pc_blank_check: 0x55
   data_section_offset: 0x6f4
-  rtt_poll_interval: 0
   flash_properties:
     address_range:
       start: 0x0
@@ -73,7 +72,6 @@ flash_algorithms:
     sectors:
     - size: 0x800
       address: 0x0
-  stack_size: 120
 - name: ra0e3_conf
   description: RA0E3 Config Area
   default: true
@@ -87,7 +85,6 @@ flash_algorithms:
   pc_verify: 0x325
   pc_blank_check: 0x53
   data_section_offset: 0x4a4
-  rtt_poll_interval: 0
   flash_properties:
     address_range:
       start: 0x1010000
@@ -99,4 +96,3 @@ flash_algorithms:
     sectors:
     - size: 0x4
       address: 0x0
-  stack_size: 120
