@@ -9,7 +9,7 @@ use bitvec::vec::BitVec;
 use super::{MAX_DATA_BLOCK, OCD_SCAN_REQUEST, Xds110};
 use crate::probe::{
     BatchExecutionError, DebugProbeError, HandleId, JtagBatch, JtagChainAccess, JtagChainState,
-    JtagOp, JtagProbe, Results, TapState, WireProtocol, jtag::distribute_captures,
+    JtagOp, JtagProbe, Results, TapState, jtag::distribute_captures,
 };
 
 pub(super) const CMD_IR_SCAN: u8 = 1;
@@ -322,9 +322,9 @@ impl JtagProbe for Xds110 {
         batch: &JtagBatch,
     ) -> Result<Results, BatchExecutionError<DebugProbeError>> {
         let failed = |error| BatchExecutionError::new_from_debug_probe(error, Results::new());
-        let cjtag = self.protocol == WireProtocol::CJtag;
         let (state, steps) =
-            encode_batch(self.jtag_state.tap_state, batch, cjtag).map_err(failed)?;
+            encode_batch(self.jtag_state.tap_state, batch, self.protocol.is_cjtag())
+                .map_err(failed)?;
         self.tms_state = None;
 
         let mut request = ScanRequest::default();

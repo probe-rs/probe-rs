@@ -708,7 +708,7 @@ impl JLink {
         match protocol {
             WireProtocol::Swd => Interface::Swd,
             WireProtocol::Jtag => Interface::Jtag,
-            WireProtocol::CJtag => Interface::CJtag,
+            WireProtocol::CJtag(_) => Interface::CJtag,
         }
     }
 
@@ -1164,18 +1164,10 @@ impl DebugProbe for JLink {
             tracing::info!("J-Link: Target voltage: {:2.2} V", target_voltage);
         }
 
-        match self.protocol {
-            WireProtocol::Jtag | WireProtocol::CJtag => {
-                // try some JTAG stuff
-
-                tracing::debug!("Resetting JTAG chain using trst");
-                self.reset_trst()?;
-            }
-            WireProtocol::Swd => {
-                // Attaching is handled in sequence
-
-                // We are ready to debug.
-            }
+        if self.protocol.is_jtag() {
+            // Try some JTAG stuff. For SWD, attaching is handled in sequence.
+            tracing::debug!("Resetting JTAG chain using trst");
+            self.reset_trst()?;
         }
 
         self.write_cmd(&[Command::HwReset1 as u8])?;
@@ -1186,7 +1178,7 @@ impl DebugProbe for JLink {
             self.set_speed(400)?;
         }
 
-        if self.protocol == WireProtocol::CJtag {
+        if self.protocol.is_cjtag() {
             self.cjtag_activate(false)?;
         }
 
@@ -1235,7 +1227,9 @@ impl DebugProbe for JLink {
     fn try_get_riscv_interface_builder<'probe>(
         &'probe mut self,
     ) -> Result<Box<dyn RiscvInterfaceBuilder<'probe> + 'probe>, RiscvError> {
-        if self.supported_protocols.contains(&WireProtocol::Jtag) {
+        if self.protocol.is_jtag() {
+            Ok(Box::new(JtagDtmBuilder::new(self)))
+        } else if self.supported_protocols.contains(&WireProtocol::Jtag) {
             self.select_protocol(WireProtocol::Jtag)?;
             Ok(Box::new(JtagDtmBuilder::new(self)))
         } else {
@@ -1271,21 +1265,19 @@ impl DebugProbe for JLink {
         sequence: Arc<dyn ArmDebugSequence>,
     ) -> Result<Box<dyn ArmDebugInterface + 'probe>, (Box<dyn DebugProbe>, ArmError)> {
         let settings = SwdProbe::swd_settings(self.as_ref());
-        let iface = match self.protocol {
-            WireProtocol::Jtag | WireProtocol::CJtag => {
-                ArmCommunicationInterface::create_jtag(self, settings, sequence, true)
-            }
-            WireProtocol::Swd => {
-                ArmCommunicationInterface::create_swd(self, settings, sequence, true)
-            }
+        let iface = if self.protocol.is_jtag() {
+            ArmCommunicationInterface::create_jtag(self, settings, sequence, true)
+        } else {
+            ArmCommunicationInterface::create_swd(self, settings, sequence, true)
         };
         Ok(iface)
     }
 
     fn try_as_swd_probe(self: Box<Self>) -> Result<Box<dyn SwdProbe>, Box<dyn DebugProbe>> {
-        match self.protocol {
-            WireProtocol::Jtag | WireProtocol::CJtag => Err(self.into_probe()),
-            _ => Ok(self),
+        if self.protocol.is_jtag() {
+            Err(self.into_probe())
+        } else {
+            Ok(self)
         }
     }
 
@@ -1486,7 +1478,7 @@ impl TryFrom<Interface> for WireProtocol {
         match interface {
             Interface::Jtag => Ok(WireProtocol::Jtag),
             Interface::Swd => Ok(WireProtocol::Swd),
-            Interface::CJtag => Ok(WireProtocol::CJtag),
+            Interface::CJtag => Ok(WireProtocol::CJtag(super::CjtagActivation::Long)),
             unknown_interface => Err(JlinkError::UnknownInterface(unknown_interface)),
         }
     }

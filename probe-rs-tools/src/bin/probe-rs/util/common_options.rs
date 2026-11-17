@@ -164,9 +164,11 @@ pub struct ProbeOptions {
     /// Example: '--probe 0403:6010-1' selects Channel B.
     #[arg(long, env = "PROBE_RS_PROBE", help_heading = "PROBE CONFIGURATION")]
     pub probe: Option<DebugProbeSelector>,
+
     /// The protocol speed in kHz.
     #[arg(long, env = "PROBE_RS_SPEED", help_heading = "PROBE CONFIGURATION")]
     pub speed: Option<u32>,
+
     /// Use this flag to assert the nreset & ntrst pins during attaching the probe to
     /// the chip.
     #[arg(

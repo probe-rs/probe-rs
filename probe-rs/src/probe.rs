@@ -91,6 +91,15 @@ pub(crate) fn register_probe_factory(factory: &'static dyn ProbeFactory) {
     DRIVERS.write().push(factory);
 }
 
+/// Which  selection sequence to use when cJTAG is selected.
+#[derive(Copy, Clone, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
+pub enum CjtagActivation {
+    /// Long-form sequence
+    Long,
+    /// Short-form sequence
+    Short,
+}
+
 /// The protocol that is to be used by the probe when communicating with the target.
 ///
 /// For ARM select `Swd` or `Jtag`, for RISC-V select `Jtag`. `CJtag` is JTAG over the two
@@ -105,13 +114,18 @@ pub enum WireProtocol {
     Jtag,
     /// Compact JTAG (IEEE 1149.7) on two wires, TMSC and TCKC, in the OScan1 format. The probe
     /// translates the JTAG operations, so the target sees JTAG.
-    CJtag,
+    CJtag(CjtagActivation),
 }
 
 impl WireProtocol {
     /// Whether the protocol carries JTAG operations: JTAG or cJTAG.
     pub fn is_jtag(self) -> bool {
-        matches!(self, WireProtocol::Jtag | WireProtocol::CJtag)
+        matches!(self, WireProtocol::Jtag | WireProtocol::CJtag(_))
+    }
+
+    /// Whether the protocol is cJTAG specifically.
+    pub fn is_cjtag(self) -> bool {
+        matches!(self, WireProtocol::CJtag(_))
     }
 }
 
@@ -120,7 +134,13 @@ impl fmt::Display for WireProtocol {
         match self {
             WireProtocol::Swd => f.write_str("SWD"),
             WireProtocol::Jtag => f.write_str("JTAG"),
-            WireProtocol::CJtag => f.write_str("cJTAG"),
+            WireProtocol::CJtag(selection_sequence) => {
+                if selection_sequence == &CjtagActivation::Long {
+                    f.write_str("cJTAG")
+                } else {
+                    f.write_str("cJTAG (Short OAC)")
+                }
+            }
         }
     }
 }
@@ -132,9 +152,10 @@ impl std::str::FromStr for WireProtocol {
         match &s.to_ascii_lowercase()[..] {
             "swd" => Ok(WireProtocol::Swd),
             "jtag" => Ok(WireProtocol::Jtag),
-            "cjtag" => Ok(WireProtocol::CJtag),
+            "cjtag" => Ok(WireProtocol::CJtag(CjtagActivation::Long)),
+            "cjtag-short" => Ok(WireProtocol::CJtag(CjtagActivation::Short)),
             _ => Err(format!(
-                "'{s}' is not a valid protocol. Choose 'swd', 'jtag' or 'cjtag'."
+                "'{s}' is not a valid protocol. Choose 'swd', 'jtag', 'cjtag', or 'cjtag-short'."
             )),
         }
     }

@@ -109,17 +109,19 @@ impl DebugProbe for StLink<StLinkUsbDevice> {
     }
 
     fn speed_khz(&self) -> u32 {
-        match self.protocol {
-            WireProtocol::Swd => self.swd_speed_khz,
-            WireProtocol::Jtag | WireProtocol::CJtag => self.jtag_speed_khz,
+        if self.protocol.is_jtag() {
+            self.jtag_speed_khz
+        } else {
+            self.swd_speed_khz
         }
     }
 
     fn set_speed(&mut self, speed_khz: u32) -> Result<u32, DebugProbeError> {
         // `attach` sets the speed of the other protocol.
-        match self.protocol {
-            WireProtocol::Swd => self.jtag_speed_khz = speed_khz,
-            WireProtocol::Jtag | WireProtocol::CJtag => self.swd_speed_khz = speed_khz,
+        if self.protocol.is_jtag() {
+            self.jtag_speed_khz = speed_khz;
+        } else {
+            self.swd_speed_khz = speed_khz;
         }
 
         match self.hw_version.cmp(&3) {
@@ -137,7 +139,7 @@ impl DebugProbe for StLink<StLinkUsbDevice> {
                         Err(DebugProbeError::UnsupportedSpeed(speed_khz))
                     }
                 }
-                WireProtocol::Jtag | WireProtocol::CJtag => {
+                WireProtocol::Jtag | WireProtocol::CJtag(_) => {
                     let actual_speed = JTagFrequencyToDivider::find_setting(speed_khz);
 
                     if let Some(actual_speed) = actual_speed {
@@ -162,11 +164,10 @@ impl DebugProbe for StLink<StLinkUsbDevice> {
 
                 self.set_communication_frequency(self.protocol, actual_speed_khz)?;
 
-                match self.protocol {
-                    WireProtocol::Swd => self.swd_speed_khz = actual_speed_khz,
-                    WireProtocol::Jtag | WireProtocol::CJtag => {
-                        self.jtag_speed_khz = actual_speed_khz
-                    }
+                if self.protocol.is_jtag() {
+                    self.jtag_speed_khz = actual_speed_khz
+                } else {
+                    self.swd_speed_khz = actual_speed_khz
                 }
 
                 Ok(actual_speed_khz)
@@ -179,7 +180,7 @@ impl DebugProbe for StLink<StLinkUsbDevice> {
         self.enter_idle()?;
 
         let param = match self.protocol {
-            WireProtocol::Jtag | WireProtocol::CJtag => {
+            WireProtocol::Jtag | WireProtocol::CJtag(_) => {
                 tracing::debug!("Switching protocol to JTAG");
                 commands::JTAG_ENTER_JTAG_NO_CORE_RESET
             }
@@ -217,13 +218,10 @@ impl DebugProbe for StLink<StLinkUsbDevice> {
         //
         // To ensure the default speed is used if not changed,
         // we set the speed again here.
-        match self.protocol {
-            WireProtocol::Jtag | WireProtocol::CJtag => {
-                self.set_speed(self.jtag_speed_khz)?;
-            }
-            WireProtocol::Swd => {
-                self.set_speed(self.swd_speed_khz)?;
-            }
+        if self.protocol.is_jtag() {
+            self.set_speed(self.jtag_speed_khz)?;
+        } else {
+            self.set_speed(self.swd_speed_khz)?;
         }
 
         Ok(())
@@ -296,7 +294,7 @@ impl DebugProbe for StLink<StLinkUsbDevice> {
         match protocol {
             WireProtocol::Jtag => self.protocol = WireProtocol::Jtag,
             WireProtocol::Swd => self.protocol = WireProtocol::Swd,
-            WireProtocol::CJtag => return Err(DebugProbeError::UnsupportedProtocol(protocol)),
+            WireProtocol::CJtag(_) => return Err(DebugProbeError::UnsupportedProtocol(protocol)),
         }
         Ok(())
     }
@@ -617,10 +615,7 @@ impl<D: StLinkUsb> StLink<D> {
             });
         }
 
-        let cmd_proto = match protocol {
-            WireProtocol::Swd => 0,
-            WireProtocol::Jtag | WireProtocol::CJtag => 1,
-        };
+        let cmd_proto = if protocol.is_jtag() { 1 } else { 0 };
 
         let mut command = vec![commands::JTAG_COMMAND, commands::SET_COM_FREQ, cmd_proto, 0];
         command.extend_from_slice(&frequency_khz.to_le_bytes());
@@ -636,10 +631,7 @@ impl<D: StLinkUsb> StLink<D> {
         &mut self,
         protocol: WireProtocol,
     ) -> Result<(Vec<u32>, u32), StlinkError> {
-        let cmd_proto = match protocol {
-            WireProtocol::Swd => 0,
-            WireProtocol::Jtag | WireProtocol::CJtag => 1,
-        };
+        let cmd_proto = if protocol.is_jtag() { 1 } else { 0 };
 
         let mut buf = [0; 52];
         self.send_jtag_command(

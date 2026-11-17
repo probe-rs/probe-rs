@@ -23,6 +23,18 @@ impl ScanChainElement {
     }
 }
 
+/// JTAG scan mode
+#[derive(Default, Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub enum ScanMode {
+    /// JTAG
+    #[default]
+    Jtag,
+    /// cJTAG OScan1
+    Oscan1,
+    /// cJTAG OScan1 using short-form select sequence
+    Oscan1Short,
+}
+
 /// Configuration for JTAG tunneling.
 ///
 /// This JTAG tunnel wraps JTAG IR and DR accesses as DR access to a specific instruction. For
@@ -58,6 +70,10 @@ pub struct Jtag {
     /// Describes JTAG tunnel for RISC-V.
     #[serde(default)]
     pub riscv_tunnel: Option<RiscvJtagTunnel>,
+
+    /// Describes the JTAG scan mode.
+    #[serde(default)]
+    pub scan_mode: ScanMode,
 }
 
 /// A single chip variant.

@@ -86,7 +86,7 @@ impl Xds110 {
     fn run_sequence(&mut self, bits: impl Iterator<Item = bool>) -> Result<(), DebugProbeError> {
         // The bits can pass Test-Logic-Reset or Update-IR and still end in the same state.
         self.jtag_state.loaded_ir = None;
-        if self.protocol == WireProtocol::CJtag {
+        if self.protocol.is_cjtag() {
             self.jtag_state.tap_state = self.cjtag_sequence(bits)?;
             return Ok(());
         }

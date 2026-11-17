@@ -10,7 +10,7 @@
 //! it is parked there until it leaves Test-Logic-Reset. Path moves are refused in cJTAG mode.
 
 use super::{CJTAG_CONNECT, OCD_SCAN_REQUEST, XDS_CONNECT, XDS_DISCONNECT, Xds110, jtag::XdsState};
-use crate::probe::{DebugProbeError, TapState};
+use crate::probe::{CjtagActivation, DebugProbeError, TapState, WireProtocol};
 
 /// `CJTAG_CONNECT` format for OScan1.
 const MODE_OSCAN1: u32 = 7;
@@ -23,6 +23,10 @@ impl Xds110 {
     /// Activates OScan1 after the line reset of an attach. The TAP is parked in
     /// Test-Logic-Reset afterwards.
     pub(super) fn cjtag_attach(&mut self) -> Result<(), DebugProbeError> {
+        if self.protocol == WireProtocol::CJtag(CjtagActivation::Short) {
+            return Err(DebugProbeError::UnsupportedProtocol(self.protocol));
+        }
+
         self.command_u32(CJTAG_CONNECT, MODE_OSCAN1)?;
         // Loads IDCODE, as Test-Logic-Reset does, and stays in Run-Test/Idle.
         self.ir_scan(ICEPICK_IDCODE)?;

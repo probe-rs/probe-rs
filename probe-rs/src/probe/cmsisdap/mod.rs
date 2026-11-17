@@ -820,9 +820,10 @@ impl CmsisDap {
         }
 
         let protocol: ConnectRequest = if let Some(protocol) = self.protocol {
-            match protocol {
-                WireProtocol::Swd => ConnectRequest::Swd,
-                WireProtocol::Jtag | WireProtocol::CJtag => ConnectRequest::Jtag,
+            if protocol.is_jtag() {
+                ConnectRequest::Jtag
+            } else {
+                ConnectRequest::Swd
             }
         } else {
             ConnectRequest::DefaultPort

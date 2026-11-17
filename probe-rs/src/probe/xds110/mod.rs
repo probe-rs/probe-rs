@@ -523,7 +523,7 @@ impl DebugProbe for Xds110 {
                 self.jtag_state.tap_state = crate::probe::TapState::TestLogicReset;
                 self.goto_state(jtag::XdsState::Reset)
             }
-            WireProtocol::CJtag => self.cjtag_attach(),
+            WireProtocol::CJtag(_) => self.cjtag_attach(),
         }
     }
 
@@ -574,13 +574,10 @@ impl DebugProbe for Xds110 {
         sequence: Arc<dyn ArmDebugSequence>,
     ) -> Result<Box<dyn ArmDebugInterface + 'probe>, (Box<dyn DebugProbe>, ArmError)> {
         let settings = SwdProbe::swd_settings(self.as_ref());
-        Ok(match self.protocol {
-            WireProtocol::Jtag | WireProtocol::CJtag => {
-                ArmCommunicationInterface::create_jtag(self, settings, sequence, false)
-            }
-            WireProtocol::Swd => {
-                ArmCommunicationInterface::create_swd(self, settings, sequence, false)
-            }
+        Ok(if self.protocol.is_jtag() {
+            ArmCommunicationInterface::create_jtag(self, settings, sequence, false)
+        } else {
+            ArmCommunicationInterface::create_swd(self, settings, sequence, false)
         })
     }
 

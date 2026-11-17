@@ -10,7 +10,7 @@ use probe_rs::{
         },
         riscv::communication_interface::HartIsa,
     },
-    probe::WireProtocol,
+    probe::{CjtagActivation, WireProtocol},
 };
 use termtree::Tree;
 
@@ -69,7 +69,12 @@ impl Cmd {
             let protocols = if let Some(protocol) = self.common.protocol {
                 vec![protocol]
             } else {
-                vec![WireProtocol::Jtag, WireProtocol::Swd]
+                vec![
+                    WireProtocol::Jtag,
+                    WireProtocol::CJtag(CjtagActivation::Long),
+                    WireProtocol::CJtag(CjtagActivation::Short),
+                    WireProtocol::Swd,
+                ]
             };
 
             let probe = select_probe(

@@ -225,7 +225,7 @@ async fn try_show_info(
         probe.attach_to_unspecified()?;
     }
 
-    if matches!(protocol, WireProtocol::Jtag | WireProtocol::CJtag)
+    if matches!(protocol, WireProtocol::Jtag | WireProtocol::CJtag(_))
         && let Some(taps) = read_jtag_scan_chain(&mut probe)
     {
         return show_jtag_scan_chain_info(ctx, probe, taps).await;
@@ -607,7 +607,9 @@ async fn try_read_riscv_info(
     probe: &mut Probe,
     protocol: WireProtocol,
 ) -> Result<(), anyhow::Error> {
-    if probe.has_riscv_interface() && protocol == WireProtocol::Jtag {
+    if probe.has_riscv_interface()
+        && matches!(protocol, WireProtocol::Jtag | WireProtocol::CJtag(_))
+    {
         tracing::debug!("Trying to show RISC-V chip information");
 
         // WCH-Link probes don't expose a real JTAG IDCODE; report the chip
@@ -1182,25 +1184,19 @@ pub(crate) mod convert {
         DebugPortId, DebugPortVersion, DpAddress, MinDpSupport, RiscvDebugModuleVersion,
         TargetInfoRequest,
     };
-    use crate::rpc::functions::chip::convert::to_wire_jep106_code;
     use crate::rpc::functions::probe::convert::from_wire_debug_probe_selector;
-    use crate::util::common_options::ProbeOptions;
-    use probe_rs::{
-        architecture::{arm::dp, riscv::communication_interface::DebugModuleVersion},
-        probe::WireProtocol as ProbeRsWireProtocol,
+    use crate::rpc::functions::{
+        chip::convert::to_wire_jep106_code, probe::convert::from_wire_protocol,
     };
-    use probe_rs_rpc::probe::WireProtocol;
+    use crate::util::common_options::ProbeOptions;
+    use probe_rs::architecture::{arm::dp, riscv::communication_interface::DebugModuleVersion};
 
     impl From<&TargetInfoRequest> for ProbeOptions {
         fn from(request: &TargetInfoRequest) -> Self {
             ProbeOptions {
                 chip: None,
                 chip_description_path: None,
-                protocol: match request.protocol {
-                    WireProtocol::Jtag => Some(ProbeRsWireProtocol::Jtag),
-                    WireProtocol::Swd => Some(ProbeRsWireProtocol::Swd),
-                    WireProtocol::CJtag => Some(ProbeRsWireProtocol::CJtag),
-                },
+                protocol: Some(from_wire_protocol(request.protocol)),
                 non_interactive: true,
                 probe: Some(from_wire_debug_probe_selector(request.probe.selector())),
                 speed: request.speed,

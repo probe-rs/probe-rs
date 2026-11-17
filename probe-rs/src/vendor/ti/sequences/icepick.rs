@@ -85,7 +85,9 @@ impl<'a> Icepick<'a> {
         protocol: DefaultProtocol,
     ) -> Result<Self, ArmError> {
         // A probe that talks cJTAG keeps the target in 2-pin mode.
-        let two_pin = interface.active_protocol() == Some(WireProtocol::CJtag);
+        let two_pin = interface
+            .active_protocol()
+            .is_some_and(WireProtocol::is_cjtag);
         let chain = interface.try_jtag_chain().ok_or_else(|| {
             tracing::error!("Couldn't get probe as JtagChain");
             ArmError::Dap(DapError::Protocol(WireProtocol::Jtag))

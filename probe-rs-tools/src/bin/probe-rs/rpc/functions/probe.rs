@@ -568,6 +568,7 @@ pub(crate) mod convert {
     use super::{AttachRequest, DebugProbeEntry, WireProtocol};
     use crate::util::common_options::ProbeOptions;
     use probe_rs::probe::list::{Accessibility, ProbeListItem};
+    use probe_rs_rpc::probe::CJtagActivation;
 
     pub(crate) fn to_wire_debug_probe_entry(item: ProbeListItem) -> DebugProbeEntry {
         let inaccessible = item.accessibility == Accessibility::PermissionDenied;
@@ -590,11 +591,27 @@ pub(crate) mod convert {
         }
     }
 
+    fn from_wire_cjtag_activation(activation: CJtagActivation) -> probe_rs::probe::CjtagActivation {
+        match activation {
+            CJtagActivation::Long => probe_rs::probe::CjtagActivation::Long,
+            CJtagActivation::Short => probe_rs::probe::CjtagActivation::Short,
+        }
+    }
+
+    fn to_wire_cjtag_activation(activation: probe_rs::probe::CjtagActivation) -> CJtagActivation {
+        match activation {
+            probe_rs::probe::CjtagActivation::Long => CJtagActivation::Long,
+            probe_rs::probe::CjtagActivation::Short => CJtagActivation::Short,
+        }
+    }
+
     pub(crate) fn from_wire_protocol(protocol: WireProtocol) -> probe_rs::probe::WireProtocol {
         match protocol {
             WireProtocol::Jtag => probe_rs::probe::WireProtocol::Jtag,
             WireProtocol::Swd => probe_rs::probe::WireProtocol::Swd,
-            WireProtocol::CJtag => probe_rs::probe::WireProtocol::CJtag,
+            WireProtocol::CJtag(activation) => {
+                probe_rs::probe::WireProtocol::CJtag(from_wire_cjtag_activation(activation))
+            }
         }
     }
 
@@ -602,7 +619,9 @@ pub(crate) mod convert {
         match protocol {
             probe_rs::probe::WireProtocol::Jtag => WireProtocol::Jtag,
             probe_rs::probe::WireProtocol::Swd => WireProtocol::Swd,
-            probe_rs::probe::WireProtocol::CJtag => WireProtocol::CJtag,
+            probe_rs::probe::WireProtocol::CJtag(activation) => {
+                WireProtocol::CJtag(to_wire_cjtag_activation(activation))
+            }
         }
     }
 

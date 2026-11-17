@@ -107,7 +107,7 @@ impl ArmDebugSequence for CC13xxCC26xx {
         interface.swj_sequence(&BitSequence::from_u64(51, 0x0007_FFFF_FFFF_FFFF))?;
 
         match interface.active_protocol() {
-            Some(WireProtocol::Jtag | WireProtocol::CJtag) => {
+            Some(WireProtocol::Jtag | WireProtocol::CJtag(_)) => {
                 let mut icepick = Icepick::new(interface, DefaultProtocol::CJtag)?;
                 icepick.select_tap(0, &self.name)?;
 

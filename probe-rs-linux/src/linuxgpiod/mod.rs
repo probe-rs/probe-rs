@@ -110,11 +110,10 @@ impl DebugProbe for LinuxGpiod {
     }
 
     fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError> {
-        match protocol {
-            WireProtocol::Swd => Ok(()),
-            WireProtocol::Jtag | WireProtocol::CJtag => {
-                Err(DebugProbeError::UnsupportedProtocol(protocol))
-            }
+        if protocol.is_jtag() {
+            Err(DebugProbeError::UnsupportedProtocol(protocol))
+        } else {
+            Ok(())
         }
     }
 
