@@ -25,18 +25,19 @@ pub fn apply_change(original: &str, base: &ChipFamily, updated: &ChipFamily) -> 
 /// [`serialize_to_yaml_string`]: it drops default values and sorts the memory regions.
 ///
 /// Values that parse the same, like `0x08000000` and `0x8000000`, keep their spelling.
-/// Fails if the edited text does not describe `family`.
+/// Fails if the edited text does not describe `family` with sorted regions and merged flash
+/// algorithms.
 pub fn reformat(original: &str, family: &ChipFamily) -> Result<String> {
     let reformatted = serialize_to_yaml_string(family)?;
     let edited = apply_yaml_change(original, original, &reformatted)?;
-    check_describes(&edited, family)?;
+    check_describes(&edited, &compact(family))?;
     Ok(edited)
 }
 
 fn check_describes(edited: &str, family: &ChipFamily) -> Result<()> {
     let edited_family: ChipFamily =
         yaml_serde::from_str(edited).context("The edited file does not load")?;
-    if yaml_serde::to_value(compact(&edited_family))? != yaml_serde::to_value(compact(family))? {
+    if yaml_serde::to_value(edited_family)? != yaml_serde::to_value(family)? {
         bail!("The edited file does not describe the target");
     }
     Ok(())
@@ -475,6 +476,49 @@ variants:
       end: 0x20004000
     cores: [main]
 "
+        );
+    }
+
+    #[test]
+    fn reformat_drops_default_stack_overflow_check() {
+        let original = "\
+name: Test Family
+variants:
+- name: Test Chip
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 0
+  memory_map:
+  - !Nvm
+    range:
+      start: 0x08000000
+      end: 0x08010000
+    cores:
+    - main
+  flash_algorithms:
+  - algo
+flash_algorithms:
+- name: algo
+  description: Test algorithm
+  pc_program_page: 0x1
+  flash_properties:
+    address_range:
+      start: 0x08000000
+      end: 0x08010000
+    page_size: 0x400
+    erased_byte_value: 0xff
+    program_page_timeout: 100
+    erase_sector_timeout: 1000
+  stack_overflow_check: true # The default
+";
+        let family: ChipFamily = yaml_serde::from_str(original).unwrap();
+
+        let reformatted = reformat(original, &family).unwrap();
+        assert_eq!(
+            reformatted,
+            original.replace("  stack_overflow_check: true # The default\n", "")
         );
     }
 
