@@ -4,3 +4,4 @@ pub mod fetch;
 pub mod flash_device;
 pub mod generate;
 pub mod parser;
+pub mod yaml_update;

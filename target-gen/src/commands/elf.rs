@@ -5,17 +5,12 @@ use probe_rs_target::{
     TargetDescriptionSource,
 };
 use std::{
-    borrow::Cow,
-    collections::HashMap,
-    fmt::Write,
-    fs::{File, OpenOptions},
-    io::Write as _,
-    ops::Range,
+    borrow::Cow, collections::HashMap, fmt::Write, fs::OpenOptions, io::Write as _, ops::Range,
     path::Path,
 };
 use yaml_serde::Value;
 
-use crate::parser::extract_flash_algo;
+use crate::{parser::extract_flash_algo, yaml_update};
 
 /// Prepare a target config based on an ELF file containing a flash algorithm.
 pub fn cmd_elf(
@@ -40,15 +35,16 @@ pub fn cmd_elf(
 
         let target_description_file = output.unwrap(); // Argument is checked by structopt, so we know its present.
 
-        let target_description = File::open(target_description_file).with_context(|| {
+        let original = std::fs::read_to_string(target_description_file).with_context(|| {
             format!(
                 "Unable to open target specification '{}'",
                 target_description_file.display()
             )
         })?;
 
-        let mut family: ChipFamily = yaml_serde::from_reader(target_description)
+        let mut family: ChipFamily = yaml_serde::from_str(&original)
             .context("Failed to deserialize target description file")?;
+        let original_family = family.clone();
 
         let Some(algorithm_to_update) = family
             .flash_algorithms
@@ -87,8 +83,14 @@ pub fn cmd_elf(
 
         family.flash_algorithms[algorithm_to_update] = algorithm;
 
-        let output_yaml = serialize_to_yaml_string(&family)
-            .context("Failed to serialize updated target description")?;
+        let output_yaml = match yaml_update::apply_change(&original, &original_family, &family) {
+            Ok(edited) => edited,
+            Err(error) => {
+                log::warn!("Rewriting the whole target description, comments are lost: {error:#}");
+                serialize_to_yaml_string(&family)
+                    .context("Failed to serialize updated target description")?
+            }
+        };
         std::fs::write(target_description_file, output_yaml)?;
     } else {
         // Create a complete target specification, with place holder values
@@ -172,7 +174,7 @@ pub fn cmd_elf(
     Ok(())
 }
 
-fn compact(family: &ChipFamily) -> ChipFamily {
+pub(crate) fn compact(family: &ChipFamily) -> ChipFamily {
     let mut out = family.clone();
 
     sort_memory_regions(&mut out);
@@ -306,7 +308,12 @@ fn compact_flash_algos(out: &mut ChipFamily) {
 /// - Fields that hold their default value (`null`, `[]`, `{}`, `false`, and a few others) are omitted.
 /// - `yaml_serde` serializes hex formatted integers as single quoted strings, e.g. '0x1234' ... we need to remove the single quotes so that it round-trips properly.
 pub fn serialize_to_yaml_string(family: &ChipFamily) -> Result<String> {
-    let mut value = yaml_serde::to_value(compact(family))?;
+    serialize_uncompacted(&compact(family))
+}
+
+/// Serializes `family` like [`serialize_to_yaml_string`], but keeps the order of its items.
+pub(crate) fn serialize_uncompacted(family: &ChipFamily) -> Result<String> {
+    let mut value = yaml_serde::to_value(family)?;
     omit_defaults(&mut value);
     let raw_yaml_string = yaml_serde::to_string(&value)?;
 

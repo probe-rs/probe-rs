@@ -50,6 +50,7 @@ tracing-subscriber = { version = "0.3.18", features = [
 ] }
 xshell = { version = "0.2", default-features = false }
 parse_int = "0.9"
+yaml-edit = { version = "0.3.6", default-features = false }
 
 [dev-dependencies]
 tempfile = "3.0"
