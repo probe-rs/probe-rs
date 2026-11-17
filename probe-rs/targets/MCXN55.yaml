@@ -56,8 +56,6 @@ variants:
       end: 0x4018000
     cores:
     - cm33_core0
-    access:
-      execute: true
   - !Nvm
     name: PROGRAM_FLASH_alias0
     range:
@@ -104,8 +102,6 @@ variants:
       end: 0x20060000
     cores:
     - cm33_core0
-    access:
-      execute: true
   - !Ram
     name: SRAMH
     range:
@@ -206,8 +202,6 @@ variants:
       end: 0x4018000
     cores:
     - cm33_core0
-    access:
-      execute: true
   - !Nvm
     name: PROGRAM_FLASH_alias0
     range:
@@ -254,8 +248,6 @@ variants:
       end: 0x20060000
     cores:
     - cm33_core0
-    access:
-      execute: true
   - !Ram
     name: SRAMH
     range:

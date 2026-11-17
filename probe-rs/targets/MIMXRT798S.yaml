@@ -76,6 +76,14 @@ variants:
     - cm33_core1
     access:
       write: false
+  - !Nvm
+    name: XSPI1 memory-mapped space
+    range:
+      start: 0x8000000
+      end: 0xc000000
+    cores:
+    - cm33_core0
+    - cm33_core1
   - !Ram
     name: SRAM_SHARED_alias1
     range:
@@ -136,6 +144,14 @@ variants:
     - cm33_core1
     access:
       write: false
+  - !Nvm
+    name: XSPI1 memory-mapped space (secure)
+    range:
+      start: 0x18000000
+      end: 0x1c000000
+    cores:
+    - cm33_core0
+    - cm33_core1
   - !Ram
     name: SRAM_SHARED_alias2
     range:
@@ -189,6 +205,14 @@ variants:
   # Declared as executable RAM rather than `!Generic` so the flash algorithms, whose
   # `load_address` of 0x30020008 falls in here, have somewhere to run. The pack asks for
   # 0x30020000 + 0x8000 via `RAMstart`/`RAMsize`.
+  - !Nvm
+    name: XSPI0 memory-mapped space
+    range:
+      start: 0x28000000
+      end: 0x2c000000
+    cores:
+    - cm33_core0
+    - cm33_core1
   - !Ram
     name: SRAM_SHARED_alias3
     range:
@@ -242,34 +266,10 @@ variants:
   # match the algorithms' `address_range` exactly: algorithm selection requires the
   # algorithm range to contain the whole region.
   - !Nvm
-    name: XSPI0 memory-mapped space
-    range:
-      start: 0x28000000
-      end: 0x2c000000
-    cores:
-    - cm33_core0
-    - cm33_core1
-  - !Nvm
     name: XSPI0 memory-mapped space (secure)
     range:
       start: 0x38000000
       end: 0x3c000000
-    cores:
-    - cm33_core0
-    - cm33_core1
-  - !Nvm
-    name: XSPI1 memory-mapped space
-    range:
-      start: 0x8000000
-      end: 0xc000000
-    cores:
-    - cm33_core0
-    - cm33_core1
-  - !Nvm
-    name: XSPI1 memory-mapped space (secure)
-    range:
-      start: 0x18000000
-      end: 0x1c000000
     cores:
     - cm33_core0
     - cm33_core1
@@ -351,6 +351,14 @@ variants:
     - cm33_core1
     access:
       write: false
+  - !Nvm
+    name: XSPI1 memory-mapped space
+    range:
+      start: 0x8000000
+      end: 0xc000000
+    cores:
+    - cm33_core0
+    - cm33_core1
   - !Ram
     name: SRAM_SHARED_alias1
     range:
@@ -411,6 +419,14 @@ variants:
     - cm33_core1
     access:
       write: false
+  - !Nvm
+    name: XSPI1 memory-mapped space (secure)
+    range:
+      start: 0x18000000
+      end: 0x1c000000
+    cores:
+    - cm33_core0
+    - cm33_core1
   - !Ram
     name: SRAM_SHARED_alias2
     range:
@@ -464,6 +480,14 @@ variants:
   # Declared as executable RAM rather than `!Generic` so the flash algorithms, whose
   # `load_address` of 0x30020008 falls in here, have somewhere to run. The pack asks for
   # 0x30020000 + 0x8000 via `RAMstart`/`RAMsize`.
+  - !Nvm
+    name: XSPI0 memory-mapped space
+    range:
+      start: 0x28000000
+      end: 0x2c000000
+    cores:
+    - cm33_core0
+    - cm33_core1
   - !Ram
     name: SRAM_SHARED_alias3
     range:
@@ -517,34 +541,10 @@ variants:
   # match the algorithms' `address_range` exactly: algorithm selection requires the
   # algorithm range to contain the whole region.
   - !Nvm
-    name: XSPI0 memory-mapped space
-    range:
-      start: 0x28000000
-      end: 0x2c000000
-    cores:
-    - cm33_core0
-    - cm33_core1
-  - !Nvm
     name: XSPI0 memory-mapped space (secure)
     range:
       start: 0x38000000
       end: 0x3c000000
-    cores:
-    - cm33_core0
-    - cm33_core1
-  - !Nvm
-    name: XSPI1 memory-mapped space
-    range:
-      start: 0x8000000
-      end: 0xc000000
-    cores:
-    - cm33_core0
-    - cm33_core1
-  - !Nvm
-    name: XSPI1 memory-mapped space (secure)
-    range:
-      start: 0x18000000
-      end: 0x1c000000
     cores:
     - cm33_core0
     - cm33_core1
@@ -626,6 +626,14 @@ variants:
     - cm33_core1
     access:
       write: false
+  - !Nvm
+    name: XSPI1 memory-mapped space
+    range:
+      start: 0x8000000
+      end: 0xc000000
+    cores:
+    - cm33_core0
+    - cm33_core1
   - !Ram
     name: SRAM_SHARED_alias1
     range:
@@ -686,6 +694,14 @@ variants:
     - cm33_core1
     access:
       write: false
+  - !Nvm
+    name: XSPI1 memory-mapped space (secure)
+    range:
+      start: 0x18000000
+      end: 0x1c000000
+    cores:
+    - cm33_core0
+    - cm33_core1
   - !Ram
     name: SRAM_SHARED_alias2
     range:
@@ -739,6 +755,14 @@ variants:
   # Declared as executable RAM rather than `!Generic` so the flash algorithms, whose
   # `load_address` of 0x30020008 falls in here, have somewhere to run. The pack asks for
   # 0x30020000 + 0x8000 via `RAMstart`/`RAMsize`.
+  - !Nvm
+    name: XSPI0 memory-mapped space
+    range:
+      start: 0x28000000
+      end: 0x2c000000
+    cores:
+    - cm33_core0
+    - cm33_core1
   - !Ram
     name: SRAM_SHARED_alias3
     range:
@@ -792,34 +816,10 @@ variants:
   # match the algorithms' `address_range` exactly: algorithm selection requires the
   # algorithm range to contain the whole region.
   - !Nvm
-    name: XSPI0 memory-mapped space
-    range:
-      start: 0x28000000
-      end: 0x2c000000
-    cores:
-    - cm33_core0
-    - cm33_core1
-  - !Nvm
     name: XSPI0 memory-mapped space (secure)
     range:
       start: 0x38000000
       end: 0x3c000000
-    cores:
-    - cm33_core0
-    - cm33_core1
-  - !Nvm
-    name: XSPI1 memory-mapped space
-    range:
-      start: 0x8000000
-      end: 0xc000000
-    cores:
-    - cm33_core0
-    - cm33_core1
-  - !Nvm
-    name: XSPI1 memory-mapped space (secure)
-    range:
-      start: 0x18000000
-      end: 0x1c000000
     cores:
     - cm33_core0
     - cm33_core1

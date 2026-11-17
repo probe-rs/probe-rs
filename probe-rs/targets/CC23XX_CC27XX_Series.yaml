@@ -72,7 +72,6 @@ variants:
     cores:
     - main
     access:
-      boot: false
       execute: false
   - !Nvm
     range:
@@ -81,7 +80,6 @@ variants:
     cores:
     - main
     access:
-      boot: false
       execute: false
   flash_algorithms:
   - cc27xx-flash
@@ -114,7 +112,6 @@ variants:
     cores:
     - main
     access:
-      boot: false
       execute: false
   - !Nvm
     range:
@@ -123,7 +120,6 @@ variants:
     cores:
     - main
     access:
-      boot: false
       execute: false
   flash_algorithms:
   - cc27xx-flash

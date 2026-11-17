@@ -75,4 +75,3 @@ variants:
     - core0
     memory_ports:
     - ahb-ap
-  jtag:

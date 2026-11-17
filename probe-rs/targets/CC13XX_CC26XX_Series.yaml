@@ -8,7 +8,9 @@ chip_detection:
 - !TiIcepick
   icepick_id: 0x0b99a02f
   variants:
-  - target: CC2650F128
+  - mask: 0x0
+    value: 0x0
+    target: CC2650F128
 - !TiIcepick
   icepick_id: 0x0bb4102f
   variants:

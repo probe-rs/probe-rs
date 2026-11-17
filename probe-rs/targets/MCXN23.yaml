@@ -52,8 +52,6 @@ variants:
       end: 0x4008000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: PROGRAM_FLASH_alias0
     range:
@@ -100,8 +98,6 @@ variants:
       end: 0x20020000
     cores:
     - main
-    access:
-      execute: true
   - !Ram
     name: SRAM_alias
     range:
@@ -162,8 +158,6 @@ variants:
       end: 0x4018000
     cores:
     - main
-    access:
-      execute: true
   - !Nvm
     name: PROGRAM_FLASH_alias0
     range:
@@ -210,8 +204,6 @@ variants:
       end: 0x20038000
     cores:
     - main
-    access:
-      execute: true
   - !Ram
     name: SRAM_alias
     range:

@@ -10,6 +10,13 @@ variants:
     core_access_options: !Arm
       ap: !v1 3
   memory_map:
+  - !Nvm
+    name: FlexSPI2
+    range:
+      start: 0x4000000
+      end: 0x5000000
+    cores:
+    - cm33
   - !Ram
     name: ITCM
     range:
@@ -46,13 +53,6 @@ variants:
     range:
       start: 0x28000000
       end: 0x29000000
-    cores:
-    - cm33
-  - !Nvm
-    name: FlexSPI2
-    range:
-      start: 0x4000000
-      end: 0x5000000
     cores:
     - cm33
   flash_algorithms:
