@@ -176,8 +176,36 @@ fn compact(family: &ChipFamily) -> ChipFamily {
 
     sort_memory_regions(&mut out);
     compact_flash_algos(&mut out);
+    region_with_algorithm_to_nvm(&mut out);
 
     out
+}
+
+fn region_with_algorithm_to_nvm(out: &mut ChipFamily) {
+    for variant in &mut out.variants {
+        for region in variant.memory_map.iter_mut() {
+            if let MemoryRegion::Generic(generic_region) = region {
+                let has_algo = out.flash_algorithms.iter().any(|algo| {
+                    algo.flash_properties
+                        .address_range
+                        .contains_range(&generic_region.range)
+                });
+
+                if !has_algo {
+                    continue;
+                }
+
+                *region = MemoryRegion::Nvm(NvmRegion {
+                    name: generic_region.name.clone(),
+                    range: generic_region.range.clone(),
+                    cores: generic_region.cores.clone(),
+                    memory_ports: generic_region.memory_ports.clone(),
+                    is_alias: false,
+                    access: generic_region.access,
+                });
+            }
+        }
+    }
 }
 
 fn sort_memory_regions(out: &mut ChipFamily) {
