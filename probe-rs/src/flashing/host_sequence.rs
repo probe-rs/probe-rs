@@ -64,6 +64,13 @@ pub trait DebugFlashSequence: Send + Sync + Debug {
         Ok(true)
     }
 
+    /// Whether `region` may be programmed through this sequence.
+    ///
+    /// Unsupported regions use target-side flash algorithms.
+    fn supports_region(&self, _region: &NvmRegion) -> bool {
+        true
+    }
+
     /// Called before erase/program/verify operations begin.
     ///
     /// Use this to enter a required programming mode or, for external-toolbox devices,

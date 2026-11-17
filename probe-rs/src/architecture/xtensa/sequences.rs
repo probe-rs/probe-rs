@@ -72,7 +72,10 @@ pub trait XtensaDebugSequence: Send + Sync + Debug {
     ///
     /// Override this to enable host-side flashing for Xtensa targets.
     /// The default returns `None`.
-    fn debug_flash_sequence(&self) -> Option<Arc<dyn DebugFlashSequence>> {
+    fn debug_flash_sequence(
+        &self,
+        _session: &mut crate::Session,
+    ) -> Option<Arc<dyn DebugFlashSequence>> {
         None
     }
 
