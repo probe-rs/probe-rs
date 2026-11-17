@@ -26,7 +26,7 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
+  - !Nvm
     name: ConfigROM
     range:
       start: 0x100a100
@@ -36,7 +36,7 @@ variants:
     access:
       write: false
       execute: false
-  - !Generic
+  - !Nvm
     name: DataFlash
     range:
       start: 0x8000000
@@ -74,7 +74,7 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
+  - !Nvm
     name: ConfigROM
     range:
       start: 0x100a100
@@ -84,7 +84,7 @@ variants:
     access:
       write: false
       execute: false
-  - !Generic
+  - !Nvm
     name: DataFlash
     range:
       start: 0x8000000

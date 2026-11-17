@@ -45,7 +45,7 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
+  - !Nvm
     name: Config
     range:
       start: 0x2c9f040
@@ -56,7 +56,7 @@ variants:
     access:
       write: false
       execute: false
-  - !Generic
+  - !Nvm
     name: OTP_Config
     range:
       start: 0x2e07600
@@ -67,7 +67,7 @@ variants:
     access:
       write: false
       execute: false
-  - !Generic
+  - !Nvm
     name: SiP_Flash
     range:
       start: 0x8000000
@@ -144,7 +144,7 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
+  - !Nvm
     name: Config
     range:
       start: 0x2c9f040
@@ -155,7 +155,7 @@ variants:
     access:
       write: false
       execute: false
-  - !Generic
+  - !Nvm
     name: OTP_Config
     range:
       start: 0x2e07600
@@ -243,7 +243,7 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
+  - !Nvm
     name: Config
     range:
       start: 0x2c9f040
@@ -254,7 +254,7 @@ variants:
     access:
       write: false
       execute: false
-  - !Generic
+  - !Nvm
     name: OTP_Config
     range:
       start: 0x2e07600
@@ -265,7 +265,7 @@ variants:
     access:
       write: false
       execute: false
-  - !Generic
+  - !Nvm
     name: SiP_Flash
     range:
       start: 0x8000000
@@ -342,7 +342,7 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
+  - !Nvm
     name: Config
     range:
       start: 0x2c9f040
@@ -353,7 +353,7 @@ variants:
     access:
       write: false
       execute: false
-  - !Generic
+  - !Nvm
     name: OTP_Config
     range:
       start: 0x2e07600
@@ -429,7 +429,7 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
+  - !Nvm
     name: Config
     range:
       start: 0x2c9f040
@@ -439,7 +439,7 @@ variants:
     access:
       write: false
       execute: false
-  - !Generic
+  - !Nvm
     name: OTP_Config
     range:
       start: 0x2e07600
@@ -493,7 +493,7 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
+  - !Nvm
     name: Config
     range:
       start: 0x2c9f040
@@ -503,7 +503,7 @@ variants:
     access:
       write: false
       execute: false
-  - !Generic
+  - !Nvm
     name: OTP_Config
     range:
       start: 0x2e07600
@@ -557,7 +557,7 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
+  - !Nvm
     name: Config
     range:
       start: 0x2c9f040
@@ -567,7 +567,7 @@ variants:
     access:
       write: false
       execute: false
-  - !Generic
+  - !Nvm
     name: OTP_Config
     range:
       start: 0x2e07600
@@ -621,7 +621,7 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
+  - !Nvm
     name: Config
     range:
       start: 0x2c9f040
@@ -631,7 +631,7 @@ variants:
     access:
       write: false
       execute: false
-  - !Generic
+  - !Nvm
     name: OTP_Config
     range:
       start: 0x2e07600
@@ -697,7 +697,7 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
+  - !Nvm
     name: Config
     range:
       start: 0x2c9f040
@@ -708,7 +708,7 @@ variants:
     access:
       write: false
       execute: false
-  - !Generic
+  - !Nvm
     name: OTP_Config
     range:
       start: 0x2e07600
@@ -785,7 +785,7 @@ variants:
     access:
       write: false
       boot: true
-  - !Generic
+  - !Nvm
     name: Config
     range:
       start: 0x2c9f040
@@ -796,7 +796,7 @@ variants:
     access:
       write: false
       execute: false
-  - !Generic
+  - !Nvm
     name: OTP_Config
     range:
       start: 0x2e07600
@@ -851,7 +851,6 @@ flash_algorithms:
   pc_verify: 0x1089
   pc_blank_check: 0xa9
   data_section_offset: 0x1248
-  rtt_poll_interval: 0
   flash_properties:
     address_range:
       start: 0x2000000
@@ -876,7 +875,6 @@ flash_algorithms:
   pc_verify: 0xb29
   pc_blank_check: 0xa9
   data_section_offset: 0xce8
-  rtt_poll_interval: 0
   flash_properties:
     address_range:
       start: 0x2c9f040
@@ -901,7 +899,6 @@ flash_algorithms:
   pc_verify: 0xb29
   pc_blank_check: 0xa9
   data_section_offset: 0xce8
-  rtt_poll_interval: 0
   flash_properties:
     address_range:
       start: 0x2e07600
@@ -926,7 +923,6 @@ flash_algorithms:
   pc_verify: 0x1561
   pc_blank_check: 0x31
   data_section_offset: 0x19f0
-  rtt_poll_interval: 0
   flash_properties:
     address_range:
       start: 0x8000000
@@ -951,7 +947,6 @@ flash_algorithms:
   pc_verify: 0x1119
   pc_blank_check: 0xa9
   data_section_offset: 0x12d8
-  rtt_poll_interval: 0
   flash_properties:
     address_range:
       start: 0x2000000

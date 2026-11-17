@@ -485,6 +485,14 @@ impl MemoryRegion {
     pub fn is_nvm(&self) -> bool {
         matches!(self, Self::Nvm(..))
     }
+
+    /// Returns `true` if the memory region is [`Generic`].
+    ///
+    /// [`Generic`]: MemoryRegion::Generic
+    #[must_use]
+    pub fn is_generic(&self) -> bool {
+        matches!(self, Self::Generic(..))
+    }
 }
 
 #[cfg(test)]
