@@ -212,6 +212,8 @@ pub struct ProgressBarGroup {
     message: String,
     bars: Vec<ProgressBar>,
     selected: usize,
+    /// Whether the selected bar received its `Started` event.
+    started: bool,
 }
 
 impl ProgressBarGroup {
@@ -220,6 +222,7 @@ impl ProgressBarGroup {
             message,
             bars: vec![],
             selected: 0,
+            started: false,
         }
     }
 
@@ -274,6 +277,12 @@ impl ProgressBarGroup {
 
     pub fn inc(&mut self, size: u64) {
         if let Some(bar) = self.bars.get(self.selected) {
+            if !self.started {
+                // Progress before `Started` is skipped work. Leave it out of the bar, so that the
+                // bar shows the bytes and the speed of the work that runs.
+                bar.dec_length(size);
+                return;
+            }
             bar.set_style(Self::active(bar.length().is_some()));
             bar.inc(size);
         }
@@ -288,6 +297,11 @@ impl ProgressBarGroup {
 
     pub fn finish(&mut self) {
         if let Some(bar) = self.bars.get(self.selected) {
+            if bar.length() == Some(0) {
+                bar.finish_and_clear();
+                self.next();
+                return;
+            }
             bar.set_style(Self::finished(bar.length().is_some()));
             if let Some(length) = bar.length() {
                 bar.inc(length.saturating_sub(bar.position()));
@@ -299,9 +313,11 @@ impl ProgressBarGroup {
 
     pub fn next(&mut self) {
         self.selected += 1;
+        self.started = false;
     }
 
     pub fn mark_start_now(&mut self) {
+        self.started = true;
         if let Some(bar) = self.bars.get(self.selected) {
             bar.set_style(Self::active(bar.length().is_some()));
             bar.reset_elapsed();
@@ -368,5 +384,63 @@ impl Drop for CliProgressBars {
     fn drop(&mut self) {
         // If we don't do this, the progress bars disappear.
         logging::clear_progress_bar();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use indicatif::ProgressDrawTarget;
+
+    fn group_with_bar(length: u64) -> (ProgressBarGroup, ProgressBar) {
+        let bar = ProgressBar::with_draw_target(Some(length), ProgressDrawTarget::hidden());
+        let mut group = ProgressBarGroup::new("Erasing".to_string());
+        group.add(bar.clone());
+        (group, bar)
+    }
+
+    #[test]
+    fn progress_before_start_shrinks_the_bar() {
+        let (mut group, bar) = group_with_bar(100);
+
+        group.inc(40);
+        group.mark_start_now();
+        group.inc(60);
+        group.finish();
+
+        assert_eq!(bar.length(), Some(60));
+        assert_eq!(bar.position(), 60);
+        assert!(bar.is_finished());
+    }
+
+    #[test]
+    fn fully_skipped_bar_is_cleared() {
+        let (mut group, bar) = group_with_bar(100);
+
+        group.inc(100);
+        group.mark_start_now();
+        group.finish();
+
+        assert_eq!(bar.length(), Some(0));
+        assert_eq!(bar.position(), 0);
+        assert!(bar.is_finished());
+    }
+
+    #[test]
+    fn next_bar_waits_for_its_own_start() {
+        let mut group = ProgressBarGroup::new("Erasing".to_string());
+        let first = ProgressBar::with_draw_target(Some(100), ProgressDrawTarget::hidden());
+        let second = ProgressBar::with_draw_target(Some(100), ProgressDrawTarget::hidden());
+        group.add(first.clone());
+        group.add(second.clone());
+
+        group.mark_start_now();
+        group.inc(100);
+        group.finish();
+        group.inc(30);
+
+        assert_eq!(first.position(), 100);
+        assert_eq!(second.length(), Some(70));
+        assert_eq!(second.position(), 0);
     }
 }
