@@ -4,7 +4,6 @@
 
 use std::any::Any;
 
-use anyhow::anyhow;
 use jep106::JEP106Code;
 use postcard_rpc::header::{VarHeader, VarSeq};
 use probe_rs::{
@@ -257,17 +256,9 @@ async fn try_show_info(
                         break;
                     }
                 }
-                (probe_moved, Err(e)) => {
+                (probe_moved, Err(error)) => {
                     probe = probe_moved;
-
-                    publish_event(
-                        ctx,
-                        &InfoEvent::ArmError {
-                            dp_addr: convert::to_wire_dp_address(address),
-                            error: format!("{e:?}"),
-                        },
-                    )
-                    .await?;
+                    publish_arm_error(ctx, address, error).await?;
                 }
             }
         }
@@ -463,18 +454,27 @@ async fn show_arm_tap_info(ctx: &mut RpcContext, probe: Probe) -> anyhow::Result
 
     let address = dp::DpAddress::Default;
     let (probe, result) = try_show_arm_dp_info(ctx, probe, address, false).await;
-    if let Err(e) = result {
-        publish_event(
-            ctx,
-            &InfoEvent::ArmError {
-                dp_addr: convert::to_wire_dp_address(address),
-                error: format!("{e:?}"),
-            },
-        )
-        .await?;
+    if let Err(error) = result {
+        publish_arm_error(ctx, address, error).await?;
     }
 
     Ok(probe)
+}
+
+async fn publish_arm_error(
+    ctx: &mut RpcContext,
+    address: dp::DpAddress,
+    error: ArmDpError,
+) -> anyhow::Result<()> {
+    publish_event(
+        ctx,
+        &InfoEvent::ArmError {
+            dp_addr: convert::to_wire_dp_address(address),
+            error: format!("{:?}", error.error),
+            dp_found: error.dp_found,
+        },
+    )
+    .await
 }
 
 /// Shows the RISC-V debug module of the selected TAP. Returns `false` when the TAP is not a RISC-V
@@ -698,38 +698,65 @@ async fn try_show_arm_dp_info(
     probe: Probe,
     dp_address: dp::DpAddress,
     announce_dp: bool,
-) -> (Probe, anyhow::Result<dp::DebugPortVersion>) {
+) -> (Probe, Result<dp::DebugPortVersion, ArmDpError>) {
     tracing::debug!("Trying to show ARM chip information");
 
-    let mut interface = match probe
-        .try_into_arm_debug_interface(DefaultArmSequence::create())
-        .map_err(|(iface, e)| (iface, anyhow!(e)))
-    {
+    let mut interface = match probe.try_into_arm_debug_interface(DefaultArmSequence::create()) {
         Ok(interface) => interface,
-        Err((probe, e)) => return (probe, Err(e)),
+        Err((probe, e)) => return (probe, Err(ArmDpError::not_found(e))),
     };
 
     if let Err(err) = interface.select_debug_port(dp_address) {
-        return (interface.close(), Err(anyhow!(err)));
+        return (interface.close(), Err(ArmDpError::not_found(err)));
     }
 
-    let res = show_arm_info(ctx, &mut *interface, dp_address, announce_dp).await;
+    let dp_info = match read_dp_id(ctx, &mut *interface, dp_address).await {
+        Ok(dp_info) => dp_info,
+        Err(error) => return (interface.close(), Err(ArmDpError::not_found(error))),
+    };
+
+    let res = async {
+        if announce_dp {
+            publish_event(
+                ctx,
+                &InfoEvent::Message(format!("ARM Chip with debug port {dp_address:x?}:")),
+            )
+            .await?;
+        }
+        show_arm_info(ctx, &mut *interface, dp_address, dp_info).await
+    }
+    .await
+    .map_err(|error| ArmDpError {
+        error,
+        dp_found: true,
+    });
     (interface.close(), res)
 }
 
-/// Try to show information about the ARM chip, connected to a DP at the given address.
-///
-/// Shows the DP address in a heading when `announce_dp` is set.
-///
-/// Returns the version of the DP.
-async fn show_arm_info(
+/// The error that stopped `info` from showing an ARM debug port.
+struct ArmDpError {
+    error: anyhow::Error,
+    /// The debug port answered before the error, so the chip is an ARM chip.
+    dp_found: bool,
+}
+
+impl ArmDpError {
+    fn not_found(error: impl Into<anyhow::Error>) -> Self {
+        Self {
+            error: error.into(),
+            dp_found: false,
+        }
+    }
+}
+
+/// Reads the ID of the DP at the given address.
+async fn read_dp_id(
     ctx: &mut RpcContext,
     interface: &mut dyn ArmDebugInterface,
     dp: dp::DpAddress,
-    announce_dp: bool,
-) -> anyhow::Result<dp::DebugPortVersion> {
-    let dp_info = match interface.read_raw_dp_register(dp, DPIDR::ADDRESS) {
-        Ok(dp_info) => dp::DebugPortId::from(DPIDR(dp_info)),
+) -> anyhow::Result<dp::DebugPortId> {
+    match interface.read_raw_dp_register(dp, DPIDR::ADDRESS) {
+        Ok(dp_info) => Ok(dp::DebugPortId::from(DPIDR(dp_info))),
         Err(ArmError::NotImplemented(_)) => {
             publish_event(ctx, &InfoEvent::Message(
                     "This probe does not implement DAP register access, ID'ing target via memory access instead.".to_string(),
@@ -739,17 +766,27 @@ async fn show_arm_info(
 
             // We aren't a real Debug Port, so SWD multidrop can't work.
             // Return a fake DPv0 DebugPortId to stop try_show_info from probing SWD multidrop after this.
-            dp::DebugPortId {
+            Ok(dp::DebugPortId {
                 revision: 0,
                 part_no: 0,
                 version: dp::DebugPortVersion::DPv0,
                 min_dp_support: dp::MinDpSupport::NotImplemented,
                 designer: jep106::JEP106Code::new(0, 0),
-            }
+            })
         }
-        Err(e) => return Err(e.into()),
-    };
+        Err(e) => Err(e.into()),
+    }
+}
 
+/// Try to show information about the ARM chip, connected to a DP at the given address.
+///
+/// Returns the version of the DP.
+async fn show_arm_info(
+    ctx: &mut RpcContext,
+    interface: &mut dyn ArmDebugInterface,
+    dp: dp::DpAddress,
+    dp_info: dp::DebugPortId,
+) -> anyhow::Result<dp::DebugPortVersion> {
     let dpinfo = if matches!(
         dp_info.version,
         dp::DebugPortVersion::DPv2 | dp::DebugPortVersion::DPv3
@@ -781,14 +818,6 @@ async fn show_arm_info(
         dp_info: dpinfo.clone(),
         aps: vec![],
     };
-
-    if announce_dp {
-        publish_event(
-            ctx,
-            &InfoEvent::Message(format!("ARM Chip with debug port {dp:x?}:")),
-        )
-        .await?;
-    }
 
     if dp_info.version != dp::DebugPortVersion::DPv3 {
         let access_ports = interface.access_ports(dp)?;

@@ -69,6 +69,8 @@ pub enum InfoEvent {
     ArmError {
         dp_addr: DpAddress,
         error: String,
+        /// The debug port answered before the error, so the chip is an ARM chip.
+        dp_found: bool,
     },
     Idcode {
         architecture: String,
