@@ -161,6 +161,8 @@ pub fn build_loader(
     format: impl ImageLoader,
     image_instruction_set: Option<InstructionSet>,
 ) -> Result<FlashLoader, FileDownloadError> {
+    session.detect_memory_map()?;
+
     // Create the flash loader
     let mut loader = session.target().flash_loader();
 

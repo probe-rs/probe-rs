@@ -5,6 +5,7 @@ use std::time::Duration;
 use espflash::flasher::{FlashData, FlashFrequency, FlashMode, FlashSettings, FlashSize};
 use espflash::image_format::idf::{IdfBootloaderFormat, check_idf_bootloader};
 use probe_rs::Session;
+use probe_rs::config::{MemoryRegion, Target};
 use probe_rs::flashing::{
     FileDownloadError, FlashError, FlashLoader, FlashProgress, Flasher, ImageFormat, ImageLoader,
     ImageReader, into_format_error,
@@ -41,6 +42,9 @@ pub enum EspIdfFormatError {
 
     /// Could not determine flash size.
     FlashSizeDetection(#[source] FlashError),
+
+    /// Could not read the chip revision.
+    ChipRevisionDetection(#[source] FlashError),
 }
 
 /// Loads an ELF file as an esp-idf application into the loader by converting the main application
@@ -67,6 +71,11 @@ impl ImageLoader for IdfLoader {
         session: &mut Session,
         file: &mut dyn ImageReader,
     ) -> Result<(), FileDownloadError> {
+        session
+            .detect_memory_map()
+            .map_err(EspIdfFormatError::FlashSizeDetection)
+            .map_err(|e| into_format_error("esp-idf", e))?;
+
         let target = session.target();
         let target_name = target
             .name
@@ -85,44 +94,26 @@ impl ImageLoader for IdfLoader {
             .unwrap()
             .reset_and_halt(Duration::from_millis(500))
             .map_err(FlashError::ResetAndHalt)
-            .map_err(EspIdfFormatError::FlashSizeDetection)
+            .map_err(EspIdfFormatError::ChipRevisionDetection)
             .map_err(|e| into_format_error("esp-idf", e))?;
 
         let mut chip_revision = 0;
-        let flash_size_result = algo
-            .run_verify(session, &mut FlashProgress::empty(), |flasher, _| {
-                if flasher.has_vendor_function("ChipRevision") {
-                    tracing::debug!("Reading chip revision.");
-                    let result = flasher.call_vendor_function("ChipRevision", [None; 4])?;
-                    if result < u16::MAX as u32 {
-                        chip_revision = result as u16;
-                    } else {
-                        tracing::warn!(
-                            "Unexpected chip revision value: {result}. Defaulting to 0."
-                        );
-                    }
+        algo.run_verify(session, &mut FlashProgress::empty(), |flasher, _| {
+            if flasher.has_vendor_function("ChipRevision") {
+                tracing::debug!("Reading chip revision.");
+                let result = flasher.call_vendor_function("ChipRevision", [None; 4])?;
+                if result < u16::MAX as u32 {
+                    chip_revision = result as u16;
+                } else {
+                    tracing::warn!("Unexpected chip revision value: {result}. Defaulting to 0.");
                 }
+            }
+            Ok(())
+        })
+        .map_err(EspIdfFormatError::ChipRevisionDetection)
+        .map_err(|e| into_format_error("esp-idf", e))?;
 
-                tracing::debug!("Reading flash size.");
-                flasher.call_vendor_function("FlashSize", [None; 4])
-            })
-            .map_err(EspIdfFormatError::FlashSizeDetection)
-            .map_err(|e| into_format_error("esp-idf", e))?;
-
-        let flash_size = match flash_size_result {
-            0x40000 => Some(FlashSize::_256Kb),
-            0x80000 => Some(FlashSize::_512Kb),
-            0x100000 => Some(FlashSize::_1Mb),
-            0x200000 => Some(FlashSize::_2Mb),
-            0x400000 => Some(FlashSize::_4Mb),
-            0x800000 => Some(FlashSize::_8Mb),
-            0x1000000 => Some(FlashSize::_16Mb),
-            0x2000000 => Some(FlashSize::_32Mb),
-            0x4000000 => Some(FlashSize::_64Mb),
-            0x8000000 => Some(FlashSize::_128Mb),
-            0x10000000 => Some(FlashSize::_256Mb),
-            _ => None,
-        };
+        let flash_size = flash_size(session.target());
 
         tracing::info!("Detected flash size: {:?}", flash_size);
 
@@ -169,6 +160,31 @@ impl ImageLoader for IdfLoader {
         }
 
         Ok(())
+    }
+}
+
+/// Returns the size of the target's flash region, if the image header can express it.
+fn flash_size(target: &Target) -> Option<FlashSize> {
+    let region_size = target
+        .memory_map
+        .iter()
+        .filter_map(MemoryRegion::as_nvm_region)
+        .find(|region| !region.is_alias)
+        .map_or(0, |region| region.range.end - region.range.start);
+
+    match region_size {
+        0x40000 => Some(FlashSize::_256Kb),
+        0x80000 => Some(FlashSize::_512Kb),
+        0x100000 => Some(FlashSize::_1Mb),
+        0x200000 => Some(FlashSize::_2Mb),
+        0x400000 => Some(FlashSize::_4Mb),
+        0x800000 => Some(FlashSize::_8Mb),
+        0x1000000 => Some(FlashSize::_16Mb),
+        0x2000000 => Some(FlashSize::_32Mb),
+        0x4000000 => Some(FlashSize::_64Mb),
+        0x8000000 => Some(FlashSize::_128Mb),
+        0x10000000 => Some(FlashSize::_256Mb),
+        _ => None,
     }
 }
 
