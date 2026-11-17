@@ -305,7 +305,7 @@ impl ArmDebugSequence for TMS570 {
         ensure_ntrst(interface, true)?;
 
         match interface.active_protocol() {
-            Some(WireProtocol::Jtag | WireProtocol::CJtag) => {
+            Some(WireProtocol::Jtag | WireProtocol::CJtag(_)) => {
                 let mut icepick = Icepick::new(interface, DefaultProtocol::Jtag)?;
                 icepick.select_tap(TMS570_TAP_INDEX, "TMS570")?;
 

@@ -27,7 +27,7 @@ use crate::{
     core::{Architecture, CombinedCoreState},
     memory_port::MemoryAccessPort,
     probe::{
-        AttachMethod, BitSequence, DebugProbe, DebugProbeError, JtagOptions, Probe,
+        AttachMethod, BitSequence, CjtagActivation, DebugProbe, DebugProbeError, Probe,
         ProbeCreationError, WireProtocol, list::Lister,
     },
 };
@@ -462,11 +462,10 @@ impl Session {
 
             match jtag.scan_mode {
                 ScanMode::Oscan1 => {
-                    probe.select_protocol(WireProtocol::CJtag)?;
+                    probe.select_protocol(WireProtocol::CJtag(CjtagActivation::Long))?;
                 }
                 ScanMode::Oscan1Short => {
-                    probe.select_protocol(WireProtocol::CJtag)?;
-                    probe.set_jtag_options(JtagOptions { short_form: true })?;
+                    probe.select_protocol(WireProtocol::CJtag(CjtagActivation::Short))?;
                 }
                 _ => {}
             }

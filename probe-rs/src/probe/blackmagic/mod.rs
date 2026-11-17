@@ -1292,7 +1292,7 @@ impl DebugProbe for BlackMagicProbe {
             WireProtocol::Swd => {
                 self.command(RemoteCommand::SwdInit)?;
             }
-            WireProtocol::CJtag => return Err(DebugProbeError::UnsupportedProtocol(protocol)),
+            WireProtocol::CJtag(_) => return Err(DebugProbeError::UnsupportedProtocol(protocol)),
         }
         self.protocol = Some(protocol);
         Ok(())

@@ -32,7 +32,7 @@ use probe_rs::{
             XtensaCommunicationInterface, XtensaDebugInterfaceState,
         },
     },
-    probe::{JtagOptions, Probe, wlink::WchLink},
+    probe::{Probe, wlink::WchLink},
 };
 use probe_rs_rpc::info::{
     ApInfo, ComponentTreeNode, DebugPortId, DebugPortInfo, DebugPortInfoNode, DebugPortVersion,
@@ -154,7 +154,6 @@ pub async fn target_info(
         probe,
         request.scan_chain.clone(),
         request.protocol,
-        request.short_form,
         probe_options.connect_under_reset(),
         request.target_sel,
     )
@@ -180,7 +179,6 @@ async fn try_show_info(
     mut probe: Probe,
     scan_chain: Vec<u8>,
     protocol: WireProtocol,
-    short_form: bool,
     connect_under_reset: bool,
     target_sel: Option<u32>,
 ) -> anyhow::Result<()> {
@@ -199,17 +197,13 @@ async fn try_show_info(
         chain.set_chain(&chain_elements);
     }
 
-    if protocol == WireProtocol::CJtag {
-        probe.set_jtag_options(JtagOptions { short_form })?;
-    }
-
     if connect_under_reset {
         probe.attach_to_unspecified_under_reset()?;
     } else {
         probe.attach_to_unspecified()?;
     }
 
-    if matches!(protocol, WireProtocol::Jtag | WireProtocol::CJtag)
+    if matches!(protocol, WireProtocol::Jtag | WireProtocol::CJtag(_))
         && let Some(taps) = read_jtag_scan_chain(&mut probe)
     {
         return show_jtag_scan_chain_info(ctx, probe, taps).await;
@@ -579,7 +573,9 @@ async fn try_read_riscv_info(
     probe: &mut Probe,
     protocol: WireProtocol,
 ) -> Result<(), anyhow::Error> {
-    if probe.has_riscv_interface() && matches!(protocol, WireProtocol::Jtag | WireProtocol::CJtag) {
+    if probe.has_riscv_interface()
+        && matches!(protocol, WireProtocol::Jtag | WireProtocol::CJtag(_))
+    {
         tracing::debug!("Trying to show RISC-V chip information");
 
         // WCH-Link probes don't expose a real JTAG IDCODE; report the chip
@@ -1127,25 +1123,19 @@ pub(crate) mod convert {
         DebugPortId, DebugPortVersion, DpAddress, MinDpSupport, RiscvDebugModuleVersion,
         TargetInfoRequest,
     };
-    use crate::rpc::functions::chip::convert::to_wire_jep106_code;
     use crate::rpc::functions::probe::convert::from_wire_debug_probe_selector;
-    use crate::util::common_options::ProbeOptions;
-    use probe_rs::{
-        architecture::{arm::dp, riscv::communication_interface::DebugModuleVersion},
-        probe::WireProtocol as ProbeRsWireProtocol,
+    use crate::rpc::functions::{
+        chip::convert::to_wire_jep106_code, probe::convert::from_wire_protocol,
     };
-    use probe_rs_rpc::probe::WireProtocol;
+    use crate::util::common_options::ProbeOptions;
+    use probe_rs::architecture::{arm::dp, riscv::communication_interface::DebugModuleVersion};
 
     impl From<&TargetInfoRequest> for ProbeOptions {
         fn from(request: &TargetInfoRequest) -> Self {
             ProbeOptions {
                 chip: None,
                 chip_description_path: None,
-                protocol: match request.protocol {
-                    WireProtocol::Jtag => Some(ProbeRsWireProtocol::Jtag),
-                    WireProtocol::Swd => Some(ProbeRsWireProtocol::Swd),
-                    WireProtocol::CJtag => Some(ProbeRsWireProtocol::CJtag),
-                },
+                protocol: Some(from_wire_protocol(request.protocol)),
                 non_interactive: true,
                 probe: Some(from_wire_debug_probe_selector(request.probe.selector())),
                 speed: request.speed,
@@ -1154,7 +1144,6 @@ pub(crate) mod convert {
                 allow_erase_all: false,
                 attach_timeout: None,
                 target_serial: false,
-                short_form: request.short_form,
             }
         }
     }

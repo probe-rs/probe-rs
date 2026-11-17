@@ -21,7 +21,6 @@ use crate::{
         sequences::{ArmDebugSequence, ArmDebugSequenceError, DefaultArmSequence},
     },
     flashing::FlashCompare,
-    probe::WireProtocol,
 };
 
 use super::mcx_verify::McxMisrCompare;
@@ -517,31 +516,28 @@ impl ArmDebugSequence for MCX {
         }
 
         if let Some(protocol) = interface.active_wire_protocol() {
-            match protocol {
-                WireProtocol::Jtag | WireProtocol::CJtag => {
-                    let mut ctrl = Ctrl(0);
-                    ctrl.set_csyspwrupreq(true);
-                    ctrl.set_cdbgpwrupreq(true);
-                    ctrl.set_mask_lane(0b1111);
-                    ctrl.set_bit(1, true);
-                    ctrl.set_bit(4, true);
-                    ctrl.set_bit(5, true);
-                    interface.write_dp_register(dp, ctrl)?;
-                }
-                WireProtocol::Swd => {
-                    let mut ctrl = Ctrl(0);
-                    ctrl.set_csyspwrupreq(true);
-                    ctrl.set_cdbgpwrupreq(true);
-                    ctrl.set_mask_lane(0b1111);
-                    interface.write_dp_register(dp, ctrl)?;
+            if protocol.is_jtag() {
+                let mut ctrl = Ctrl(0);
+                ctrl.set_csyspwrupreq(true);
+                ctrl.set_cdbgpwrupreq(true);
+                ctrl.set_mask_lane(0b1111);
+                ctrl.set_bit(1, true);
+                ctrl.set_bit(4, true);
+                ctrl.set_bit(5, true);
+                interface.write_dp_register(dp, ctrl)?;
+            } else {
+                let mut ctrl = Ctrl(0);
+                ctrl.set_csyspwrupreq(true);
+                ctrl.set_cdbgpwrupreq(true);
+                ctrl.set_mask_lane(0b1111);
+                interface.write_dp_register(dp, ctrl)?;
 
-                    let mut abort = Abort(0);
-                    abort.set_wderrclr(true);
-                    abort.set_orunerrclr(true);
-                    abort.set_stkcmpclr(true);
-                    abort.set_stkerrclr(true);
-                    interface.write_dp_register(dp, abort)?;
-                }
+                let mut abort = Abort(0);
+                abort.set_wderrclr(true);
+                abort.set_orunerrclr(true);
+                abort.set_stkcmpclr(true);
+                abort.set_stkerrclr(true);
+                interface.write_dp_register(dp, abort)?;
             }
         }
 

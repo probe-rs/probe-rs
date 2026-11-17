@@ -164,7 +164,6 @@ pub async fn attach_request(
         resume_target,
         wait_for_probe: probe_options.attach_timeout,
         target_serial: probe_options.target_serial,
-        short_form: probe_options.short_form,
     })
 }
 

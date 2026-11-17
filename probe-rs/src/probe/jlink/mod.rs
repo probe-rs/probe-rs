@@ -36,9 +36,7 @@ use crate::probe::jlink::bits::IteratorExt;
 use crate::probe::jlink::config::JlinkConfig;
 use crate::probe::jlink::connection::JlinkConnection;
 use crate::probe::usb_util::InterfaceExt;
-use crate::probe::{
-    BitbangJtag, JtagChain, JtagChainAccess, JtagChainState, JtagOptions, TapState,
-};
+use crate::probe::{BitbangJtag, JtagChain, JtagChainAccess, JtagChainState, TapState};
 use crate::{
     architecture::{
         arm::{ArmCommunicationInterface, SwoAccess, swo::SwoConfig},
@@ -208,7 +206,6 @@ impl ProbeFactory for JLinkFactory {
             reset_line: ResetLine::default(),
             force_legacy_jtag_command: false,
             cjtag: CJtag::new(),
-            short_form: false,
 
             jtag_tms_bits: vec![],
             jtag_tdi_bits: vec![],
@@ -433,7 +430,6 @@ pub struct JLink {
     swd_settings: SwdSettings,
 
     reset_line: ResetLine,
-    short_form: bool,
 }
 
 impl fmt::Debug for JLink {
@@ -712,7 +708,7 @@ impl JLink {
         match protocol {
             WireProtocol::Swd => Interface::Swd,
             WireProtocol::Jtag => Interface::Jtag,
-            WireProtocol::CJtag => Interface::CJtag,
+            WireProtocol::CJtag(_) => Interface::CJtag,
         }
     }
 
@@ -1101,12 +1097,6 @@ impl DebugProbe for JLink {
         Ok(())
     }
 
-    fn set_jtag_options(&mut self, jtag_options: JtagOptions) -> Result<(), DebugProbeError> {
-        self.short_form = jtag_options.short_form;
-
-        Ok(())
-    }
-
     fn active_protocol(&self) -> Option<WireProtocol> {
         Some(self.protocol)
     }
@@ -1188,7 +1178,7 @@ impl DebugProbe for JLink {
             self.set_speed(400)?;
         }
 
-        if self.protocol == WireProtocol::CJtag {
+        if self.protocol.is_cjtag() {
             self.cjtag_activate(false)?;
         }
 
@@ -1488,7 +1478,7 @@ impl TryFrom<Interface> for WireProtocol {
         match interface {
             Interface::Jtag => Ok(WireProtocol::Jtag),
             Interface::Swd => Ok(WireProtocol::Swd),
-            Interface::CJtag => Ok(WireProtocol::CJtag),
+            Interface::CJtag => Ok(WireProtocol::CJtag(super::CjtagActivation::Long)),
             unknown_interface => Err(JlinkError::UnknownInterface(unknown_interface)),
         }
     }

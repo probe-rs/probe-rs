@@ -107,6 +107,15 @@ pub enum AttachResult<T = Key<Session>> {
     },
 }
 
+/// Which  selection sequence to use when cJTAG is selected.
+#[derive(Debug, docsplay::Display, PartialEq, Eq, Clone, Copy, Serialize, Deserialize, Schema)]
+pub enum CJtagActivation {
+    /// Long-form sequence
+    Long,
+    /// Short-form sequence
+    Short,
+}
+
 #[derive(Debug, docsplay::Display, PartialEq, Eq, Clone, Copy, Serialize, Deserialize, Schema)]
 pub enum WireProtocol {
     /// JTAG
@@ -114,7 +123,7 @@ pub enum WireProtocol {
     /// SWD
     Swd,
     /// cJTAG (IEEE 1149.7 OScan1)
-    CJtag,
+    CJtag(CJtagActivation),
 }
 
 /// Describes the way a probe should be selected. See `probe_rs::probe::DebugProbeSelector`.
@@ -153,8 +162,6 @@ pub struct AttachRequest {
     pub wait_for_probe: Option<Duration>,
     /// Open the serial port to the target.
     pub target_serial: bool,
-    /// Whether to use the TAP.7 short-form selection sequence.
-    pub short_form: bool,
 }
 
 pub type AttachResponse = RpcResult<AttachResult>;

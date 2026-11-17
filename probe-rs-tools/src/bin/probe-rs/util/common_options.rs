@@ -11,8 +11,8 @@ use probe_rs::{
     config::{Registry, RegistryError, TargetSelector},
     flashing::{FileDownloadError, FlashError},
     probe::{
-        DebugProbeError, DebugProbeInfo, DebugProbeSelector, JtagOptions, Probe,
-        ProbeCreationError, WireProtocol,
+        DebugProbeError, DebugProbeInfo, DebugProbeSelector, Probe, ProbeCreationError,
+        WireProtocol,
         list::{Accessibility, Lister, default_probe_index},
     },
 };
@@ -206,10 +206,6 @@ pub struct ProbeOptions {
     #[arg(skip)]
     #[serde(skip)]
     pub target_serial: bool,
-
-    /// When cJTAG is selected use the short-form TAP.7 selection sequence.
-    #[arg(long)]
-    pub short_form: bool,
 }
 
 impl ProbeOptions {
@@ -403,16 +399,6 @@ impl<'r> LoadedProbeOptions<'r> {
             }
 
             tracing::info!("Protocol speed {} kHz", protocol_speed);
-        }
-
-        if self.0.short_form {
-            let options = JtagOptions { short_form: true };
-            probe.set_jtag_options(options).map_err(|error| {
-                OperationError::FailedToSelectJtagOptions {
-                    source: error,
-                    options,
-                }
-            })?;
         }
 
         Ok(probe)
@@ -650,12 +636,6 @@ pub enum OperationError {
         protocol: WireProtocol,
     },
 
-    #[error("Failed to set jtag options '{options:?}'.")]
-    FailedToSelectJtagOptions {
-        source: DebugProbeError,
-        options: JtagOptions,
-    },
-
     #[error("The protocol speed could not be set to '{speed}' kHz.")]
     FailedToSelectProtocolSpeed { source: DebugProbeError, speed: u32 },
 
@@ -768,7 +748,6 @@ mod tests {
             allow_erase_all: false,
             attach_timeout,
             target_serial: false,
-            short_form: false,
         }
     }
 

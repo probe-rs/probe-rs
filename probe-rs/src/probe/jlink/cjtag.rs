@@ -10,7 +10,7 @@
 //! CC2650.
 
 use super::{Command, JLink, JlinkError};
-use crate::probe::jtag::FullTapState;
+use crate::probe::{CjtagActivation, WireProtocol, jtag::FullTapState};
 
 // Parameters of the undocumented `CJTAG_CONFIG` command.
 
@@ -103,7 +103,7 @@ impl JLink {
             self.set_tms(false)?;
         }
 
-        if !self.short_form {
+        if self.protocol == WireProtocol::CJtag(CjtagActivation::Long) {
             self.jtag_io_raw(&ZEROS, &ZEROS, 32)?;
             self.cjtag_config(PARAM_CHECK_PACKET, 0)?;
             self.jtag_io_raw(&OAC, &ZEROS, 50)?;
