@@ -206,7 +206,11 @@ impl<'probe> Xdm<'probe> {
         Self { probe, state }
     }
 
-    fn tap_reset(&mut self) -> Result<(), XtensaError> {
+    /// Move the TAP to Test-Logic-Reset, then to Run-Test/Idle.
+    ///
+    /// Use this after an event outside of probe-rs's control, such as a system reset, leaves the
+    /// TAP in an unknown state.
+    pub fn tap_reset(&mut self) -> Result<(), XtensaError> {
         let mut batch = JtagBatch::new();
         self.probe.tap_reset(&mut batch);
         self.probe.run(batch).map(|_| ()).map_err(XtensaError::from)
