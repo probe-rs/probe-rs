@@ -13,6 +13,7 @@ use std::{
     ops::Range,
     path::Path,
 };
+use yaml_serde::Value;
 
 use crate::parser::extract_flash_algo;
 
@@ -175,9 +176,25 @@ fn compact(family: &ChipFamily) -> ChipFamily {
     let mut out = family.clone();
 
     sort_memory_regions(&mut out);
+    clear_default_memory_access(&mut out);
     compact_flash_algos(&mut out);
 
     out
+}
+
+fn clear_default_memory_access(out: &mut ChipFamily) {
+    for variant in &mut out.variants {
+        for region in &mut variant.memory_map {
+            let access = match region {
+                MemoryRegion::Ram(region) => &mut region.access,
+                MemoryRegion::Generic(region) => &mut region.access,
+                MemoryRegion::Nvm(region) => &mut region.access,
+            };
+            if *access == Some(MemoryAccess::default()) {
+                *access = None;
+            }
+        }
+    }
 }
 
 fn sort_memory_regions(out: &mut ChipFamily) {
@@ -286,47 +303,27 @@ fn compact_flash_algos(out: &mut ChipFamily) {
 }
 
 /// Some optimizations to improve the readability of the `yaml_serde` output:
-/// - If `Option<T>` is `None`, it is serialized as `null` ... we want to omit it.
-/// - If `Vec<T>` is empty, it is serialized as `[]` ... we want to omit it.
+/// - Fields that hold their default value (`null`, `[]`, `{}`, `false`, and a few others) are omitted.
 /// - `yaml_serde` serializes hex formatted integers as single quoted strings, e.g. '0x1234' ... we need to remove the single quotes so that it round-trips properly.
 pub fn serialize_to_yaml_string(family: &ChipFamily) -> Result<String> {
-    let family = compact(family);
-    let raw_yaml_string = yaml_serde::to_string(&family)?;
+    let mut value = yaml_serde::to_value(compact(family))?;
+    omit_defaults(&mut value);
+    let raw_yaml_string = yaml_serde::to_string(&value)?;
 
     let mut yaml_string = String::with_capacity(raw_yaml_string.len());
     for reader_line in raw_yaml_string.lines() {
-        let trimmed_line = reader_line.trim();
-        if reader_line.ends_with(": null")
-            || reader_line.ends_with(": []")
-            || reader_line.ends_with(": {}")
-            || reader_line.ends_with(": false")
-        {
-            // Some fields have default-looking, but significant values that we want to keep.
-            let keep_default = [
-                "rtt_scan_ranges: []",
-                "read: false",
-                "write: false",
-                "execute: false",
-                "stack_overflow_check: false",
-            ];
-            if !keep_default.contains(&trimmed_line) {
-                // Skip the line
-                continue;
+        // Write `!Tag {}` as `!Tag`.
+        let reader_line = match reader_line.strip_suffix(" {}") {
+            Some(tagged)
+                if tagged
+                    .rsplit(' ')
+                    .next()
+                    .is_some_and(|t| t.starts_with('!')) =>
+            {
+                tagged
             }
-        } else {
-            // Some fields have different default values than the type may indicate.
-            let trim_nondefault = [
-                "read: true",
-                "write: true",
-                "execute: true",
-                "stack_overflow_check: true",
-                "rtt_poll_interval: 20",
-            ];
-            if trim_nondefault.contains(&trimmed_line) {
-                // Skip the line
-                continue;
-            }
-        }
+            _ => reader_line,
+        };
 
         let mut reader_line = Cow::Borrowed(reader_line);
         if (reader_line.contains("'0x") || reader_line.contains("'0X"))
@@ -340,29 +337,34 @@ pub fn serialize_to_yaml_string(family: &ChipFamily) -> Result<String> {
         yaml_string.push('\n');
     }
 
-    // Second pass: remove empty `access:` objects
-    let mut output = String::with_capacity(yaml_string.len());
-    let mut lines = yaml_string.lines().peekable();
-    while let Some(line) = lines.next() {
-        if line.trim() == "access:" {
-            let Some(next) = lines.peek() else {
-                // No other lines, access is empty, skip it
-                continue;
-            };
+    Ok(yaml_string)
+}
 
-            let indent_level = line.find(|c: char| c != ' ').unwrap_or(0);
-            let next_indent_level = next.find(|c: char| c != ' ').unwrap_or(0);
-            if next_indent_level <= indent_level {
-                // Access is empty, skip it
-                continue;
-            }
-        }
-
-        output.push_str(line);
-        output.push('\n');
+fn omit_defaults(value: &mut Value) {
+    match value {
+        Value::Sequence(items) => items.iter_mut().for_each(omit_defaults),
+        Value::Mapping(fields) => fields.retain(|key, field| {
+            omit_defaults(field);
+            !key.as_str().is_some_and(|key| is_default(key, field))
+        }),
+        Value::Tagged(tagged) => omit_defaults(&mut tagged.value),
+        _ => {}
     }
+}
 
-    Ok(output)
+fn is_default(key: &str, value: &Value) -> bool {
+    // These fields default to `true`, or have no default.
+    let true_by_default = ["read", "write", "execute", "stack_overflow_check"];
+    match value {
+        Value::Null => true,
+        Value::Sequence(items) => items.is_empty() && key != "rtt_scan_ranges",
+        Value::Mapping(fields) => fields.is_empty() && key != "variants",
+        Value::Bool(false) => !true_by_default.contains(&key) && key != "double_precision",
+        Value::Bool(true) => true_by_default.contains(&key),
+        Value::Number(number) => key == "rtt_poll_interval" && number.as_u64() == Some(20),
+        Value::String(string) => key == "scan_mode" && string == "Jtag",
+        Value::Tagged(_) => false,
+    }
 }
 
 #[cfg(test)]
@@ -417,5 +419,33 @@ mod test {
         };
         let yaml_string = serialize_to_yaml_string(&family).unwrap();
         insta::assert_snapshot!("serialization_cleanup", yaml_string);
+    }
+
+    #[test]
+    fn serialize_to_yaml_string_round_trips_builtin_targets() {
+        let workspace = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
+        let mut failures = vec![];
+        for dir in ["probe-rs/targets", "probe-rs-espressif/targets"] {
+            for entry in std::fs::read_dir(workspace.join(dir)).unwrap() {
+                let path = entry.unwrap().path();
+                let yaml = std::fs::read_to_string(&path).unwrap();
+                let family: ChipFamily = yaml_serde::from_str(&yaml).unwrap();
+
+                let serialized = serialize_to_yaml_string(&family).unwrap();
+                let round_tripped = match yaml_serde::from_str::<ChipFamily>(&serialized) {
+                    Ok(round_tripped) => round_tripped,
+                    Err(error) => {
+                        failures.push(format!("{}: {error}", path.display()));
+                        continue;
+                    }
+                };
+
+                let expected = yaml_serde::to_value(compact(&family)).unwrap();
+                if yaml_serde::to_value(round_tripped).unwrap() != expected {
+                    failures.push(format!("{}: contents changed", path.display()));
+                }
+            }
+        }
+        assert!(failures.is_empty(), "{}", failures.join("\n"));
     }
 }
