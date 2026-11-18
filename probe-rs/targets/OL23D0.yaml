@@ -35,7 +35,7 @@ flash_algorithms:
   pc_init: 0x1b1
   pc_uninit: 0x211
   pc_program_page: 0x1cd
-  pc_erase_sector: 0x189
+  pc_erase_sector: 0x21f
   pc_erase_all: 0x185
   data_section_offset: 0x23c
   flash_properties:
@@ -47,7 +47,7 @@ flash_algorithms:
     program_page_timeout: 5000
     erase_sector_timeout: 5000
     sectors:
-    - size: 0x20000
+    - size: 0x200
       address: 0x0
   cores:
   - main
