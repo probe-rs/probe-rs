@@ -15,6 +15,7 @@ struct ExpectedMemoryOp {
     read: bool,
     address: u64,
     value: u32,
+    error: Option<ArmError>,
 }
 
 /// A memory interface that expects a list of 32-bit reads and writes, in order.
@@ -43,6 +44,7 @@ impl MockProbe {
             read: true,
             address: addr,
             value,
+            error: None,
         });
     }
 
@@ -51,6 +53,17 @@ impl MockProbe {
             read: false,
             address: addr,
             value,
+            error: None,
+        });
+    }
+
+    /// Expect a failed read or write, which may have reached the target.
+    pub fn expected_error(&mut self, address: u64, read: bool, error: ArmError) {
+        self.expected_ops.push(ExpectedMemoryOp {
+            read,
+            address,
+            value: 0,
+            error: Some(error),
         });
     }
 
@@ -94,6 +107,9 @@ impl MemoryInterface<ArmError> for MockProbe {
             self.address_to_reg_num(address)
         );
 
+        if let Some(error) = expected_op.error {
+            return Err(error);
+        }
         data[0] = expected_op.value;
 
         Ok(())
@@ -132,6 +148,9 @@ impl MemoryInterface<ArmError> for MockProbe {
             self.address_to_reg_num(address)
         );
 
+        if let Some(error) = expected_op.error {
+            return Err(error);
+        }
         assert_eq!(
             expected_op.value, data[0],
             "Write value mismatch Expected {:#X} Actual: {:#X}",
