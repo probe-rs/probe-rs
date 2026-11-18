@@ -342,6 +342,9 @@ fn handle_semihosting_impl(
     events: &mut Vec<WireSemihostingUiEvent>,
 ) -> Result<CoreStatus, probe_rs::Error> {
     match command {
+        SemihostingCommand::Open(request) if request.path_is_too_long() => {
+            tracing::warn!("Target wanted to open a file with a too long path. Continuing...");
+        }
         SemihostingCommand::Open(request) => {
             tracing::debug!("Semihosting request: open {request:?}");
             let path = request.path(core)?;
@@ -403,6 +406,7 @@ fn handle_semihosting_impl(
             tracing::debug!("Semihosting request: write {request:?}");
             let handle = request.file_handle();
             let bytes = request.read(core)?;
+            let not_written = request.bytes_to_write() - bytes.len() as u32;
 
             if let Some(file) = sh.handles.get(&handle) {
                 let data = if file.mode.ends_with('b') {
@@ -419,7 +423,7 @@ fn handle_semihosting_impl(
                 };
 
                 events.push(WireSemihostingUiEvent::RttOutput { handle, data });
-                request.write_status(core, 0)?;
+                request.write_status(core, not_written as i32)?;
             }
         }
         SemihostingCommand::Errno(request) => {
