@@ -27,7 +27,10 @@ pub struct GlasgowUsbDevice {
 
 impl GlasgowUsbDevice {
     pub fn new_from_selector(selector: &DebugProbeSelector) -> Result<Self, ProbeCreationError> {
-        let DebugProbeSelector::Usb(selector) = selector;
+        // Probes of this driver are selected by VID:PID; other selectors are for other drivers.
+        let DebugProbeSelector::Usb(selector) = selector else {
+            Err(ProbeCreationError::NotFound)?
+        };
         if selector.vendor_id != VID_QIHW && selector.product_id != PID_GLASGOW {
             Err(ProbeCreationError::NotFound)?
         }

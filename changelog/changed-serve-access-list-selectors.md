@@ -1,0 +1,1 @@
+The `allow` and `deny` lists of a `probe-rs serve` user are probe selectors: an entry covers each probe it would select, so `VID:PID` covers every serial number of that probe, and a list with an invalid entry is rejected when the config is read.

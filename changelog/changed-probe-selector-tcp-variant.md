@@ -1,0 +1,1 @@
+`DebugProbeSelector` and `ProbeTransport` have a `Tcp` variant, `tcp://DRIVER@ADDRESS` as a string, for probes reached over TCP. `DebugProbeSelector::matches` is removed, since a TCP selector matches no USB device: unwrap the `Usb` variant and use `UsbSelector::matches`.
