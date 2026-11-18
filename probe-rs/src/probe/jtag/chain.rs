@@ -426,18 +426,17 @@ impl<'p> JtagChain<'p> {
         for (idx, command) in writes.iter() {
             match command {
                 JtagCommand::WriteRegister(write) => {
-                    if ir_len == 0 {
+                    if write.inner.address > max_ir {
                         return Err(BatchExecutionError::new_from_debug_probe(
                             DebugProbeError::Other(format!(
-                                "Invalid instruction register access: {} (no TAP selected)",
+                                "Invalid instruction register access: {}",
                                 write.inner.address
                             )),
                             Results::new(),
                         ));
                     }
 
-                    let address = write.inner.address & max_ir;
-                    let ir = BitSequence::from_bytes(&address.to_le_bytes(), ir_len);
+                    let ir = BitSequence::from_bytes(&write.inner.address.to_le_bytes(), ir_len);
                     self.shift_ir(&mut batch, &ir);
                     let handle = self.exchange_dr(&mut batch, &write.inner.data);
                     self.run_test_idle(&mut batch, write.inner.idle_cycles);
