@@ -3173,10 +3173,8 @@ dependencies = [
 name = "probe-rs-rpc"
 version = "0.1.0"
 dependencies = [
- "clap",
  "docsplay",
  "futures-util",
- "parse_int",
  "postcard",
  "postcard-rpc",
  "postcard-schema",
