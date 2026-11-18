@@ -1175,7 +1175,16 @@ impl DebugProbe for JLink {
 
         // Set a default speed if not already set
         if self.speed_khz == 0 {
-            self.set_speed(400)?;
+            // Renesas OB-JLinks are capable of operating at 4000 kHz and do not have distinct VID/PIDs.
+            // For identification they return fw version strings like:
+            // J-Link OB-S124 compiled Feb 23 2017 17:01:55
+            // J-Link OB-RA4M2 compiled May  6 2026 16:18:23
+            let default_speed = match fw_version.split_once(" compiled ") {
+                Some(("J-Link OB-S124", _)) | Some(("J-Link OB-RA4M2", _)) => 4000,
+                _ => 400,
+            };
+
+            self.set_speed(default_speed)?;
         }
 
         if self.protocol.is_cjtag() {
