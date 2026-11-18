@@ -128,7 +128,8 @@ impl Ch347Device {
     /// Sends one command and returns its reply payload, which must be `reply_len` bytes.
     ///
     /// Reading exactly the expected length keeps a full-speed link from waiting for a
-    /// short packet that never comes.
+    /// short packet that never comes. The chip can split a reply over transfers, e.g. a full
+    /// 512 byte reply arrives as 510 and 2 bytes.
     pub(super) fn command(
         &mut self,
         command: u8,
@@ -137,15 +138,26 @@ impl Ch347Device {
     ) -> Result<Vec<u8>, DebugProbeError> {
         self.send(&frame(command, payload), TIMEOUT)?;
 
+        let framed = |reply: &[u8]| {
+            reply[0] == command
+                && usize::from(u16::from_le_bytes([reply[1], reply[2]])) == reply_len
+        };
         let mut reply = vec![0; HEADER_LEN + reply_len];
-        let len = self.read_transfer(&mut reply, TIMEOUT)?;
+        let mut len = 0;
+        while len < reply.len() {
+            match self.read_transfer(&mut reply[len..], TIMEOUT)? {
+                0 => break,
+                read => len += read,
+            }
+            // Only a reply with the expected header has more to come.
+            if len >= HEADER_LEN && !framed(&reply) {
+                break;
+            }
+        }
         reply.truncate(len);
         tracing::trace!("< {reply:02x?}");
 
-        let framed = len == HEADER_LEN + reply_len
-            && reply[0] == command
-            && usize::from(u16::from_le_bytes([reply[1], reply[2]])) == reply_len;
-        if !framed {
+        if len != HEADER_LEN + reply_len || !framed(&reply) {
             return Err(self.desynced(command, reply));
         }
         reply.drain(..HEADER_LEN);
@@ -236,6 +248,28 @@ mod tests {
 
     const D2: u8 = 0xD2;
     const D4: u8 = 0xD4;
+    const E8: u8 = 0xE8;
+
+    #[test]
+    fn command_reads_a_reply_split_over_transfers() {
+        let request = frame(E8, &[1]);
+        let reply = frame(E8, &[0xA; 509]);
+        let cases = [
+            // The chip sends a full packet as 510 and 2 bytes.
+            (vec![reply[..510].to_vec(), reply[510..].to_vec()], true),
+            // A timeout after the first transfer.
+            (vec![reply[..510].to_vec(), vec![]], false),
+        ];
+        for (transfers, good) in cases {
+            let (mut dev, script) =
+                scripted_transfers(CH347F_1_20, None, vec![(request.clone(), transfers)]);
+            assert_eq!(
+                dev.command(E8, &[1], 509).ok(),
+                good.then(|| vec![0xA; 509])
+            );
+            assert!(script.finished());
+        }
+    }
 
     #[test]
     fn round_reads_the_reply_stream_across_transfers_and_a_bad_one_poisons_the_device() {
