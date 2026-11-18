@@ -239,10 +239,12 @@ pub(crate) struct MonitoringOptions {
     /// File name to expose via semihosting. Values ending with a slash expose the whole directory.
     /// By using `target=host` arguments the names can differ between the host and the target.
     /// TCP and UNIX domain socket connections are possible by exposing files of the form
-    /// `tcp:hostname:port` or `unix:/some/path`. `file:/some/path` is valid for files too.
+    /// `tcp:hostname:port` or `unix:/some/path`, with an exact file name. `file:/some/path` is valid
+    /// for files too.
     /// If the target path starts with a `^` and ends with a `$` it's interpreted as a regular
     /// expression and captures are expanded in the host path (e.g. `--semihosting-file
-    /// "^/(\d).(\d)$=/path$1/file$2.txt"`).
+    /// "^/(\d).(\d)$=/path$1/file$2.txt"`). The host path must start with a directory.
+    /// The target can read and write what you expose, but it cannot leave an exposed directory.
     #[arg(long, help_heading = "SEMIHOSTING CONFIGURATION")]
     pub semihosting_file: Vec<String>,
 }
