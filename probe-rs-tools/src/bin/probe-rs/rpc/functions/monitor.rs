@@ -4,8 +4,7 @@ use std::time::{Duration, Instant};
 use crate::rpc::{
     ObjectStorageSlot, SharedTargetSerial,
     functions::{
-        MultiTopicPublisher, MultiTopicWriter, RpcContext, RpcSpawnContext, WireTxImpl,
-        core_ops::convert,
+        MultiTopicPublisher, MultiTopicWriter, RpcSpawnContext, WireTxImpl, core_ops::convert,
     },
     utils::{
         run_loop::{ReturnReason, RunLoop, RunLoopPoller, VectorCatchConfig},
@@ -22,7 +21,9 @@ use probe_rs_rpc::monitor::{
     ChannelInfo, MonitorExitReason, MonitorMode, MonitorRequest, RttEvent, SemihostingEvent,
     SemihostingExitError, SerialEvent, SerialWriteRequest, SerialWriteResponse,
 };
-use probe_rs_rpc::{MonitorEndpoint, RpcError, RttTopic, SemihostingTopic, SerialTopic};
+use probe_rs_rpc::{
+    MonitorEndpoint, RpcError, RttTopic, SemihostingTopic, SerialTopic, SerialWriteEndpoint,
+};
 use tokio::sync::mpsc::{self, error::SendError};
 
 fn prepare_monitor_mode(
@@ -329,10 +330,20 @@ fn forward_serial(serial: &SharedTargetSerial, stop: &AtomicBool, sender: &Monit
     }
 }
 
-/// Writes data to the serial port to the target.
+/// Writes data to the serial port to the target. A write can wait for the target, for example a
+/// halted one. It must not stop the other requests of the connection.
 pub async fn write_serial(
-    ctx: &mut RpcContext,
-    _header: VarHeader,
+    ctx: RpcSpawnContext,
+    header: VarHeader,
+    request: SerialWriteRequest,
+    sender: Sender<WireTxImpl>,
+) {
+    let resp = write_serial_impl(&ctx, request).await;
+    crate::rpc::functions::reply::<SerialWriteEndpoint>(&sender, header, &resp).await;
+}
+
+async fn write_serial_impl(
+    ctx: &RpcSpawnContext,
     request: SerialWriteRequest,
 ) -> SerialWriteResponse {
     let serial = ctx
