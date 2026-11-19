@@ -139,7 +139,18 @@ pub fn resolve_format_kind(kind: FormatKind, target: &Target) -> FormatKind {
     kind.resolve_default_format(target.default_format.as_deref())
 }
 
-fn format_options_image_loader(options: &FormatOptions, target: &Target) -> Box<dyn ImageLoader> {
+/// The files of an ESP-IDF image, on this host.
+#[derive(Default)]
+pub struct IdfFiles {
+    pub bootloader: Option<PathBuf>,
+    pub partition_table: Option<PathBuf>,
+}
+
+fn format_options_image_loader(
+    options: &FormatOptions,
+    idf_files: IdfFiles,
+    target: &Target,
+) -> Box<dyn ImageLoader> {
     match resolve_format_kind(options.binary_format, target) {
         FormatKind::Target => unreachable!(),
         FormatKind::Bin => Box::new(BinLoader(BinOptions {
@@ -154,16 +165,8 @@ fn format_options_image_loader(options: &FormatOptions, target: &Target) -> Box<
         FormatKind::Uf2 => Box::new(Uf2Loader),
 
         FormatKind::Idf => Box::new(IdfLoader {
-            bootloader: options
-                .idf_options
-                .idf_bootloader
-                .as_ref()
-                .map(PathBuf::from),
-            partition_table: options
-                .idf_options
-                .idf_partition_table
-                .as_ref()
-                .map(PathBuf::from),
+            bootloader: idf_files.bootloader,
+            partition_table: idf_files.partition_table,
             target_app_partition: options.idf_options.idf_target_app_partition.clone(),
             flash_frequency: options
                 .idf_options
@@ -181,9 +184,10 @@ pub fn build_loader(
     session: &mut Session,
     path: impl AsRef<Path>,
     format_options: FormatOptions,
+    idf_files: IdfFiles,
     image_instruction_set: Option<InstructionSet>,
 ) -> Result<FlashLoader, FileDownloadError> {
-    let loader = format_options_image_loader(&format_options, session.target());
+    let loader = format_options_image_loader(&format_options, idf_files, session.target());
     probe_rs::flashing::build_loader(session, path, loader, image_instruction_set)
 }
 

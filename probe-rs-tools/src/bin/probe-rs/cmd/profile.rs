@@ -41,7 +41,14 @@ impl ProfileCmd {
         let (mut session, probe_options) =
             self.run.probe_options.simple_attach(registry, lister)?;
 
-        let loader = build_loader(&mut session, &self.run.path, self.run.format_options, None)?;
+        // Profiling runs without the RPC server, so the loader opens the files of this host.
+        let loader = build_loader(
+            &mut session,
+            &self.run.path,
+            self.run.format_options.without_files(),
+            self.run.format_options.idf_files(),
+            None,
+        )?;
 
         let file_location = self.run.path.as_path();
 

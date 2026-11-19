@@ -38,6 +38,7 @@ use probe_rs_rpc::stack_trace::StackTraceFrame;
 use probe_rs_rpc_client::{RpcClient, SessionInterface};
 use probe_rs_zephyr::log::Database as ZephyrLogDatabase;
 
+pub(crate) mod format;
 mod monitor;
 mod output;
 mod test;
