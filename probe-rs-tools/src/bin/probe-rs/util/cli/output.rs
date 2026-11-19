@@ -156,7 +156,7 @@ pub async fn rtt_client(
             scan_regions,
             vec![],
             RttChannelConfig {
-                mode: Some(monitor_options.rtt_channel_mode),
+                mode: Some(monitor_options.rtt_channel_mode.into()),
                 ..Default::default()
             },
         )

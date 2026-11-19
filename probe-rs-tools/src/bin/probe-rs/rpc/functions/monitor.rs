@@ -4,13 +4,11 @@ use std::time::{Duration, Instant};
 use crate::rpc::{
     ObjectStorageSlot, SharedTargetSerial,
     functions::{
-        MultiTopicPublisher, MultiTopicWriter, RpcContext, RpcSpawnContext, WireTxImpl,
-        core_ops::convert,
+        MultiTopicPublisher, MultiTopicWriter, RpcSpawnContext, WireTxImpl, core_ops::convert,
     },
     utils::{
-        run_loop::{ReturnReason, RunLoop, RunLoopPoller, VectorCatchConfig},
-        semihosting::SemihostingFileManager,
-        semihosting_mappings::Mappings,
+        run_loop::{HaltAction, ReturnReason, RunLoop, RunLoopPoller, VectorCatchConfig},
+        semihosting::{HostCallHandler, SemihostingHandler},
     },
 };
 use anyhow::Context;
@@ -18,11 +16,15 @@ use postcard_rpc::{header::VarHeader, server::Sender};
 use probe_rs::{
     BreakpointCause, Core, HaltReason, MemoryInterface, semihosting::SemihostingCommand,
 };
+use probe_rs_rpc::host_calls::HostCall;
 use probe_rs_rpc::monitor::{
     ChannelInfo, MonitorExitReason, MonitorMode, MonitorRequest, RttEvent, SemihostingEvent,
     SemihostingExitError, SerialEvent, SerialWriteRequest, SerialWriteResponse,
 };
-use probe_rs_rpc::{MonitorEndpoint, RpcError, RttTopic, SemihostingTopic, SerialTopic};
+use probe_rs_rpc::{
+    HostCallTopic, MonitorEndpoint, RpcError, RttTopic, SemihostingTopic, SerialTopic,
+    SerialWriteEndpoint,
+};
 use tokio::sync::mpsc::{self, error::SendError};
 
 fn prepare_monitor_mode(
@@ -56,8 +58,13 @@ pub(crate) struct MonitorSender {
     rtt: mpsc::Sender<RttEvent>,
     semihosting_output: mpsc::Sender<SemihostingEvent>,
     serial: mpsc::Sender<SerialEvent>,
+    host_call: mpsc::Sender<HostCall>,
 }
 impl MonitorSender {
+    pub(crate) fn send_host_call(&self, call: HostCall) -> Result<(), SendError<HostCall>> {
+        self.host_call.blocking_send(call)
+    }
+
     pub(crate) fn send_semihosting_event(
         &self,
         event: SemihostingEvent,
@@ -81,6 +88,7 @@ pub(crate) struct MonitorPublisher {
     rtt: <RttTopic as MultiTopicWriter>::Publisher,
     semihosting_output: <SemihostingTopic as MultiTopicWriter>::Publisher,
     serial: <SerialTopic as MultiTopicWriter>::Publisher,
+    host_call: <HostCallTopic as MultiTopicWriter>::Publisher,
 }
 
 impl MultiTopicWriter for MonitorSender {
@@ -91,17 +99,20 @@ impl MultiTopicWriter for MonitorSender {
         let (rtt_sender, rtt_publisher) = RttTopic::create();
         let (semihosting_sender, semihosting_publisher) = SemihostingTopic::create();
         let (serial_sender, serial_publisher) = SerialTopic::create();
+        let (host_call_sender, host_call_publisher) = HostCallTopic::create();
 
         (
             Self {
                 rtt: rtt_sender,
                 semihosting_output: semihosting_sender,
                 serial: serial_sender,
+                host_call: host_call_sender,
             },
             MonitorPublisher {
                 rtt: rtt_publisher,
                 semihosting_output: semihosting_publisher,
                 serial: serial_publisher,
+                host_call: host_call_publisher,
             },
         )
     }
@@ -112,7 +123,8 @@ impl MultiTopicPublisher for MonitorPublisher {
         tokio::join!(
             self.rtt.publish(sender),
             self.semihosting_output.publish(sender),
-            self.serial.publish(sender)
+            self.serial.publish(sender),
+            self.host_call.publish(sender)
         );
     }
 }
@@ -124,10 +136,7 @@ fn monitor_impl(
 ) -> anyhow::Result<MonitorExitReason> {
     let shared_session = ctx.shared_session(request.sessid);
 
-    let mut semihosting_sink = MonitorEventHandler::new(
-        Mappings::new(&ctx.semihosting_options(request.options.semihosting_options)?)?,
-        |event| _ = sender.send_semihosting_event(event),
-    );
+    let host = SemihostingHandler::new(&sender, ctx.host_replies(request.options.host_calls)?);
 
     let client_key = request.options.rtt_client;
     let core_id = client_key
@@ -162,7 +171,7 @@ fn monitor_impl(
     }
 
     let exit_reason = with_serial_forwarding(target_serial.as_ref(), &sender, || {
-        run_loop.run_until(
+        run_loop.run_with_handler(
             &shared_session,
             VectorCatchConfig {
                 catch_hardfault: request.options.catch_hardfault,
@@ -172,7 +181,7 @@ fn monitor_impl(
             },
             rtt_poller,
             None,
-            |halt_reason, core| semihosting_sink.handle_halt(halt_reason, core),
+            HostCallHandler::new(host, handle_monitor_halt),
         )
     })?;
 
@@ -329,10 +338,20 @@ fn forward_serial(serial: &SharedTargetSerial, stop: &AtomicBool, sender: &Monit
     }
 }
 
-/// Writes data to the serial port to the target.
+/// Writes data to the serial port to the target. A write can wait for the target, for example a
+/// halted one. It must not stop the other requests of the connection.
 pub async fn write_serial(
-    ctx: &mut RpcContext,
-    _header: VarHeader,
+    ctx: RpcSpawnContext,
+    header: VarHeader,
+    request: SerialWriteRequest,
+    sender: Sender<WireTxImpl>,
+) {
+    let resp = write_serial_impl(&ctx, request).await;
+    crate::rpc::functions::reply::<SerialWriteEndpoint>(&sender, header, &resp).await;
+}
+
+async fn write_serial_impl(
+    ctx: &RpcSpawnContext,
     request: SerialWriteRequest,
 ) -> SerialWriteResponse {
     let serial = ctx
@@ -346,68 +365,51 @@ pub async fn write_serial(
     Ok(written as u32)
 }
 
-struct MonitorEventHandler<F: FnMut(SemihostingEvent)> {
-    semihosting_file_manager: SemihostingFileManager,
-    sender: F,
-}
+fn handle_monitor_halt(
+    halt_reason: HaltReason,
+    core: &mut Core<'_>,
+    host: &mut SemihostingHandler<'_>,
+) -> anyhow::Result<HaltAction<MonitorExitReason>> {
+    let HaltReason::Breakpoint(BreakpointCause::Semihosting(cmd)) = halt_reason else {
+        return Ok(HaltAction::Return(MonitorExitReason::Halted(
+            convert::to_wire_halt_reason(halt_reason),
+        )));
+    };
 
-impl<F: FnMut(SemihostingEvent)> MonitorEventHandler<F> {
-    pub fn new(mappings: Mappings, sender: F) -> Self {
-        Self {
-            semihosting_file_manager: SemihostingFileManager::new(mappings),
-            sender,
+    match cmd {
+        SemihostingCommand::ExitSuccess => Ok(HaltAction::Return(
+            MonitorExitReason::SemihostingExit(Ok(())),
+        )),
+        SemihostingCommand::ExitError(details) => Ok(HaltAction::Return(
+            MonitorExitReason::SemihostingExit(Err(SemihostingExitError {
+                reason: details.reason,
+                subcode: details.exit_status.or(details.subcode),
+            })),
+        )),
+        SemihostingCommand::Unknown(details) => {
+            tracing::warn!(
+                "Target wanted to run semihosting operation {:#x} with parameter {:#x},\
+                 but probe-rs does not support this operation yet. Continuing...",
+                details.operation,
+                details.parameter
+            );
+            Ok(HaltAction::Resume)
         }
-    }
-
-    fn handle_halt(
-        &mut self,
-        halt_reason: HaltReason,
-        core: &mut Core<'_>,
-    ) -> anyhow::Result<Option<MonitorExitReason>> {
-        let HaltReason::Breakpoint(BreakpointCause::Semihosting(cmd)) = halt_reason else {
-            return Ok(Some(MonitorExitReason::Halted(
-                convert::to_wire_halt_reason(halt_reason),
-            )));
-        };
-
-        match cmd {
-            SemihostingCommand::ExitSuccess => Ok(Some(MonitorExitReason::SemihostingExit(Ok(())))),
-            SemihostingCommand::ExitError(details) => Ok(Some(MonitorExitReason::SemihostingExit(
-                Err(SemihostingExitError {
-                    reason: details.reason,
-                    subcode: details.exit_status.or(details.subcode),
-                }),
-            ))),
-            SemihostingCommand::Unknown(details) => {
-                tracing::warn!(
-                    "Target wanted to run semihosting operation {:#x} with parameter {:#x},\
-                     but probe-rs does not support this operation yet. Continuing...",
-                    details.operation,
-                    details.parameter
-                );
-                Ok(None)
-            }
-            SemihostingCommand::GetCommandLine(_) => {
-                tracing::warn!(
-                    "Target wanted to run semihosting operation SYS_GET_CMDLINE, but probe-rs does not support this operation yet. Continuing..."
-                );
-                Ok(None)
-            }
-            SemihostingCommand::Time(request) => {
-                request.write_current_time(core)?;
-                Ok(None)
-            }
-            SemihostingCommand::Errno(_) => Ok(None),
-            other if SemihostingFileManager::can_handle(other) => {
-                self.semihosting_file_manager
-                    .handle(other, core, &mut self.sender)?;
-                Ok(None)
-            }
-            other => Ok(Some(MonitorExitReason::Halted(
-                convert::to_wire_halt_reason(HaltReason::Breakpoint(BreakpointCause::Semihosting(
-                    other,
-                ))),
-            ))),
+        SemihostingCommand::GetCommandLine(_) => {
+            tracing::warn!(
+                "Target wanted to run semihosting operation SYS_GET_CMDLINE, but probe-rs does not support this operation yet. Continuing..."
+            );
+            Ok(HaltAction::Resume)
         }
+        SemihostingCommand::Time(request) => {
+            request.write_current_time(core)?;
+            Ok(HaltAction::Resume)
+        }
+        other if SemihostingHandler::can_handle(other) => host.on_command(other, core),
+        other => Ok(HaltAction::Return(MonitorExitReason::Halted(
+            convert::to_wire_halt_reason(HaltReason::Breakpoint(BreakpointCause::Semihosting(
+                other,
+            ))),
+        ))),
     }
 }

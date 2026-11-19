@@ -159,7 +159,10 @@ pub async fn monitor(
     mut output: TargetOutput,
     vector_catch: VectorCatchConfig,
 ) -> anyhow::Result<()> {
-    let semihosting_options = parse_semihosting_options(&monitor_options.semihosting_file)?;
+    let host_files = parse_semihosting_options(
+        &monitor_options.semihosting_file,
+        monitor_options.semihosting_allow_unverified_server,
+    )?;
 
     let options = MonitorOptions {
         catch_reset: vector_catch.catch_reset,
@@ -167,13 +170,13 @@ pub async fn monitor(
         catch_svc: vector_catch.catch_svc,
         catch_hlt: vector_catch.catch_hlt,
         rtt_client: output.rtt_handle(),
-        semihosting_options,
+        host_calls: host_files.is_some(),
     };
 
     // The mutex around the context should only be held for a short period of time.
     let ui_context = MonitorUiContext::new(monitor_options.rtt_down_channel);
 
-    let monitor = session.monitor(mode, options, async |msg| {
+    let monitor = session.monitor(mode, options, host_files, async |msg| {
         ui_context.observe(&msg, output.rtt_handle()).await;
         output
             .handle_event(
