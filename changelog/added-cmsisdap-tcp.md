@@ -1,1 +1,1 @@
-Added CMSIS-DAP over TCP, with the framing of OpenOCD's `cmsis-dap backend tcp`. Select a probe with `--probe 0000:0001:<host>[:<port>]`; the port defaults to 4441.
+Added CMSIS-DAP over TCP, with the framing of OpenOCD's `cmsis-dap backend tcp`. Select a probe with `--probe tcp://cmsis-dap@<host>[:<port>]`; the port defaults to 4441. The placeholder `--probe 0000:0001:<host>[:<port>]` still works but is deprecated and logs a warning.
