@@ -32,12 +32,12 @@ use probe_rs_rpc::probe::{
     AttachRequest, AttachResult, DebugProbeEntry, DebugProbeSelector, SelectProbeResult,
 };
 use probe_rs_rpc::rtt_client::ScanRegion;
-use probe_rs_rpc::semihosting_options::SemihostingOptions;
 use probe_rs_rpc::stack_trace::StackTrace;
 use probe_rs_rpc::stack_trace::StackTraceFrame;
-use probe_rs_rpc_client::{RpcClient, SessionInterface};
+use probe_rs_rpc_client::{HostFiles, RpcClient, SemihostingOptions, SessionInterface};
 use probe_rs_zephyr::log::Database as ZephyrLogDatabase;
 
+pub(crate) mod format;
 mod monitor;
 mod output;
 mod test;
@@ -317,7 +317,10 @@ pub struct TargetAttachFailed {
     pub connect_under_reset: bool,
 }
 
-pub(crate) fn parse_semihosting_options(arg: &[String]) -> anyhow::Result<SemihostingOptions> {
+pub(crate) fn parse_semihosting_options(
+    arg: &[String],
+    allow_unverified_server: bool,
+) -> anyhow::Result<Option<HostFiles>> {
     let mut options = SemihostingOptions::new();
     for component in arg {
         let parts: Vec<&str> = component.splitn(2, "=").collect();
@@ -343,9 +346,31 @@ pub(crate) fn parse_semihosting_options(arg: &[String]) -> anyhow::Result<Semiho
             _ => unreachable!("splitn produces at most 2 items."),
         }
     }
+    if options.mappings().is_empty() {
+        return Ok(None);
+    }
     // Report a bad mapping at the start, and not when the target uses it.
-    crate::rpc::utils::semihosting_mappings::Mappings::new(&options)?.check_roots()?;
-    Ok(options)
+    let host_files = HostFiles::new(&options)?;
+    host_files.check_roots()?;
+    Ok(Some(
+        host_files.allow_unverified_server(allow_unverified_server),
+    ))
+}
+
+/// Fails if the semihosting mappings are wrong, or the server must not get the mapped files. Call
+/// this before the target is attached and flashed.
+pub(crate) fn check_semihosting_options(
+    client: &RpcClient,
+    options: &crate::cmd::run::MonitoringOptions,
+) -> anyhow::Result<()> {
+    let host_files = parse_semihosting_options(
+        &options.semihosting_file,
+        options.semihosting_allow_unverified_server,
+    )?;
+    if let Some(host_files) = host_files {
+        client.check_host_files(&host_files)?;
+    }
+    Ok(())
 }
 
 #[derive(Default)]

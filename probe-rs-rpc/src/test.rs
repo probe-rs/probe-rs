@@ -2,7 +2,6 @@ use postcard_schema::Schema;
 use serde::{Deserialize, Serialize};
 
 use crate::flash::BootInfo;
-use crate::semihosting_options::SemihostingOptions;
 use crate::{Key, RpcResult, RttClient, Session};
 
 #[derive(Debug, Serialize, Deserialize, Schema)]
@@ -90,7 +89,8 @@ pub struct ListTestsRequest {
     pub boot_info: BootInfo,
     /// RTT client if used.
     pub rtt_client: Option<Key<RttClient>>,
-    pub semihosting_options: SemihostingOptions,
+    /// The client answers host calls.
+    pub host_calls: bool,
 }
 
 pub type ListTestsResponse = RpcResult<Tests>;
@@ -101,7 +101,8 @@ pub struct RunTestRequest {
     pub test: Test,
     /// RTT client if used.
     pub rtt_client: Option<Key<RttClient>>,
-    pub semihosting_options: SemihostingOptions,
+    /// The client answers host calls.
+    pub host_calls: bool,
 }
 
 pub type RunTestResponse = RpcResult<TestResult>;

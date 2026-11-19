@@ -1,6 +1,7 @@
 use postcard_schema::Schema;
 use serde::{Deserialize, Serialize};
 
+use crate::file::ServerPath;
 use crate::format::FormatOptions;
 use crate::{FlashLoader, Key, RpcResult, RttClient, Session};
 
@@ -51,7 +52,7 @@ pub struct LoadRegionRequest {
 #[derive(Serialize, Deserialize, Schema)]
 pub struct BuildRequest {
     pub sessid: Key<Session>,
-    pub path: String,
+    pub path: ServerPath,
     pub format: FormatOptions,
     pub image_target: Option<String>,
     pub read_flasher_rtt: bool,

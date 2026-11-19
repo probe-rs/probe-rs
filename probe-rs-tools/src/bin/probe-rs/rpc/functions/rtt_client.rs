@@ -1,15 +1,15 @@
 use crate::{
-    rpc::functions::{RpcContext, convert::lift},
+    rpc::functions::{RpcContext, RpcSpawnContext, WireTxImpl, convert::lift},
     util::rtt::{RttConfig, rtt_access},
 };
-use postcard_rpc::header::VarHeader;
+use postcard_rpc::{header::VarHeader, server::Sender};
 use probe_rs::rtt;
 use probe_rs_rpc::rtt_client::{
     CreateRttClientRequest, CreateRttClientResponse, PollRttUpRequest, PollRttUpResponse,
     RttChannelMeta, RttChannelRequest, RttChannels, RttChannelsResponse, RttClientData,
     RttDownRequest, RttDownResponse, RttPollResult, ScanRegion,
 };
-use probe_rs_rpc::{NoResponse, RpcError};
+use probe_rs_rpc::{NoResponse, RpcError, RttDownEndpoint};
 use std::time::{Duration, Instant};
 
 pub async fn create_rtt_client(
@@ -51,11 +51,19 @@ const MAX_DOWN_WRITE_TIMEOUT: Duration = Duration::from_secs(5);
 /// schedule, so this only has to be short relative to that.
 const DOWN_WRITE_RETRY_INTERVAL: Duration = Duration::from_millis(1);
 
+/// A write can wait for a target that does not read the channel, for example a halted one. It must
+/// not stop the other requests of the connection.
 pub async fn write_rtt_down(
-    ctx: &mut RpcContext,
-    _header: VarHeader,
+    ctx: RpcSpawnContext,
+    header: VarHeader,
     request: RttDownRequest,
-) -> RttDownResponse {
+    sender: Sender<WireTxImpl>,
+) {
+    let resp = write_rtt_down_impl(&ctx, request).await;
+    crate::rpc::functions::reply::<RttDownEndpoint>(&sender, header, &resp).await;
+}
+
+async fn write_rtt_down_impl(ctx: &RpcSpawnContext, request: RttDownRequest) -> RttDownResponse {
     // Nothing to write
     if request.data.is_empty() {
         return Ok(0);
