@@ -381,20 +381,6 @@ impl Request for TransferBlockRequest {
             .pread_with(2, LE)
             .map_err(|_| SendError::NotEnoughData)?;
 
-        let mut data = Vec::with_capacity(transfer_count as usize);
-
-        // A read holds one word for every transfer that ran. A write holds no
-        // data.
-        if self.transfer_request.r_n_w == RW::R {
-            for data_offset in 0..transfer_count as usize {
-                data.push(
-                    buffer
-                        .pread_with(3 + data_offset * 4, LE)
-                        .map_err(|_| SendError::NotEnoughData)?,
-                );
-            }
-        }
-
         let ack = match raw_transfer_response & 0b111 {
             1 => Ack::Ok,
             2 => Ack::Wait,
@@ -407,6 +393,19 @@ impl Request for TransferBlockRequest {
         };
 
         let protocol_error = (raw_transfer_response & (1 << 3)) != 0;
+
+        // Only a successful reply carries the data of every transfer. On an error, probes differ
+        // in whether the count includes the failed transfer, and nobody reads the data.
+        let mut data = Vec::with_capacity(transfer_count as usize);
+        if self.transfer_request.r_n_w == RW::R && ack == Ack::Ok && !protocol_error {
+            for data_offset in 0..transfer_count as usize {
+                data.push(
+                    buffer
+                        .pread_with(3 + data_offset * 4, LE)
+                        .map_err(|_| SendError::NotEnoughData)?,
+                );
+            }
+        }
 
         let transfer_response = LastTransferResponse {
             ack,
