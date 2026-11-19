@@ -6,6 +6,7 @@
 //! file for the lifetime of the connection, so a recorded upload stays valid
 //! and dropping the entry would only cause the same bytes to be sent again.
 
+use probe_rs_rpc::file::ServerPath;
 use sha2::{Digest, Sha256};
 use std::{
     collections::HashMap,
@@ -29,11 +30,11 @@ impl ContentHash {
 pub struct ResolvedUpload {
     pub canonical_path: PathBuf,
     pub content_hash: ContentHash,
-    pub remote_path: PathBuf,
+    pub remote_path: ServerPath,
 }
 
 impl ResolvedUpload {
-    pub fn server_path(&self) -> &Path {
+    pub fn server_path(&self) -> &ServerPath {
         &self.remote_path
     }
 }
@@ -47,7 +48,7 @@ struct UploadCacheKey {
 /// Cache of prior remote uploads for one connection.
 #[derive(Debug, Default)]
 pub(crate) struct UploadCache {
-    entries: HashMap<UploadCacheKey, PathBuf>,
+    entries: HashMap<UploadCacheKey, ServerPath>,
 }
 
 impl UploadCache {
@@ -55,7 +56,7 @@ impl UploadCache {
         &self,
         canonical_path: &Path,
         content_hash: ContentHash,
-    ) -> Option<PathBuf> {
+    ) -> Option<ServerPath> {
         self.entries
             .get(&UploadCacheKey {
                 canonical_path: canonical_path.to_path_buf(),
@@ -69,7 +70,7 @@ impl UploadCache {
         &mut self,
         canonical_path: PathBuf,
         content_hash: ContentHash,
-        remote_path: PathBuf,
+        remote_path: ServerPath,
     ) {
         self.entries.insert(
             UploadCacheKey {
@@ -94,11 +95,11 @@ mod tests {
         let mut cache = UploadCache::default();
         let path = PathBuf::from("/tmp/firmware.elf");
 
-        cache.insert(path.clone(), hash(b"v1"), PathBuf::from("/remote/v1"));
+        cache.insert(path.clone(), hash(b"v1"), ServerPath::new("/remote/v1"));
 
         assert_eq!(
             cache.lookup(&path, hash(b"v1")),
-            Some(PathBuf::from("/remote/v1"))
+            Some(ServerPath::new("/remote/v1"))
         );
         assert_eq!(cache.lookup(&path, hash(b"v2")), None);
     }
@@ -110,16 +111,16 @@ mod tests {
         let mut cache = UploadCache::default();
         let path = PathBuf::from("/tmp/firmware.elf");
 
-        cache.insert(path.clone(), hash(b"v1"), PathBuf::from("/remote/v1"));
-        cache.insert(path.clone(), hash(b"v2"), PathBuf::from("/remote/v2"));
+        cache.insert(path.clone(), hash(b"v1"), ServerPath::new("/remote/v1"));
+        cache.insert(path.clone(), hash(b"v2"), ServerPath::new("/remote/v2"));
 
         assert_eq!(
             cache.lookup(&path, hash(b"v1")),
-            Some(PathBuf::from("/remote/v1"))
+            Some(ServerPath::new("/remote/v1"))
         );
         assert_eq!(
             cache.lookup(&path, hash(b"v2")),
-            Some(PathBuf::from("/remote/v2"))
+            Some(ServerPath::new("/remote/v2"))
         );
     }
 
@@ -129,11 +130,11 @@ mod tests {
         let elf = PathBuf::from("/tmp/firmware.elf");
         let copy = PathBuf::from("/tmp/copy.elf");
 
-        cache.insert(elf.clone(), hash(b"elf"), PathBuf::from("/remote/elf"));
+        cache.insert(elf.clone(), hash(b"elf"), ServerPath::new("/remote/elf"));
 
         assert_eq!(
             cache.lookup(&elf, hash(b"elf")),
-            Some(PathBuf::from("/remote/elf"))
+            Some(ServerPath::new("/remote/elf"))
         );
         assert_eq!(cache.lookup(&copy, hash(b"elf")), None);
     }

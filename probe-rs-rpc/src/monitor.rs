@@ -3,7 +3,6 @@ use serde::{Deserialize, Serialize};
 
 use crate::core_ops::WireHaltReason;
 use crate::flash::BootInfo;
-use crate::semihosting_options::SemihostingOptions;
 use crate::{Key, RpcResult, RttClient, Session};
 
 #[derive(Serialize, Deserialize, Schema)]
@@ -29,7 +28,9 @@ pub struct MonitorOptions {
     pub catch_svc: bool,
     pub catch_hlt: bool,
     pub rtt_client: Option<Key<RttClient>>,
-    pub semihosting_options: SemihostingOptions,
+    /// The client answers host calls. Otherwise the server fails them without a round trip. This
+    /// does not protect the client.
+    pub host_calls: bool,
 }
 
 #[derive(Serialize, Deserialize, Schema)]

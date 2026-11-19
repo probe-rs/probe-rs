@@ -4,11 +4,11 @@ use time::UtcOffset;
 
 use crate::cmd::run::{MonitoringOptions, NormalRunOptions};
 use crate::rpc::utils::run_loop::VectorCatchConfig;
+use crate::util::cli::format::FormatOptions;
 use crate::util::cli::{
     self, DecoderSettings, FileMetadata, TargetOutput, parse_metadata, rtt_client,
 };
 use crate::util::common_options::ProbeOptions;
-use probe_rs_rpc::format::FormatOptions;
 use probe_rs_rpc::monitor::MonitorMode;
 use probe_rs_rpc_client::RpcClient;
 
@@ -40,6 +40,7 @@ impl Cmd {
             Some(path) => parse_metadata(path).await?,
             None => (FileMetadata::default(), None),
         };
+        cli::check_semihosting_options(&client, &self.monitor_options)?;
 
         // Show the output of the serial port to the target.
         let probe_options = ProbeOptions {

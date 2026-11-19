@@ -215,6 +215,11 @@ impl OpenRequest {
         self.path.length.is_some_and(|len| len > MAX_PATH_LEN)
     }
 
+    /// Reads the path from the target. Returns `None` if the path is not valid UTF-8.
+    pub fn path_utf8(&self, core: &mut dyn CoreInterface) -> Result<Option<String>, Error> {
+        Ok(String::from_utf8(self.path.read_bytes(core)?).ok())
+    }
+
     /// Reads the raw mode from the target.
     pub fn mode(&self) -> &'static str {
         self.mode
@@ -291,6 +296,23 @@ impl WriteRequest {
         Ok(buf)
     }
 
+    /// Reads up to `max_len` bytes of the buffer from the target, from `offset`.
+    pub fn read_chunk(
+        &self,
+        core: &mut Core<'_>,
+        offset: u32,
+        max_len: u32,
+    ) -> Result<Vec<u8>, Error> {
+        let mut buf = vec![0u8; self.len.saturating_sub(offset).min(max_len) as usize];
+        core.read(self.bytes as u64 + offset as u64, &mut buf)?;
+        Ok(buf)
+    }
+
+    /// Tells the target that the host wrote the first `written` bytes.
+    pub fn finish(&self, core: &mut dyn CoreInterface, written: u32) -> Result<(), Error> {
+        write_status(core, (self.len - written) as i32)
+    }
+
     /// Writes the status of the semihosting operation to the return register of the target
     pub fn write_status(&self, core: &mut dyn CoreInterface, status: i32) -> Result<(), Error> {
         write_status(core, status)
@@ -314,6 +336,25 @@ impl ReadRequest {
     /// Returns the number of bytes to read
     pub fn bytes_to_read(&self) -> u32 {
         self.len
+    }
+
+    /// Writes a part of the buffer to the target, from `offset`.
+    pub fn write_chunk_to_target(
+        &self,
+        core: &mut Core<'_>,
+        offset: u32,
+        buf: &[u8],
+    ) -> Result<(), Error> {
+        if !buf.is_empty() {
+            core.write(self.bytes as u64 + offset as u64, buf)?;
+        }
+        Ok(())
+    }
+
+    /// Tells the target that the host filled the first `filled` bytes.
+    pub fn finish(&self, core: &mut dyn CoreInterface, filled: u32) -> Result<(), Error> {
+        // SYS_READ returns the number of bytes that were not filled in.
+        write_status(core, (self.len - filled) as i32)
     }
 
     /// Writes the buffer to the target
@@ -514,6 +555,11 @@ pub(crate) struct ZeroTerminatedString {
 impl ZeroTerminatedString {
     /// Reads the buffer contents from the target, up to [`MAX_STRING_LEN`] bytes.
     pub fn read(&self, core: &mut dyn MemoryInterface) -> Result<String, Error> {
+        Ok(String::from_utf8_lossy(&self.read_bytes(core)?).to_string())
+    }
+
+    /// Reads the raw buffer contents from the target, up to [`MAX_STRING_LEN`] bytes.
+    pub fn read_bytes(&self, core: &mut dyn MemoryInterface) -> Result<Vec<u8>, Error> {
         let mut bytes = Vec::new();
         let mut complete = false;
 
@@ -542,7 +588,7 @@ impl ZeroTerminatedString {
             tracing::warn!("Truncated a semihosting string to {MAX_STRING_LEN} bytes.");
         }
 
-        Ok(String::from_utf8_lossy(&bytes).to_string())
+        Ok(bytes)
     }
 }
 

@@ -22,6 +22,7 @@ pub async fn create_temp_file(
     let file = lift(NamedTempFile::new().context("Failed to write temporary file"))?;
     let path = file.path().to_path_buf().display().to_string();
     tracing::info!("Created temporary file {}", path);
+    ctx.add_upload(path.clone());
     let key = ctx.store_object(file).await;
 
     Ok(probe_rs_rpc::file::TempFile { path, key })
