@@ -158,6 +158,10 @@ pub mod cmd {
     pub const FLASH_ERASE_MAIN_APP: u32 = 0x1C;
     /// No operation.
     pub const MISC_NO_OPERATION: u32 = 0x01;
+    /// Provision or reprogram the HSM firmware (CC27xx only).
+    pub const HSM_FW_PROVISION: u32 = 0x21;
+    /// Read the HSM firmware's system information.
+    pub const HSM_GET_SYS_INFO: u32 = 0x22;
 }
 
 // ---- SEC-AP register offsets ------------------------------------------------
@@ -208,6 +212,14 @@ pub enum SaciResult {
     Crc32Mismatch = 0x87,
     /// Blank check failed (flash not erased).
     BlankCheckFailed = 0x89,
+    /// The HSM failed to boot.
+    HsmBootFailed = 0x8E,
+    /// HSM firmware update failed: invalid header.
+    HsmFwHeaderInvalid = 0x8F,
+    /// HSM firmware update failed: invalid version (anti-rollback).
+    HsmFwVersionInvalid = 0x90,
+    /// HSM firmware update failed: signature verification or decryption.
+    HsmFwCryptoFail = 0x91,
     /// Unrecognised result code.
     Unknown = 0xFF,
 }
@@ -225,6 +237,10 @@ impl From<u8> for SaciResult {
             0x86 => SaciResult::NotAllowed,
             0x87 => SaciResult::Crc32Mismatch,
             0x89 => SaciResult::BlankCheckFailed,
+            0x8E => SaciResult::HsmBootFailed,
+            0x8F => SaciResult::HsmFwHeaderInvalid,
+            0x90 => SaciResult::HsmFwVersionInvalid,
+            0x91 => SaciResult::HsmFwCryptoFail,
             _ => SaciResult::Unknown,
         }
     }
@@ -401,6 +417,116 @@ pub fn wait_for_device_status(
             return Err(ArmError::Timeout);
         }
         thread::sleep(Duration::from_millis(1));
+    }
+}
+
+// ---- Flash commands ---------------------------------------------------------
+
+/// FLASH_ERASE_CHIP, FLASH_ERASE_MAIN_APP: keep the sectors that the CCFG retains.
+const RETAIN_SECTORS: u32 = 1 << 0;
+/// FLASH_VERIFY_CCFG_SECTOR: skip the CRC check of the user record.
+const SKIP_USER_RECORD: u32 = 1 << 1;
+/// FLASH_VERIFY_CCFG_SECTOR: check that the sector is blank.
+const BLANK_CHECK: u32 = 1 << 15;
+
+/// Sends a SACI erase command and returns its result.
+pub fn erase_command(
+    interface: &mut dyn DapAccess,
+    command: u32,
+    parameters: u32,
+) -> Result<SaciResult, ArmError> {
+    let words = [make_header(command, parameters), cmd::FLASH_KEY];
+    send_words(interface, &words, Duration::from_millis(200))?;
+
+    let response = read_response(interface, Duration::from_secs(30))?;
+    // The retained sector masks follow.
+    for _ in 0..response >> 24 {
+        let mask = read_response(interface, Duration::from_millis(100))?;
+        tracing::debug!("CC23xx/CC27xx: retained sectors {mask:#010x}");
+    }
+    Ok(SaciResult::from(((response >> 16) & 0xFF) as u8))
+}
+
+/// Erases the chip as the SACI download path does, keeping the sectors that the CCFG retains
+/// when possible.
+pub fn erase_chip(interface: &mut dyn DapAccess) -> Result<SaciResult, ArmError> {
+    // Retaining sectors needs a valid CCFG. With an invalid one, the ROM doesn't refuse the
+    // option: it erases the sectors too.
+    if ccfg_is_valid(interface)? {
+        tracing::info!(
+            "CC23xx/CC27xx: erasing the chip, keeping the sectors that the CCFG retains"
+        );
+        erase_command(interface, cmd::FLASH_ERASE_CHIP, RETAIN_SECTORS)
+    } else if ccfg_is_blank(interface)? {
+        // Erasing the application never erases the HSM firmware. Parts without an HSM don't
+        // have the command.
+        tracing::info!("CC23xx/CC27xx: no CCFG, erasing the application sectors");
+        match erase_command(interface, cmd::FLASH_ERASE_MAIN_APP, 0)? {
+            SaciResult::InvalidCmdId => {
+                tracing::info!("CC23xx/CC27xx: no FLASH_ERASE_MAIN_APP, erasing the chip");
+                erase_command(interface, cmd::FLASH_ERASE_CHIP, 0)
+            }
+            result => Ok(result),
+        }
+    } else {
+        tracing::warn!("CC23xx/CC27xx: invalid CCFG, erasing the retained sectors too");
+        erase_command(interface, cmd::FLASH_ERASE_CHIP, 0)
+    }
+}
+
+/// Whether the CCFG passes a FLASH_VERIFY_CCFG_SECTOR check with `parameters`.
+fn verify_ccfg(interface: &mut dyn DapAccess, parameters: u32) -> Result<bool, ArmError> {
+    let header = make_header(cmd::FLASH_VERIFY_CCFG_SECTOR, parameters);
+    send_words(interface, &[header, 0, 0, 0, 0], Duration::from_millis(200))?;
+    let response = read_response(interface, Duration::from_secs(5))?;
+    Ok(SaciResult::from(((response >> 16) & 0xFF) as u8) == SaciResult::Success)
+}
+
+/// Whether the CCFG sector is blank.
+fn ccfg_is_blank(interface: &mut dyn DapAccess) -> Result<bool, ArmError> {
+    verify_ccfg(interface, BLANK_CHECK)
+}
+
+/// Whether the CCFG is valid: its embedded CRCs match, apart from the user record's.
+fn ccfg_is_valid(interface: &mut dyn DapAccess) -> Result<bool, ArmError> {
+    verify_ccfg(interface, SKIP_USER_RECORD)
+}
+
+/// Provisions the HSM firmware with HSM_FW_PROVISION: the command word, the image size in words,
+/// then the image. It must be the first command of the SACI session.
+pub fn provision_hsm(interface: &mut dyn DapAccess, image: &[u8]) -> Result<(), ArmError> {
+    tracing::info!(
+        "CC23xx/CC27xx: provisioning {} bytes of HSM firmware",
+        image.len()
+    );
+    let mut words = vec![cmd::HSM_FW_PROVISION, (image.len() / 4) as u32];
+    words.extend(pack_words(image, 0xFF));
+    send_words(interface, &words, Duration::from_millis(500))?;
+    let response = read_response(interface, Duration::from_secs(30))?;
+    check_result(response, "HSM_FW_PROVISION")
+}
+
+/// Whether the HSM firmware runs, from HSM_GET_SYS_INFO.
+pub fn hsm_runs(interface: &mut dyn DapAccess) -> Result<bool, ArmError> {
+    send_words(
+        interface,
+        &[cmd::HSM_GET_SYS_INFO],
+        Duration::from_millis(200),
+    )?;
+    let response = read_response(interface, Duration::from_secs(5))?;
+    let mut info = Vec::new();
+    for _ in 0..response >> 24 {
+        info.push(read_response(interface, Duration::from_millis(100))?);
+    }
+    match SaciResult::from(((response >> 16) & 0xFF) as u8) {
+        SaciResult::Success => {
+            tracing::info!("CC23xx/CC27xx: HSM system information {info:08x?}");
+            Ok(true)
+        }
+        SaciResult::HsmBootFailed => Ok(false),
+        result => Err(ArmError::Other(format!(
+            "SACI HSM_GET_SYS_INFO failed: {result:?}"
+        ))),
     }
 }
 
