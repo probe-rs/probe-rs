@@ -29,6 +29,7 @@ use crate::{
 pub mod amd;
 pub mod asrmicro;
 pub mod gigadevice;
+pub mod hisilicon;
 pub mod holtek;
 pub mod infineon;
 pub mod maxim;
@@ -122,6 +123,7 @@ static VENDORS: LazyLock<RecursiveRwLock<Vec<&'static dyn Vendor>>> = LazyLock::
         &infineon::Infineon,
         &maxim::Maxim,
         &holtek::Holtek,
+        &hisilicon::HiSilicon,
         &silabs::SiliconLabs,
         &ti::TexasInstruments,
         &nordicsemi::NordicSemi,

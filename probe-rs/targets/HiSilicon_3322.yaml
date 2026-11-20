@@ -1,0 +1,25 @@
+name: HiSilicon 3322
+variants:
+- name: HiSilicon 3322
+  cores:
+  - name: main
+    type: riscv
+    core_access_options: !Riscv
+      hart_id: 0
+      mem_ap: !v1 1
+      dm_base: 0x0
+  memory_map:
+  - !Ram
+    range:
+      start: 0x2210c900
+      end: 0x22110900
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x26940000
+      end: 0x26a40000
+    cores:
+    - main
+    access:
+      boot: true

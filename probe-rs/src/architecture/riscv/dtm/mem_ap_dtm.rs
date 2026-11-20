@@ -3,7 +3,7 @@
 //! When the RISC-V debug module is behind a CoreSight memory access port (for example RP2350),
 //! the chip exposes the DMI (Debug Module Interface) registers as offsets into the memory AP's
 //! address space.
-//! Each DMI register occupies 4 bytes, so address = register * 4
+//! Each DMI register occupies 4 bytes, so address = DM base + register * 4
 
 use crate::architecture::arm::ArmError;
 use crate::architecture::arm::memory::ArmMemoryInterface;
@@ -24,6 +24,7 @@ enum DmiOp {
 /// DTM that performs DMI accesses via a CoreSight memory access port.
 pub struct MemApDtm<'state> {
     memory: Box<dyn ArmMemoryInterface + 'state>,
+    dm_base: u64,
     pending: Vec<DmiOp>,
     results: Results,
 }
@@ -43,11 +44,16 @@ fn arm_error_to_riscv(e: ArmError) -> RiscvError {
     }
 }
 
+fn dmi_register_address(dm_base: u64, dmi_register: u64) -> u64 {
+    dm_base + dmi_register * 4
+}
+
 impl<'state> MemApDtm<'state> {
     /// Creates a DTM that performs DMI accesses via the given memory interface.
-    pub fn new(memory: Box<dyn ArmMemoryInterface + 'state>) -> Self {
+    pub fn new(memory: Box<dyn ArmMemoryInterface + 'state>, dm_base: u64) -> Self {
         Self {
             memory,
+            dm_base,
             pending: Vec::new(),
             results: Results::new(),
         }
@@ -55,7 +61,7 @@ impl<'state> MemApDtm<'state> {
 
     /// Calculate offset of DMI register.
     fn dmi_register_to_ap_address(&self, dmi_register: u64) -> u64 {
-        dmi_register * 4
+        dmi_register_address(self.dm_base, dmi_register)
     }
 }
 
@@ -159,5 +165,16 @@ impl DtmAccess for MemApDtm<'_> {
     fn read_idcode(&mut self) -> Result<Option<u32>, DebugProbeError> {
         // No JTAG = no ID code.
         Ok(None)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::dmi_register_address;
+
+    #[test]
+    fn calculates_dmi_register_address_from_dm_base() {
+        assert_eq!(dmi_register_address(0, 0x10), 0x40);
+        assert_eq!(dmi_register_address(0x8000_0000, 0x10), 0x8000_0040);
     }
 }

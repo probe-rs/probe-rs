@@ -265,6 +265,12 @@ pub struct RiscvCoreAccessOptions {
     #[serde(default)]
     pub mem_ap: Option<ApAddress>,
 
+    /// Base address of the RISC-V Debug Module within the `mem_ap` address space.
+    ///
+    /// This is only used when `mem_ap` is present and defaults to zero.
+    #[serde(default, serialize_with = "hex_u_int")]
+    pub dm_base: u64,
+
     /// Memory access method overrides for address ranges, applied to all access widths.
     ///
     /// Use these for core-local memory that the system bus can't reach at the core's addresses.
