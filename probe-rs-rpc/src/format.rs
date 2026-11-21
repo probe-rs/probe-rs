@@ -1,6 +1,8 @@
 use postcard_schema::Schema;
 use serde::{Deserialize, Serialize};
 
+use crate::file::ServerPath;
+
 #[derive(Clone, Serialize, Deserialize, Debug, Default, Schema)]
 #[serde(default)]
 pub struct BinaryFormatOptions {
@@ -49,8 +51,8 @@ pub enum EspFlashMode {
 #[derive(Clone, Serialize, Deserialize, Debug, Default, Schema)]
 #[serde(default)]
 pub struct IdfFormatOptions {
-    pub idf_bootloader: Option<String>,
-    pub idf_partition_table: Option<String>,
+    pub idf_bootloader: Option<ServerPath>,
+    pub idf_partition_table: Option<ServerPath>,
     pub idf_target_app_partition: Option<String>,
     pub idf_flash_mode: Option<EspFlashMode>,
     pub idf_flash_freq: Option<EspFlashFrequency>,
