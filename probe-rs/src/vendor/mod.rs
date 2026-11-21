@@ -169,13 +169,11 @@ pub fn try_create_debug_sequence(chip: &Chip) -> Option<DebugSequence> {
 fn try_detect_arm_chip(
     registry: &Registry,
     mut probe: Probe,
-) -> Result<(Probe, Option<Target>), Error> {
-    let mut found_target = None;
-
+) -> (Probe, Result<Option<Target>, Error>) {
     if !probe.has_arm_debug_interface() {
         // No ARM interface available.
         tracing::debug!("No ARM interface available, skipping detection.");
-        return Ok((probe, None));
+        return (probe, Ok(None));
     }
 
     // We don't know what kind of chip it is, so we use the default sequence, unless a vendor
@@ -209,53 +207,12 @@ fn try_detect_arm_chip(
         // TODO: do not consume probe
         match probe.try_into_arm_debug_interface(sequence.clone()) {
             Ok(mut interface) => {
-                if let Err(error) = interface.select_debug_port(dp_address) {
-                    probe = interface.close();
-                    tracing::debug!("Error during ARM chip detection on {dp_address:?}: {error}");
-                    continue;
-                }
-
-                if let Some(vendor) = sequence_vendor {
-                    match vendor.try_identify_arm_chip(registry, interface.as_mut()) {
-                        Ok(Some(target_name)) => {
-                            found_target = Some(registry.get_target_by_name(&target_name)?);
-                            probe = interface.close();
-                            break;
-                        }
-                        Ok(None) => {}
-                        Err(error) => tracing::debug!("{vendor} chip detection failed: {error}"),
-                    }
-                }
-
-                let found_arm_chip = read_chip_info_from_rom_table(interface.as_mut(), dp_address)
-                    .unwrap_or_else(|error| {
-                        tracing::debug!("Error during ARM chip detection: {error}");
-                        None
-                    });
-
-                if let Some(found_chip) = found_arm_chip {
-                    let vendors = vendors();
-                    for vendor in vendors.iter() {
-                        // TODO: only consider families with matching JEP106.
-                        if let Some(target_name) =
-                            vendor.try_detect_arm_chip(registry, interface.as_mut(), found_chip)?
-                        {
-                            found_target = Some(registry.get_target_by_name(&target_name)?);
-                            break;
-                        }
-                    }
-
-                    // No vendor-specific match, try to find a target by chip info.
-                    if found_target.is_none() {
-                        found_target =
-                            Some(registry.get_target_by_chip_info(ChipInfo::from(found_chip))?);
-                    }
-                }
-
+                let found =
+                    identify_arm_chip(registry, interface.as_mut(), dp_address, sequence_vendor);
                 probe = interface.close();
-
-                if found_target.is_some() {
-                    break;
+                match found {
+                    Ok(None) => {}
+                    found => return (probe, found),
                 }
             }
             Err((returned_probe, error)) => {
@@ -265,7 +222,51 @@ fn try_detect_arm_chip(
         }
     }
 
-    Ok((probe, found_target))
+    (probe, Ok(None))
+}
+
+/// Identifies the ARM chip behind `dp_address`. `Ok(None)` if nothing answers there or its ROM
+/// table can't be read.
+fn identify_arm_chip(
+    registry: &Registry,
+    interface: &mut dyn ArmDebugInterface,
+    dp_address: DpAddress,
+    sequence_vendor: Option<&dyn Vendor>,
+) -> Result<Option<Target>, Error> {
+    if let Err(error) = interface.select_debug_port(dp_address) {
+        tracing::debug!("Error during ARM chip detection on {dp_address:?}: {error}");
+        return Ok(None);
+    }
+
+    if let Some(vendor) = sequence_vendor {
+        match vendor.try_identify_arm_chip(registry, interface) {
+            Ok(Some(target_name)) => return Ok(Some(registry.get_target_by_name(&target_name)?)),
+            Ok(None) => {}
+            Err(error) => tracing::debug!("{vendor} chip detection failed: {error}"),
+        }
+    }
+
+    let found_arm_chip =
+        read_chip_info_from_rom_table(interface, dp_address).unwrap_or_else(|error| {
+            tracing::debug!("Error during ARM chip detection: {error}");
+            None
+        });
+    let Some(found_chip) = found_arm_chip else {
+        return Ok(None);
+    };
+
+    let vendors = vendors();
+    for vendor in vendors.iter() {
+        // TODO: only consider families with matching JEP106.
+        if let Some(target_name) = vendor.try_detect_arm_chip(registry, interface, found_chip)? {
+            return Ok(Some(registry.get_target_by_name(&target_name)?));
+        }
+    }
+
+    // No vendor-specific match, try to find a target by chip info.
+    Ok(Some(
+        registry.get_target_by_chip_info(ChipInfo::from(found_chip))?,
+    ))
 }
 
 fn try_detect_riscv_chip(registry: &Registry, probe: &mut Probe) -> Result<Option<Target>, Error> {
@@ -377,11 +378,11 @@ fn try_detect_from_probe(registry: &Registry, probe: &mut Probe) -> Result<Optio
     Ok(None)
 }
 
-/// Tries to identify the chip using the given probe.
+/// Tries to identify the chip using the given probe. The probe comes back whatever the result.
 pub(crate) fn auto_determine_target(
     registry: &Registry,
     mut probe: Probe,
-) -> Result<(Probe, Option<Target>), Error> {
+) -> (Probe, Result<Option<Target>, Error>) {
     tracing::info!("Auto-detecting target");
     let mut found_target = None;
 
@@ -398,37 +399,37 @@ pub(crate) fn auto_determine_target(
     fn try_detect_from_probe_wrapper(
         registry: &Registry,
         mut probe: Probe,
-    ) -> Result<(Probe, Option<Target>), Error> {
+    ) -> (Probe, Result<Option<Target>, Error>) {
         let found_target = try_detect_from_probe(registry, &mut probe).unwrap_or_else(|error| {
             tracing::debug!("Error during chip auto-detection: {error}");
             None
         });
-        Ok((probe, found_target))
+        (probe, Ok(found_target))
     }
 
     fn try_detect_riscv_chip_wrapper(
         registry: &Registry,
         mut probe: Probe,
-    ) -> Result<(Probe, Option<Target>), Error> {
+    ) -> (Probe, Result<Option<Target>, Error>) {
         let found_target = try_detect_riscv_chip(registry, &mut probe).unwrap_or_else(|error| {
             tracing::debug!("Error during RISC-V chip auto-detection: {error}");
             None
         });
-        Ok((probe, found_target))
+        (probe, Ok(found_target))
     }
 
     fn try_detect_xtensa_chip_wrapper(
         registry: &Registry,
         mut probe: Probe,
-    ) -> Result<(Probe, Option<Target>), Error> {
+    ) -> (Probe, Result<Option<Target>, Error>) {
         let found_target = try_detect_xtensa_chip(registry, &mut probe).unwrap_or_else(|error| {
             tracing::debug!("Error during Xtensa chip auto-detection: {error}");
             None
         });
-        Ok((probe, found_target))
+        (probe, Ok(found_target))
     }
 
-    type DetectFn = fn(&Registry, Probe) -> Result<(Probe, Option<Target>), Error>;
+    type DetectFn = fn(&Registry, Probe) -> (Probe, Result<Option<Target>, Error>);
     const ARCHITECTURES: &[DetectFn] = &[
         try_detect_from_probe_wrapper,
         try_detect_arm_chip,
@@ -437,17 +438,21 @@ pub(crate) fn auto_determine_target(
     ];
 
     for architecture in ARCHITECTURES {
-        let (returned_probe, target) = architecture(registry, probe)?;
-
+        let (returned_probe, target) = architecture(registry, probe);
         probe = returned_probe;
-        if let Some(target) = target {
-            tracing::info!("Found target: {}", target.name);
-            found_target = Some(target);
-            break;
+        match target {
+            Ok(Some(target)) => {
+                tracing::info!("Found target: {}", target.name);
+                found_target = Some(target);
+                break;
+            }
+            Ok(None) => {}
+            Err(error) => return (probe, Err(error)),
         }
     }
 
-    probe.detach()?;
-
-    Ok((probe, found_target))
+    match probe.detach() {
+        Ok(()) => (probe, Ok(found_target)),
+        Err(error) => (probe, Err(error)),
+    }
 }
