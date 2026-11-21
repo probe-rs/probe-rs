@@ -1,1 +1,1 @@
-The project MSRV is now Rust 1.95.
+The project MSRV is now Rust 1.96.

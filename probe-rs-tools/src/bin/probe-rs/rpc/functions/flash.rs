@@ -135,8 +135,10 @@ pub async fn build(
     };
 
     let mut session = ctx.session(request.sessid).await;
+    let registry = ctx.registry().await;
     let mut loader = lift(build_loader(
         &mut session,
+        &registry,
         path,
         request.format,
         idf_files,

@@ -5,6 +5,7 @@ use std::time::Duration;
 use postcard_schema::Schema;
 use serde::{Deserialize, Serialize};
 
+use crate::file::ServerPath;
 use crate::{Key, RpcResult, Session};
 
 // Separate from DebugProbeInfo because we can't serialize a &dyn ProbeFactory
@@ -178,6 +179,9 @@ pub struct UsbSelector {
 #[derive(Clone, Debug, Serialize, Deserialize, Schema)]
 pub struct AttachRequest {
     pub chip: Option<String>,
+    /// The image to run or flash. Attach falls back to its chip when it detects none, and fails if
+    /// the image is built for a different chip than the target.
+    pub image: Option<ServerPath>,
     pub protocol: Option<WireProtocol>,
     pub probe: DebugProbeEntry,
     pub speed: Option<u32>,

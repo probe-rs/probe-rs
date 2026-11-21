@@ -15,9 +15,12 @@ use super::compare::{self, CompareChain, CompareOutcome, Purpose};
 use super::host_flasher::HostSideFlasher;
 use super::{DownloadOptions, FileDownloadError, FlashError, Flasher};
 use crate::Target;
+use crate::config::Registry;
 use crate::flashing::progress::ProgressOperation;
 use crate::flashing::{FlashLayout, FlashProgress};
 use crate::memory::MemoryInterface;
+#[cfg(feature = "object")]
+use crate::meta::ImageChip;
 use crate::session::Session;
 
 /// Common interface implemented by both the RAM-based [`Flasher`] and the
@@ -635,6 +638,25 @@ pub trait ImageFormat: Sync {
 /// Helper trait for object safety.
 pub trait ImageReader: Read + Seek {}
 
+/// What an [`ImageLoader`] gets besides the image.
+pub struct ImageContext<'a> {
+    /// The session to the target that runs the image.
+    pub session: &'a mut Session,
+    /// The registry that the target comes from.
+    pub registry: &'a Registry,
+}
+
+impl ImageContext<'_> {
+    /// Fails if the ELF image `elf` is built for a different chip than the target.
+    #[cfg(feature = "object")]
+    pub fn check_image_chip(&self, elf: &[u8]) -> Result<(), FileDownloadError> {
+        if let Some(chip) = ImageChip::from_image(elf, self.registry) {
+            chip.check_target(self.session.target(), self.registry)?;
+        }
+        Ok(())
+    }
+}
+
 /// Load and parse a firmware in a particular format, and add it to the flash loader.
 ///
 /// Based on the image loader, probe-rs may apply certain transformations to the firmware.
@@ -643,7 +665,7 @@ pub trait ImageLoader {
     fn load(
         &self,
         flash_loader: &mut FlashLoader,
-        session: &mut Session,
+        context: &mut ImageContext<'_>,
         file: &mut dyn ImageReader,
     ) -> Result<(), FileDownloadError>;
 }
@@ -714,9 +736,10 @@ mod builtin {
         read::elf::ElfFile, read::elf::FileHeader, read::elf::ProgramHeader,
     };
 
-    use crate::flashing::loader::{FlashLoader, ImageFormat, ImageLoader, ImageReader};
+    use crate::flashing::loader::{
+        FlashLoader, ImageContext, ImageFormat, ImageLoader, ImageReader,
+    };
     use crate::flashing::{BinOptions, ElfOptions, FileDownloadError};
-    use crate::session::Session;
 
     pub(super) struct ElfLoaderFactory;
     pub(super) struct BinLoaderFactory;
@@ -770,10 +793,10 @@ mod builtin {
         fn load(
             &self,
             flash_loader: &mut FlashLoader,
-            session: &mut Session,
+            context: &mut ImageContext<'_>,
             file: &mut dyn ImageReader,
         ) -> Result<(), FileDownloadError> {
-            self.as_ref().load(flash_loader, session, file)
+            self.as_ref().load(flash_loader, context, file)
         }
     }
 
@@ -784,7 +807,7 @@ mod builtin {
         fn load(
             &self,
             flash_loader: &mut FlashLoader,
-            _session: &mut Session,
+            _context: &mut ImageContext<'_>,
             file: &mut dyn ImageReader,
         ) -> Result<(), FileDownloadError> {
             // Skip the specified bytes.
@@ -812,11 +835,13 @@ mod builtin {
         fn load(
             &self,
             flash_loader: &mut FlashLoader,
-            session: &mut Session,
+            context: &mut ImageContext<'_>,
             file: &mut dyn ImageReader,
         ) -> Result<(), FileDownloadError> {
             let mut elf_buffer = Vec::new();
             file.read_to_end(&mut elf_buffer)?;
+
+            context.check_image_chip(&elf_buffer)?;
 
             let extracted_data = extract_from_elf(&elf_buffer, &self.0)?;
 
@@ -843,7 +868,7 @@ mod builtin {
 
             // get the vector_table_addr, it will be used to prepare boot.
             // RAM boot is only implemented for ARM.
-            if session.target().architecture() == probe_rs_target::Architecture::Arm
+            if context.session.target().architecture() == probe_rs_target::Architecture::Arm
                 && let Some(address) = crate::flashing::vector_table::find_in_elf(
                     &elf_buffer,
                     flash_loader.flash_builder(),
@@ -996,7 +1021,7 @@ mod builtin {
         fn load(
             &self,
             flash_loader: &mut FlashLoader,
-            _session: &mut Session,
+            _context: &mut ImageContext<'_>,
             file: &mut dyn ImageReader,
         ) -> Result<(), FileDownloadError> {
             let mut base_address = 0;
@@ -1034,7 +1059,7 @@ mod builtin {
         fn load(
             &self,
             flash_loader: &mut FlashLoader,
-            _session: &mut Session,
+            _context: &mut ImageContext<'_>,
             file: &mut dyn ImageReader,
         ) -> Result<(), FileDownloadError> {
             let mut uf2_buffer = Vec::new();
@@ -1193,11 +1218,12 @@ impl FlashLoader {
     /// Reads the image according to the file format and adds it to the loader.
     pub fn load_image<T: Read + Seek>(
         &mut self,
-        session: &mut Session,
+        context: &mut ImageContext<'_>,
         file: &mut T,
         format: impl ImageLoader,
         image_instruction_set: Option<InstructionSet>,
     ) -> Result<(), FileDownloadError> {
+        let session = &mut *context.session;
         if let Some(instr_set) = image_instruction_set {
             let mut target_archs = Vec::with_capacity(session.list_cores().len());
 
@@ -1228,7 +1254,7 @@ impl FlashLoader {
             }
         }
 
-        format.load(self, session, file)
+        format.load(self, context, file)
     }
 
     /// Verifies data on the device.

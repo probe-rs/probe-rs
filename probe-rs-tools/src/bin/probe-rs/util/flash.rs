@@ -18,6 +18,7 @@ use probe_rs::flashing::{
 };
 use probe_rs::{
     Session, Target,
+    config::Registry,
     flashing::{DownloadOptions, FileDownloadError, FlashLoader},
 };
 use probe_rs_espressif::image_format::IdfLoader;
@@ -182,13 +183,14 @@ fn format_options_image_loader(
 /// flashed etc.
 pub fn build_loader(
     session: &mut Session,
+    registry: &Registry,
     path: impl AsRef<Path>,
     format_options: FormatOptions,
     idf_files: IdfFiles,
     image_instruction_set: Option<InstructionSet>,
 ) -> Result<FlashLoader, FileDownloadError> {
     let loader = format_options_image_loader(&format_options, idf_files, session.target());
-    probe_rs::flashing::build_loader(session, path, loader, image_instruction_set)
+    probe_rs::flashing::build_loader(session, registry, path, loader, image_instruction_set)
 }
 
 #[derive(Default)]

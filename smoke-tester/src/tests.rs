@@ -4,7 +4,7 @@ use anyhow::Context;
 use linkme::distributed_slice;
 use probe_rs::{
     Architecture, Core, CoreInterface, MemoryInterface, Session,
-    config::MemoryRegion,
+    config::{MemoryRegion, Registry},
     flashing::{DownloadOptions, FlashProgress, download_file_with_options, image_format},
 };
 
@@ -320,7 +320,8 @@ pub fn test_flashing(dut_definition: &DutDefinition, session: &mut Session) -> T
     let format = image_format(session.target().default_format.as_deref().unwrap_or("elf")).unwrap();
     let loader = format.create_loader(None);
 
-    let result = download_file_with_options(session, test_binary, loader, options);
+    let registry = Registry::from_builtin_families();
+    let result = download_file_with_options(session, &registry, test_binary, loader, options);
 
     println!();
 

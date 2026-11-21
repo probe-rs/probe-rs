@@ -199,7 +199,7 @@ async fn main_try(client: &mut RpcClient, opt: CliOptions) -> Result<(), Operati
         "Flashing".green().bold(),
         path.display()
     ));
-    let session = cli::attach_probe(client, opt.probe_options, None, false).await?;
+    let session = cli::attach_probe(client, opt.probe_options, Some(&path), false).await?;
 
     let format = opt.format_options.to_rpc(&session.client()).await?;
     cli::flash(

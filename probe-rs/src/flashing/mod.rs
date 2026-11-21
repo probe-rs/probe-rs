@@ -14,12 +14,13 @@
 //! and looks like this:
 //!
 //! ```no_run
-//! use probe_rs::{Session, SessionConfig, flashing, Permissions};
+//! use probe_rs::{Session, SessionConfig, config::Registry, flashing, Permissions};
 //!
 //! let session_config = SessionConfig::default();
 //! let mut session = Session::auto_attach("nrf51822", session_config)?;
+//! let registry = Registry::from_builtin_families();
 //!
-//! flashing::download_file(&mut session, "binary.hex", flashing::HexLoader)?;
+//! flashing::download_file(&mut session, &registry, "binary.hex", flashing::HexLoader)?;
 //!
 //! # Ok::<(), anyhow::Error>(())
 //! ```

@@ -1,0 +1,1 @@
+Changed `run`, `attach`, `debug`, `download`, `verify`, cargo-flash, cargo-embed and the DAP server to reject an image built for a different chip, and to use the chip of the image when auto-detection finds none (`TargetSelector::AutoOr`).

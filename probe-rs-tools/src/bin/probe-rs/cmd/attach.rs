@@ -36,9 +36,9 @@ pub struct Cmd {
 
 impl Cmd {
     pub async fn run(self, client: RpcClient, utc_offset: UtcOffset) -> anyhow::Result<()> {
-        let (file_meta, elf_meta) = match &self.path {
+        let file_meta = match &self.path {
             Some(path) => parse_metadata(path).await?,
-            None => (FileMetadata::default(), None),
+            None => FileMetadata::default(),
         };
 
         // Show the output of the serial port to the target.
@@ -46,7 +46,7 @@ impl Cmd {
             target_serial: true,
             ..self.probe_options
         };
-        let session = cli::attach_probe(&client, probe_options, elf_meta, true).await?;
+        let session = cli::attach_probe(&client, probe_options, self.path.as_deref(), true).await?;
 
         let rtt_client = rtt_client(&session, &file_meta, &self.monitor_options).await?;
         let decoders = DecoderSettings::new(&file_meta, &self.monitor_options, Some(utc_offset));

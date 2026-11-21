@@ -254,7 +254,7 @@ impl Cmd {
         // Detect run mode based on ELF file
         let run_mode = detect_run_mode(&self)?;
 
-        let (file_meta, elf_meta) = parse_metadata(&self.path).await?;
+        let file_meta = parse_metadata(&self.path).await?;
 
         // TODO: Skip attach_probe & flashing, if user only wants to list tests (only possible when using embedded_test with protocol version >= 1)
 
@@ -263,7 +263,7 @@ impl Cmd {
             target_serial: true,
             ..self.probe_options
         };
-        let session = cli::attach_probe(&client, probe_options, elf_meta, false).await?;
+        let session = cli::attach_probe(&client, probe_options, Some(&self.path), false).await?;
 
         let rtt_client = rtt_client(&session, &file_meta, &self.monitor_options).await?;
         let decoders = DecoderSettings::new(&file_meta, &self.monitor_options, Some(utc_offset));
