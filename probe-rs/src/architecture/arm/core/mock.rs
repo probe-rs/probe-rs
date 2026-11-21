@@ -161,7 +161,7 @@ impl MemoryInterface<ArmError> for MockProbe {
     }
 
     fn flush(&mut self) -> Result<(), ArmError> {
-        todo!()
+        Ok(())
     }
 
     fn read_64(&mut self, _address: u64, _data: &mut [u64]) -> Result<(), ArmError> {
