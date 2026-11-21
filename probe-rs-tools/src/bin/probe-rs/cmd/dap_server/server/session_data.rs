@@ -215,10 +215,7 @@ impl SessionData {
                 .any(|(target_core_index, _)| *target_core_index == core_config.core_index)
         });
 
-        let image_format = config
-            .flashing_config
-            .format_options
-            .binary_format
+        let image_format = FormatKind::from(config.flashing_config.format_options.binary_format)
             .resolve_default_format(self.backend.target_metadata.default_format.as_deref());
 
         for core_configuration in valid_core_configs {
@@ -338,18 +335,19 @@ impl SessionData {
 
         // An image that probe-rs cannot load also cannot have written the
         // control block, thus a failure here leaves clearing enabled.
-        if let Err(error) = self
-            .backend
-            .session_interface()
-            .build_flash_loader(
-                program_binary,
-                config.flashing_config.format_options.clone(),
-                None,
-                false,
-                Some(rtt_key),
-            )
-            .await
-        {
+        let session = self.backend.session_interface();
+        let build = async {
+            let format = config
+                .flashing_config
+                .format_options
+                .to_rpc(&session.client())
+                .await?;
+            session
+                .build_flash_loader(program_binary, format, None, false, Some(rtt_key))
+                .await?;
+            anyhow::Ok(())
+        };
+        if let Err(error) = build.await {
             tracing::warn!("Failed to inspect the program binary for RTT: {error}");
         }
 

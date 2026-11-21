@@ -49,7 +49,7 @@ use probe_rs_rpc::debug_vars::{
     VariablesRequest, WireEvaluateResponse, WireScope, WireSetVariableResponse, WireVariable,
 };
 use probe_rs_rpc::disassemble::{DisassembleRequest, WireDisassembledInstruction};
-use probe_rs_rpc::file::{AppendFileRequest, TempFile};
+use probe_rs_rpc::file::{AppendFileRequest, ServerPath, TempFile};
 use probe_rs_rpc::flash::{
     BootInfo, BootRequest, BuildRequest, BuildResult, DownloadOptions, EraseAllRequest,
     EraseRangeRequest, FlashRequest, LoadRegionRequest, NewFlashLoaderRequest, ProgressEvent,
@@ -435,6 +435,11 @@ impl Drop for RpcClient {
     }
 }
 
+/// In local mode, the server opens the files of the client.
+fn local_server_path(path: &Path) -> ServerPath {
+    ServerPath::new(path.display().to_string())
+}
+
 impl RpcClient {
     pub fn new_from_wire(
         tx: impl PostcardSender + Send + Sync + 'static,
@@ -684,9 +689,9 @@ impl RpcClient {
 
         if self.is_localhost {
             return Ok(ResolvedUpload {
-                canonical_path: src_path.clone(),
+                remote_path: local_server_path(&src_path),
+                canonical_path: src_path,
                 content_hash,
-                remote_path: src_path,
             });
         }
 
@@ -733,17 +738,18 @@ impl RpcClient {
     /// rebuilding a binary between calls uploads the new bytes rather than
     /// silently reusing the stale copy. Unlike [`Self::resolve_upload`], a local
     /// session never reads the file, since the server reads it in place.
-    pub async fn upload_file(&self, src_path: &Path) -> Result<PathBuf, ClientError> {
+    pub async fn upload_file(&self, src_path: &Path) -> Result<ServerPath, ClientError> {
         if self.is_localhost {
-            return Ok(src_path
+            let src_path = src_path
                 .canonicalize()
-                .unwrap_or_else(|_| src_path.to_path_buf()));
+                .unwrap_or_else(|_| src_path.to_path_buf());
+            return Ok(local_server_path(&src_path));
         }
 
         Ok(self.resolve_upload(src_path).await?.remote_path)
     }
 
-    async fn upload_bytes(&self, src_path: &Path, data: &[u8]) -> Result<PathBuf, ClientError> {
+    async fn upload_bytes(&self, src_path: &Path, data: &[u8]) -> Result<ServerPath, ClientError> {
         tracing::debug!("Uploading {} ({} bytes)", src_path.display(), data.len());
 
         let TempFile { key, path } = self.send_resp::<CreateTempFileEndpoint, _>(&()).await?;
@@ -757,7 +763,7 @@ impl RpcClient {
         }
 
         tracing::debug!("Uploaded file to {path}");
-        Ok(PathBuf::from(path))
+        Ok(ServerPath::new(path))
     }
 
     pub async fn attach_probe(&self, request: AttachRequest) -> Result<AttachResult, ClientError> {
@@ -989,35 +995,15 @@ impl SessionInterface {
     pub async fn build_flash_loader_resolved(
         &self,
         upload: &ResolvedUpload,
-        mut format: FormatOptions,
+        format: FormatOptions,
         image_target: Option<String>,
         read_flasher_rtt: bool,
         rtt_client: Option<Key<RttClient>>,
     ) -> Result<BuildResult, ClientError> {
-        let path = upload.server_path().to_path_buf();
-
-        if let Some(ref mut idf_bootloader) = format.idf_options.idf_bootloader {
-            *idf_bootloader = self
-                .client
-                .upload_file(idf_bootloader.as_ref())
-                .await?
-                .display()
-                .to_string();
-        }
-
-        if let Some(ref mut idf_partition_table) = format.idf_options.idf_partition_table {
-            *idf_partition_table = self
-                .client
-                .upload_file(idf_partition_table.as_ref())
-                .await?
-                .display()
-                .to_string();
-        }
-
         self.client
             .send_resp::<BuildEndpoint, _>(&BuildRequest {
                 sessid: self.sessid,
-                path: path.display().to_string(),
+                path: upload.server_path().clone(),
                 format,
                 image_target,
                 read_flasher_rtt,
@@ -1256,7 +1242,7 @@ impl SessionInterface {
         self.client
             .send_resp::<TakeStackTraceEndpoint, _>(&TakeStackTraceRequest {
                 sessid: self.sessid,
-                path: path.display().to_string(),
+                path,
                 stack_frame_limit,
             })
             .await
@@ -1280,7 +1266,7 @@ impl SessionInterface {
         self.client
             .send_resp::<LoadDebugInfoEndpoint, _>(&LoadDebugInfoRequest {
                 sessid: self.sessid,
-                path: upload.server_path().display().to_string(),
+                path: upload.server_path().clone(),
             })
             .await
     }
@@ -1338,7 +1324,7 @@ impl SessionInterface {
             .send_resp::<LoadSvdEndpoint, _>(&LoadSvdRequest {
                 sessid: self.sessid,
                 core,
-                path: Some(path.display().to_string()),
+                path: Some(path),
             })
             .await
     }

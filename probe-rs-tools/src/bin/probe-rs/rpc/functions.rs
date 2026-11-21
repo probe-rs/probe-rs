@@ -38,6 +38,7 @@ use crate::rpc::{
     },
 };
 use crate::util::probe_config::ConfiguredLister;
+use probe_rs_rpc::file::FileAccess;
 use probe_rs_rpc::semihosting_options::SemihostingOptions;
 use probe_rs_rpc::transport::{
     MAX_REQUEST_LEN,
@@ -278,12 +279,13 @@ pub(crate) enum ProbeAccess {
     Deny(Vec<DebugProbeSelector>),
 }
 
-/// Semihosting access to the files of the server host.
+/// Access to the files of the server host.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum HostFiles {
     /// The server runs in the client process, so its files are the files of the client.
     Allow,
     /// The server accepts connections from other processes. A client must not access its files.
+    /// It can use only the files that it uploaded.
     Deny,
 }
 
@@ -298,6 +300,22 @@ pub struct RpcContext {
     lister: Arc<dyn ProbeLister + Send + Sync>,
     probe_broker: Arc<ProbeBroker>,
     host_files: HostFiles,
+}
+
+fn check_file_access(state: &ConnectionState, host_files: HostFiles, path: &str) -> RpcResult<()> {
+    if host_files == HostFiles::Allow || state.is_upload(path) {
+        Ok(())
+    } else {
+        Err(RpcError::from(format!(
+            "This server opens only files that the client uploaded, and not {path}"
+        )))
+    }
+}
+
+impl FileAccess for RpcContext {
+    fn check(&self, path: &str) -> RpcResult<()> {
+        check_file_access(&self.state, self.host_files, path)
+    }
 }
 
 /// Shim that lets a [`Lister`] own a reference to the shared
@@ -357,6 +375,10 @@ impl RpcContext {
 
     pub fn set_sender(&mut self, sender: PostcardSender<WireTxImpl>) {
         self.sender = Some(sender);
+    }
+
+    pub(crate) fn add_upload(&self, path: String) {
+        self.state.add_upload(path);
     }
 
     pub async fn publish<T>(&self, seq_no: VarSeq, msg: &T::Message) -> anyhow::Result<()>
@@ -793,6 +815,140 @@ mod tests {
             probe_broker: Arc::new(ProbeBroker::new()),
             lister: Arc::new(LimitedLister::new(ProbeAccess::All)),
             host_files,
+        }
+    }
+
+    #[test]
+    fn remote_server_opens_only_uploads() {
+        let state = ConnectionState::new();
+        state.add_upload("/tmp/upload".to_owned());
+
+        assert!(check_file_access(&state, HostFiles::Deny, "/tmp/upload").is_ok());
+        assert!(check_file_access(&state, HostFiles::Deny, "/etc/passwd").is_err());
+        assert!(check_file_access(&state, HostFiles::Allow, "/etc/passwd").is_ok());
+    }
+
+    #[cfg(feature = "remote")]
+    mod uploads {
+        use super::*;
+        use postcard_rpc::{
+            Endpoint,
+            header::{VarHeader, VarKey, VarSeq},
+        };
+        use probe_rs_rpc::{
+            Key, ListChipFamiliesEndpoint,
+            debug_vars::LoadSvdRequest,
+            file::ServerPath,
+            flash::BuildRequest,
+            format::FormatOptions,
+            stack_trace::{LoadDebugInfoRequest, TakeStackTraceRequest},
+        };
+
+        fn remote_context() -> RpcContext {
+            RpcContext::with_lister(
+                Arc::new(LimitedLister::new(ProbeAccess::All)),
+                Arc::new(ProbeBroker::new()),
+                HostFiles::Deny,
+            )
+        }
+
+        fn header() -> VarHeader {
+            VarHeader {
+                key: VarKey::Key8(ListChipFamiliesEndpoint::REQ_KEY),
+                seq_no: VarSeq::Seq4(0),
+            }
+        }
+
+        fn is_refused<T>(result: RpcResult<T>) -> bool {
+            result.is_err_and(|error| error.to_string().contains("only files that the client"))
+        }
+
+        async fn upload(ctx: &mut RpcContext) -> ServerPath {
+            ServerPath::new(
+                file::create_temp_file(ctx, header(), ())
+                    .await
+                    .unwrap()
+                    .path,
+            )
+        }
+
+        fn load_debug_info_request(path: ServerPath) -> LoadDebugInfoRequest {
+            LoadDebugInfoRequest {
+                sessid: Key::new(),
+                path,
+            }
+        }
+
+        #[tokio::test]
+        async fn a_connection_opens_its_own_uploads() {
+            let mut ctx = remote_context();
+            let path = upload(&mut ctx).await;
+
+            // The empty upload is opened, and then fails to parse.
+            let result =
+                stack_trace::load_debug_info(&mut ctx, header(), load_debug_info_request(path))
+                    .await;
+            assert!(result.is_err());
+            assert!(!is_refused(result));
+        }
+
+        #[tokio::test]
+        async fn a_connection_cannot_open_other_files() {
+            let mut ctx = remote_context();
+            let path = upload(&mut remote_context()).await;
+
+            let result =
+                stack_trace::load_debug_info(&mut ctx, header(), load_debug_info_request(path))
+                    .await;
+            assert!(is_refused(result));
+        }
+
+        #[tokio::test]
+        async fn every_endpoint_that_opens_a_file_checks_it() {
+            let mut ctx = remote_context();
+            let own = upload(&mut ctx).await;
+            let other = upload(&mut remote_context()).await;
+
+            let stack_trace = TakeStackTraceRequest {
+                sessid: Key::new(),
+                path: other.clone(),
+                stack_frame_limit: 1,
+            };
+            assert!(is_refused(
+                stack_trace::take_stack_trace(&mut ctx, header(), stack_trace).await
+            ));
+
+            let svd = LoadSvdRequest {
+                sessid: Key::new(),
+                core: 0,
+                path: Some(other.clone()),
+            };
+            assert!(is_refused(
+                debug_vars::load_svd(&mut ctx, header(), svd).await
+            ));
+
+            let build = |path: &ServerPath,
+                         idf_bootloader: Option<&ServerPath>,
+                         idf_partition_table: Option<&ServerPath>| {
+                let mut format = FormatOptions::default();
+                format.idf_options.idf_bootloader = idf_bootloader.cloned();
+                format.idf_options.idf_partition_table = idf_partition_table.cloned();
+                BuildRequest {
+                    sessid: Key::new(),
+                    path: path.clone(),
+                    format,
+                    image_target: None,
+                    read_flasher_rtt: false,
+                    rtt_client: None,
+                }
+            };
+            for request in [
+                build(&other, None, None),
+                build(&own, Some(&other), None),
+                build(&own, None, Some(&other)),
+            ] {
+                assert!(is_refused(flash::build(&mut ctx, header(), request).await));
+            }
         }
     }
 

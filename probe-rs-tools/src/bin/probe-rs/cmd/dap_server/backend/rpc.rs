@@ -829,14 +829,9 @@ impl RpcBackend {
     ) -> Result<(), DebuggerError> {
         let session = self.session_interface();
 
+        let format = config.format_options.to_rpc(&session.client()).await?;
         let build_result = session
-            .build_flash_loader_resolved(
-                upload,
-                config.format_options.clone(),
-                None,
-                false,
-                rtt_client,
-            )
+            .build_flash_loader_resolved(upload, format, None, false, rtt_client)
             .await
             .map_err(|e| DebuggerError::Other(anyhow::anyhow!(e)))?;
 

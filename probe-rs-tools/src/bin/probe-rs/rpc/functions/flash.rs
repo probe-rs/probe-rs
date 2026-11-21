@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::{path::Path, time::Duration};
 
 use postcard_rpc::header::VarHeader;
 use probe_rs::{
@@ -12,11 +12,11 @@ use probe_rs_rpc::flash::{
 };
 use tokio::sync::mpsc::Sender;
 
-use probe_rs_rpc::{NoResponse, ProgressEventTopic};
+use probe_rs_rpc::{NoResponse, ProgressEventTopic, file::ServerPath};
 
 use crate::{
     rpc::functions::{RpcContext, RpcSpawnContext, convert::lift},
-    util::flash::build_loader,
+    util::flash::{IdfFiles, build_loader},
 };
 
 fn flash_request_download_options(request: &FlashRequest) -> flashing::DownloadOptions<'_> {
@@ -123,11 +123,23 @@ pub async fn build(
     _header: VarHeader,
     request: BuildRequest,
 ) -> BuildResponse {
+    let path = request.path.checked(ctx)?;
+    let checked = |file: &Option<ServerPath>| {
+        file.as_ref()
+            .map(|file| file.checked(ctx).map(Path::to_path_buf))
+            .transpose()
+    };
+    let idf_files = IdfFiles {
+        bootloader: checked(&request.format.idf_options.idf_bootloader)?,
+        partition_table: checked(&request.format.idf_options.idf_partition_table)?,
+    };
+
     let mut session = ctx.session(request.sessid).await;
     let mut loader = lift(build_loader(
         &mut session,
-        &request.path,
+        path,
         request.format,
+        idf_files,
         request
             .image_target
             .as_deref()
