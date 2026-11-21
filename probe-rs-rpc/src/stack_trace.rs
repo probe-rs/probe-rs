@@ -4,6 +4,7 @@ use postcard_schema::Schema;
 use serde::{Deserialize, Serialize};
 
 use crate::core_ops::{WireRegisterId, WireRegisterValue};
+use crate::file::ServerPath;
 use crate::{Key, NoResponse, RpcResult, Session};
 
 #[derive(Serialize, Deserialize, Schema)]
@@ -68,7 +69,7 @@ impl Display for SourceLocation {
 #[derive(Serialize, Deserialize, Schema)]
 pub struct TakeStackTraceRequest {
     pub sessid: Key<Session>,
-    pub path: String,
+    pub path: ServerPath,
     pub stack_frame_limit: u32,
 }
 
@@ -89,7 +90,7 @@ pub type TakeStackTraceResponse = RpcResult<StackTraces>;
 #[derive(Serialize, Deserialize, Schema)]
 pub struct LoadDebugInfoRequest {
     pub sessid: Key<Session>,
-    pub path: String,
+    pub path: ServerPath,
 }
 
 pub type LoadDebugInfoResponse = NoResponse;

@@ -1,9 +1,9 @@
 use crate::cmd::dap_server::DebuggerError;
+use crate::util::cli::format::FormatOptions;
 use crate::util::common_options::ProbeOptions;
 use crate::util::rtt;
 use anyhow::{Result, anyhow};
 use probe_rs::probe::{DebugProbeSelector, WireProtocol};
-use probe_rs_rpc::format::FormatOptions;
 use serde::{Deserialize, Serialize};
 use std::{env::current_dir, path::PathBuf, time::Duration};
 

@@ -1,6 +1,7 @@
 use postcard_schema::Schema;
 use serde::{Deserialize, Serialize};
 
+use crate::file::ServerPath;
 use crate::{Key, RpcResult, Session};
 
 #[derive(Serialize, Deserialize, Schema)]
@@ -43,7 +44,7 @@ pub struct LoadSvdRequest {
     /// Server-side path to the CMSIS-SVD file (the client uploads it via the
     /// temp-file endpoints, then passes the resulting path here), or `None`
     /// to remove the core's current SVD state.
-    pub path: Option<String>,
+    pub path: Option<ServerPath>,
 }
 
 pub type LoadSvdResponse = RpcResult<()>;
