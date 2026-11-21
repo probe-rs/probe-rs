@@ -3,9 +3,9 @@ use std::path::PathBuf;
 use probe_rs_rpc_client::RpcClient;
 
 use crate::util::cli;
+use crate::util::cli::format::FormatOptions;
 use crate::util::common_options::BinaryDownloadOptions;
 use crate::util::common_options::ProbeOptions;
-use probe_rs_rpc::format::FormatOptions;
 
 #[derive(clap::Parser)]
 pub struct Cmd {
@@ -35,7 +35,7 @@ impl Cmd {
         let boot_info = cli::flash(
             &session,
             &self.path,
-            self.format_options,
+            self.format_options.into(),
             self.download_options,
             None,
             None,

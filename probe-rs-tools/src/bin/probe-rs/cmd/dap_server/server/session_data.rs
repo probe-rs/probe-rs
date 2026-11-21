@@ -215,10 +215,7 @@ impl SessionData {
                 .any(|(target_core_index, _)| *target_core_index == core_config.core_index)
         });
 
-        let image_format = config
-            .flashing_config
-            .format_options
-            .binary_format
+        let image_format = FormatKind::from(config.flashing_config.format_options.binary_format)
             .resolve_default_format(self.backend.target_metadata.default_format.as_deref());
 
         for core_configuration in valid_core_configs {
@@ -343,7 +340,7 @@ impl SessionData {
             .session_interface()
             .build_flash_loader(
                 program_binary,
-                config.flashing_config.format_options.clone(),
+                config.flashing_config.format_options.clone().into(),
                 None,
                 false,
                 Some(rtt_key),
