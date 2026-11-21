@@ -1,10 +1,10 @@
 use std::path::PathBuf;
 
 use crate::util::cli;
+use crate::util::cli::format::FormatOptions;
 use crate::util::common_options::ProbeOptions;
 use crate::util::flash::CliProgressBars;
 use probe_rs_rpc::flash::VerifyResult;
-use probe_rs_rpc::format::FormatOptions;
 use probe_rs_rpc_client::RpcClient;
 
 #[derive(clap::Parser)]
@@ -38,7 +38,7 @@ impl Cmd {
         let loader = session
             .build_flash_loader(
                 self.path.to_path_buf(),
-                self.format_options,
+                self.format_options.into(),
                 None,
                 self.read_flasher_rtt,
                 None,

@@ -832,7 +832,7 @@ impl RpcBackend {
         let build_result = session
             .build_flash_loader_resolved(
                 upload,
-                config.format_options.clone(),
+                config.format_options.clone().into(),
                 None,
                 false,
                 rtt_client,

@@ -57,7 +57,7 @@ struct CliOptions {
     pub download_options: BinaryDownloadOptions,
 
     #[command(flatten)]
-    pub format_options: probe_rs_rpc::format::FormatOptions,
+    pub format_options: crate::util::cli::format::FormatOptions,
 
     /// Remote host to connect to
     #[cfg(feature = "remote")]
@@ -204,7 +204,7 @@ async fn main_try(client: &mut RpcClient, opt: CliOptions) -> Result<(), Operati
     cli::flash(
         &session,
         &path,
-        opt.format_options,
+        opt.format_options.into(),
         opt.download_options,
         None,
         image_instr_set,

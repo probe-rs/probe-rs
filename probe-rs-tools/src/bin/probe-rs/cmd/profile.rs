@@ -41,7 +41,12 @@ impl ProfileCmd {
         let (mut session, probe_options) =
             self.run.probe_options.simple_attach(registry, lister)?;
 
-        let loader = build_loader(&mut session, &self.run.path, self.run.format_options, None)?;
+        let loader = build_loader(
+            &mut session,
+            &self.run.path,
+            self.run.format_options.into(),
+            None,
+        )?;
 
         let file_location = self.run.path.as_path();
 
