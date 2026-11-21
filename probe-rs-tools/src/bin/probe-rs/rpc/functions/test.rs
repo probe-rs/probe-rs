@@ -186,7 +186,7 @@ fn run_test_impl(
     })?;
     match return_reason {
         ReturnReason::Timeout => Ok(TestResult::Failed(format!(
-            "Test timed out after {timeout:?}"
+            "Test timed out after {timeout:?}, not counting semihosting calls"
         ))),
         ReturnReason::Predicate(outcome) if outcome == expected_outcome => Ok(TestResult::Success),
         ReturnReason::Predicate(outcome) => Ok(TestResult::Failed(format!(

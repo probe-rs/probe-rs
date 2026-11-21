@@ -6,10 +6,10 @@ use probe_rs_rpc::rtt_client::ScanRegion;
 use probe_rs_rpc::test::{Test, TestDefinition};
 use probe_rs_rpc_client::RpcClient;
 
+use crate::util::cli::format::FormatOptions;
 use crate::util::cli::{self, DecoderSettings, TargetOutput, parse_metadata, rtt_client};
 use crate::util::common_options::{BinaryDownloadOptions, ProbeOptions};
-use probe_rs_rpc::format::FormatOptions;
-use probe_rs_rpc::rtt_config::ChannelMode;
+use probe_rs_rpc::rtt_config;
 
 use anyhow::{Context, anyhow};
 use libtest_mimic::{Arguments, FormatSetting};
@@ -269,10 +269,11 @@ impl Cmd {
         let decoders = DecoderSettings::new(&file_meta, &self.monitor_options, Some(utc_offset));
 
         // Flash firmware
+        let format = self.format_options.to_rpc(&session.client()).await?;
         let boot_info = cli::flash(
             &session,
             &self.path,
-            self.format_options,
+            format,
             self.download_options,
             Some(rtt_client.handle()),
             None,
@@ -531,5 +532,30 @@ fn parse_scan_region(mut src: &str) -> anyhow::Result<ScanRegion> {
         [addr] => Ok(ScanRegion::Exact(addr)),
         [start, end] => Ok(ScanRegion::Ranges(vec![(start, end)])),
         _ => anyhow::bail!("Invalid range: multiple '..'s"),
+    }
+}
+
+/// [`rtt_config::ChannelMode`] on the command line.
+#[derive(Clone, Copy, Debug, clap::ValueEnum)]
+pub(crate) enum ChannelMode {
+    /// Skip writing the data completely if it doesn't fit in its entirety.
+    NoBlockSkip,
+
+    /// Write as much as possible of the data and ignore the rest.
+    NoBlockTrim,
+
+    /// Block (spin) if the buffer is full. Note that if the application writes within a critical
+    /// section, using this mode can cause the application to freeze if the buffer becomes full and
+    /// is not read by the host.
+    BlockIfFull,
+}
+
+impl From<ChannelMode> for rtt_config::ChannelMode {
+    fn from(mode: ChannelMode) -> Self {
+        match mode {
+            ChannelMode::NoBlockSkip => Self::NoBlockSkip,
+            ChannelMode::NoBlockTrim => Self::NoBlockTrim,
+            ChannelMode::BlockIfFull => Self::BlockIfFull,
+        }
     }
 }

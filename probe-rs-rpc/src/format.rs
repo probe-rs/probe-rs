@@ -1,46 +1,16 @@
-#[cfg(feature = "clap")]
-use std::num::ParseIntError;
-
 use postcard_schema::Schema;
 use serde::{Deserialize, Serialize};
 
-#[cfg(feature = "clap")]
-fn parse_u32(input: &str) -> Result<u32, ParseIntError> {
-    parse_int::parse(input)
-}
-
-#[cfg(feature = "clap")]
-fn parse_u64(input: &str) -> Result<u64, ParseIntError> {
-    parse_int::parse(input)
-}
+use crate::file::ServerPath;
 
 #[derive(Clone, Serialize, Deserialize, Debug, Default, Schema)]
-#[cfg_attr(feature = "clap", derive(clap::Parser))]
 #[serde(default)]
-pub struct BinaryCliOptions {
-    #[cfg_attr(
-        feature = "clap",
-        clap(
-            long,
-            value_parser = parse_u64,
-            help_heading = "DOWNLOAD CONFIGURATION / BIN IMAGE"
-        )
-    )]
+pub struct BinaryFormatOptions {
     pub base_address: Option<u64>,
-    #[cfg_attr(
-        feature = "clap",
-        clap(
-            long,
-            value_parser = parse_u32,
-            default_value = "0",
-            help_heading = "DOWNLOAD CONFIGURATION / BIN IMAGE"
-        )
-    )]
     pub skip: u32,
 }
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Schema)]
-#[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[serde(rename_all = "lowercase")]
 pub enum EspFlashFrequency {
     #[serde(rename = "12MHz")]
@@ -69,7 +39,6 @@ pub enum EspFlashFrequency {
 }
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Schema)]
-#[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[serde(rename_all = "lowercase")]
 pub enum EspFlashMode {
     Qio,
@@ -80,88 +49,44 @@ pub enum EspFlashMode {
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug, Default, Schema)]
-#[cfg_attr(feature = "clap", derive(clap::Parser))]
 #[serde(default)]
-pub struct IdfCliOptions {
-    #[cfg_attr(
-        feature = "clap",
-        clap(long, help_heading = "DOWNLOAD CONFIGURATION / ESP-IDF IMAGE")
-    )]
-    pub idf_bootloader: Option<String>,
-    #[cfg_attr(
-        feature = "clap",
-        clap(long, help_heading = "DOWNLOAD CONFIGURATION / ESP-IDF IMAGE")
-    )]
-    pub idf_partition_table: Option<String>,
-    #[cfg_attr(
-        feature = "clap",
-        clap(long, help_heading = "DOWNLOAD CONFIGURATION / ESP-IDF IMAGE")
-    )]
+pub struct IdfFormatOptions {
+    pub idf_bootloader: Option<ServerPath>,
+    pub idf_partition_table: Option<ServerPath>,
     pub idf_target_app_partition: Option<String>,
-    #[cfg_attr(
-        feature = "clap",
-        clap(long, help_heading = "DOWNLOAD CONFIGURATION / ESP-IDF IMAGE")
-    )]
     pub idf_flash_mode: Option<EspFlashMode>,
-    #[cfg_attr(
-        feature = "clap",
-        clap(long, help_heading = "DOWNLOAD CONFIGURATION / ESP-IDF IMAGE")
-    )]
     pub idf_flash_freq: Option<EspFlashFrequency>,
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug, Default, Schema)]
-#[cfg_attr(feature = "clap", derive(clap::Parser))]
 #[serde(default)]
-pub struct ElfCliOptions {
-    #[cfg_attr(
-        feature = "clap",
-        clap(long, help_heading = "DOWNLOAD CONFIGURATION / ELF IMAGE")
-    )]
+pub struct ElfFormatOptions {
     pub skip_section: Vec<String>,
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug, Default, Schema)]
-#[cfg_attr(feature = "clap", derive(clap::Parser))]
 #[serde(default)]
 pub struct FormatOptions {
-    #[cfg_attr(
-        feature = "clap",
-        clap(
-            value_enum,
-            ignore_case = true,
-            default_value_t = FormatKind::Target,
-            long,
-            help_heading = "DOWNLOAD CONFIGURATION"
-        )
-    )]
     pub binary_format: FormatKind,
 
-    #[cfg_attr(feature = "clap", clap(flatten))]
-    pub bin_options: BinaryCliOptions,
+    pub bin_options: BinaryFormatOptions,
 
-    #[cfg_attr(feature = "clap", clap(flatten))]
-    pub idf_options: IdfCliOptions,
+    pub idf_options: IdfFormatOptions,
 
-    #[cfg_attr(feature = "clap", clap(flatten))]
-    pub elf_options: ElfCliOptions,
+    pub elf_options: ElfFormatOptions,
 }
 
 #[derive(Debug, Default, Serialize, Deserialize, PartialEq, Eq, Clone, Copy, Schema)]
-#[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 pub enum FormatKind {
     #[default]
     Target,
 
-    #[cfg_attr(feature = "clap", value(alias("binary")))]
     Bin,
 
-    #[cfg_attr(feature = "clap", value(aliases(["ihex", "intelhex"])))]
     Hex,
 
     Elf,
 
-    #[cfg_attr(feature = "clap", value(aliases(["esp-idf", "espidf"])))]
     Idf,
 
     Uf2,

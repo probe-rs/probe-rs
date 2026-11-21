@@ -40,6 +40,7 @@ use crate::rtt_client::{
     CreateRttClientRequest, CreateRttClientResponse, PollRttUpRequest, PollRttUpResponse,
     RttChannelRequest, RttChannelsResponse, RttDownRequest, RttDownResponse,
 };
+use crate::server_proof::{ServerProofRequest, ServerProofResponse};
 use crate::stack_trace::{
     LoadDebugInfoRequest, LoadDebugInfoResponse, TakeRichStackTraceRequest,
     TakeRichStackTraceResponse, TakeStackTraceRequest, TakeStackTraceResponse,
@@ -144,6 +145,7 @@ endpoints! {
     | CoreReadRegistersEndpoint    | CoreReadRegistersRequest | CoreReadRegistersResponse  | "core/read_registers"     |
     | CoreDumpEndpoint             | CoreDumpRequest          | CoreDumpResponse           | "core/dump"               |
     | HandleSemihostingEndpoint    | HandleSemihostingRequest | HandleSemihostingResponse  | "core/handle_semihosting" |
+    | ServerProofEndpoint          | ServerProofRequest       | ServerProofResponse        | "server_proof"            |
     | DisassembleEndpoint          | DisassembleRequest       | DisassembleResponse        | "core/disassemble"        |
 
     | ReadMemory8Endpoint       | ReadMemoryRequest       | ReadMemory8Response     | "memory/read8"      |

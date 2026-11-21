@@ -174,6 +174,7 @@ pub mod reset;
 pub mod rtt_client;
 pub mod rtt_config;
 pub mod semihosting_options;
+pub mod server_proof;
 pub mod stack_trace;
 pub mod test;
 pub mod transport;
