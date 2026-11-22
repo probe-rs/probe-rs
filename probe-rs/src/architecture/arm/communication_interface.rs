@@ -8,7 +8,7 @@ use crate::{
             Ctrl, DPIDR, DebugPortId, DebugPortVersion, DpAccess, DpAddress, DpRegisterAddress,
             Select1, SelectV1, SelectV3,
         },
-        memory::{ADIMemoryInterface, ArmMemoryInterface, Component},
+        memory::{ADIMemoryInterface, ArmMemoryInterface, romtable::ComponentInformationReader},
         sequences::ArmDebugSequence,
         traits::DebugPortWire,
     },
@@ -135,14 +135,36 @@ pub fn read_chip_info_from_rom_table(
     for ap in probe.access_ports(dp)? {
         if let Ok(mut memory) = probe.memory_interface(&ap) {
             let base_address = memory.base_address()?;
-            let component = Component::try_parse(&mut *memory, base_address)?;
 
-            if let Component::Class1RomTable(component_id, _) = component
-                && let Some(jep106) = component_id.peripheral_id().jep106()
+            // Some devices reset in a loop while their boot ROM finds no application to start,
+            // and reads during a reset, which lasts a few milliseconds, return 0. Only trust a
+            // component ID that reads the same twice, some time apart.
+            let mut read_id = || {
+                ComponentInformationReader::new(base_address, &mut *memory)
+                    .read_all()
+                    .ok()
+            };
+            let mut id = read_id();
+            for attempt in 1..=10 {
+                std::thread::sleep(std::time::Duration::from_millis(10));
+                let again = read_id();
+                if again == id {
+                    break;
+                }
+                tracing::debug!(
+                    "The component at {base_address:#010x} changed while reading it, attempt \
+                     {attempt}"
+                );
+                id = again;
+            }
+
+            if let Some(id) = id
+                && id.is_rom_table()
+                && let Some(jep106) = id.peripheral_id().jep106()
             {
                 return Ok(Some(ArmChipInfo {
                     manufacturer: jep106,
-                    part: component_id.peripheral_id().part(),
+                    part: id.peripheral_id().part(),
                 }));
             }
         }
