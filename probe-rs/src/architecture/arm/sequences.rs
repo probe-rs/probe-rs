@@ -28,7 +28,7 @@ use super::{
     ap::AccessPortError,
     armv6m::Demcr,
     component::{TraceFunnel, TraceSink},
-    core::cortex_m::{Dhcsr, Vtor},
+    core::cortex_m::{Dhcsr, Vtor, clear_dfsr},
     dp::{Abort, DPIDR, DpAccess, DpAddress, SelectV1},
     memory::{
         ArmMemoryInterface,
@@ -957,6 +957,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
             // Disable Core Debug via DHCSR
             let mut dhcsr = Dhcsr(0);
             dhcsr.enable_write();
+            clear_dfsr(interface)?;
             interface.write_word_32(Dhcsr::get_mmio_address(), dhcsr.0)?;
 
             // Disable DWT and ITM blocks, DebugMonitor handler,
