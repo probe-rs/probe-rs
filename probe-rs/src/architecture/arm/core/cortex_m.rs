@@ -212,6 +212,53 @@ pub(crate) fn write_core_reg(
     wait_for_core_register_transfer(memory, Duration::from_millis(100))
 }
 
+/// Read DHCSR, and DFSR when DHCSR shows the core halted.
+///
+/// With `expect_halt`, both are read in one batch. Otherwise DFSR is read only after DHCSR shows
+/// a halt, so a probe that cannot batch polls a running core with one access. DHCSR is read
+/// first: a halt between the two reads shows as running, and leaves DFSR for the next call.
+pub(crate) fn read_debug_status(
+    memory: &mut dyn ArmMemoryInterface,
+    expect_halt: bool,
+) -> Result<(Dhcsr, Option<Dfsr>), ArmError> {
+    let mut dhcsr = 0u32;
+    let mut dfsr = 0u32;
+    if expect_halt {
+        memory.execute_operations(&mut [
+            Operation::new(
+                Dhcsr::get_mmio_address(),
+                OperationKind::Read32(std::slice::from_mut(&mut dhcsr)),
+            ),
+            Operation::new(
+                Dfsr::get_mmio_address(),
+                OperationKind::Read32(std::slice::from_mut(&mut dfsr)),
+            ),
+        ])?;
+    } else {
+        dhcsr = memory.read_word_32(Dhcsr::get_mmio_address())?;
+    }
+
+    let dhcsr = Dhcsr(dhcsr);
+    if !dhcsr.s_halt() {
+        return Ok((dhcsr, None));
+    }
+    if !expect_halt {
+        dfsr = memory.read_word_32(Dfsr::get_mmio_address())?;
+    }
+    Ok((dhcsr, Some(Dfsr(dfsr))))
+}
+
+/// Clear DFSR, unless `dfsr`, its value as read, has no bit set.
+pub(crate) fn clear_dfsr_if_set(
+    memory: &mut dyn ArmMemoryInterface,
+    dfsr: Dfsr,
+) -> Result<(), ArmError> {
+    if dfsr.0 == 0 {
+        return Ok(());
+    }
+    clear_dfsr(memory)
+}
+
 /// Leave Debug state, either running freely or stepping one instruction.
 ///
 /// A single DHCSR write cannot clear C_HALT and change C_MASKINTS, so C_MASKINTS is settled in
