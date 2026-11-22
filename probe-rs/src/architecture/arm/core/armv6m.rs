@@ -480,25 +480,9 @@ impl<'probe> Armv6m<'probe> {
 
         Ok(())
     }
-}
 
-impl CoreInterface for Armv6m<'_> {
-    fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), Error> {
-        // Wait until halted state is active again.
-        self.wait_for_status(timeout, |s| s.is_halted())
-    }
-
-    fn core_halted(&mut self) -> Result<bool, Error> {
-        // Wait until halted state is active again.
-        //
-        // By calling the status function, the cached
-        // status is properly updated.
-        let status = self.status()?;
-
-        Ok(status.is_halted())
-    }
-
-    fn status(&mut self) -> Result<crate::core::CoreStatus, Error> {
+    /// Read the core status, and update the cached one.
+    fn read_status(&mut self) -> Result<crate::core::CoreStatus, Error> {
         let dhcsr = Dhcsr(self.memory.read_word_32(Dhcsr::get_mmio_address())?);
 
         if dhcsr.s_lockup() {
@@ -578,6 +562,27 @@ impl CoreInterface for Armv6m<'_> {
         self.set_core_status(CoreStatus::Running);
 
         Ok(CoreStatus::Running)
+    }
+}
+
+impl CoreInterface for Armv6m<'_> {
+    fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), Error> {
+        // Wait until halted state is active again.
+        self.wait_for_status(timeout, |s| s.is_halted())
+    }
+
+    fn core_halted(&mut self) -> Result<bool, Error> {
+        // Wait until halted state is active again.
+        //
+        // By calling the status function, the cached
+        // status is properly updated.
+        let status = self.status()?;
+
+        Ok(status.is_halted())
+    }
+
+    fn status(&mut self) -> Result<crate::core::CoreStatus, Error> {
+        self.read_status()
     }
 
     fn halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
