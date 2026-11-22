@@ -254,7 +254,7 @@ pub(crate) fn clear_dfsr(memory: &mut dyn ArmMemoryInterface) -> Result<(), ArmE
 ///
 /// C_HALT is set in the write that changes C_MASKINTS as exit_halt does.
 /// When halt is false and the core was running a second write clears C_HALT again.
-/// A system reset can leave DFSR set: clear it last
+/// A system reset can leave DFSR set: clear it after any C_HALT=1 write
 pub(crate) fn clear_step_before_reset(
     memory: &mut dyn ArmMemoryInterface,
     halt: bool,
@@ -271,7 +271,8 @@ pub(crate) fn clear_step_before_reset(
         memory.flush()?;
 
         if !halt && !was_halted {
-            release_halt(memory, dhcsr)?;
+            // The release already cleared DFSR
+            return release_halt(memory, dhcsr);
         }
     }
     clear_dfsr(memory)?;
@@ -514,7 +515,6 @@ mod tests {
                     halt_write,
                     clear,
                     Op::Write(DHCSR, KEY | C_DEBUGEN),
-                    clear,
                 ],
             ),
         ];
