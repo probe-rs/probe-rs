@@ -16,7 +16,8 @@ use crate::{
 use bitfield::bitfield;
 use communication_interface::{AbstractCommandErrorKind, RiscvCommunicationInterface, RiscvError};
 use registers::{
-    FP, RA, RISCV_CORE_REGISTERS, RISCV_RV32E_CORE_REGISTERS, RISCV_WITH_FP_CORE_REGISTERS, SP,
+    FCSR, FFLAGS, FP, FT0, FT11, MSTATUS, RA, RISCV_CORE_REGISTERS, RISCV_RV32E_CORE_REGISTERS,
+    RISCV_WITH_FP_CORE_REGISTERS, SP,
 };
 use registers64::{FP64, PC64, RA64, RISCV64_CORE_REGISTERS, RISCV64_WITH_FP_CORE_REGISTERS, SP64};
 use std::{
@@ -455,6 +456,42 @@ impl<'state, X: XlenMode> RiscvCore<'state, X> {
         }
         Ok(())
     }
+
+    /// Runs `access` with the FPU on if `address` is an FPU register and `mstatus.FS` is Off.
+    ///
+    /// A hart may raise an exception for an access to its FPU registers while the FPU
+    /// is off. The hart stays halted until `mstatus` is put back, so it cannot change
+    /// `mstatus` in between.
+    fn with_fpu_for<T>(
+        &mut self,
+        address: RegisterId,
+        access: impl FnOnce(&mut RiscvCommunicationInterface<'_>) -> Result<T, RiscvError>,
+    ) -> Result<T, RiscvError> {
+        const FS_MASK: u64 = 0b11 << 13;
+        const FS_INITIAL: u64 = 0b01 << 13;
+        let mstatus_id = MSTATUS.id.0;
+
+        // fflags, frm and fcsr, then f0 (ft0) to f31 (ft11)
+        let fpu_register =
+            (FFLAGS.id..=FCSR.id).contains(&address) || (FT0.id..=FT11.id).contains(&address);
+        if !fpu_register {
+            return access(&mut self.interface);
+        }
+
+        self.interface.halted_access(|interface| {
+            let mstatus = interface.read_csr(mstatus_id)?;
+            if mstatus & FS_MASK != 0 {
+                return access(interface);
+            }
+
+            interface.write_csr(mstatus_id, mstatus | FS_INITIAL)?;
+            let result = access(interface);
+            let restored = interface.write_csr(mstatus_id, mstatus);
+            let value = result?;
+            restored?;
+            Ok(value)
+        })
+    }
 }
 
 // ── CoreInterface implementation ──────────────────────────────────────────────
@@ -648,8 +685,7 @@ impl<X: XlenMode> CoreInterface for RiscvCore<'_, X> {
     }
 
     fn read_core_reg(&mut self, address: RegisterId) -> Result<RegisterValue, Error> {
-        self.interface
-            .read_csr(address.0)
+        self.with_fpu_for(address, |interface| interface.read_csr(address.0))
             .map(X::csr_to_register_value)
             .map_err(Error::from)
     }
@@ -659,7 +695,8 @@ impl<X: XlenMode> CoreInterface for RiscvCore<'_, X> {
         if address == X::program_counter().id {
             self.state.pc_written = true;
         }
-        self.interface.write_csr(address.0, v).map_err(Error::from)
+        self.with_fpu_for(address, |interface| interface.write_csr(address.0, v))
+            .map_err(Error::from)
     }
 
     fn available_breakpoint_units(&mut self) -> Result<u32, Error> {
