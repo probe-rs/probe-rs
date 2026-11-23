@@ -111,9 +111,7 @@ impl TargetDescription {
         for feature in self.features.iter() {
             let _ = write!(target_description, "<feature name='{}'>", feature.name);
 
-            for i in reg_start..reg_start + feature.reg_count {
-                let reg = &self.regs[i];
-
+            for reg in &self.regs[reg_start..reg_start + feature.reg_count] {
                 let _ = write!(
                     target_description,
                     "<reg name='{}' bitsize='{}' type='{}'/>",
