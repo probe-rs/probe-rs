@@ -5,8 +5,8 @@ use crate::{
         SwoConfig,
         ap::{self, AccessPortType},
         dp::{
-            Ctrl, DPIDR, DebugPortId, DebugPortVersion, DpAccess, DpAddress, DpRegisterAddress,
-            Select1, SelectV1, SelectV3,
+            Ctrl, DPIDR, DebugPortId, DebugPortVersion, DpAccess, DpAddress, DpRegister,
+            DpRegisterAddress, Select1, SelectV1, SelectV3,
         },
         memory::{ADIMemoryInterface, ArmMemoryInterface, Component},
         sequences::ArmDebugSequence,
@@ -1343,8 +1343,20 @@ impl DapAccess for ArmCommunicationInterface {
         &mut self,
         dp: DpAddress,
         address: DpRegisterAddress,
-        value: u32,
+        mut value: u32,
     ) -> Result<(), ArmError> {
+        // Bit-banging probes clock a data phase after a WAIT, which is only legal with overrun
+        // detection on. A debug sequence can reach an AP inside `debug_port_start`, before
+        // `select_dp` sets the bit, so every CTRL/STAT write keeps it set.
+        if self.use_overrun_detect
+            && address.address == Ctrl::ADDRESS.address
+            && address.bank.unwrap_or(0) == 0
+        {
+            let mut ctrl = Ctrl(value);
+            ctrl.set_orun_detect(true);
+            value = ctrl.0;
+        }
+
         self.select_dp_and_dp_bank(dp, &address)?;
         let result = self
             .transport()
@@ -1674,30 +1686,36 @@ mod tests {
 
     #[test]
     fn swd_dp_write_writes_select_for_bank_switch() {
-        let mut probe = MockSwdProbe::new();
-        prepare_swd_probe(&mut probe);
-        let (mut interface, operations) = swd_interface(probe);
-        finish_attach(&mut interface, &operations);
+        // Overrun detection must leave the other registers at this address, such as DLCR and
+        // SELECT1, as written: bit 0 means something else there.
+        for use_overrun_detect in [false, true] {
+            let mut probe = MockSwdProbe::new();
+            prepare_swd_probe(&mut probe);
+            let (mut interface, operations, _) =
+                swd_interface_with_overrun(probe, use_overrun_detect);
+            finish_attach(&mut interface, &operations);
 
-        interface
-            .write_raw_dp_register(
-                DpAddress::Default,
-                DpRegisterAddress {
-                    address: DP_CTRL_ADDR,
-                    bank: Some(1),
-                },
-                0x1234,
-            )
-            .expect("write should succeed");
+            interface
+                .write_raw_dp_register(
+                    DpAddress::Default,
+                    DpRegisterAddress {
+                        address: DP_CTRL_ADDR,
+                        bank: Some(1),
+                    },
+                    0x1234,
+                )
+                .expect("write should succeed");
 
-        let ops = operations.lock().unwrap();
-        assert_eq!(
-            write_ops(&ops),
-            vec![
-                (Port::Dp, DP_SELECT_ADDR, 1),
-                (Port::Dp, DP_CTRL_ADDR, 0x1234),
-            ]
-        );
+            let ops = operations.lock().unwrap();
+            assert_eq!(
+                write_ops(&ops),
+                vec![
+                    (Port::Dp, DP_SELECT_ADDR, 1),
+                    (Port::Dp, DP_CTRL_ADDR, 0x1234),
+                ],
+                "use_overrun_detect: {use_overrun_detect}"
+            );
+        }
     }
 
     #[test]
@@ -2256,6 +2274,43 @@ mod tests {
                     && (op.data & 1) == 1
             }),
             "expected overrun detect to be enabled in CTRL/STAT"
+        );
+    }
+
+    #[test]
+    fn swd_power_up_request_sets_orun_detect() {
+        // A debug sequence may access an AP right after powering up, so detection has to be on
+        // from the power-up write rather than from the check after `debug_port_start`.
+        let mut probe = MockSwdProbe::new();
+        push_attach_responses(&mut probe);
+        probe.set_read_sequence(
+            Port::Dp,
+            DP_CTRL_ADDR,
+            // Powered down when the port connects and when `debug_port_start` checks it.
+            std::iter::repeat_n(0, 2)
+                .chain(std::iter::repeat_n(0xA000_0000, 100))
+                .collect(),
+        );
+        let (mut interface, operations, _) = swd_interface_with_overrun(probe, true);
+
+        interface
+            .select_debug_port(DpAddress::Default)
+            .expect("select should succeed");
+
+        let ctrl_writes: Vec<u32> = operations
+            .lock()
+            .unwrap()
+            .iter()
+            .filter(|op| {
+                op.port == Port::Dp && op.addr == DP_CTRL_ADDR && op.direction == Direction::Write
+            })
+            .map(|op| op.data)
+            .collect();
+        assert!(
+            ctrl_writes
+                .first()
+                .is_some_and(|&ctrl| Ctrl(ctrl).orun_detect()),
+            "expected overrun detect in the first CTRL/STAT write, got {ctrl_writes:x?}"
         );
     }
 }
