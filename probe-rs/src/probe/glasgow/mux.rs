@@ -95,12 +95,17 @@ impl GlasgowDevice {
     }
 
     pub fn new_from_selector(selector: &DebugProbeSelector) -> Result<Self, DebugProbeError> {
-        let DebugProbeSelector::Usb(UsbSelector {
-            serial_number: Some(serial),
-            ..
-        }) = selector
-        else {
-            return Err(ProbeCreationError::NotFound.into());
+        let serial = match selector {
+            DebugProbeSelector::Tcp(address) if address.driver == super::DRIVER => {
+                return Ok(Self::new(GlasgowDeviceInner::Net(
+                    GlasgowNetDevice::connect_tcp(&address.address)?,
+                )));
+            }
+            DebugProbeSelector::Usb(UsbSelector {
+                serial_number: Some(serial),
+                ..
+            }) => serial,
+            _ => return Err(ProbeCreationError::NotFound.into()),
         };
 
         if serial.starts_with("tcp:") || serial.starts_with("unix:") {
