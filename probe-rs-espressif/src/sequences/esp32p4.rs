@@ -67,6 +67,8 @@ const CACHE_LINE_SIZE: u64 = 64;
 /// The distance from a cacheable address to the alias that bypasses the caches.
 const NON_CACHEABLE_OFFSET: u64 = 0x4000_0000;
 
+const L2_MEMORY: Range<u64> = 0x4ff0_0000..0x4ffc_0000;
+
 /// The memory that the caches hold, addressed as the cache addresses it.
 const CACHEABLE_REGIONS: [Range<u64>; 4] = [
     // Flash
@@ -75,8 +77,7 @@ const CACHEABLE_REGIONS: [Range<u64>; 4] = [
     0x4800_0000..0x4c00_0000,
     // ROM
     0x4fc0_0000..0x4fc2_0000,
-    // L2 memory
-    0x4ff0_0000..0x4ffc_0000,
+    L2_MEMORY,
 ];
 
 /// Cache maintenance of the ESP32-P4.
@@ -125,6 +126,12 @@ impl ESP32P4CacheSync {
             _ => is_cacheable(address).then_some(address),
         }
     }
+
+    fn is_non_cacheable_l2_memory(address: u64) -> bool {
+        address
+            .checked_sub(NON_CACHEABLE_OFFSET)
+            .is_some_and(|cacheable| L2_MEMORY.contains(&cacheable))
+    }
 }
 
 impl CacheSync for ESP32P4CacheSync {
@@ -133,6 +140,14 @@ impl CacheSync for ESP32P4CacheSync {
         interface: &mut RiscvCommunicationInterface<'_>,
         range: Range<u64>,
     ) -> Result<(), Error> {
+        // The core writes the same sync registers, so a write here races with the
+        // core while it runs. The alias of L2 memory that bypasses the caches can
+        // skip it: after a write, `invalidate` drops the L1 lines that could
+        // overwrite the new data. It keeps L2 lines, so external RAM cannot skip it.
+        if Self::is_non_cacheable_l2_memory(range.start) {
+            return Ok(());
+        }
+
         self.sync(
             interface,
             range,
@@ -412,5 +427,30 @@ impl RiscvDebugSequence for ESP32P4 {
         memory_map: &mut Vec<MemoryRegion>,
     ) -> Result<(), FlashError> {
         detect_flash_size(session, memory_map)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn non_cacheable_alias_of_l2_memory() {
+        assert!(ESP32P4CacheSync::is_non_cacheable_l2_memory(0x8ff4_0400));
+    }
+
+    #[test]
+    fn cacheable_l2_memory_is_not_the_alias() {
+        assert!(!ESP32P4CacheSync::is_non_cacheable_l2_memory(0x4ff4_0400));
+    }
+
+    #[test]
+    fn non_cacheable_alias_of_external_ram_is_not_l2_memory() {
+        assert!(!ESP32P4CacheSync::is_non_cacheable_l2_memory(0x8800_1000));
+    }
+
+    #[test]
+    fn peripherals_are_not_l2_memory() {
+        assert!(!ESP32P4CacheSync::is_non_cacheable_l2_memory(0x500e_6000));
     }
 }
