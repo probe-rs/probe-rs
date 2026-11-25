@@ -234,7 +234,7 @@ impl From<DsuDid> for u32 {
     }
 }
 /// A wrapper for different types that can perform SWD Commands (SWJ_Pins SWJ_Sequence)
-struct SwdSequenceShim<'a>(&'a mut dyn DebugPortWire);
+pub(crate) struct SwdSequenceShim<'a>(&'a mut dyn DebugPortWire);
 
 impl<'a> From<&'a mut dyn DebugPortWire> for SwdSequenceShim<'a> {
     fn from(p: &'a mut dyn DebugPortWire) -> Self {
