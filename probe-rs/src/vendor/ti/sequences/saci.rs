@@ -404,6 +404,78 @@ pub fn wait_for_device_status(
     }
 }
 
+// ---- Flash commands ---------------------------------------------------------
+
+/// FLASH_ERASE_CHIP, FLASH_ERASE_MAIN_APP: keep the sectors that the CCFG retains.
+const RETAIN_SECTORS: u32 = 1 << 0;
+/// FLASH_VERIFY_CCFG_SECTOR: skip the CRC check of the user record.
+const SKIP_USER_RECORD: u32 = 1 << 1;
+/// FLASH_VERIFY_CCFG_SECTOR: check that the sector is blank.
+const BLANK_CHECK: u32 = 1 << 15;
+
+/// Sends a SACI erase command and returns its result.
+pub fn erase_command(
+    interface: &mut dyn DapAccess,
+    command: u32,
+    parameters: u32,
+) -> Result<SaciResult, ArmError> {
+    let words = [make_header(command, parameters), cmd::FLASH_KEY];
+    send_words(interface, &words, Duration::from_millis(200))?;
+
+    let response = read_response(interface, Duration::from_secs(30))?;
+    // The retained sector masks follow.
+    for _ in 0..response >> 24 {
+        let mask = read_response(interface, Duration::from_millis(100))?;
+        tracing::debug!("CC23xx/CC27xx: retained sectors {mask:#010x}");
+    }
+    Ok(SaciResult::from(((response >> 16) & 0xFF) as u8))
+}
+
+/// Erases the chip as the SACI download path does, keeping the sectors that the CCFG retains
+/// when possible.
+pub fn erase_chip(interface: &mut dyn DapAccess) -> Result<SaciResult, ArmError> {
+    // Retaining sectors needs a valid CCFG. With an invalid one, the ROM doesn't refuse the
+    // option: it erases the sectors too.
+    if ccfg_is_valid(interface)? {
+        tracing::info!(
+            "CC23xx/CC27xx: erasing the chip, keeping the sectors that the CCFG retains"
+        );
+        erase_command(interface, cmd::FLASH_ERASE_CHIP, RETAIN_SECTORS)
+    } else if ccfg_is_blank(interface)? {
+        // Erasing the application never erases the HSM firmware. Parts without an HSM don't
+        // have the command.
+        tracing::info!("CC23xx/CC27xx: no CCFG, erasing the application sectors");
+        match erase_command(interface, cmd::FLASH_ERASE_MAIN_APP, 0)? {
+            SaciResult::InvalidCmdId => {
+                tracing::info!("CC23xx/CC27xx: no FLASH_ERASE_MAIN_APP, erasing the chip");
+                erase_command(interface, cmd::FLASH_ERASE_CHIP, 0)
+            }
+            result => Ok(result),
+        }
+    } else {
+        tracing::warn!("CC23xx/CC27xx: invalid CCFG, erasing the retained sectors too");
+        erase_command(interface, cmd::FLASH_ERASE_CHIP, 0)
+    }
+}
+
+/// Whether the CCFG passes a FLASH_VERIFY_CCFG_SECTOR check with `parameters`.
+fn verify_ccfg(interface: &mut dyn DapAccess, parameters: u32) -> Result<bool, ArmError> {
+    let header = make_header(cmd::FLASH_VERIFY_CCFG_SECTOR, parameters);
+    send_words(interface, &[header, 0, 0, 0, 0], Duration::from_millis(200))?;
+    let response = read_response(interface, Duration::from_secs(5))?;
+    Ok(SaciResult::from(((response >> 16) & 0xFF) as u8) == SaciResult::Success)
+}
+
+/// Whether the CCFG sector is blank.
+fn ccfg_is_blank(interface: &mut dyn DapAccess) -> Result<bool, ArmError> {
+    verify_ccfg(interface, BLANK_CHECK)
+}
+
+/// Whether the CCFG is valid: its embedded CRCs match, apart from the user record's.
+fn ccfg_is_valid(interface: &mut dyn DapAccess) -> Result<bool, ArmError> {
+    verify_ccfg(interface, SKIP_USER_RECORD)
+}
+
 // ---- Utility functions ------------------------------------------------------
 
 /// Build the first parameter word (header) for a SACI command.
