@@ -21,7 +21,10 @@ use tokio::{
 
 use std::{
     path::{Path, PathBuf},
-    sync::Arc,
+    sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+    },
     time::Duration,
 };
 
@@ -74,7 +77,6 @@ use probe_rs_rpc::rtt_client::{
     RttDownRequest, RttPollResult, ScanRegion,
 };
 use probe_rs_rpc::rtt_config::RttChannelConfig;
-use probe_rs_rpc::semihosting_options::SemihostingOptions;
 use probe_rs_rpc::stack_trace::{
     LoadDebugInfoRequest, RichStackTraces, StackTraces, TakeRichStackTraceRequest,
     TakeStackTraceRequest,
@@ -94,20 +96,25 @@ use probe_rs_rpc::{
     CoreStepEndpoint, CoreWriteRegEndpoint, CoresStatusEndpoint, CreateRttClientEndpoint,
     CreateTempFileEndpoint, DisassembleEndpoint, EraseAllEndpoint, EraseRangeEndpoint,
     EvaluateEndpoint, FlashEndpoint, GetRttChannelsEndpoint, HaltCoresEndpoint,
-    HandleSemihostingEndpoint, ListChipFamiliesEndpoint, ListProbesEndpoint, ListTestsEndpoint,
-    LoadChipFamilyEndpoint, LoadDebugInfoEndpoint, LoadRegionEndpoint, LoadSvdEndpoint,
-    MonitorEndpoint, NewFlashLoaderEndpoint, PollRttUpEndpoint, ProgressEventTopic,
-    ReadBytesEndpoint, ReadMemory8Endpoint, ReadMemory16Endpoint, ReadMemory32Endpoint,
-    ReadMemory64Endpoint, ResetCoreAndHaltEndpoint, ResetCoreEndpoint, ResetTargetEndpoint,
-    ResolveSourceBreakpointsEndpoint, ResolveSourceLocationsEndpoint, ResumeCoresEndpoint,
-    RpcError, RpcResult, RttDownEndpoint, RttTopic, RunTestEndpoint, ScopesEndpoint,
-    SelectProbeEndpoint, SemihostingTopic, SerialTopic, SerialWriteEndpoint, SetVariableEndpoint,
-    TakeRichStackTraceEndpoint, TakeStackTraceEndpoint, TargetInfoDataTopic, TargetInfoEndpoint,
-    TargetMetadataEndpoint, TempFileDataEndpoint, TestKickoffEndpoint, TokioSpawner,
-    VariablesEndpoint, VerifyEndpoint, WriteBytesEndpoint, WriteMemory8Endpoint,
+    HandleSemihostingEndpoint, HostCallTopic, ListChipFamiliesEndpoint, ListProbesEndpoint,
+    ListTestsEndpoint, LoadChipFamilyEndpoint, LoadDebugInfoEndpoint, LoadRegionEndpoint,
+    LoadSvdEndpoint, MonitorEndpoint, NewFlashLoaderEndpoint, PollRttUpEndpoint,
+    ProgressEventTopic, ReadBytesEndpoint, ReadMemory8Endpoint, ReadMemory16Endpoint,
+    ReadMemory32Endpoint, ReadMemory64Endpoint, ResetCoreAndHaltEndpoint, ResetCoreEndpoint,
+    ResetTargetEndpoint, ResolveSourceBreakpointsEndpoint, ResolveSourceLocationsEndpoint,
+    ResumeCoresEndpoint, RpcError, RpcResult, RttDownEndpoint, RttTopic, RunTestEndpoint,
+    ScopesEndpoint, SelectProbeEndpoint, SemihostingTopic, SerialTopic, SerialWriteEndpoint,
+    SetVariableEndpoint, TakeRichStackTraceEndpoint, TakeStackTraceEndpoint, TargetInfoDataTopic,
+    TargetInfoEndpoint, TargetMetadataEndpoint, TempFileDataEndpoint, TestKickoffEndpoint,
+    TokioSpawner, VariablesEndpoint, VerifyEndpoint, WriteBytesEndpoint, WriteMemory8Endpoint,
     WriteMemory16Endpoint, WriteMemory32Endpoint, WriteMemory64Endpoint,
 };
 use probe_rs_rpc::{FlashLoader, Key, RttClient, Session};
+#[cfg(feature = "remote")]
+use probe_rs_rpc::{
+    ServerProofEndpoint,
+    server_proof::{ServerProofRequest, server_proof},
+};
 
 /// Host and optional authentication token identifying a remote probe-rs RPC
 /// server. `None` selects a local, in-process server.
@@ -140,6 +147,12 @@ pub enum ClientError {
     ///
     /// Use the same probe-rs version for the client and the server.
     IncompatibleServer,
+    /// The client cannot verify this server, so it does not give it access to semihosting files.
+    ///
+    /// Use `ssh://` or a unix socket, or allow an unverified server if you trust this network.
+    UnverifiedServer,
+    /// Another monitor or test call of this connection already uses semihosting files.
+    HostFilesInUse,
     /// The server refused the request.
     #[display("{0}")]
     Remote(RpcError),
@@ -164,6 +177,14 @@ pub(crate) fn from_host_err(e: HostErr<WireError>) -> ClientError {
 fn from_io_closed(_: IoClosed) -> ClientError {
     ClientError::Transport(TransportError::Closed)
 }
+
+mod host_files;
+mod semihosting_mappings;
+mod semihosting_options;
+
+pub use host_files::HostFiles;
+pub use semihosting_mappings::MappingError;
+pub use semihosting_options::{Mapping, SemihostingOptions};
 
 #[cfg(feature = "remote")]
 mod ssh;
@@ -347,12 +368,20 @@ pub async fn connect_unix(path: &str) -> Result<RpcClient, ClientError> {
         TransportError::Message(format!("Failed to connect to Unix socket: {err:?}"))
     })?;
 
+    // SAFETY: `geteuid` has no preconditions, and cannot fail.
+    let this_user = unsafe { libc::geteuid() };
+    let server_is_verified = stream
+        .peer_cred()
+        .is_ok_and(|peer| peer.uid() == this_user || peer.uid() == 0);
+
     let (reader, writer) = stream.into_split();
 
     let tx = UnixStreamTx::new(writer);
     let rx = UnixStreamRx::new(reader);
 
-    RpcClient::new_from_wire(tx, rx).ensure_compatible().await
+    let mut client = RpcClient::new_from_wire(tx, rx).ensure_compatible().await?;
+    client.server_is_verified = server_is_verified;
+    Ok(client)
 }
 
 #[cfg(feature = "remote")]
@@ -417,12 +446,35 @@ mod tls {
     }
 }
 
+/// The right of one monitor or test call to answer the host calls of a connection.
+struct HostFilesClaim<'a>(&'a AtomicBool);
+
+impl<'a> HostFilesClaim<'a> {
+    fn new(in_use: &'a AtomicBool) -> Result<Self, ClientError> {
+        in_use
+            .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
+            .map_err(|_| ClientError::HostFilesInUse)?;
+        Ok(Self(in_use))
+    }
+}
+
+impl Drop for HostFilesClaim<'_> {
+    fn drop(&mut self) {
+        self.0.store(false, Ordering::Release);
+    }
+}
+
 /// Websocket-backed connection to a remote probe-rs server.
 #[derive(Clone)]
 pub struct RpcClient {
     client: HostClient<WireError>,
     upload_cache: Arc<Mutex<UploadCache>>,
     is_localhost: bool,
+    /// The connection proved that the peer is the server that the user wants.
+    server_is_verified: bool,
+    /// A monitor or test call answers host calls. The connection has one host call topic, so only
+    /// one call at a time can.
+    host_files_in_use: Arc<AtomicBool>,
     closer: Option<Closer>,
 }
 
@@ -459,6 +511,8 @@ impl RpcClient {
             ),
             upload_cache: Arc::new(Mutex::new(UploadCache::default())),
             is_localhost: false,
+            server_is_verified: false,
+            host_files_in_use: Arc::new(AtomicBool::new(false)),
             closer: None,
         }
     }
@@ -486,6 +540,60 @@ impl RpcClient {
         self.is_localhost
     }
 
+    /// Returns `true` if this client can trust the server with its files.
+    ///
+    /// This is true for a local server, for a unix socket with a peer of this user or root, and for
+    /// an `ssh://` connection after a server proof. ssh verifies only the host, and any local user
+    /// of that host can listen on the port. It is not true for `ws://` and `wss://`, because the
+    /// client does not verify a certificate, and an attacker can relay a proof.
+    ///
+    /// The proof is only as strong as the token. A fake server on the port chooses the challenge
+    /// that the client hashes with the token at login, so it can guess a weak token offline.
+    pub fn server_is_trusted(&self) -> bool {
+        self.is_localhost || self.server_is_verified
+    }
+
+    /// Asks the server to prove that it knows `token`.
+    #[cfg(feature = "remote")]
+    async fn verify_server_proof(&self, challenge: &str, token: &str) -> bool {
+        let mut nonce = [0; 32];
+        if getrandom::fill(&mut nonce).is_err() {
+            return false;
+        }
+
+        match self
+            .send_resp::<ServerProofEndpoint, _>(&ServerProofRequest {
+                nonce: nonce.to_vec(),
+            })
+            .await
+        {
+            // ssh connects to the server from its own host.
+            Ok(proof) => proof == server_proof(&nonce, challenge, true, token),
+            Err(error) => {
+                tracing::debug!("The server did not prove itself: {error:?}");
+                false
+            }
+        }
+    }
+
+    /// Runs the server proof of an `ssh://` connection, and records the result. Only the ssh
+    /// transport calls this: on other transports, a proof does not show who the server is.
+    #[doc(hidden)]
+    #[cfg(feature = "remote")]
+    pub async fn with_server_proof(mut self, challenge: &str, token: Option<&str>) -> Self {
+        // Without a token, there is no shared secret to prove.
+        self.server_is_verified = match token {
+            Some(token) if !token.is_empty() => self.verify_server_proof(challenge, token).await,
+            _ => false,
+        };
+        if !self.server_is_verified {
+            tracing::debug!("The server is not verified.");
+        }
+        self
+    }
+
+    /// Creates a client of an in-process server. The client trusts the server with its files, so
+    /// the wire must lead to a server of this process.
     pub fn new_local_from_wire(
         tx: impl PostcardSender + Send + Sync + 'static,
         rx: impl PostcardReceiver + Send + 'static,
@@ -667,6 +775,80 @@ impl RpcClient {
             req_fut,
         };
         res
+    }
+
+    /// Returns an error if `host_files` must not serve this server.
+    pub fn check_host_files(&self, host_files: &HostFiles) -> Result<(), ClientError> {
+        if self.server_is_trusted() || host_files.allows_unverified_server() {
+            Ok(())
+        } else {
+            Err(ClientError::UnverifiedServer)
+        }
+    }
+
+    /// Like [`Self::send_and_read_stream`], for a request that runs the target. It also answers the
+    /// host calls of the server, in a task of its own.
+    async fn run_monitored<E, R>(
+        &self,
+        req: &E::Request,
+        host_files: Option<HostFiles>,
+        mut on_msg: impl AsyncFnMut(MonitorEvent),
+    ) -> Result<R, ClientError>
+    where
+        E: postcard_rpc::Endpoint<Response = RpcResult<R>>,
+        E::Request: Serialize + Schema,
+        E::Response: DeserializeOwned + Schema,
+    {
+        /// More than one, because a late call of an earlier request can still come. The window of
+        /// the server is one call, so this queue does not drop a call.
+        const HOST_CALL_DEPTH: usize = 4;
+        /// The output that waits for `on_msg`. If the terminal is too slow, output gets dropped.
+        /// Otherwise a full subscription stalls every message of the connection.
+        const EVENT_QUEUE_DEPTH: usize = 4096;
+
+        let _host_files_claim = match &host_files {
+            Some(host_files) => {
+                self.check_host_files(host_files)?;
+                Some(HostFilesClaim::new(&self.host_files_in_use)?)
+            }
+            None => None,
+        };
+
+        let mut events = <MonitorEvent as MultiTopic>::subscribe(&self.client, 64).await?;
+        let mut host_calls = match &host_files {
+            Some(_) => {
+                Some(<HostCallTopic as MultiTopic>::subscribe(&self.client, HOST_CALL_DEPTH).await?)
+            }
+            None => None,
+        };
+
+        let stop_events = Arc::new(Notify::new());
+        let stop_host_calls = Arc::new(Notify::new());
+        let (queue, mut queued) = tokio::sync::mpsc::channel(EVENT_QUEUE_DEPTH);
+
+        let request = async {
+            let result = self.send_resp::<E, R>(req).await;
+            stop_events.notify_one();
+            stop_host_calls.notify_one();
+            result
+        };
+        let read_events = events.forward(queue, stop_events.clone());
+        let handle_events = async {
+            while let Some(event) = queued.recv().await {
+                on_msg(event).await;
+            }
+        };
+        let answer_host_calls = async {
+            if let (Some(host_files), Some(host_calls)) = (&host_files, &mut host_calls) {
+                host_files
+                    .serve(self, host_calls, stop_host_calls.clone())
+                    .await;
+            }
+        };
+
+        let (_, _, result, _) =
+            tokio::join!(read_events, handle_events, request, answer_host_calls);
+        result
     }
 
     /// Resolve a local file to the path the RPC server should use, along with
@@ -1071,16 +1253,19 @@ impl SessionInterface {
     pub async fn monitor(
         &self,
         mode: MonitorMode,
-        options: MonitorOptions,
+        mut options: MonitorOptions,
+        host_files: Option<HostFiles>,
         on_msg: impl AsyncFnMut(MonitorEvent),
     ) -> Result<MonitorExitReason, ClientError> {
+        options.host_calls = host_files.is_some();
         self.client
-            .send_and_read_stream::<MonitorEndpoint, MonitorEvent, _>(
+            .run_monitored::<MonitorEndpoint, _>(
                 &MonitorRequest {
                     sessid: self.sessid,
                     mode,
                     options,
                 },
+                host_files,
                 on_msg,
             )
             .await
@@ -1120,17 +1305,18 @@ impl SessionInterface {
         &self,
         boot_info: BootInfo,
         rtt_client: Option<Key<RttClient>>,
-        semihosting_options: SemihostingOptions,
+        host_files: Option<HostFiles>,
         on_msg: impl AsyncFnMut(MonitorEvent),
     ) -> Result<Tests, ClientError> {
         self.client
-            .send_and_read_stream::<ListTestsEndpoint, MonitorEvent, _>(
+            .run_monitored::<ListTestsEndpoint, _>(
                 &ListTestsRequest {
                     sessid: self.sessid,
                     boot_info,
                     rtt_client,
-                    semihosting_options,
+                    host_calls: host_files.is_some(),
                 },
+                host_files,
                 on_msg,
             )
             .await
@@ -1140,17 +1326,18 @@ impl SessionInterface {
         &self,
         test: Test,
         rtt_client: Option<Key<RttClient>>,
-        semihosting_options: SemihostingOptions,
+        host_files: Option<HostFiles>,
         on_msg: impl AsyncFnMut(MonitorEvent),
     ) -> Result<TestResult, ClientError> {
         self.client
-            .send_and_read_stream::<RunTestEndpoint, MonitorEvent, _>(
+            .run_monitored::<RunTestEndpoint, _>(
                 &RunTestRequest {
                     sessid: self.sessid,
                     test,
                     rtt_client,
-                    semihosting_options,
+                    host_calls: host_files.is_some(),
                 },
+                host_files,
                 on_msg,
             )
             .await
@@ -1862,6 +2049,46 @@ pub(crate) trait MultiSubscription {
 
     async fn next(&mut self) -> Option<Self::Message>;
 
+    /// Like [`Self::stream`], but moves the messages to `queue`. It drops a message if `queue` is
+    /// full, so a slow reader of `queue` cannot stall the connection.
+    async fn forward(
+        &mut self,
+        queue: tokio::sync::mpsc::Sender<Self::Message>,
+        stopper: Arc<Notify>,
+    ) {
+        // One warning for each run of dropped messages, so that a slow terminal does not also
+        // flood the log.
+        let dropped = std::sync::atomic::AtomicUsize::new(0);
+        let enqueue = |message| match queue.try_send(message) {
+            Ok(()) => {
+                let count = dropped.swap(0, Ordering::Relaxed);
+                if count > 0 {
+                    tracing::warn!("Dropped {count} messages of target output.");
+                }
+            }
+            Err(_) => {
+                if dropped.fetch_add(1, Ordering::Relaxed) == 0 {
+                    tracing::warn!("The output is too slow. Dropping target output.");
+                }
+            }
+        };
+
+        let listen_fut = async {
+            while let Some(message) = self.next().await {
+                enqueue(message);
+            }
+        };
+
+        tokio::select! {
+            _ = listen_fut => {}
+            _ = stopper.notified() => {
+                while let Ok(Some(message)) = timeout(Duration::from_millis(100), self.next()).await {
+                    enqueue(message);
+                }
+            }
+        }
+    }
+
     /// Listen to the given stream until either:
     ///
     /// * The stream closes, returning a "closed" notification
@@ -1971,6 +2198,22 @@ mod tests {
         WebSocketStream,
         tungstenite::{Message, protocol::Role},
     };
+
+    /// A second monitor call on the connection must not take the host calls of the first one.
+    #[test]
+    fn host_files_have_one_user_at_a_time() {
+        use super::{ClientError, HostFilesClaim};
+
+        let in_use = std::sync::atomic::AtomicBool::new(false);
+        let first = HostFilesClaim::new(&in_use).unwrap();
+        assert!(matches!(
+            HostFilesClaim::new(&in_use),
+            Err(ClientError::HostFilesInUse)
+        ));
+
+        drop(first);
+        assert!(HostFilesClaim::new(&in_use).is_ok());
+    }
 
     fn websocket_client(client_ws: WebSocketStream<DuplexStream>) -> RpcClient {
         use probe_rs_rpc::transport::websocket::{WebsocketRx, WebsocketTx};

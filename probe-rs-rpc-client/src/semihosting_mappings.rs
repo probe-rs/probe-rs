@@ -5,9 +5,20 @@
 
 use std::path::{Path, PathBuf};
 
-use anyhow::{Context, bail};
-use probe_rs_rpc::semihosting_options::{Mapping, SemihostingOptions};
 use regex::Regex;
+
+use crate::semihosting_options::{Mapping, SemihostingOptions};
+
+/// A semihosting mapping that the client refuses.
+#[derive(Debug, thiserror::Error)]
+#[error("{0}")]
+pub struct MappingError(String);
+
+macro_rules! bail {
+    ($($message:tt)*) => {
+        return Err(MappingError(format!($($message)*)))
+    };
+}
 
 /// The resource that a file name of the target maps to.
 #[derive(Debug, PartialEq, Eq)]
@@ -50,17 +61,17 @@ enum CompiledMapping {
 pub struct Mappings(Vec<CompiledMapping>);
 
 impl Mappings {
-    pub fn new(options: &SemihostingOptions) -> anyhow::Result<Self> {
+    pub fn new(options: &SemihostingOptions) -> Result<Self, MappingError> {
         options
             .mappings()
             .iter()
             .map(CompiledMapping::new)
-            .collect::<anyhow::Result<_>>()
+            .collect::<Result<_, _>>()
             .map(Self)
     }
 
     /// Fails if the directory of a prefix or regex mapping does not exist.
-    pub fn check_roots(&self) -> anyhow::Result<()> {
+    pub fn check_roots(&self) -> Result<(), MappingError> {
         for mapping in &self.0 {
             if let CompiledMapping::Prefix { root, .. } | CompiledMapping::Regex { root, .. } =
                 mapping
@@ -130,7 +141,7 @@ impl Mappings {
 }
 
 impl CompiledMapping {
-    fn new(mapping: &Mapping) -> anyhow::Result<Self> {
+    fn new(mapping: &Mapping) -> Result<Self, MappingError> {
         Ok(match mapping {
             Mapping::Exact(from, to) => Self::Exact {
                 from: from.clone(),
@@ -150,8 +161,9 @@ impl CompiledMapping {
                 }
             }
             Mapping::Regex(regex, to) => {
-                let compiled = Regex::new(regex)
-                    .with_context(|| format!("Invalid semihosting mapping {regex}"))?;
+                let compiled = Regex::new(regex).map_err(|error| {
+                    MappingError(format!("Invalid semihosting mapping {regex}: {error}"))
+                })?;
 
                 let references = capture_references(to);
                 let Some(&(first_reference, _)) = references.first() else {
@@ -190,7 +202,7 @@ impl CompiledMapping {
 
 /// Removes the file scheme from a mapping that expands text from the target. The target must not
 /// choose where a stream connects to, so a stream needs an exact mapping.
-fn directory_target<'a>(to: &'a str, from: &str) -> anyhow::Result<&'a str> {
+fn directory_target<'a>(to: &'a str, from: &str) -> Result<&'a str, MappingError> {
     if to.starts_with("tcp:") || to.starts_with("unix:") {
         bail!("The semihosting mapping of {from} to {to} must be an exact mapping.");
     }
@@ -278,16 +290,25 @@ fn is_special_on_windows(component: &str) -> bool {
 mod test {
     use super::*;
 
+    /// Adds the mappings. `Err` means that the regex of a mapping is invalid.
+    fn options(args: &[Mapping]) -> Result<SemihostingOptions, regex::Error> {
+        let mut options = SemihostingOptions::new();
+        for mapping in args.iter().cloned() {
+            match mapping {
+                Mapping::Exact(from, to) => options.add_file(from, to).unwrap(),
+                Mapping::Prefix(from, to) => options.add_file_prefix(from, to).unwrap(),
+                Mapping::Regex(from, to) => options.add_file_regex(from, to)?,
+            }
+        }
+        Ok(options)
+    }
+
     fn mappings(args: &[Mapping]) -> Mappings {
-        let options: SemihostingOptions =
-            serde_json::from_value(serde_json::json!({ "mappings": args })).unwrap();
-        Mappings::new(&options).unwrap()
+        Mappings::new(&options(args).unwrap()).unwrap()
     }
 
     fn is_refused(mapping: Mapping) -> bool {
-        let options: SemihostingOptions =
-            serde_json::from_value(serde_json::json!({ "mappings": [mapping] })).unwrap();
-        Mappings::new(&options).is_err()
+        options(&[mapping]).map_or(true, |options| Mappings::new(&options).is_err())
     }
 
     fn prefix(from: &str, to: &str) -> Mapping {

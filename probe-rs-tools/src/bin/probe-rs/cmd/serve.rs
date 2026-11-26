@@ -6,7 +6,7 @@
 use axum::{
     Router,
     extract::{
-        State, WebSocketUpgrade,
+        ConnectInfo, State, WebSocketUpgrade,
         ws::{self, WebSocket},
     },
     http::HeaderValue,
@@ -28,10 +28,10 @@ use tokio_util::bytes::Bytes;
 
 #[cfg(unix)]
 use std::path::PathBuf;
-use std::{fmt::Write, sync::Arc, time::Duration};
+use std::{fmt::Write, net::SocketAddr, sync::Arc, time::Duration};
 
 use crate::{
-    rpc::functions::{HostFiles, ProbeAccess, RpcApp},
+    rpc::functions::{LoginSecrets, ProbeAccess, RpcApp},
     rpc::probe_broker::ProbeBroker,
     util::{probe_config::ProbeConfigs, pwr},
 };
@@ -72,16 +72,24 @@ pub(crate) struct ServerUser {
     pub access: ProbeAccess,
 }
 
+/// A websocket connection that waits for its login.
+struct Connection {
+    socket: WebSocket,
+    challenge: String,
+    /// The client connected from this host, as through `ssh -W`.
+    peer_is_loopback: bool,
+}
+
 struct ServerState {
     config: ServerConfig,
-    requests: tokio::sync::mpsc::Sender<(WebSocket, String)>,
+    requests: tokio::sync::mpsc::Sender<Connection>,
     probe_broker: Arc<ProbeBroker>,
 }
 
 impl ServerState {
     fn new(
         config: ServerConfig,
-        requests: tokio::sync::mpsc::Sender<(WebSocket, String)>,
+        requests: tokio::sync::mpsc::Sender<Connection>,
         probe_broker: Arc<ProbeBroker>,
     ) -> Self {
         Self {
@@ -230,11 +238,10 @@ async fn serve_websockets(
     set.spawn_local({
         let state = state.clone();
         async move {
-            while let Some((socket, challenge)) = request_rx.recv().await {
+            while let Some(connection) = request_rx.recv().await {
                 // Spawn a new task for each connection
                 tokio::task::spawn_local(handle_socket(
-                    socket,
-                    challenge,
+                    connection,
                     state.clone(),
                     client_timeout,
                     reply_piece_len,
@@ -249,14 +256,23 @@ async fn serve_websockets(
         .with_state(state);
 
     let (result, _) = tokio::join! {
-        axum::serve(listener, app),
+        axum::serve(
+            listener,
+            app.into_make_service_with_connect_info::<SocketAddr>()
+        ),
         set,
     };
 
     result.unwrap();
 }
 
-async fn ws_handler(ws: WebSocketUpgrade, state: State<Arc<ServerState>>) -> impl IntoResponse {
+async fn ws_handler(
+    ws: WebSocketUpgrade,
+    ConnectInfo(peer): ConnectInfo<SocketAddr>,
+    state: State<Arc<ServerState>>,
+) -> impl IntoResponse {
+    let peer_is_loopback = peer.ip().to_canonical().is_loopback();
+
     // Generate a random challenge that the client needs to hash together with their token.
     // We don't need a cryptographically secure random number here, just something to make
     // replays harder.
@@ -270,7 +286,12 @@ async fn ws_handler(ws: WebSocketUpgrade, state: State<Arc<ServerState>>) -> imp
         let challenge = challenge.clone();
         async move |socket| {
             // Send the request out of here so the task can be spawned on the local set.
-            state.requests.send((socket, challenge)).await.unwrap();
+            let connection = Connection {
+                socket,
+                challenge,
+                peer_is_loopback,
+            };
+            state.requests.send(connection).await.unwrap();
         }
     });
 
@@ -294,19 +315,19 @@ const REPLY_PIECE_LEN: usize = 1 << 20;
 
 /// Actual websocket state machine (one will be spawned per connection on the local set)
 async fn handle_socket(
-    socket: WebSocket,
-    challenge: String,
+    connection: Connection,
     state: Arc<ServerState>,
     client_timeout: Duration,
     reply_piece_len: usize,
 ) {
-    let (mut writer, reader) = socket.split();
+    let (mut writer, reader) = connection.socket.split();
 
     // Send a close frame, so that the client can tell a clean exit from a lost connection.
     if serve_socket(
         &mut writer,
         reader,
-        challenge,
+        connection.challenge,
+        connection.peer_is_loopback,
         state,
         client_timeout,
         reply_piece_len,
@@ -322,6 +343,7 @@ async fn serve_socket(
     writer: &mut SplitSink<WebSocket, ws::Message>,
     reader: SplitStream<WebSocket>,
     challenge: String,
+    peer_is_loopback: bool,
     state: Arc<ServerState>,
     client_timeout: Duration,
     reply_piece_len: usize,
@@ -373,11 +395,15 @@ async fn serve_socket(
     tracing::info!("User {} connected", user.name);
     reader.set_max_len(MAX_REQUEST_LEN);
 
-    let (server, tx, mut rx) = RpcApp::create_server(
+    let (server, tx, mut rx) = RpcApp::create_server_after_login(
         SERVER_DEPTH,
         user.access.clone(),
         state.probe_broker.clone(),
-        HostFiles::Deny,
+        LoginSecrets {
+            challenge,
+            token: user.token.clone(),
+            peer_is_loopback,
+        },
     );
 
     // Connect the server's channels to the websocket connection
@@ -480,7 +506,7 @@ async fn handle_unix_rpc(stream: tokio::net::UnixStream, probe_broker: Arc<Probe
         SERVER_DEPTH,
         ProbeAccess::All,
         probe_broker,
-        HostFiles::Deny,
+        crate::rpc::functions::HostFiles::Deny,
     );
 
     // Connect the server's channels to the unix socket connection

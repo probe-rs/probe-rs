@@ -247,6 +247,12 @@ pub(crate) struct MonitoringOptions {
     /// The target can read and write what you expose, but it cannot leave an exposed directory.
     #[arg(long, help_heading = "SEMIHOSTING CONFIGURATION")]
     pub semihosting_file: Vec<String>,
+
+    /// Give the semihosting files to a server that the client cannot verify, which is a `ws://` or
+    /// `wss://` server. Anyone who can impersonate the server can read and write these files. Use
+    /// this only on a network that you trust.
+    #[arg(long, help_heading = "SEMIHOSTING CONFIGURATION")]
+    pub semihosting_allow_unverified_server: bool,
 }
 
 impl Cmd {
@@ -255,6 +261,7 @@ impl Cmd {
         let run_mode = detect_run_mode(&self)?;
 
         let (file_meta, elf_meta) = parse_metadata(&self.path).await?;
+        cli::check_semihosting_options(&client, &self.monitor_options)?;
 
         // TODO: Skip attach_probe & flashing, if user only wants to list tests (only possible when using embedded_test with protocol version >= 1)
 

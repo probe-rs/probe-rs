@@ -37,6 +37,8 @@ postcard-schema = { version = "0.2.0", features = ["use-std", "derive"] }
 serde = { version = "1", features = ["derive"] }
 tokio = { version = "1.0", features = ["fs", "macros", "net", "sync", "time"] }
 sha2 = "0.11"
+getrandom = "0.3"
+regex = "1.10.4"
 docsplay = { workspace = true }
 thiserror = { workspace = true }
 tracing = "0.1"
@@ -52,7 +54,11 @@ tokio-tungstenite = { version = "0.30", features = [
 ], optional = true }
 
 [dev-dependencies]
+tempfile = "3.0"
 tokio = { version = "1.0", features = ["macros", "rt"] }
 
 [lints]
 workspace = true
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
