@@ -18,7 +18,12 @@
 //! `tools/iar/low_power_mode_patch/*.dmac` `_InhibitSleepForceActive()`).
 
 use std::sync::Arc;
+use std::thread;
+use std::time::{Duration, Instant};
 
+use crate::MemoryMappedRegister;
+use crate::architecture::arm::ap::{AddressIncrement, ApRegister, CSW, DRW, DataSize, IDR, TAR};
+use crate::architecture::arm::core::armv6m::Dhcsr;
 use crate::architecture::arm::dp::DpAddress;
 use crate::architecture::arm::memory::ArmMemoryInterface;
 use crate::architecture::arm::sequences::{ArmDebugSequence, cortex_m_wait_for_reset};
@@ -28,6 +33,9 @@ use probe_rs_target::CoreType;
 /// Access Port Select values used by this sequence.
 #[derive(Debug, Clone, Copy)]
 enum ApSel {
+    /// AHB-AP: memory access to the core. It lives in power domain PD1, so it is missing while
+    /// the device is in a low-power state.
+    AhbAp = 0,
     /// PWR-AP: controls the power and reset state of the CPU for debug purposes.
     PwrAp = 4,
 }
@@ -70,6 +78,15 @@ const DPREC0_DEBUG_ENABLE: u32 =
 /// `SPREC.SYS RST`.
 const SPREC_SYS_RST: u32 = 1 << 0;
 
+/// How long an AHB-AP write is left alone before it is read back: longer than a write takes while
+/// the bus runs from LFCLK.
+const AHB_AP_WRITE_SETTLE: Duration = Duration::from_millis(2);
+
+/// Whether `csw` selects the 32-bit accesses without address increment that DHCSR needs.
+fn word_no_increment(csw: CSW) -> bool {
+    csw.SIZE() == DataSize::U32 && csw.AddrInc() == AddressIncrement::Off
+}
+
 /// Marker struct indicating initialization sequencing for MSPM0 family parts.
 #[derive(Debug)]
 pub struct MSPM0 {
@@ -108,6 +125,131 @@ impl MSPM0 {
     fn write_sprec(&self, interface: &mut dyn DapAccess, value: u32) -> Result<(), ArmError> {
         let pwr_ap: FullyQualifiedApAddress = ApSel::PwrAp.into();
         interface.write_raw_ap_register(&pwr_ap, SPREC, value)
+    }
+
+    /// Whether the AHB-AP answers.
+    ///
+    /// `FORCEACTIVE` needs a moment to bring PD1 back up, so this polls rather than reading once.
+    /// Treating a slow wake as an absent AP would put us straight back into resetting a device
+    /// that was only asleep.
+    fn ahb_ap_responds(&self, interface: &mut dyn DapAccess) -> bool {
+        let ahb_ap: FullyQualifiedApAddress = ApSel::AhbAp.into();
+
+        let start = Instant::now();
+        loop {
+            if matches!(interface.read_raw_ap_register(&ahb_ap, IDR::ADDRESS), Ok(idr) if idr != 0)
+            {
+                return true;
+            }
+            if start.elapsed() > Duration::from_millis(10) {
+                return false;
+            }
+            thread::sleep(Duration::from_millis(1));
+        }
+    }
+
+    /// Write an AHB-AP register on its own, give the write time to finish, and check that `done`
+    /// accepts what the register reads back.
+    ///
+    /// While the core sleeps in STANDBY the bus runs from LFCLK, and a write the DP has accepted
+    /// can be lost, without WDATAERR, when the next transfer gets WAIT at the wrong moment. So each
+    /// write goes out on its own, after the one before has finished, and is read back.
+    fn write_ahb_ap_checked(
+        &self,
+        interface: &mut dyn DapAccess,
+        what: &str,
+        addr: u64,
+        value: u32,
+        done: impl Fn(u32) -> bool,
+    ) -> bool {
+        let ahb_ap: FullyQualifiedApAddress = ApSel::AhbAp.into();
+
+        if let Err(error) = interface.write_raw_ap_register(&ahb_ap, addr, value) {
+            tracing::debug!("{}: writing {what} failed: {error}", self.name);
+            return false;
+        }
+        thread::sleep(AHB_AP_WRITE_SETTLE);
+        match interface.read_raw_ap_register(&ahb_ap, addr) {
+            Ok(read) if done(read) => true,
+            Ok(read) => {
+                tracing::debug!("{}: {what} did not take, read back {read:#010x}", self.name);
+                false
+            }
+            Err(error) => {
+                tracing::debug!("{}: reading {what} back failed: {error}", self.name);
+                false
+            }
+        }
+    }
+
+    /// Take a core that sleeps in STANDBY out of `WFI` with a halt, then resume it.
+    ///
+    /// `FORCEACTIVE` makes the AHB-AP answer but leaves the core in `WFI` and the bus slow. Once
+    /// the core has left `WFI`, `INHIBITSLEEP` keeps it out of STANDBY for the rest of the session.
+    /// A debug halt is a wakeup the application has to tolerate (ARMv6-M B1.5.17). Returns false
+    /// if an access failed, or if a sleeping core could not be woken.
+    fn wake_core(&self, interface: &mut dyn DapAccess) -> bool {
+        let ahb_ap: FullyQualifiedApAddress = ApSel::AhbAp.into();
+
+        let mut csw = match interface.read_raw_ap_register(&ahb_ap, CSW::ADDRESS) {
+            Ok(csw) => CSW::from_raw(csw),
+            Err(error) => {
+                tracing::debug!("{}: reading the AHB-AP CSW failed: {error}", self.name);
+                return false;
+            }
+        };
+        if !word_no_increment(csw) {
+            csw.set_SIZE(DataSize::U32);
+            csw.set_AddrInc(AddressIncrement::Off);
+            if !self.write_ahb_ap_checked(interface, "CSW", CSW::ADDRESS, csw.into(), |read| {
+                word_no_increment(CSW::from_raw(read))
+            }) {
+                return false;
+            }
+        }
+
+        let dhcsr_address = Dhcsr::get_mmio_address() as u32;
+        if !self.write_ahb_ap_checked(interface, "TAR", TAR::ADDRESS, dhcsr_address, |read| {
+            read == dhcsr_address
+        }) {
+            return false;
+        }
+
+        let dhcsr = match interface.read_raw_ap_register(&ahb_ap, DRW::ADDRESS) {
+            Ok(dhcsr) => Dhcsr(dhcsr),
+            Err(error) => {
+                tracing::debug!("{}: reading DHCSR failed: {error}", self.name);
+                return false;
+            }
+        };
+        if !dhcsr.s_sleep() {
+            return true;
+        }
+
+        let mut halt = Dhcsr(0);
+        halt.set_c_debugen(true);
+        halt.set_c_halt(true);
+        halt.enable_write();
+        if !self.write_ahb_ap_checked(
+            interface,
+            "the halt request",
+            DRW::ADDRESS,
+            halt.into(),
+            |read| Dhcsr(read).s_halt(),
+        ) {
+            return false;
+        }
+
+        let mut resume = Dhcsr(0);
+        resume.set_c_debugen(true);
+        resume.enable_write();
+        self.write_ahb_ap_checked(
+            interface,
+            "the resume request",
+            DRW::ADDRESS,
+            resume.into(),
+            |read| !Dhcsr(read).s_halt(),
+        )
     }
 
     /// Recover a device whose `DPREC0` sticky bits are set.
@@ -160,11 +302,22 @@ impl ArmDebugSequence for MSPM0 {
 
         if dprec0 & DPREC0_STICKY == 0 {
             self.write_dprec0(interface, DPREC0_DEBUG_ENABLE)?;
-        } else {
-            self.recover_sticky(interface)?;
+            return Ok(());
         }
 
-        Ok(())
+        // The sticky bits are set on any device that has been in a low-power state, not only on
+        // one that needs recovering, so finding them set is not on its own a reason to reset the
+        // device. Write what the recovery would write and see whether the AHB-AP comes back:
+        // `FORCEACTIVE` is what makes it discoverable again (SLAAEO5 section 3.1). Only when it
+        // stays missing, or the core cannot be woken, is there something wrong, and only then is a
+        // system reset worth its cost.
+        self.write_dprec0(interface, DPREC0_DEBUG_ENABLE | DPREC0_STICKY)?;
+
+        if self.ahb_ap_responds(interface) && self.wake_core(interface) {
+            return Ok(());
+        }
+
+        self.recover_sticky(interface)
     }
 
     fn debug_core_stop(
