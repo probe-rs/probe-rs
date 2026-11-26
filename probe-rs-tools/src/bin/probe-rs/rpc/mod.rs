@@ -3,12 +3,18 @@ use std::{
     collections::{HashMap, HashSet},
     marker::PhantomData,
     ops::{Deref, DerefMut},
-    sync::{Arc, Weak},
+    sync::{
+        Arc, Weak,
+        atomic::{AtomicU64, Ordering},
+    },
 };
 
 use probe_rs::config::Registry;
-use tokio::sync::Mutex;
+use probe_rs_rpc::host_calls::HostReply;
+use tokio::sync::{Mutex, mpsc};
 use tokio_util::sync::CancellationToken;
+
+use crate::rpc::functions::{rtt_client::RttDownStream, write_queue::Streams};
 
 pub use probe_rs_rpc::{FlashLoader, Key, RttClient, Session, TempFileHandle};
 
@@ -116,6 +122,36 @@ impl ObjectStorage {
     }
 }
 
+struct HostReplySlot {
+    /// The first call of the current monitor or test call.
+    first_id: u64,
+    sender: std::sync::mpsc::SyncSender<HostReply>,
+}
+
+/// Receives the replies to host calls. Dropping it stops the delivery.
+pub struct HostReplies {
+    slot: Arc<parking_lot::Mutex<Option<HostReplySlot>>>,
+    next_id: Arc<AtomicU64>,
+    receiver: std::sync::mpsc::Receiver<HostReply>,
+}
+
+impl HostReplies {
+    pub fn receiver(&self) -> &std::sync::mpsc::Receiver<HostReply> {
+        &self.receiver
+    }
+
+    /// Returns the id for the next call. It is unique on the connection.
+    pub fn next_id(&self) -> u64 {
+        self.next_id.fetch_add(1, Ordering::Relaxed)
+    }
+}
+
+impl Drop for HostReplies {
+    fn drop(&mut self) {
+        *self.slot.lock() = None;
+    }
+}
+
 /// State associated with a single connection.
 #[derive(Clone)]
 pub struct ConnectionState {
@@ -129,8 +165,15 @@ pub struct ConnectionState {
     /// The serial ports to the target, keyed by session. They are here as well as in the
     /// session, so that their users do not wait for the session lock. The session owns them.
     target_serials: Arc<parking_lot::Mutex<HashMap<Key<Session>, WeakTargetSerial>>>,
+    /// Where a reply to a semihosting host call goes.
+    host_replies: Arc<parking_lot::Mutex<Option<HostReplySlot>>>,
+    next_host_call_id: Arc<AtomicU64>,
     /// The paths of the temporary files that this connection created.
     uploads: Arc<parking_lot::Mutex<HashSet<String>>>,
+    /// The RTT down channels that run loops write, keyed by RTT client.
+    rtt_down: Streams<Key<RttClient>, RttDownStream>,
+    /// The write queues of the serial ports that run loops write, keyed by session.
+    serial_writes: Streams<Key<Session>, mpsc::Sender<Vec<u8>>>,
     token: CancellationToken,
 }
 
@@ -141,13 +184,29 @@ impl ConnectionState {
             registry: Arc::new(Mutex::new(Registry::from_builtin_families())),
             debug_states: Arc::new(Mutex::new(HashMap::new())),
             target_serials: Arc::new(parking_lot::Mutex::new(HashMap::new())),
+            host_replies: Arc::new(parking_lot::Mutex::new(None)),
+            next_host_call_id: Arc::new(AtomicU64::new(0)),
             uploads: Arc::new(parking_lot::Mutex::new(HashSet::new())),
+            rtt_down: Streams::new(),
+            serial_writes: Streams::new(),
             token: CancellationToken::new(),
         }
     }
 
     pub async fn store_object<M: ObjectMarker>(&mut self, obj: M::Object) -> Key<M> {
         self.object_storage.lock().await.store_object(obj)
+    }
+
+    pub async fn session(
+        &self,
+        sid: Key<Session>,
+    ) -> impl DerefMut<Target = probe_rs::Session> + Send + use<> {
+        // MUST be two separate statements so that the lock is released.
+        let locked_cell = self.object_storage.lock().await.cell(sid);
+        let guard = locked_cell.obj.clone().lock_owned().await;
+        tokio::sync::OwnedMutexGuard::map(guard, |e: &mut (dyn Any + Send)| {
+            &mut e.downcast_mut::<SessionEntry>().unwrap().session
+        })
     }
 
     pub async fn object_mut<M: ObjectMarker>(
@@ -191,6 +250,40 @@ impl ConnectionState {
         self.target_serials.lock().get(&sid)?.upgrade()
     }
 
+    /// Starts to accept replies to host calls, for the duration of a monitor or test call.
+    ///
+    /// A connection has one client that answers host calls, so only one call at a time can use
+    /// them.
+    pub fn host_replies(&self) -> anyhow::Result<HostReplies> {
+        let mut slot = self.host_replies.lock();
+        if slot.is_some() {
+            anyhow::bail!("Another monitor or test call of this connection uses semihosting files");
+        }
+        // A full channel drops a reply, so it holds every reply that the client can owe. Room for as
+        // many more stops stale replies from taking their place.
+        let (sender, receiver) =
+            std::sync::mpsc::sync_channel(2 * crate::rpc::utils::semihosting::MAX_OPEN_REPLIES);
+        *slot = Some(HostReplySlot {
+            first_id: self.next_host_call_id.load(Ordering::Relaxed),
+            sender,
+        });
+        Ok(HostReplies {
+            slot: self.host_replies.clone(),
+            next_id: self.next_host_call_id.clone(),
+            receiver,
+        })
+    }
+
+    /// Passes a reply to the running monitor or test call. This never blocks. A reply to an earlier
+    /// call is stale, for example from a test that timed out.
+    pub fn deliver_host_reply(&self, reply: HostReply) {
+        if let Some(slot) = &*self.host_replies.lock()
+            && reply.id >= slot.first_id
+        {
+            _ = slot.sender.try_send(reply);
+        }
+    }
+
     /// Records the path of a temporary file that this connection created.
     pub fn add_upload(&self, path: String) {
         self.uploads.lock().insert(path);
@@ -204,7 +297,6 @@ impl ConnectionState {
     pub fn shared_session(&self, sid: Key<Session>) -> SessionState<'_> {
         SessionState {
             object_storage: self.object_storage.as_ref(),
-            target_serials: self.target_serials.as_ref(),
             session: sid,
         }
     }
@@ -214,7 +306,6 @@ impl ConnectionState {
 #[derive(Clone)]
 pub struct SessionState<'a> {
     object_storage: &'a Mutex<ObjectStorage>,
-    target_serials: &'a parking_lot::Mutex<HashMap<Key<Session>, WeakTargetSerial>>,
     session: Key<Session>,
 }
 
@@ -231,10 +322,5 @@ impl SessionState<'_> {
         tokio::sync::OwnedMutexGuard::map(guard, |e: &mut (dyn Any + Send)| {
             &mut e.downcast_mut::<SessionEntry>().unwrap().session
         })
-    }
-
-    /// Returns the serial port to the target.
-    pub fn target_serial(&self) -> Option<SharedTargetSerial> {
-        self.target_serials.lock().get(&self.session)?.upgrade()
     }
 }

@@ -135,7 +135,11 @@ pub async fn connect(
         .to_str()
         .map_err(|_| TransportError::Message("Failed to parse challenge header".into()))?;
 
-    let client = crate::rpc_client_from_websocket(ws_stream, challenge, token).await?;
+    let challenge = challenge.to_owned();
+    let client = crate::rpc_client_from_websocket(ws_stream, &challenge, token)
+        .await?
+        .with_server_proof(&challenge, token)
+        .await;
 
     tokio::spawn(report_exit(exited, tail));
 
