@@ -51,7 +51,7 @@ impl<'de> Deserialize<'de> for ProbeConfigs {
         let mut keys = HashMap::new();
         let mut configs = HashMap::new();
         for (key, config) in HashMap::<String, ProbeConfig>::deserialize(deserializer)? {
-            let selector = key.parse::<DebugProbeSelector>().map_err(|error| {
+            let selector = parse_config_selector(&key).map_err(|error| {
                 serde::de::Error::custom(format!(
                     "Invalid probe selector `{key}` in `probes`: {error}"
                 ))
@@ -65,6 +65,39 @@ impl<'de> Deserialize<'de> for ProbeConfigs {
         }
         Ok(Self(configs))
     }
+}
+
+/// Parses a probe selector from a configuration file.
+///
+/// A configuration file names probes by what they are, so it cannot use `usb-busid://`: a USB port
+/// selects whichever probe is plugged into it. Only the command line and RPC clients select by port.
+pub(crate) fn parse_config_selector(selector: &str) -> Result<DebugProbeSelector, String> {
+    match selector.parse::<DebugProbeSelector>() {
+        Ok(DebugProbeSelector::UsbPort(_)) => Err(
+            "a configuration file cannot select a probe by USB port, use `VID:PID[:serial]`"
+                .to_string(),
+        ),
+        Ok(selector) => Ok(selector),
+        Err(error) => Err(error.to_string()),
+    }
+}
+
+/// Deserializes a list of probe selectors from a configuration file. See
+/// [`parse_config_selector`].
+pub(crate) fn deserialize_config_selectors<'de, D>(
+    deserializer: D,
+) -> Result<Vec<DebugProbeSelector>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    Vec::<String>::deserialize(deserializer)?
+        .iter()
+        .map(|selector| {
+            parse_config_selector(selector).map_err(|error| {
+                serde::de::Error::custom(format!("Invalid probe selector `{selector}`: {error}"))
+            })
+        })
+        .collect()
 }
 
 /// Settings for one probe, or for all probes that a selector matches. A `None` field keeps the
@@ -257,8 +290,9 @@ impl ProbeConfigs {
                 selector.serial_number.is_some(),
                 selector.interface.is_some(),
             ),
-            // A TCP entry names one probe, like an entry with a serial number.
-            DebugProbeSelector::Tcp(_) => (true, false),
+            // A TCP entry names one probe, like an entry with a serial number. The table has no
+            // USB port entries.
+            DebugProbeSelector::Tcp(_) | DebugProbeSelector::UsbPort(_) => (true, false),
         });
 
         let mut resolved = ProbeConfig::default();
@@ -296,9 +330,16 @@ impl<L: ProbeLister> ConfiguredLister<L> {
         Self { inner, configs }
     }
 
-    /// Adds the serial number of the probe, so that the entries with a serial number match.
+    /// Adds the serial number of the probe, so that the entries with a serial number match. A
+    /// USB port becomes the probe listed on it, so that the entries for that probe match.
     fn complete_selector(&self, selector: &DebugProbeSelector) -> DebugProbeSelector {
         let mut selector = selector.clone();
+        if let DebugProbeSelector::UsbPort(_) = selector {
+            let list = self.inner.list(Some(&selector));
+            if let Some(index) = default_probe_index(&list) {
+                selector = DebugProbeSelector::from(&list[index]);
+            }
+        }
         if self.configs.needs_serial_number(&selector) {
             let list = self.inner.list(Some(&selector));
             if let Some(index) = default_probe_index(&list)
@@ -450,6 +491,16 @@ mod tests {
         assert!(is_rejected(
             r#"
             ["not a selector"]
+            speed = 1
+            "#
+        ));
+    }
+
+    #[test]
+    fn usb_port_is_rejected() {
+        assert!(is_rejected(
+            r#"
+            ["usb-busid://1-1.2"]
             speed = 1
             "#
         ));

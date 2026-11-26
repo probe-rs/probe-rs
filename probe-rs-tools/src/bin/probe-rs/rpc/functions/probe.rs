@@ -49,7 +49,8 @@ pub async fn select_probe(
     // attach() call opens the correct channel.
     let requested_interface = request.probe.as_ref().and_then(|selector| match selector {
         probe_rs_rpc::probe::DebugProbeSelector::Usb(selector) => selector.interface,
-        probe_rs_rpc::probe::DebugProbeSelector::Tcp(_) => None,
+        probe_rs_rpc::probe::DebugProbeSelector::Tcp(_)
+        | probe_rs_rpc::probe::DebugProbeSelector::UsbPort(_) => None,
     });
 
     let mut list = lister.list_with_access(
@@ -652,7 +653,7 @@ pub(crate) mod convert {
                     product_id: usb.product_id,
                     serial_number: usb.serial_number.unwrap_or_default(),
                     interface: usb.interface,
-                    usb_location: usb.usb_location,
+                    usb_port: usb.usb_port.map(to_wire_usb_port),
                 })
             }
             probe_rs::probe::ProbeTransport::Tcp(address) => {
@@ -711,6 +712,9 @@ pub(crate) mod convert {
             probe_rs::probe::DebugProbeSelector::Tcp(address) => {
                 probe_rs_rpc::probe::DebugProbeSelector::Tcp(to_wire_tcp_address(address))
             }
+            probe_rs::probe::DebugProbeSelector::UsbPort(port) => {
+                probe_rs_rpc::probe::DebugProbeSelector::UsbPort(to_wire_usb_port(port))
+            }
         }
     }
 
@@ -724,6 +728,9 @@ pub(crate) mod convert {
             probe_rs_rpc::probe::DebugProbeSelector::Tcp(address) => {
                 probe_rs::probe::DebugProbeSelector::Tcp(from_wire_tcp_address(address))
             }
+            probe_rs_rpc::probe::DebugProbeSelector::UsbPort(port) => {
+                probe_rs::probe::DebugProbeSelector::UsbPort(from_wire_usb_port(port))
+            }
         }
     }
 
@@ -735,7 +742,7 @@ pub(crate) mod convert {
             product_id: selector.product_id,
             serial_number: selector.serial_number,
             interface: selector.interface,
-            usb_location: selector.usb_location,
+            usb_port: selector.usb_port.map(to_wire_usb_port),
         }
     }
 
@@ -747,7 +754,21 @@ pub(crate) mod convert {
             product_id: selector.product_id,
             serial_number: selector.serial_number,
             interface: selector.interface,
-            usb_location: selector.usb_location,
+            usb_port: selector.usb_port.map(from_wire_usb_port),
+        }
+    }
+
+    fn to_wire_usb_port(port: probe_rs::probe::UsbPort) -> probe_rs_rpc::probe::UsbPort {
+        probe_rs_rpc::probe::UsbPort {
+            bus_id: port.bus_id,
+            ports: port.ports,
+        }
+    }
+
+    fn from_wire_usb_port(port: probe_rs_rpc::probe::UsbPort) -> probe_rs::probe::UsbPort {
+        probe_rs::probe::UsbPort {
+            bus_id: port.bus_id,
+            ports: port.ports,
         }
     }
 

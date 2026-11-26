@@ -1,0 +1,1 @@
+`UsbSelector::usb_location` and `UsbProbeInfo::usb_location` are now `usb_port`: the USB port of the probe (a `UsbPort`: bus and port path), if the platform knows it, instead of its device address, so they stay valid when the probe enumerates again.
