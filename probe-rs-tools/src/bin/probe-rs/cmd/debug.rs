@@ -30,7 +30,7 @@ use crate::cmd::dap_server::server::configuration::CoreConfig;
 use crate::cmd::dap_server::server::configuration::FlashingConfig;
 use crate::cmd::dap_server::server::configuration::SessionConfig;
 use crate::cmd::dap_server::server::debugger::Debugger;
-use crate::util::cli::{self, parse_metadata};
+use crate::util::cli;
 use crate::util::common_options::BinaryDownloadOptions;
 use crate::util::rtt::RttConfig;
 use crate::util::style::{Prompt, probe_rs_color_enabled};
@@ -210,9 +210,8 @@ impl Cmd {
     pub async fn run(self, client: RpcClient, utc_offset: UtcOffset) -> anyhow::Result<()> {
         let preattached_session = if self.launch {
             if let Some(path) = &self.binary {
-                let (_file_meta, elf_meta) = parse_metadata(path).await?;
                 let session =
-                    cli::attach_probe(&client, self.common.clone(), elf_meta, false).await?;
+                    cli::attach_probe(&client, self.common.clone(), Some(path), false).await?;
                 cli::flash(
                     &session,
                     path,
@@ -229,12 +228,10 @@ impl Cmd {
         } else {
             // The DAP "attach" request cannot ask for a probe. The core stays halted, like in
             // the DAP server's own attach, until `configurationDone` resumes it.
-            let elf_meta = if let Some(path) = &self.binary {
-                parse_metadata(path).await?.1
-            } else {
-                Default::default()
-            };
-            Some(cli::attach_probe(&client, self.common.clone(), elf_meta, false).await?)
+            Some(
+                cli::attach_probe(&client, self.common.clone(), self.binary.as_deref(), false)
+                    .await?,
+            )
         };
 
         let (req_sender, req_receiver) = mpsc::channel(100);

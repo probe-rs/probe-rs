@@ -10,6 +10,7 @@ use probe_rs::{
     Permissions, Session, Target,
     config::{Registry, RegistryError, TargetSelector},
     flashing::{FileDownloadError, FlashError},
+    meta::ImageChipError,
     probe::{
         DebugProbeError, DebugProbeInfo, DebugProbeSelector, Probe, ProbeCreationError,
         WireProtocol,
@@ -268,6 +269,11 @@ impl<'r> LoadedProbeOptions<'r> {
         }
 
         Ok(())
+    }
+
+    /// The registry, with the chip description of the options loaded.
+    pub(crate) fn registry(&self) -> &Registry {
+        self.1
     }
 
     /// Resolves a resultant target selector from passed [ProbeOptions].
@@ -576,12 +582,15 @@ pub enum OperationError {
     #[error("No connected probes were found.")]
     NoProbesFound,
 
-    #[error("Failed to open the ELF file '{path}' for flashing.")]
+    #[error("Failed to open the ELF file '{path}'.")]
     FailedToOpenElf {
         #[source]
         source: std::io::Error,
         path: PathBuf,
     },
+
+    #[error(transparent)]
+    ImageChip(#[from] ImageChipError),
 
     #[error("Failed to load the ELF data.")]
     FailedToLoadElfData(#[source] FileDownloadError),

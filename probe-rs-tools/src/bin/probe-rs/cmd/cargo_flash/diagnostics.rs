@@ -16,7 +16,8 @@ use crate::util::common_options::OperationError;
 
 pub(crate) fn render_diagnostics(registry: &Registry, error: OperationError) {
     let (selected_error, hints) = match &error {
-        OperationError::IOError(_e) => (
+        // The RPC server reports the image errors, and they reach the client as text.
+        OperationError::IOError(_) | OperationError::ImageChip(_) => (
             error.to_string(),
             vec![],
         ),

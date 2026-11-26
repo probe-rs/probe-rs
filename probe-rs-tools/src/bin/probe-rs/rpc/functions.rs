@@ -168,6 +168,10 @@ impl RpcSpawnContext {
         self.state.registry.clone().blocking_lock_owned()
     }
 
+    pub(crate) async fn registry(&self) -> impl DerefMut<Target = Registry> + Send + use<> {
+        self.state.registry.clone().lock_owned().await
+    }
+
     pub(crate) fn probe_broker(&self) -> &Arc<ProbeBroker> {
         &self.probe_broker
     }
@@ -313,6 +317,12 @@ fn check_file_access(state: &ConnectionState, host_files: HostFiles, path: &str)
 }
 
 impl FileAccess for RpcContext {
+    fn check(&self, path: &str) -> RpcResult<()> {
+        check_file_access(&self.state, self.host_files, path)
+    }
+}
+
+impl FileAccess for RpcSpawnContext {
     fn check(&self, path: &str) -> RpcResult<()> {
         check_file_access(&self.state, self.host_files, path)
     }

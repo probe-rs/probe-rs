@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::{fs::File, path::Path};
 
 use super::*;
+use crate::config::Registry;
 use crate::session::Session;
 
 /// Extended options for flashing a binary file.
@@ -74,13 +75,10 @@ pub enum FileDownloadError {
         image: InstructionSet,
     },
 
-    /// The target chip {target} is not compatible with the image. The image is compatible with: {image_chips.join(", ")}
-    IncompatibleImageChip {
-        /// The target chip.
-        target: String,
-        /// The chips compatible with the image.
-        image_chips: Vec<String>,
-    },
+    /// The image is built for a different chip than the target.
+    #[cfg(feature = "object")]
+    #[error(transparent)]
+    ImageChip(#[from] crate::meta::ImageChipError),
 
     /// An error occurred during download.
     Other(#[source] crate::Error),
@@ -157,6 +155,7 @@ impl DownloadOptions<'_> {
 /// flashed etc.
 pub fn build_loader(
     session: &mut Session,
+    registry: &Registry,
     path: impl AsRef<Path>,
     format: impl ImageLoader,
     image_instruction_set: Option<InstructionSet>,
@@ -169,7 +168,8 @@ pub fn build_loader(
     // Add data from the BIN.
     let mut file = File::open(path).map_err(FileDownloadError::IO)?;
 
-    loader.load_image(session, &mut file, format, image_instruction_set)?;
+    let mut context = ImageContext { session, registry };
+    loader.load_image(&mut context, &mut file, format, image_instruction_set)?;
 
     Ok(loader)
 }
@@ -181,10 +181,11 @@ pub fn build_loader(
 /// If you are looking for more options, have a look at [download_file_with_options].
 pub fn download_file(
     session: &mut Session,
+    registry: &Registry,
     path: impl AsRef<Path>,
     format: impl ImageLoader,
 ) -> Result<(), FileDownloadError> {
-    download_file_with_options(session, path, format, DownloadOptions::default())
+    download_file_with_options(session, registry, path, format, DownloadOptions::default())
 }
 
 /// Downloads a file of given `format` at `path` to the flash of the target given in `session`.
@@ -194,11 +195,12 @@ pub fn download_file(
 /// If you are looking for a simple version without many options, have a look at [download_file].
 pub fn download_file_with_options(
     session: &mut Session,
+    registry: &Registry,
     path: impl AsRef<Path>,
     format: impl ImageLoader,
     options: DownloadOptions,
 ) -> Result<(), FileDownloadError> {
-    let loader = build_loader(session, path, format, None)?;
+    let loader = build_loader(session, registry, path, format, None)?;
 
     loader
         .commit(session, options)

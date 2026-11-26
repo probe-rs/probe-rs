@@ -265,7 +265,7 @@ async fn run_embed(
         target_serial: false,
     };
 
-    let session = match cli::attach_probe(&client, probe_options, None, false).await {
+    let session = match cli::attach_probe(&client, probe_options, Some(&path), false).await {
         Ok(session) => session,
         Err(error) => {
             if let Some(multi) = error.downcast_ref::<cli::MultipleProbesFound>() {

@@ -210,9 +210,8 @@ fn try_detect_arm_chip(
                 let found =
                     identify_arm_chip(registry, interface.as_mut(), dp_address, sequence_vendor);
                 probe = interface.close();
-                match found {
-                    Ok(None) => {}
-                    found => return (probe, found),
+                if found.is_some() {
+                    return (probe, Ok(found));
                 }
             }
             Err((returned_probe, error)) => {
@@ -225,22 +224,25 @@ fn try_detect_arm_chip(
     (probe, Ok(None))
 }
 
-/// Identifies the ARM chip behind `dp_address`. `Ok(None)` if nothing answers there or its ROM
-/// table can't be read.
+/// Identifies the ARM chip behind `dp_address`. `None` if nothing answers there, or the chip
+/// can't be identified.
 fn identify_arm_chip(
     registry: &Registry,
     interface: &mut dyn ArmDebugInterface,
     dp_address: DpAddress,
     sequence_vendor: Option<&dyn Vendor>,
-) -> Result<Option<Target>, Error> {
+) -> Option<Target> {
     if let Err(error) = interface.select_debug_port(dp_address) {
         tracing::debug!("Error during ARM chip detection on {dp_address:?}: {error}");
-        return Ok(None);
+        return None;
     }
 
     if let Some(vendor) = sequence_vendor {
         match vendor.try_identify_arm_chip(registry, interface) {
-            Ok(Some(target_name)) => return Ok(Some(registry.get_target_by_name(&target_name)?)),
+            Ok(Some(target_name)) => match registry.get_target_by_name(&target_name) {
+                Ok(target) => return Some(target),
+                Err(error) => tracing::debug!("{vendor} identified an unknown chip: {error}"),
+            },
             Ok(None) => {}
             Err(error) => tracing::debug!("{vendor} chip detection failed: {error}"),
         }
@@ -250,23 +252,28 @@ fn identify_arm_chip(
         read_chip_info_from_rom_table(interface, dp_address).unwrap_or_else(|error| {
             tracing::debug!("Error during ARM chip detection: {error}");
             None
-        });
-    let Some(found_chip) = found_arm_chip else {
-        return Ok(None);
-    };
+        })?;
 
-    let vendors = vendors();
-    for vendor in vendors.iter() {
+    identify_arm_chip_from_rom_table(registry, interface, found_arm_chip)
+        .inspect_err(|error| tracing::debug!("Error during ARM chip identification: {error}"))
+        .ok()
+}
+
+/// Finds the target of the chip that the ROM table describes.
+fn identify_arm_chip_from_rom_table(
+    registry: &Registry,
+    interface: &mut dyn ArmDebugInterface,
+    chip_info: ArmChipInfo,
+) -> Result<Target, Error> {
+    for vendor in vendors().iter() {
         // TODO: only consider families with matching JEP106.
-        if let Some(target_name) = vendor.try_detect_arm_chip(registry, interface, found_chip)? {
-            return Ok(Some(registry.get_target_by_name(&target_name)?));
+        if let Some(target_name) = vendor.try_detect_arm_chip(registry, interface, chip_info)? {
+            return Ok(registry.get_target_by_name(&target_name)?);
         }
     }
 
     // No vendor-specific match, try to find a target by chip info.
-    Ok(Some(
-        registry.get_target_by_chip_info(ChipInfo::from(found_chip))?,
-    ))
+    Ok(registry.get_target_by_chip_info(ChipInfo::from(chip_info))?)
 }
 
 fn try_detect_riscv_chip(registry: &Registry, probe: &mut Probe) -> Result<Option<Target>, Error> {

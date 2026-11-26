@@ -4,11 +4,10 @@ use std::time::Duration;
 
 use espflash::flasher::{FlashData, FlashFrequency, FlashMode, FlashSettings, FlashSize};
 use espflash::image_format::idf::{IdfBootloaderFormat, check_idf_bootloader};
-use probe_rs::Session;
 use probe_rs::config::{MemoryRegion, Target};
 use probe_rs::flashing::{
-    FileDownloadError, FlashError, FlashLoader, FlashProgress, Flasher, ImageFormat, ImageLoader,
-    ImageReader, into_format_error,
+    FileDownloadError, FlashError, FlashLoader, FlashProgress, Flasher, ImageContext, ImageFormat,
+    ImageLoader, ImageReader, into_format_error,
 };
 use serde::{Deserialize, Serialize};
 use yaml_serde::Value;
@@ -68,9 +67,10 @@ impl ImageLoader for IdfLoader {
     fn load(
         &self,
         flash_loader: &mut FlashLoader,
-        session: &mut Session,
+        context: &mut ImageContext<'_>,
         file: &mut dyn ImageReader,
     ) -> Result<(), FileDownloadError> {
+        let session = &mut *context.session;
         session
             .detect_memory_map()
             .map_err(EspIdfFormatError::FlashSizeDetection)
@@ -142,7 +142,7 @@ impl ImageLoader for IdfLoader {
                 EspIdfFormatError::Idf(espflash::Error::AppDescriptorNotPresent(e.to_string()))
             })
             .map_err(|e| into_format_error("esp-idf", e))?;
-        check_chip_compatibility_from_elf_metadata(session, &elf_buffer)?;
+        context.check_image_chip(&elf_buffer)?;
 
         let image = IdfBootloaderFormat::new(
             &elf_buffer,
@@ -186,23 +186,4 @@ fn flash_size(target: &Target) -> Option<FlashSize> {
         0x10000000 => Some(FlashSize::_256Mb),
         _ => None,
     }
-}
-
-pub fn check_chip_compatibility_from_elf_metadata(
-    session: &Session,
-    elf_data: &[u8],
-) -> Result<(), FileDownloadError> {
-    let esp_metadata = espflash::image_format::Metadata::from_bytes(Some(elf_data));
-
-    if let Some(chip_name) = esp_metadata.chip_name() {
-        let target = session.target();
-        if chip_name != target.name {
-            return Err(FileDownloadError::IncompatibleImageChip {
-                target: target.name.clone(),
-                image_chips: vec![chip_name.to_string()],
-            });
-        }
-    }
-
-    Ok(())
 }

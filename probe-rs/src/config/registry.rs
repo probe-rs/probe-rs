@@ -210,14 +210,26 @@ impl Registry {
 
     /// Returns a particular target by its name.
     pub fn get_target_by_name(&self, name: impl AsRef<str>) -> Result<Target, RegistryError> {
-        let (target, _) = self.get_target_and_family_by_name(name.as_ref())?;
+        let (family, chip, package) = self.find_chip(name.as_ref())?;
+
+        let mut target = self.get_target(family, chip);
+        target.name = package.to_string();
         Ok(target)
     }
 
-    fn get_target_and_family_by_name(
+    /// Returns the chip variant that `name` selects, and its family. `name` can be the name of
+    /// the variant or of one of its packages, and selects the same chip as in
+    /// [`Registry::get_target_by_name`].
+    pub fn get_family_and_chip_by_name(
         &self,
         name: &str,
-    ) -> Result<(Target, ChipFamily), RegistryError> {
+    ) -> Result<(&ChipFamily, &Chip), RegistryError> {
+        let (family, chip, _) = self.find_chip(name)?;
+        Ok((family, chip))
+    }
+
+    /// Finds the chip variant that `name` selects, its family, and the package name that matched.
+    fn find_chip(&self, name: &str) -> Result<(&ChipFamily, &Chip, &str), RegistryError> {
         tracing::debug!("Searching registry for chip with name {name}");
 
         // Try get the corresponding chip.
@@ -301,9 +313,7 @@ impl Registry {
             );
         }
 
-        let mut targ = self.get_target(family, chip);
-        targ.name = package.to_string();
-        Ok((targ, family.clone()))
+        Ok((family, chip, package))
     }
 
     /// Get all target names in a given family.
@@ -510,6 +520,19 @@ mod tests {
         // ok: unique exact match
         let target = registry.get_target_by_name("nrf51822_Xxaa").unwrap();
         assert_eq!(target.name, "nRF51822_xxAA");
+    }
+
+    #[cfg(feature = "builtin-targets")]
+    #[test]
+    fn package_name_selects_its_variant() {
+        let registry = Registry::from_builtin_families();
+
+        let (family, chip) = registry
+            .get_family_and_chip_by_name("STM32G030C6Tx")
+            .unwrap();
+
+        assert_eq!(family.name, "STM32G0 Series");
+        assert_eq!(chip.name, "STM32G030C6");
     }
 
     #[test]

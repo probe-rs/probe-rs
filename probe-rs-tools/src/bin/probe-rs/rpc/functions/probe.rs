@@ -2,10 +2,13 @@ use std::sync::{Arc, OnceLock};
 use std::time::{Duration, Instant};
 
 use postcard_rpc::{header::VarHeader, server::Sender};
+use probe_rs::config::TargetSelector;
+use probe_rs::meta::ImageChip;
 use probe_rs::probe::{
     DebugProbeSelector, Probe,
     list::{Lister, default_probe_index},
 };
+use probe_rs_rpc::file::ServerPath;
 use probe_rs_rpc::probe::{
     AttachRequest, AttachResult, DebugProbeEntry, ListProbesResponse, ProbeTransport,
     SelectProbeRequest, SelectProbeResponse, SelectProbeResult, WireProtocol,
@@ -94,6 +97,10 @@ pub async fn attach(
 
 async fn attach_impl(ctx: RpcSpawnContext, request: AttachRequest) -> RpcResult<AttachResult> {
     let probe_options = ProbeOptions::from(&request);
+    let image_chip = match &request.image {
+        Some(path) => read_image_chip(&ctx, path).await?,
+        None => None,
+    };
     let selector = convert::from_wire_debug_probe_selector(request.probe.selector());
     // The serial settings of this machine apply, if the client asks for the port.
     let serial_config = request
@@ -111,6 +118,7 @@ async fn attach_impl(ctx: RpcSpawnContext, request: AttachRequest) -> RpcResult<
             attach_once(
                 ctx.clone(),
                 probe_options.clone(),
+                image_chip.as_ref(),
                 selector.clone(),
                 request.resume_target,
                 serial_config.as_ref(),
@@ -248,6 +256,7 @@ pub(super) fn open_probe(
 fn attach_once(
     ctx: RpcSpawnContext,
     probe_options: ProbeOptions,
+    image_chip: Option<&ImageChip>,
     selector: DebugProbeSelector,
     resume_target: bool,
     serial_config: Option<&SerialConfig>,
@@ -258,7 +267,18 @@ fn attach_once(
     let lister = ctx.lister();
     let mut registry = ctx.registry_blocking();
     let loaded = probe_options.load(&mut registry)?;
+    // Detection comes first, and the image chip is the fallback.
     let target = loaded.get_target_selector()?;
+    let target = match (target, image_chip) {
+        (TargetSelector::Auto, Some(chip)) => TargetSelector::AutoOr(chip.name.clone()),
+        (TargetSelector::Specified(target), Some(chip)) => {
+            // Attach can change the chip, for example erase it to unlock it, so check first.
+            chip.check_target(&target, loaded.registry())
+                .map_err(OperationError::from)?;
+            TargetSelector::Specified(target)
+        }
+        (target, _) => target,
+    };
 
     let mut probe = match open_probe(&lister, &loaded, &selector) {
         Ok(probe) => probe,
@@ -276,6 +296,19 @@ fn attach_once(
     }
 
     Ok(Ok(Box::new(session)))
+}
+
+/// Reads the chip that the image at `path` is built for. Returns `None` if the image names no
+/// chip that the registry can use.
+async fn read_image_chip(ctx: &RpcSpawnContext, path: &ServerPath) -> RpcResult<Option<ImageChip>> {
+    let path = path.checked(ctx)?;
+    let image = tokio::fs::read(path)
+        .await
+        .map_err(|source| OperationError::FailedToOpenElf {
+            source,
+            path: path.to_path_buf(),
+        })?;
+    Ok(ImageChip::from_image(&image, &*ctx.registry().await))
 }
 
 /// Takes the serial port to the target and opens it. Errors are not fatal for attach.
@@ -332,36 +365,71 @@ mod tests {
         lister: Arc<BusyLister>,
         wait_for_probe: Option<Duration>,
     ) -> Result<AttachResult, ClientError> {
-        let probe =
-            convert::to_wire_debug_probe_entry(ProbeListItem::accessible(lister.info.clone()));
+        let request = test_request(&lister, wait_for_probe);
+        send_attach(lister, HostFiles::Allow, request).await
+    }
 
+    /// An attach request for the test chip on the probe of `lister`.
+    fn test_request(lister: &BusyLister, wait_for_probe: Option<Duration>) -> AttachRequest {
+        AttachRequest {
+            chip: Some(TEST_CHIP_NAME.to_owned()),
+            image: None,
+            protocol: None,
+            probe: convert::to_wire_debug_probe_entry(ProbeListItem::accessible(
+                lister.info.clone(),
+            )),
+            speed: None,
+            connect_under_reset: false,
+            allow_erase_all: false,
+            resume_target: false,
+            wait_for_probe,
+            target_serial: false,
+        }
+    }
+
+    /// Sends `request` to a server that lists the probe of `lister`.
+    async fn send_attach(
+        lister: Arc<BusyLister>,
+        host_files: HostFiles,
+        request: AttachRequest,
+    ) -> Result<AttachResult, ClientError> {
         let (server, tx, rx) = RpcApp::create_server_with_lister(
             16,
             lister as Arc<dyn ProbeLister + Send + Sync>,
             Arc::new(ProbeBroker::new()),
-            HostFiles::Allow,
+            host_files,
         );
         let handle = tokio::spawn(async move { server.run().await });
         let client = RpcClient::new_local_from_wire(tx, rx);
 
-        let result = client
-            .attach_probe(AttachRequest {
-                chip: Some(TEST_CHIP_NAME.to_owned()),
-                protocol: None,
-                probe,
-                speed: None,
-                connect_under_reset: false,
-                allow_erase_all: false,
-                resume_target: false,
-                wait_for_probe,
-                target_serial: false,
-            })
-            .await;
+        let result = client.attach_probe(request).await;
 
         drop(client);
         _ = handle.await;
 
         result
+    }
+
+    #[tokio::test]
+    async fn remote_server_opens_no_image_that_the_client_did_not_upload() {
+        let lister = Arc::new(busy_lister(0));
+        let image_file = tempfile::NamedTempFile::new().unwrap();
+        let request = AttachRequest {
+            image: Some(ServerPath::new(image_file.path().display().to_string())),
+            ..test_request(&lister, None)
+        };
+
+        let result = send_attach(lister, HostFiles::Deny, request).await;
+
+        let Err(error) = result else {
+            panic!("the attach succeeded");
+        };
+        assert!(
+            error
+                .to_string()
+                .contains("opens only files that the client uploaded"),
+            "unexpected error: {error}"
+        );
     }
 
     #[tokio::test]
@@ -462,6 +530,7 @@ mod tests {
         let lister = Arc::new(busy_lister(usize::MAX));
         let request = AttachRequest {
             chip: Some(TEST_CHIP_NAME.to_owned()),
+            image: None,
             protocol: None,
             probe: convert::to_wire_debug_probe_entry(ProbeListItem::accessible(
                 lister.info.clone(),
@@ -532,6 +601,7 @@ mod tests {
 
         let request = AttachRequest {
             chip: Some(TEST_CHIP_NAME.to_owned()),
+            image: None,
             protocol: None,
             probe: convert::to_wire_debug_probe_entry(ProbeListItem::accessible(
                 lister.info.clone(),

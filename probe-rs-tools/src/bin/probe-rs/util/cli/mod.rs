@@ -5,8 +5,7 @@ use std::time::Duration;
 use std::{future::Future, path::Path, time::Instant};
 
 use anyhow::Context;
-use probe_rs::meta::ElfMetadata;
-use probe_rs::rtt::find_rtt_control_block_and_metadata_in_raw_file;
+use probe_rs::rtt::find_rtt_control_block_in_raw_file;
 use ratatui::crossterm::style::Stylize;
 
 use crate::rpc::Key;
@@ -47,36 +46,22 @@ pub use monitor::{FirmwareExited, monitor};
 pub use output::{DecoderSettings, TargetOutput, rtt_client};
 pub use test::test;
 
+/// Attaches to the target. With `image`, the server picks the target chip from the image when it
+/// detects none, and fails if the image is built for a different chip.
 pub async fn attach_probe(
     client: &RpcClient,
-    mut probe_options: ProbeOptions,
-    elf_meta: Option<ElfMetadata>,
+    probe_options: ProbeOptions,
+    image: Option<&Path>,
     resume_target: bool,
 ) -> anyhow::Result<SessionInterface> {
-    let elf_meta = elf_meta.unwrap_or_default();
-    probe_options.chip = select_chip(elf_meta.chip, probe_options.chip)?;
-
-    let request = attach_request(client, probe_options, resume_target).await?;
+    let mut request = attach_request(client, probe_options, resume_target).await?;
+    if let Some(image) = image {
+        request.image = Some(client.upload_file(image).await?);
+    }
     let result = with_slow_attach_feedback(client.attach_probe(request)).await?;
     let session = attach_outcome(client, result).await?;
 
     Ok(SessionInterface::new(client.clone(), session))
-}
-
-/// Returns the chip to attach to. Fails if the ELF file and the probe options name different
-/// chips.
-fn select_chip(
-    elf_chip: Option<String>,
-    probe_chip: Option<String>,
-) -> anyhow::Result<Option<String>> {
-    match (elf_chip, probe_chip) {
-        (Some(elf_chip), Some(probe_chip))
-            if elf_chip.to_lowercase() != probe_chip.to_lowercase() =>
-        {
-            anyhow::bail!("elf_chip does not match probe_chip")
-        }
-        (elf_chip, probe_chip) => Ok(probe_chip.or(elf_chip)),
-    }
 }
 
 /// Returns the success value of `result`, or the failure as an error.
@@ -153,6 +138,7 @@ pub async fn attach_request(
 
     Ok(AttachRequest {
         chip: probe_options.chip,
+        image: None,
         protocol: probe_options.protocol.map(to_wire_protocol),
         probe,
         speed: probe_options.speed,
@@ -356,17 +342,15 @@ pub struct FileMetadata {
     pub scan_regions: Option<ScanRegion>,
 }
 
-pub async fn parse_metadata(path: &Path) -> anyhow::Result<(FileMetadata, Option<ElfMetadata>)> {
+pub async fn parse_metadata(path: &Path) -> anyhow::Result<FileMetadata> {
     let elf = tokio::fs::read(path)
         .await
         .with_context(|| format!("Failed to read firmware from {}", path.display()))?;
 
-    let mut elf_meta = None;
     let mut scan_regions = None;
     let mut load_defmt_data = false;
 
-    if let Ok((rtt_block, meta)) = find_rtt_control_block_and_metadata_in_raw_file(&elf) {
-        elf_meta = Some(meta);
+    if let Ok(rtt_block) = find_rtt_control_block_in_raw_file(&elf) {
         match rtt_block {
             Some(addr) => {
                 scan_regions = Some(ScanRegion::Exact(addr));
@@ -390,14 +374,11 @@ pub async fn parse_metadata(path: &Path) -> anyhow::Result<(FileMetadata, Option
         }
     };
 
-    Ok((
-        FileMetadata {
-            defmt_data,
-            zephyr_log_dictionary,
-            scan_regions,
-        },
-        elf_meta,
-    ))
+    Ok(FileMetadata {
+        defmt_data,
+        zephyr_log_dictionary,
+        scan_regions,
+    })
 }
 
 pub async fn flash(

@@ -250,6 +250,10 @@ pub enum TargetSelector {
     /// by reading identifying information from
     /// the probe and / or target.
     Auto,
+    /// Try to identify the target as [`TargetSelector::Auto`] does. If that finds no target,
+    /// search the internal list of targets for the given name, as
+    /// [`TargetSelector::Unspecified`] does.
+    AutoOr(String),
 }
 
 impl From<&str> for TargetSelector {

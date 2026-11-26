@@ -1188,7 +1188,8 @@ impl Drop for Session {
 ///
 /// If the selector is [TargetSelector::Unspecified], the target will be looked up in the registry.
 /// If it its [TargetSelector::Auto], probe-rs will try to determine the target automatically, based on
-/// information read from the chip.
+/// information read from the chip. [TargetSelector::AutoOr] looks up its target in the registry if
+/// that fails.
 fn get_target_from_selector(
     target: TargetSelector,
     attach_method: AttachMethod,
@@ -1198,7 +1199,7 @@ fn get_target_from_selector(
     let target = match target {
         TargetSelector::Unspecified(name) => registry.get_target_by_name(name)?,
         TargetSelector::Specified(target) => *target,
-        TargetSelector::Auto => {
+        selector @ (TargetSelector::Auto | TargetSelector::AutoOr(_)) => {
             // At this point we do not know what the target is, so we cannot use the chip specific reset sequence.
             // Thus, we try just using a normal reset for target detection if we want to do so under reset.
             // This can of course fail, but target detection is a best effort, not a guarantee!
@@ -1222,15 +1223,27 @@ fn get_target_from_selector(
                 probe.target_reset_deassert()?;
             }
 
-            if let Some(target) = found_target {
-                target
-            } else {
-                return Err(Error::ChipNotFound(RegistryError::ChipAutodetectFailed));
-            }
+            detected_or_fallback(found_target, selector, registry)?
         }
     };
 
     Ok((probe, target))
+}
+
+/// Returns the detected target, else the fallback of [TargetSelector::AutoOr].
+fn detected_or_fallback(
+    detected: Option<Target>,
+    selector: TargetSelector,
+    registry: &Registry,
+) -> Result<Target, Error> {
+    match (detected, selector) {
+        (Some(target), _) => Ok(target),
+        (None, TargetSelector::AutoOr(name)) => {
+            tracing::info!("No target detected, using {name}");
+            Ok(registry.get_target_by_name(name)?)
+        }
+        (None, _) => Err(Error::ChipNotFound(RegistryError::ChipAutodetectFailed)),
+    }
 }
 
 /// The `Permissions` struct represents what a [Session] is allowed to do with a target.
@@ -1384,5 +1397,52 @@ impl SwoAccess for PlaceholderArmInterface {
 
     fn read_swo_timeout(&mut self, _timeout: Duration) -> Result<Vec<u8>, ArmError> {
         Err(NOT_ATTACHED)
+    }
+}
+
+#[cfg(all(test, feature = "builtin-targets"))]
+mod tests {
+    use super::*;
+    use std::assert_matches;
+
+    #[test]
+    fn detected_target_wins_over_the_fallback() {
+        let registry = Registry::from_builtin_families();
+        let detected = registry.get_target_by_name("STM32G030C6").unwrap();
+
+        let target = detected_or_fallback(
+            Some(detected),
+            TargetSelector::AutoOr("STM32G030C8Tx".to_string()),
+            &registry,
+        )
+        .unwrap();
+
+        assert_eq!(target.name, "STM32G030C6");
+    }
+
+    #[test]
+    fn fallback_is_used_when_nothing_is_detected() {
+        let registry = Registry::from_builtin_families();
+
+        let target = detected_or_fallback(
+            None,
+            TargetSelector::AutoOr("STM32G030C8Tx".to_string()),
+            &registry,
+        )
+        .unwrap();
+
+        assert_eq!(target.name, "STM32G030C8Tx");
+    }
+
+    #[test]
+    fn auto_fails_when_nothing_is_detected() {
+        let registry = Registry::from_builtin_families();
+
+        let result = detected_or_fallback(None, TargetSelector::Auto, &registry);
+
+        assert_matches!(
+            result,
+            Err(Error::ChipNotFound(RegistryError::ChipAutodetectFailed))
+        );
     }
 }
