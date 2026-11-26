@@ -1,11 +1,11 @@
-use std::{any::Any, ops::DerefMut, panic::AssertUnwindSafe, sync::Arc};
 use std::{collections::HashMap, convert::Infallible, future::Future};
+use std::{ops::DerefMut, panic::AssertUnwindSafe, sync::Arc};
 
 use crate::rpc::debug_state::ServerDebugState;
 use crate::rpc::functions::file::{append_temp_file, create_temp_file};
 use crate::rpc::probe_broker::ProbeBroker;
 use crate::rpc::{
-    ConnectionState, Key, Session, SessionEntry, SessionState,
+    ConnectionState, Key, ObjectMarker, Session, SessionState, SharedTargetSerial,
     functions::{
         breakpoints::{resolve_source_breakpoints, resolve_source_locations},
         chip::{chip_info, list_families, load_chip_family},
@@ -81,6 +81,7 @@ pub mod reset;
 pub mod rtt_client;
 pub mod stack_trace;
 pub mod test;
+pub mod write_queue;
 
 #[derive(Clone)]
 pub struct RpcSpawnContext {
@@ -153,7 +154,7 @@ impl RpcSpawnContext {
         self.state.shared_session(sessid)
     }
 
-    pub fn object_mut_blocking<M: crate::rpc::ObjectMarker>(
+    pub fn object_mut_blocking<M: ObjectMarker>(
         &self,
         key: Key<M>,
     ) -> impl DerefMut<Target = M::Object> + Send + use<M> {
@@ -162,6 +163,11 @@ impl RpcSpawnContext {
 
     pub fn cancellation_token(&self) -> CancellationToken {
         self.state.token.clone()
+    }
+
+    /// Returns the serial port to the target of a session.
+    pub fn target_serial(&self, sid: Key<Session>) -> Option<SharedTargetSerial> {
+        self.state.target_serial(sid)
     }
 
     pub(crate) fn registry_blocking(&self) -> impl DerefMut<Target = Registry> + Send + use<> {
@@ -198,7 +204,7 @@ impl RpcSpawnContext {
     pub(crate) async fn set_session(
         &self,
         session: probe_rs::Session,
-        target_serial: Option<crate::rpc::SharedTargetSerial>,
+        target_serial: Option<SharedTargetSerial>,
         lease: crate::rpc::probe_broker::ProbeLease,
     ) -> Key<Session> {
         self.state.set_session(session, target_serial, lease).await
@@ -405,14 +411,14 @@ impl RpcContext {
             .map_err(|e| anyhow!("{e:?}"))
     }
 
-    pub async fn object_mut<M: crate::rpc::ObjectMarker>(
+    pub async fn object_mut<M: ObjectMarker>(
         &self,
         key: Key<M>,
     ) -> impl DerefMut<Target = M::Object> + Send + use<M> {
         self.state.object_mut(key).await
     }
 
-    pub async fn store_object<M: crate::rpc::ObjectMarker>(&mut self, obj: M::Object) -> Key<M> {
+    pub async fn store_object<M: ObjectMarker>(&mut self, obj: M::Object) -> Key<M> {
         self.state.store_object(obj).await
     }
 
@@ -420,15 +426,11 @@ impl RpcContext {
         &self,
         sid: Key<Session>,
     ) -> impl DerefMut<Target = probe_rs::Session> + Send + use<> {
-        let locked_cell = self.state.object_storage.lock().await.cell(sid);
-        let guard = locked_cell.obj.clone().lock_owned().await;
-        tokio::sync::OwnedMutexGuard::map(guard, |e: &mut (dyn Any + Send)| {
-            &mut e.downcast_mut::<SessionEntry>().unwrap().session
-        })
+        self.state.session(sid).await
     }
 
     /// Returns the serial port to the target of a session.
-    pub fn target_serial(&self, sid: Key<Session>) -> Option<crate::rpc::SharedTargetSerial> {
+    pub fn target_serial(&self, sid: Key<Session>) -> Option<SharedTargetSerial> {
         self.state.target_serial(sid)
     }
 
