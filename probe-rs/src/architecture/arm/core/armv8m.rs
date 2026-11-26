@@ -2,7 +2,9 @@
 
 use super::{
     CortexMState, Dfsr,
-    cortex_m::{IdPfr1, Mvfr0, clear_step_before_reset, exit_halt},
+    cortex_m::{
+        IdPfr1, Mvfr0, clear_dfsr_if_set, clear_step_before_reset, exit_halt, read_debug_status,
+    },
     registers::armv8m::{
         V8M_BASE_SEC_FP_REGISTERS, V8M_BASE_SEC_REGISTERS, V8M_MAIN_FP_REGISTERS,
         V8M_MAIN_REGISTERS, V8M_MAIN_SEC_FP_REGISTERS, V8M_MAIN_SEC_REGISTERS,
@@ -95,38 +97,36 @@ impl<'probe> Armv8m<'probe> {
         super::update_core_status(&mut self.memory, &mut self.state.current_state, new_status);
     }
 
+    /// Poll the status until `predicate` accepts it, and return that status.
     fn wait_for_status(
         &mut self,
         timeout: Duration,
         predicate: impl Fn(CoreStatus) -> bool,
-    ) -> Result<(), Error> {
+    ) -> Result<CoreStatus, Error> {
         let start = Instant::now();
+        // The wait is for a halt, which the first poll usually finds, so it reads DFSR together
+        // with DHCSR. A core still running after that is polled with DHCSR alone.
+        let mut expect_halt = true;
 
-        while !predicate(self.status()?) {
+        loop {
+            let status = self.read_status(expect_halt)?;
+            if predicate(status) {
+                return Ok(status);
+            }
             if start.elapsed() >= timeout {
                 return Err(Error::Arm(ArmError::Timeout));
             }
+            expect_halt = false;
             // Wait a bit before polling again.
             std::thread::sleep(Duration::from_millis(1));
         }
-
-        Ok(())
-    }
-}
-
-impl CoreInterface for Armv8m<'_> {
-    fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), Error> {
-        // Wait until halted state is active again.
-        self.wait_for_status(timeout, |s| s.is_halted())
     }
 
-    fn core_halted(&mut self) -> Result<bool, Error> {
-        // Wait until halted state is active again.
-        Ok(self.status()?.is_halted())
-    }
-
-    fn status(&mut self) -> Result<crate::core::CoreStatus, Error> {
-        let dhcsr = Dhcsr(self.memory.read_word_32(Dhcsr::get_mmio_address())?);
+    /// Read the core status, and update the cached one.
+    ///
+    /// `expect_halt` reads DHCSR and DFSR in one batch, see [`read_debug_status`].
+    fn read_status(&mut self, expect_halt: bool) -> Result<CoreStatus, Error> {
+        let (dhcsr, dfsr) = read_debug_status(&mut *self.memory, expect_halt)?;
 
         if dhcsr.s_lockup() {
             tracing::debug!(
@@ -152,15 +152,12 @@ impl CoreInterface for Armv8m<'_> {
 
         // TODO: Handle lockup
 
-        if dhcsr.s_halt() {
-            let dfsr = Dfsr(self.memory.read_word_32(Dfsr::get_mmio_address())?);
-
+        if let Some(dfsr) = dfsr {
             let mut reason = dfsr.halt_reason();
             reason = self.state.resolve_halt_reason(reason);
 
             // Clear bits from Dfsr register
-            self.memory
-                .write_word_32(Dfsr::get_mmio_address(), Dfsr::clear_all().into())?;
+            clear_dfsr_if_set(&mut *self.memory, dfsr)?;
 
             // If the core was halted before, we cannot read the halt reason from the chip,
             // because we clear it directly after reading.
@@ -207,6 +204,23 @@ impl CoreInterface for Armv8m<'_> {
         self.set_core_status(CoreStatus::Running);
 
         Ok(CoreStatus::Running)
+    }
+}
+
+impl CoreInterface for Armv8m<'_> {
+    fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), Error> {
+        // Wait until halted state is active again.
+        self.wait_for_status(timeout, |s| s.is_halted())?;
+        Ok(())
+    }
+
+    fn core_halted(&mut self) -> Result<bool, Error> {
+        // Wait until halted state is active again.
+        Ok(self.status()?.is_halted())
+    }
+
+    fn status(&mut self) -> Result<crate::core::CoreStatus, Error> {
+        self.read_status(self.state.current_state.is_halted())
     }
 
     fn halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
@@ -338,13 +352,16 @@ impl CoreInterface for Armv8m<'_> {
         // The single-step might put the core in lockup state. Lockup isn't considered "halted"
         // so we can't use `wait_for_core_halted` here.
         // So we wait for halted OR lockup, and if we entered lockup we halt.
-        if let Err(err) = self.wait_for_status(Duration::from_millis(100), |s| {
+        let status = match self.wait_for_status(Duration::from_millis(100), |s| {
             matches!(s, CoreStatus::Halted(_) | CoreStatus::LockedUp)
         }) {
-            self.state.clear_pending_step();
-            return Err(err);
-        }
-        if self.status()? == CoreStatus::LockedUp {
+            Ok(status) => status,
+            Err(err) => {
+                self.state.clear_pending_step();
+                return Err(err);
+            }
+        };
+        if status == CoreStatus::LockedUp {
             self.halt(Duration::from_millis(100))?;
         }
 
