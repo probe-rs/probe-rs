@@ -1,17 +1,17 @@
 use std::convert::Infallible;
 
-use postcard_schema::Schema;
 use regex::Regex;
-use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Schema, Clone)]
+/// A mapping from the file names of the target to the resources of the host. This never goes to a
+/// server.
+#[derive(Clone, Debug)]
 pub enum Mapping {
     Exact(String, String),
     Prefix(String, String),
     Regex(String, String),
 }
 
-#[derive(Serialize, Deserialize, Schema, Clone, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct SemihostingOptions {
     mappings: Vec<Mapping>,
 }

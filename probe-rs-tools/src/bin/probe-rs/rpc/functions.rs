@@ -1,11 +1,11 @@
-use std::{any::Any, ops::DerefMut, panic::AssertUnwindSafe, sync::Arc};
 use std::{collections::HashMap, convert::Infallible, future::Future};
+use std::{ops::DerefMut, panic::AssertUnwindSafe, sync::Arc};
 
 use crate::rpc::debug_state::ServerDebugState;
 use crate::rpc::functions::file::{append_temp_file, create_temp_file};
 use crate::rpc::probe_broker::ProbeBroker;
 use crate::rpc::{
-    ConnectionState, Key, Session, SessionEntry, SessionState,
+    ConnectionState, Key, ObjectMarker, Session, SessionState, SharedTargetSerial,
     functions::{
         breakpoints::{resolve_source_breakpoints, resolve_source_locations},
         chip::{chip_info, list_families, load_chip_family},
@@ -39,7 +39,6 @@ use crate::rpc::{
 };
 use crate::util::probe_config::ConfiguredLister;
 use probe_rs_rpc::file::FileAccess;
-use probe_rs_rpc::semihosting_options::SemihostingOptions;
 use probe_rs_rpc::transport::{
     MAX_REQUEST_LEN,
     memory::{WireRx, WireTx},
@@ -81,6 +80,7 @@ pub mod reset;
 pub mod rtt_client;
 pub mod stack_trace;
 pub mod test;
+pub mod write_queue;
 
 #[derive(Clone)]
 pub struct RpcSpawnContext {
@@ -88,7 +88,6 @@ pub struct RpcSpawnContext {
     sender: PostcardSender<WireTxImpl>,
     probe_broker: Arc<ProbeBroker>,
     lister: Arc<dyn ProbeLister + Send + Sync>,
-    host_files: HostFiles,
 }
 
 pub(crate) trait MultiTopicWriter {
@@ -153,7 +152,7 @@ impl RpcSpawnContext {
         self.state.shared_session(sessid)
     }
 
-    pub fn object_mut_blocking<M: crate::rpc::ObjectMarker>(
+    pub fn object_mut_blocking<M: ObjectMarker>(
         &self,
         key: Key<M>,
     ) -> impl DerefMut<Target = M::Object> + Send + use<M> {
@@ -162,6 +161,11 @@ impl RpcSpawnContext {
 
     pub fn cancellation_token(&self) -> CancellationToken {
         self.state.token.clone()
+    }
+
+    /// Returns the serial port to the target of a session.
+    pub fn target_serial(&self, sid: Key<Session>) -> Option<SharedTargetSerial> {
+        self.state.target_serial(sid)
     }
 
     pub(crate) fn registry_blocking(&self) -> impl DerefMut<Target = Registry> + Send + use<> {
@@ -176,25 +180,18 @@ impl RpcSpawnContext {
         Lister::with_lister(Box::new(ArcLister(self.lister.clone())))
     }
 
-    /// Returns the semihosting options of a request, or an error if they map paths and the
-    /// server does not give access to its files.
-    pub(crate) fn semihosting_options(
+    /// Returns the replies to host calls, if the call uses them.
+    pub(crate) fn host_replies(
         &self,
-        options: SemihostingOptions,
-    ) -> anyhow::Result<SemihostingOptions> {
-        if self.host_files == HostFiles::Deny && !options.mappings().is_empty() {
-            anyhow::bail!(
-                "This server does not give semihosting access to its files. \
-                Remove the semihosting file mappings."
-            );
-        }
-        Ok(options)
+        host_calls: bool,
+    ) -> anyhow::Result<Option<crate::rpc::HostReplies>> {
+        host_calls.then(|| self.state.host_replies()).transpose()
     }
 
     pub(crate) async fn set_session(
         &self,
         session: probe_rs::Session,
-        target_serial: Option<crate::rpc::SharedTargetSerial>,
+        target_serial: Option<SharedTargetSerial>,
         lease: crate::rpc::probe_broker::ProbeLease,
     ) -> Key<Session> {
         self.state.set_session(session, target_serial, lease).await
@@ -289,10 +286,19 @@ pub(crate) enum HostFiles {
     Deny,
 }
 
+/// The secrets of a login. The server uses them to prove itself to the client.
+pub(crate) struct LoginSecrets {
+    pub challenge: String,
+    pub token: String,
+    /// The client connected from the host of the server.
+    pub peer_is_loopback: bool,
+}
+
 pub struct RpcContext {
     /// State associated with a single connection.
     state: ConnectionState,
     sender: Option<PostcardSender<WireTxImpl>>,
+    login: Option<LoginSecrets>,
     /// Probe lister shared with the dispatch handlers. Stored as
     /// `Arc<dyn ProbeLister + Send + Sync>` so [`RpcContext`] stays
     /// `Send + Sync` (the server future is driven via `tokio::spawn`).
@@ -341,7 +347,6 @@ impl SpawnContext for RpcContext {
             sender: self.sender.clone().unwrap(),
             probe_broker: self.probe_broker.clone(),
             lister: self.lister.clone(),
-            host_files: self.host_files,
         }
     }
 }
@@ -367,6 +372,7 @@ impl RpcContext {
         Self {
             state: ConnectionState::new(),
             sender: None,
+            login: None,
             lister: Arc::new(ConfiguredLister::new(ArcLister(lister), configs)),
             probe_broker,
             host_files,
@@ -395,14 +401,14 @@ impl RpcContext {
             .map_err(|e| anyhow!("{e:?}"))
     }
 
-    pub async fn object_mut<M: crate::rpc::ObjectMarker>(
+    pub async fn object_mut<M: ObjectMarker>(
         &self,
         key: Key<M>,
     ) -> impl DerefMut<Target = M::Object> + Send + use<M> {
         self.state.object_mut(key).await
     }
 
-    pub async fn store_object<M: crate::rpc::ObjectMarker>(&mut self, obj: M::Object) -> Key<M> {
+    pub async fn store_object<M: ObjectMarker>(&mut self, obj: M::Object) -> Key<M> {
         self.state.store_object(obj).await
     }
 
@@ -410,15 +416,11 @@ impl RpcContext {
         &self,
         sid: Key<Session>,
     ) -> impl DerefMut<Target = probe_rs::Session> + Send + use<> {
-        let locked_cell = self.state.object_storage.lock().await.cell(sid);
-        let guard = locked_cell.obj.clone().lock_owned().await;
-        tokio::sync::OwnedMutexGuard::map(guard, |e: &mut (dyn Any + Send)| {
-            &mut e.downcast_mut::<SessionEntry>().unwrap().session
-        })
+        self.state.session(sid).await
     }
 
     /// Returns the serial port to the target of a session.
-    pub fn target_serial(&self, sid: Key<Session>) -> Option<crate::rpc::SharedTargetSerial> {
+    pub fn target_serial(&self, sid: Key<Session>) -> Option<SharedTargetSerial> {
         self.state.target_serial(sid)
     }
 
@@ -471,6 +473,32 @@ impl RpcContext {
             .run_blocking::<T, F, REQ, RESP>(request, task)
             .await
     }
+}
+
+async fn server_proof(
+    ctx: &mut RpcContext,
+    _header: VarHeader,
+    request: probe_rs_rpc::server_proof::ServerProofRequest,
+) -> probe_rs_rpc::server_proof::ServerProofResponse {
+    let login = ctx
+        .login
+        .as_ref()
+        .ok_or_else(|| RpcError::from("This connection has no login"))?;
+    Ok(probe_rs_rpc::server_proof::server_proof(
+        &request.nonce,
+        &login.challenge,
+        login.peer_is_loopback,
+        &login.token,
+    ))
+}
+
+async fn host_reply_handler(
+    ctx: &mut RpcContext,
+    _header: VarHeader,
+    reply: probe_rs_rpc::host_calls::HostReply,
+    _sender: &PostcardSender<WireTxImpl>,
+) {
+    ctx.state.deliver_host_reply(reply);
 }
 
 async fn cancel_handler(
@@ -569,6 +597,7 @@ postcard_rpc::define_dispatch! {
         | RunTestEndpoint                  | spawn | run_test                   |
         | TestKickoffEndpoint              | async | test_kickoff               |
 
+        | ServerProofEndpoint              | async | server_proof               |
         | CreateTempFileEndpoint           | async | create_temp_file           |
         | TempFileDataEndpoint             | async | append_temp_file           |
 
@@ -613,6 +642,7 @@ postcard_rpc::define_dispatch! {
         | TopicTy                   | kind      | handler                       |
         | ----------                | ----      | -------                       |
         | CancelTopic               | async     | cancel_handler                |
+        | HostReplyTopic            | async     | host_reply_handler            |
     };
     topics_out: {
         list: TOPICS_OUT_LIST;
@@ -664,6 +694,22 @@ impl RpcApp {
         )
     }
 
+    /// Like [`RpcApp::create_server`] for a client that logged in.
+    pub(crate) fn create_server_after_login(
+        depth: usize,
+        probe_access: ProbeAccess,
+        probe_broker: Arc<ProbeBroker>,
+        login: LoginSecrets,
+    ) -> (RpcServer, TxChannel, RxChannel) {
+        Self::create_server_inner(
+            depth,
+            Arc::new(LimitedLister::new(probe_access)),
+            probe_broker,
+            HostFiles::Deny,
+            Some(login),
+        )
+    }
+
     /// Like [`RpcApp::create_server`] but with a custom probe lister. Used by
     /// tests that drive the in-process RPC server with a `FakeProbe`.
     pub fn create_server_with_lister(
@@ -671,6 +717,16 @@ impl RpcApp {
         lister: Arc<dyn ProbeLister + Send + Sync>,
         probe_broker: Arc<ProbeBroker>,
         host_files: HostFiles,
+    ) -> (RpcServer, TxChannel, RxChannel) {
+        Self::create_server_inner(depth, lister, probe_broker, host_files, None)
+    }
+
+    fn create_server_inner(
+        depth: usize,
+        lister: Arc<dyn ProbeLister + Send + Sync>,
+        probe_broker: Arc<ProbeBroker>,
+        host_files: HostFiles,
+        login: Option<LoginSecrets>,
     ) -> (RpcServer, TxChannel, RxChannel) {
         let client_to_server = channel::<Result<Vec<u8>, WireRxErrorKind>>(depth);
         let server_to_client = channel::<Vec<u8>>(depth);
@@ -686,6 +742,7 @@ impl RpcApp {
             spawner,
         );
         let vkk = dispatcher.min_key_len();
+        dispatcher.context.login = login;
         dispatcher
             .context
             .set_sender(PostcardSender::new(server_to_client_tx.clone(), vkk));
@@ -789,7 +846,6 @@ mod tests {
             sender: PostcardSender::new(WireTx::new(wire_tx), VarKeyKind::Key4),
             probe_broker: Arc::new(ProbeBroker::new()),
             lister: Arc::new(LimitedLister::new(ProbeAccess::All)),
-            host_files: HostFiles::Allow,
         };
 
         ctx.run_blocking::<RttTopic, _, _, _>((), |_, (), sender| {
@@ -805,17 +861,6 @@ mod tests {
 
         drop(ctx);
         assert_eq!(frames.await.unwrap(), EVENTS);
-    }
-
-    fn context_with_host_files(host_files: HostFiles) -> RpcSpawnContext {
-        let (wire_tx, _) = channel::<Vec<u8>>(1);
-        RpcSpawnContext {
-            state: ConnectionState::new(),
-            sender: PostcardSender::new(WireTx::new(wire_tx), VarKeyKind::Key4),
-            probe_broker: Arc::new(ProbeBroker::new()),
-            lister: Arc::new(LimitedLister::new(ProbeAccess::All)),
-            host_files,
-        }
     }
 
     #[test]
@@ -953,22 +998,35 @@ mod tests {
     }
 
     #[test]
-    fn remote_server_rejects_semihosting_file_mappings() {
-        let mut mapped = SemihostingOptions::new();
-        mapped
-            .add_file("in.txt".to_owned(), "/etc/passwd".to_owned())
-            .unwrap();
+    fn a_stale_host_reply_is_dropped() {
+        use probe_rs_rpc::host_calls::{HostReply, HostValue};
+        let reply = |id| HostReply {
+            id,
+            result: Ok(HostValue::Done),
+        };
 
-        let remote = context_with_host_files(HostFiles::Deny);
-        assert!(remote.semihosting_options(mapped.clone()).is_err());
-        assert!(
-            remote
-                .semihosting_options(SemihostingOptions::new())
-                .is_ok()
-        );
+        let state = ConnectionState::new();
+        // No call runs.
+        state.deliver_host_reply(reply(0));
 
-        let local = context_with_host_files(HostFiles::Allow);
-        assert!(local.semihosting_options(mapped).is_ok());
+        let first = state.host_replies().unwrap();
+        let old_id = first.next_id();
+        // A second call cannot take the replies of a running one.
+        assert!(state.host_replies().is_err());
+        drop(first);
+
+        let second = state.host_replies().unwrap();
+        let new_id = second.next_id();
+        assert!(new_id > old_id);
+
+        state.deliver_host_reply(reply(old_id));
+        assert!(second.receiver().try_recv().is_err());
+
+        state.deliver_host_reply(reply(new_id));
+        assert_eq!(second.receiver().try_recv().unwrap().id, new_id);
+
+        drop(second);
+        state.deliver_host_reply(reply(new_id));
     }
 
     /// The client can go away while a task publishes events. The server must
@@ -983,7 +1041,6 @@ mod tests {
             sender: PostcardSender::new(WireTx::new(wire_tx), VarKeyKind::Key4),
             probe_broker: Arc::new(ProbeBroker::new()),
             lister: Arc::new(LimitedLister::new(ProbeAccess::All)),
-            host_files: HostFiles::Allow,
         };
         let result = tokio::spawn(async move {
             ctx.run_blocking::<RttTopic, _, _, _>((), |_, (), sender| {
@@ -1018,7 +1075,6 @@ mod tests {
             sender: PostcardSender::new(WireTx::new(wire_tx), VarKeyKind::Key4),
             probe_broker: Arc::new(ProbeBroker::new()),
             lister: Arc::new(LimitedLister::new(ProbeAccess::All)),
-            host_files: HostFiles::Allow,
         };
         let token = ctx.cancellation_token();
 

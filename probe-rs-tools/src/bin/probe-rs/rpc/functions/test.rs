@@ -12,15 +12,13 @@ use crate::rpc::{
     functions::{
         RpcContext, RpcSpawnContext, WireTxImpl,
         convert::lift,
-        monitor::{MonitorSender, RttPoller, discard_serial_input, with_serial_forwarding},
+        monitor::{MonitorSender, RttPoller, SerialPoller},
     },
     utils::{
-        run_loop::{ReturnReason, RunLoop, VectorCatchConfig},
-        semihosting::SemihostingFileManager,
-        semihosting_mappings::Mappings,
+        run_loop::{HaltAction, ReturnReason, RunLoop, VectorCatchConfig},
+        semihosting::{HostCallHandler, SemihostingHandler},
     },
 };
-use probe_rs_rpc::monitor::SemihostingEvent;
 use probe_rs_rpc::{ListTestsEndpoint, RunTestEndpoint};
 
 pub async fn list_tests(
@@ -43,10 +41,8 @@ fn list_tests_impl(
     sender: MonitorSender,
 ) -> anyhow::Result<Tests> {
     let shared_session = ctx.shared_session(request.sessid);
-    let mut list_handler = ListEventHandler::new(
-        Mappings::new(&ctx.semihosting_options(request.semihosting_options)?)?,
-        |event| _ = sender.send_semihosting_event(event),
-    );
+    let host = SemihostingHandler::new(&sender, ctx.host_replies(request.host_calls)?);
+    let mut list_handler = ListEventHandler::new();
 
     let core_id = request
         .rtt_client
@@ -58,14 +54,12 @@ fn list_tests_impl(
         cancellation_token: ctx.cancellation_token(),
     };
 
-    let mut poller = request.rtt_client.map(|client| RttPoller {
-        rtt_client: shared_session.object_storage().cell(client),
-        clear_control_block: true,
-        sender: |message| {
+    let mut poller = request.rtt_client.map(|client| {
+        RttPoller::new(&ctx, client, true, |message| {
             sender
                 .send_rtt_event(message)
                 .context("Failed to send RTT event")
-        },
+        })
     });
     run_loop.start_poller(&shared_session, &mut poller)?;
 
@@ -78,7 +72,7 @@ fn list_tests_impl(
         )?;
     }
 
-    match run_loop.run_until(
+    match run_loop.run_with_handler(
         &shared_session,
         VectorCatchConfig {
             catch_hardfault: true,
@@ -88,7 +82,9 @@ fn list_tests_impl(
         },
         poller,
         Some(Duration::from_secs(5)),
-        |halt_reason, core| list_handler.handle_halt(halt_reason, core),
+        HostCallHandler::new(host, |halt_reason, core, host| {
+            list_handler.handle_halt(halt_reason, core, host)
+        }),
     )? {
         ReturnReason::Predicate(tests) => Ok(tests),
         ReturnReason::Timeout => {
@@ -125,7 +121,7 @@ fn run_test_impl(
 ) -> anyhow::Result<TestResult> {
     tracing::info!("Running test {}", request.test.name);
 
-    let mappings = Mappings::new(&ctx.semihosting_options(request.semihosting_options)?)?;
+    let host = SemihostingHandler::new(&sender, ctx.host_replies(request.host_calls)?);
 
     let timeout = request.test.timeout.map(|t| Duration::from_secs(t as u64));
     let timeout = timeout.unwrap_or(Duration::from_secs(60));
@@ -137,31 +133,28 @@ fn run_test_impl(
         .map(|rtt_client| ctx.object_mut_blocking(rtt_client).core_id())
         .unwrap_or(0);
 
-    let target_serial = shared_session.target_serial();
-    if let Some(serial) = &target_serial {
+    let serial_poller = SerialPoller::new(&ctx, request.sessid, &sender);
+    if let Some(serial) = &serial_poller {
         // Drop the output from before this test.
-        discard_serial_input(serial);
+        serial.discard_input();
     }
 
     let expected_outcome = request.test.expected_outcome;
-    let mut run_handler = RunEventHandler::new(request.test, mappings, |event| {
-        _ = sender.send_semihosting_event(event)
-    });
+    let mut run_handler = RunEventHandler::new(request.test);
 
     let mut run_loop = RunLoop {
         core_id,
         cancellation_token: ctx.cancellation_token(),
     };
 
-    let mut poller = request.rtt_client.map(|client| RttPoller {
-        rtt_client: shared_session.object_storage().cell(client),
-        clear_control_block: true,
-        sender: |message| {
+    let rtt_poller = request.rtt_client.map(|client| {
+        RttPoller::new(&ctx, client, true, |message| {
             sender
                 .send_rtt_event(message)
                 .context("Failed to send RTT event")
-        },
+        })
     });
+    let mut poller = (rtt_poller, serial_poller);
     run_loop.start_poller(&shared_session, &mut poller)?;
 
     {
@@ -170,23 +163,23 @@ fn run_test_impl(
         core.reset_and_halt(Duration::from_millis(500))?;
     }
 
-    let return_reason = with_serial_forwarding(target_serial.as_ref(), &sender, || {
-        run_loop.run_until(
-            &shared_session,
-            VectorCatchConfig {
-                catch_hardfault: true,
-                catch_reset: true,
-                catch_svc: true,
-                catch_hlt: true,
-            },
-            poller,
-            Some(timeout),
-            |halt_reason, core| run_handler.handle_halt(halt_reason, core),
-        )
-    })?;
+    let return_reason = run_loop.run_with_handler(
+        &shared_session,
+        VectorCatchConfig {
+            catch_hardfault: true,
+            catch_reset: true,
+            catch_svc: true,
+            catch_hlt: true,
+        },
+        poller,
+        Some(timeout),
+        HostCallHandler::new(host, |halt_reason, core, host| {
+            run_handler.handle_halt(halt_reason, core, host)
+        }),
+    )?;
     match return_reason {
         ReturnReason::Timeout => Ok(TestResult::Failed(format!(
-            "Test timed out after {timeout:?}"
+            "Test timed out after {timeout:?}, not counting semihosting calls"
         ))),
         ReturnReason::Predicate(outcome) if outcome == expected_outcome => Ok(TestResult::Success),
         ReturnReason::Predicate(outcome) => Ok(TestResult::Failed(format!(
@@ -230,20 +223,16 @@ pub async fn test_kickoff(
     Ok(())
 }
 
-struct ListEventHandler<F: FnMut(SemihostingEvent)> {
-    semihosting_file_manager: SemihostingFileManager,
+struct ListEventHandler {
     cmdline_requested: bool,
-    sender: F,
 }
 
-impl<F: FnMut(SemihostingEvent)> ListEventHandler<F> {
+impl ListEventHandler {
     const SEMIHOSTING_USER_LIST: u32 = 0x100;
 
-    fn new(mappings: Mappings, sender: F) -> Self {
+    fn new() -> Self {
         Self {
-            semihosting_file_manager: SemihostingFileManager::new(mappings),
             cmdline_requested: false,
-            sender,
         }
     }
 
@@ -251,7 +240,8 @@ impl<F: FnMut(SemihostingEvent)> ListEventHandler<F> {
         &mut self,
         halt_reason: HaltReason,
         core: &mut Core<'_>,
-    ) -> anyhow::Result<Option<Tests>> {
+        host: &mut SemihostingHandler<'_>,
+    ) -> anyhow::Result<HaltAction<Tests>> {
         let HaltReason::Breakpoint(BreakpointCause::Semihosting(cmd)) = halt_reason else {
             anyhow::bail!(
                 "Core {} halted unexpectedly. Halt reason: {halt_reason:?}",
@@ -272,7 +262,7 @@ impl<F: FnMut(SemihostingEvent)> ListEventHandler<F> {
                 tracing::debug!("target asked for cmdline. send 'list'");
                 self.cmdline_requested = true;
                 request.write_command_line_to_target(core, "list")?;
-                Ok(None) // Continue running
+                Ok(HaltAction::Resume)
             }
             SemihostingCommand::Unknown(details)
                 if details.operation == Self::SEMIHOSTING_USER_LIST && self.cmdline_requested =>
@@ -284,18 +274,13 @@ impl<F: FnMut(SemihostingEvent)> ListEventHandler<F> {
                     anyhow::bail!("Unsupported test list format version: {}", list.version);
                 }
 
-                Ok(Some(list.into()))
+                Ok(HaltAction::Return(list.into()))
             }
-            other if SemihostingFileManager::can_handle(other) => {
-                self.semihosting_file_manager
-                    .handle(other, core, &mut self.sender)?;
-                Ok(None)
-            }
+            other if SemihostingHandler::can_handle(other) => host.on_command(other, core),
             SemihostingCommand::Time(request) => {
                 request.write_current_time(core)?;
-                Ok(None)
+                Ok(HaltAction::Resume)
             }
-            SemihostingCommand::Errno(_) => Ok(None),
             other => anyhow::bail!(
                 "Unexpected semihosting command {:?} cmdline_requested: {:?}",
                 other,
@@ -319,20 +304,16 @@ fn read_test_list(
     Ok(list)
 }
 
-struct RunEventHandler<F: FnMut(SemihostingEvent)> {
-    semihosting_file_manager: SemihostingFileManager,
+struct RunEventHandler {
     cmdline_requested: bool,
     test: Test,
-    sender: F,
 }
 
-impl<F: FnMut(SemihostingEvent)> RunEventHandler<F> {
-    fn new(test: Test, mappings: Mappings, sender: F) -> Self {
+impl RunEventHandler {
+    fn new(test: Test) -> Self {
         Self {
             test,
-            semihosting_file_manager: SemihostingFileManager::new(mappings),
             cmdline_requested: false,
-            sender,
         }
     }
 
@@ -340,7 +321,8 @@ impl<F: FnMut(SemihostingEvent)> RunEventHandler<F> {
         &mut self,
         halt_reason: HaltReason,
         core: &mut Core<'_>,
-    ) -> anyhow::Result<Option<TestOutcome>> {
+        host: &mut SemihostingHandler<'_>,
+    ) -> anyhow::Result<HaltAction<TestOutcome>> {
         let cmd = match halt_reason {
             HaltReason::Breakpoint(BreakpointCause::Semihosting(cmd)) => cmd,
             // Exception occurred (e.g. hardfault) => Abort testing altogether
@@ -360,25 +342,20 @@ impl<F: FnMut(SemihostingEvent)> RunEventHandler<F> {
                 tracing::debug!("target asked for cmdline. send '{cmdline}'");
                 self.cmdline_requested = true;
                 request.write_command_line_to_target(core, &cmdline)?;
-                Ok(None) // Continue running
+                Ok(HaltAction::Resume)
             }
             SemihostingCommand::ExitSuccess if self.cmdline_requested => {
-                Ok(Some(TestOutcome::Pass))
+                Ok(HaltAction::Return(TestOutcome::Pass))
             }
 
             SemihostingCommand::ExitError(_) if self.cmdline_requested => {
-                Ok(Some(TestOutcome::Panic))
+                Ok(HaltAction::Return(TestOutcome::Panic))
             }
-            other if SemihostingFileManager::can_handle(other) => {
-                self.semihosting_file_manager
-                    .handle(other, core, &mut self.sender)?;
-                Ok(None)
-            }
+            other if SemihostingHandler::can_handle(other) => host.on_command(other, core),
             SemihostingCommand::Time(request) => {
                 request.write_current_time(core)?;
-                Ok(None)
+                Ok(HaltAction::Resume)
             }
-            SemihostingCommand::Errno(_) => Ok(None),
             // Invalid sequence of semihosting calls => Abort testing altogether
             other => anyhow::bail!(
                 "Unexpected semihosting command {:?} cmdline_requested: {:?}",

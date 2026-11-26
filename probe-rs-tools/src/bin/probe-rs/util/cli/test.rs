@@ -15,9 +15,8 @@ use crate::rpc::Key;
 use crate::rpc::RttClient;
 use crate::util::style::strip_ansi;
 use probe_rs_rpc::flash::BootInfo;
-use probe_rs_rpc::semihosting_options::SemihostingOptions;
 use probe_rs_rpc::test::{Test, TestResult};
-use probe_rs_rpc_client::{ClientError, MonitorEvent, SessionInterface};
+use probe_rs_rpc_client::{ClientError, HostFiles, MonitorEvent, SessionInterface};
 
 use super::{
     TargetOutput, display_stack_trace, format_stack_trace, parse_semihosting_options, send_cancel,
@@ -36,7 +35,10 @@ pub async fn test(
     tracing::info!("libtest args {:?}", libtest_args);
     let token = CancellationToken::new();
 
-    let semihosting_options = parse_semihosting_options(&monitor_options.semihosting_file)?;
+    let host_files = parse_semihosting_options(
+        &monitor_options.semihosting_file,
+        monitor_options.semihosting_allow_unverified_server,
+    )?;
 
     let capture = !libtest_args.nocapture;
 
@@ -46,7 +48,7 @@ pub async fn test(
         session: session.clone(),
         path: path.to_path_buf(),
         rtt_client: output.rtt_handle(),
-        semihosting_options,
+        host_files,
         sender,
         token: token.clone(),
         error: Arc::new(std::sync::Mutex::new(None)),
@@ -119,7 +121,7 @@ struct TestRun {
     session: SessionInterface,
     path: PathBuf,
     rtt_client: Option<Key<RttClient>>,
-    semihosting_options: SemihostingOptions,
+    host_files: Option<HostFiles>,
     sender: UnboundedSender<TestLogEvent>,
     token: CancellationToken,
     /// The first client error. The test command returns it after the test run.
@@ -137,7 +139,7 @@ impl TestRun {
             .list_tests(
                 boot_info,
                 self.rtt_client,
-                self.semihosting_options.clone(),
+                self.host_files.clone(),
                 async |msg| self.sender.send(TestLogEvent::Monitor(msg)).unwrap(),
             )
             .await;
@@ -185,7 +187,7 @@ impl TestRun {
             .run_test(
                 test,
                 self.rtt_client,
-                self.semihosting_options.clone(),
+                self.host_files.clone(),
                 async move |msg| monitor_sender.send(TestLogEvent::Monitor(msg)).unwrap(),
             )
             .await;
