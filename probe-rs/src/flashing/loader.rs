@@ -4,6 +4,8 @@ use probe_rs_target::{
     InstructionSet, MemoryRange, MemoryRegion, NvmRegion, RawFlashAlgorithm,
     TargetDescriptionSource,
 };
+#[cfg(feature = "object")]
+use std::cell::OnceCell;
 use std::io::{Read, Seek};
 use std::ops::Range;
 use std::sync::{Arc, LazyLock};
@@ -20,7 +22,7 @@ use crate::flashing::progress::ProgressOperation;
 use crate::flashing::{FlashLayout, FlashProgress};
 use crate::memory::MemoryInterface;
 #[cfg(feature = "object")]
-use crate::meta::ImageChip;
+use crate::meta::{ElfMetadata, ImageChip};
 use crate::session::Session;
 
 /// Common interface implemented by both the RAM-based [`Flasher`] and the
@@ -644,13 +646,40 @@ pub struct ImageContext<'a> {
     pub session: &'a mut Session,
     /// The registry that the target comes from.
     pub registry: &'a Registry,
+    /// The metadata of the image, parsed on first use.
+    #[cfg(feature = "object")]
+    metadata: OnceCell<Option<ElfMetadata>>,
 }
 
-impl ImageContext<'_> {
+impl<'a> ImageContext<'a> {
+    /// Creates the context of one image.
+    pub fn new(session: &'a mut Session, registry: &'a Registry) -> Self {
+        Self {
+            session,
+            registry,
+            #[cfg(feature = "object")]
+            metadata: OnceCell::new(),
+        }
+    }
+
+    /// Returns the metadata of the ELF image `elf`, or `None` if `elf` is not an ELF file.
+    ///
+    /// The context belongs to one image: the first call parses `elf`, and later calls return
+    /// the same metadata.
+    #[cfg(feature = "object")]
+    pub fn metadata(&self, elf: &[u8]) -> Option<&ElfMetadata> {
+        self.metadata
+            .get_or_init(|| ElfMetadata::from_elf(elf).ok())
+            .as_ref()
+    }
+
     /// Fails if the ELF image `elf` is built for a different chip than the target.
     #[cfg(feature = "object")]
     pub fn check_image_chip(&self, elf: &[u8]) -> Result<(), FileDownloadError> {
-        if let Some(chip) = ImageChip::from_image(elf, self.registry) {
+        if let Some(chip) = self
+            .metadata(elf)
+            .and_then(|metadata| ImageChip::from_metadata(metadata, self.registry))
+        {
             chip.check_target(self.session.target(), self.registry)?;
         }
         Ok(())

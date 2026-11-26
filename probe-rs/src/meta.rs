@@ -62,6 +62,9 @@ pub mod keys {
 
     /// The format of the image's log output.
     pub const LOG_FORMAT: Key<String> = Key::new(&[Location::Espressif("espflash.LOG_FORMAT")]);
+
+    /// The bootloader that starts the image, for example `ESP-IDF` or `DIRECT-BOOT`.
+    pub const BOOTLOADER_NAME: Key<String> = Key::new(&[Location::Espressif("bootloader.NAME")]);
 }
 
 /// A type that a metadata value can have.
@@ -189,6 +192,12 @@ impl ImageChip {
     /// the registry can use. An image that is not an ELF file has no metadata.
     pub fn from_image(image: &[u8], registry: &Registry) -> Option<Self> {
         let metadata = ElfMetadata::from_elf(image).ok()?;
+        Self::from_metadata(&metadata, registry)
+    }
+
+    /// Reads the chip that an image with `metadata` is built for. Returns `None` if the metadata
+    /// names no chip that the registry can use.
+    pub fn from_metadata(metadata: &ElfMetadata, registry: &Registry) -> Option<Self> {
         let name = metadata.get(&keys::CHIP)?;
         Self::resolve(&name, registry)
     }
@@ -305,6 +314,10 @@ mod tests {
 
         assert_eq!(metadata.get(&keys::CHIP), Some("esp32c6".to_string()));
         assert!(metadata.get(&keys::MIN_CHIP_REVISION).is_some());
+        assert_eq!(
+            metadata.get(&keys::BOOTLOADER_NAME),
+            Some("ESP-IDF".to_string())
+        );
     }
 
     #[cfg(feature = "builtin-targets")]
