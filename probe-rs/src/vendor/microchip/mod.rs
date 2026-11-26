@@ -121,6 +121,39 @@ fn detect_by_dsu_did(
     Ok(None)
 }
 
+/// At debug access level 0, the PIC32CM PL10 reads its PNDID as 0, so `variant` may be wrong. If
+/// its core is not accessible, reset it into the Boot ROM to restore the access level, and identify
+/// the variant again.
+fn restore_pic32cm_pl10_access(
+    registry: &Registry,
+    interface: &mut dyn ArmDebugInterface,
+    ap: &FullyQualifiedApAddress,
+    variant: String,
+) -> Result<String, Error> {
+    if Pic32cmPl10::is_core_accessible(&mut *interface.memory_interface(ap)?)? {
+        return Ok(variant);
+    }
+
+    tracing::debug!("PIC32CM PL10: the core is not accessible, resetting into the Boot ROM");
+    match Pic32cmPl10::restore_access(interface, ap, true) {
+        Ok(0) => tracing::warn!(
+            "PIC32CM PL10: the device is locked, its variant cannot be identified, assuming \
+             {variant}"
+        ),
+        Ok(_) => {
+            if let Some(variant) = detect_by_dsu_did(registry, interface, ap)? {
+                return Ok(variant);
+            }
+        }
+        Err(error) => tracing::warn!(
+            "PIC32CM PL10: failed to restore debug access, its variant cannot be identified, \
+             assuming {variant}: {error}"
+        ),
+    }
+
+    Ok(variant)
+}
+
 /// Microchip
 #[derive(docsplay::Display)]
 pub struct Microchip;
@@ -158,13 +191,15 @@ impl Vendor for Microchip {
         }
 
         // FIXME: This is a bit shaky but good enough for now.
-        let access_port = &FullyQualifiedApAddress::v1_with_default_dp(0);
-
-        if let Some(variant) = detect_by_dsu_did(registry, interface, access_port)? {
+        let ap = &FullyQualifiedApAddress::v1_with_default_dp(0);
+        if let Some(mut variant) = detect_by_dsu_did(registry, interface, ap)? {
+            if is_pic32cm_pl10(&variant) {
+                variant = restore_pic32cm_pl10_access(registry, interface, ap, variant)?;
+            }
             return Ok(Some(variant));
         }
 
-        let mut memory = interface.memory_interface(access_port)?;
+        let mut memory = interface.memory_interface(ap)?;
 
         // This device has an Atmel DSU - Read and parse the DSU DID register
         let did = DsuDid(memory.read_word_32(DsuDid::ADDRESS)?);

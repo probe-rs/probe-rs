@@ -405,7 +405,9 @@ impl Pic32cmPl10 {
     /// Whether the core can be accessed. When the Boot ROM resets the device in a loop, the
     /// debug access level is 0 while the Boot ROM runs, and the configured level is only in
     /// effect for a short time on each boot, so the core stays inaccessible.
-    fn is_core_accessible(memory: &mut dyn ArmMemoryInterface) -> Result<bool, ArmError> {
+    pub(crate) fn is_core_accessible(
+        memory: &mut dyn ArmMemoryInterface,
+    ) -> Result<bool, ArmError> {
         Ok(Self::debug_access_level(memory)? != 0
             && memory.read_word_32(Dhcsr::get_mmio_address()).is_ok())
     }
@@ -419,7 +421,7 @@ impl Pic32cmPl10 {
     /// `was_inaccessible` tells that the core was not accessible before, to report why.
     ///
     /// Returns the debug access level after the reset, which is 0 if the device is locked.
-    fn restore_access(
+    pub(crate) fn restore_access(
         interface: &mut dyn ArmDebugInterface,
         ap: &FullyQualifiedApAddress,
         was_inaccessible: bool,
