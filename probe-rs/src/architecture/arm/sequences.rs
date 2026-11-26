@@ -1262,7 +1262,10 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
     /// This is used for host-side flash programming where the flash
     /// operations are performed from the host via debug interface commands
     /// rather than a RAM-based flash algorithm.
-    fn debug_flash_sequence(&self) -> Option<Arc<dyn DebugFlashSequence>> {
+    fn debug_flash_sequence(
+        &self,
+        _session: &mut crate::Session,
+    ) -> Option<Arc<dyn DebugFlashSequence>> {
         None
     }
 

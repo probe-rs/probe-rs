@@ -3,7 +3,7 @@
 use std::any::Any;
 
 use probe_rs_target::{
-    Chip,
+    Chip, CoreType,
     chip_detection::{ChipDetectionMethod, ObCodeRamSplit},
 };
 
@@ -14,13 +14,22 @@ use crate::{
     vendor::Vendor,
 };
 
+pub mod sequences;
+
+use sequences::WchRiscvSequence;
+
 /// WCH
 #[derive(docsplay::Display)]
 pub struct Wch;
 
 impl Vendor for Wch {
-    fn try_create_debug_sequence(&self, _chip: &Chip) -> Option<DebugSequence> {
-        None
+    fn try_create_debug_sequence(&self, chip: &Chip) -> Option<DebugSequence> {
+        let riscv = chip
+            .cores
+            .iter()
+            .any(|core| core.core_type == CoreType::Riscv);
+        (chip.name.starts_with("CH") && riscv)
+            .then(|| DebugSequence::Riscv(WchRiscvSequence::create()))
     }
 
     fn try_detect_chip_from_probe(
