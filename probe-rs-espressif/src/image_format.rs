@@ -1,3 +1,4 @@
+use std::io::Cursor;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::time::Duration;
@@ -6,9 +7,10 @@ use espflash::flasher::{FlashData, FlashFrequency, FlashMode, FlashSettings, Fla
 use espflash::image_format::idf::{IdfBootloaderFormat, check_idf_bootloader};
 use probe_rs::config::{MemoryRegion, Target};
 use probe_rs::flashing::{
-    FileDownloadError, FlashError, FlashLoader, FlashProgress, Flasher, ImageContext, ImageFormat,
-    ImageLoader, ImageReader, into_format_error,
+    ElfLoader, ElfOptions, FileDownloadError, FlashError, FlashLoader, FlashProgress, Flasher,
+    ImageContext, ImageFormat, ImageLoader, ImageReader, into_format_error,
 };
+use probe_rs::meta::{ElfMetadata, keys};
 use serde::{Deserialize, Serialize};
 use yaml_serde::Value;
 
@@ -69,6 +71,54 @@ impl ImageLoader for IdfLoader {
         flash_loader: &mut FlashLoader,
         context: &mut ImageContext<'_>,
         file: &mut dyn ImageReader,
+    ) -> Result<(), FileDownloadError> {
+        let mut elf_buffer = Vec::new();
+        file.read_to_end(&mut elf_buffer)?;
+
+        if context.metadata(&elf_buffer).is_some_and(is_direct_boot) {
+            tracing::info!("The image boots without a 2nd-stage bootloader, flashing it as ELF.");
+            self.warn_unused_options();
+            return ElfLoader(ElfOptions::default()).load(
+                flash_loader,
+                context,
+                &mut Cursor::new(elf_buffer),
+            );
+        }
+
+        self.load_idf(flash_loader, context, &elf_buffer)
+    }
+}
+
+/// Returns `true` if the ROM starts the image with `metadata` directly, without the ESP-IDF
+/// 2nd-stage bootloader. `esp-bootloader-direct-boot` marks these images.
+fn is_direct_boot(metadata: &ElfMetadata) -> bool {
+    metadata
+        .get(&keys::BOOTLOADER_NAME)
+        .is_some_and(|name| name == "DIRECT-BOOT")
+}
+
+impl IdfLoader {
+    /// Warns about the options that a direct-boot image does not use.
+    fn warn_unused_options(&self) {
+        let options = [
+            ("bootloader", self.bootloader.is_some()),
+            ("partition table", self.partition_table.is_some()),
+            ("target app partition", self.target_app_partition.is_some()),
+            ("flash mode", self.flash_mode.is_some()),
+            ("flash frequency", self.flash_frequency.is_some()),
+        ];
+        for (name, _) in options.iter().filter(|(_, set)| *set) {
+            tracing::warn!("A direct-boot image has no ESP-IDF {name}, ignoring the option.");
+        }
+    }
+
+    /// Converts the ELF image `elf_buffer` to the ESP-IDF format, and adds it to the loader along
+    /// with the bootloader and the partition table.
+    fn load_idf(
+        &self,
+        flash_loader: &mut FlashLoader,
+        context: &mut ImageContext<'_>,
+        elf_buffer: &Vec<u8>,
     ) -> Result<(), FileDownloadError> {
         let session = &mut *context.session;
         session
@@ -134,18 +184,15 @@ impl ImageLoader for IdfLoader {
             chip.default_xtal_frequency(),
         );
 
-        let mut elf_buffer = Vec::new();
-        file.read_to_end(&mut elf_buffer)?;
-
-        check_idf_bootloader(&elf_buffer)
+        check_idf_bootloader(elf_buffer)
             .map_err(|e| {
                 EspIdfFormatError::Idf(espflash::Error::AppDescriptorNotPresent(e.to_string()))
             })
             .map_err(|e| into_format_error("esp-idf", e))?;
-        context.check_image_chip(&elf_buffer)?;
+        context.check_image_chip(elf_buffer)?;
 
         let image = IdfBootloaderFormat::new(
-            &elf_buffer,
+            elf_buffer,
             &flash_data,
             self.partition_table.as_deref(),
             self.bootloader.as_deref(),

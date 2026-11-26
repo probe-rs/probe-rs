@@ -11,7 +11,7 @@ license.workspace = true
 rust-version.workspace = true
 
 [dependencies]
-probe-rs = { workspace = true, features = ["flate2"] }
+probe-rs = { workspace = true, features = ["builtin-formats", "flate2"] }
 probe-rs-target.workspace = true
 
 bincode = { version = "2", features = ["serde"] }

@@ -168,7 +168,7 @@ pub fn build_loader(
     // Add data from the BIN.
     let mut file = File::open(path).map_err(FileDownloadError::IO)?;
 
-    let mut context = ImageContext { session, registry };
+    let mut context = ImageContext::new(session, registry);
     loader.load_image(&mut context, &mut file, format, image_instruction_set)?;
 
     Ok(loader)
