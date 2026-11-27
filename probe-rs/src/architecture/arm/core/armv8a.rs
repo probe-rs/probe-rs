@@ -968,38 +968,42 @@ impl<'probe> Armv8a<'probe> {
         (prefix, aligned, suffix)
     }
 
-    fn read_cpu_memory_aarch64_fast(&mut self, address: u64, data: &mut [u8]) -> Result<(), Error> {
+    fn read_cpu_memory_fast(&mut self, address: u64, data: &mut [u8]) -> Result<(), Error> {
         self.with_core_halted(|armv8a| {
             let (prefix, aligned, suffix) = armv8a.aligned_to_32_mut(address, data);
             let mut address = address;
 
             // read unaligned part
-            if !prefix.is_empty() {
-                armv8a.read_cpu_memory_aarch64_bytes(address, prefix)?;
-                address += u64::try_from(prefix.len()).unwrap();
-            }
+            armv8a.read_cpu_memory_bytes(address, prefix)?;
+            address += u64::try_from(prefix.len()).unwrap();
 
             // read aligned part
-            armv8a.read_cpu_memory_aarch64_fast_inner(address, aligned)?;
+            armv8a.read_cpu_memory_fast_inner(address, aligned)?;
             address += u64::try_from(aligned.len()).unwrap();
 
             // read unaligned part
-            if !suffix.is_empty() {
-                armv8a.read_cpu_memory_aarch64_bytes(address, suffix)?;
-            }
-
-            Ok(())
+            armv8a.read_cpu_memory_bytes(address, suffix)
         })
     }
 
-    /// Fast data download method
+    /// Reads the bytes before or after the word-aligned part of a block.
+    fn read_cpu_memory_bytes(&mut self, address: u64, data: &mut [u8]) -> Result<(), Error> {
+        if data.is_empty() {
+            return Ok(());
+        }
+        if self.state.is_64_bit {
+            return self.read_cpu_memory_aarch64_bytes(address, data);
+        }
+
+        for (offset, byte) in (0..).zip(data) {
+            *byte = self.read_word_8(address + offset)?;
+        }
+        Ok(())
+    }
+
+    /// Fast data upload method, for both AArch64 and AArch32 state
     /// ref. ARM DDI 0487D.a, K9-7313, Figure K9-2 Fast data upload in AArch64 state
-    fn read_cpu_memory_aarch64_fast_inner(
-        &mut self,
-        address: u64,
-        data: &mut [u8],
-    ) -> Result<(), Error> {
-        // assume only call from read_cpu_memory_aarch64_fast
+    fn read_cpu_memory_fast_inner(&mut self, address: u64, data: &mut [u8]) -> Result<(), Error> {
         if data.is_empty() {
             return Ok(());
         }
@@ -1019,10 +1023,16 @@ impl<'probe> Armv8a<'probe> {
         // Load x0 with the address to read from
         self.set_reg_value(0, address)?;
 
-        // set "MSR DBGDTR_EL0, X0" opcode to EDITR
-        let msr_instruction = aarch64::build_msr(2, 3, 0, 4, 0, 0);
+        // Copy the address to DBGDTRTX: "MSR DBGDTR_EL0, X0" in AArch64 state,
+        // "MCR p14, 0, R0, c0, c5, 0" in AArch32 state.
+        let prime_instruction = if self.state.is_64_bit {
+            aarch64::build_msr(2, 3, 0, 4, 0, 0)
+        } else {
+            prep_instr_for_itr_32(build_mcr(14, 0, 0, 0, 5, 0))
+        };
         let editr_address = Editr::get_mmio_address_from_base(self.base_address)?;
-        self.memory.write_word_32(editr_address, msr_instruction)?;
+        self.memory
+            .write_word_32(editr_address, prime_instruction)?;
 
         // wait for TXfull == 1
         let edscr_address = Edscr::get_mmio_address_from_base(self.base_address)?;
@@ -1566,52 +1576,28 @@ impl MemoryInterface for Armv8a<'_> {
     }
 
     fn read_64(&mut self, address: u64, data: &mut [u64]) -> Result<(), Error> {
-        if self.state.is_64_bit {
-            let (_prefix, data, _suffix) = unsafe { data.align_to_mut::<u8>() };
-            self.read_cpu_memory_aarch64_fast(address, data)?;
-        } else {
-            for (i, word) in data.iter_mut().enumerate() {
-                *word = self.read_word_64(address + ((i as u64) * 8))?;
-            }
-        }
+        let (_prefix, data, _suffix) = unsafe { data.align_to_mut::<u8>() };
+        self.read_cpu_memory_fast(address, data)?;
 
         Ok(())
     }
 
     fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), Error> {
-        if self.state.is_64_bit {
-            let (_prefix, data, _suffix) = unsafe { data.align_to_mut::<u8>() };
-            self.read_cpu_memory_aarch64_fast(address, data)?;
-        } else {
-            for (i, word) in data.iter_mut().enumerate() {
-                *word = self.read_word_32(address + ((i as u64) * 4))?;
-            }
-        }
+        let (_prefix, data, _suffix) = unsafe { data.align_to_mut::<u8>() };
+        self.read_cpu_memory_fast(address, data)?;
 
         Ok(())
     }
 
     fn read_16(&mut self, address: u64, data: &mut [u16]) -> Result<(), Error> {
-        if self.state.is_64_bit {
-            let (_prefix, data, _suffix) = unsafe { data.align_to_mut::<u8>() };
-            self.read_cpu_memory_aarch64_fast(address, data)?;
-        } else {
-            for (i, word) in data.iter_mut().enumerate() {
-                *word = self.read_word_16(address + ((i as u64) * 2))?;
-            }
-        }
+        let (_prefix, data, _suffix) = unsafe { data.align_to_mut::<u8>() };
+        self.read_cpu_memory_fast(address, data)?;
 
         Ok(())
     }
 
     fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), Error> {
-        if self.state.is_64_bit {
-            self.read_cpu_memory_aarch64_fast(address, data)?;
-        } else {
-            for (i, byte) in data.iter_mut().enumerate() {
-                *byte = self.read_word_8(address + (i as u64))?;
-            }
-        }
+        self.read_cpu_memory_fast(address, data)?;
 
         Ok(())
     }
