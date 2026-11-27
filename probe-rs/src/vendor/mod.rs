@@ -267,7 +267,9 @@ fn identify_arm_chip_from_rom_table(
 ) -> Result<Target, Error> {
     for vendor in vendors().iter() {
         // TODO: only consider families with matching JEP106.
-        if let Some(target_name) = vendor.try_detect_arm_chip(registry, interface, chip_info)? {
+        if let Some(target_name) =
+            vendor.try_detect_arm_chip(registry, interface, chip_info.clone())?
+        {
             return Ok(registry.get_target_by_name(&target_name)?);
         }
     }

@@ -8,7 +8,7 @@ use probe_rs_target::{Chip, chip_detection::ChipDetectionMethod};
 use crate::{
     Error,
     architecture::arm::{
-        ArmChipInfo, ArmDebugInterface, FullyQualifiedApAddress,
+        ArmChipInfo, ArmDebugInterface,
         dp::{DpRegister as _, TARGETID},
     },
     config::{DebugSequence, Registry},
@@ -49,13 +49,10 @@ impl Vendor for Renesas {
             return Ok(None);
         }
 
-        // FIXME: This is a bit shaky but good enough for now.
-        let access_port = &FullyQualifiedApAddress::v1_with_default_dp(0);
+        let access_port = &chip_info.access_port;
 
-        let target_id = TARGETID(
-            interface
-                .read_raw_dp_register(interface.current_debug_port().unwrap(), TARGETID::ADDRESS)?,
-        );
+        let target_id =
+            TARGETID(interface.read_raw_dp_register(access_port.dp(), TARGETID::ADDRESS)?);
         let target_pn = target_id.tpartno();
 
         let mut part_number = [0_u8; 16];
