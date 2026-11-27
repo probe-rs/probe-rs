@@ -3279,6 +3279,7 @@ dependencies = [
  "postcard-schema",
  "regex",
  "serde",
+ "sha2",
  "thiserror 2.0.21",
  "tokio",
  "tokio-tungstenite 0.30.0",
@@ -3291,7 +3292,9 @@ version = "0.1.0"
 dependencies = [
  "docsplay",
  "futures-util",
+ "getrandom 0.3.4",
  "http",
+ "libc",
  "postcard",
  "postcard-rpc",
  "postcard-schema",

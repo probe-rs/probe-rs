@@ -299,10 +299,19 @@ pub(crate) enum HostFiles {
     Deny,
 }
 
+/// The secrets of a login. The server uses them to prove itself to the client.
+pub(crate) struct LoginSecrets {
+    pub challenge: String,
+    pub token: String,
+    /// The client connected from the host of the server.
+    pub peer_is_loopback: bool,
+}
+
 pub struct RpcContext {
     /// State associated with a single connection.
     state: ConnectionState,
     sender: Option<PostcardSender<WireTxImpl>>,
+    login: Option<LoginSecrets>,
     /// Probe lister shared with the dispatch handlers. Stored as
     /// `Arc<dyn ProbeLister + Send + Sync>` so [`RpcContext`] stays
     /// `Send + Sync` (the server future is driven via `tokio::spawn`).
@@ -383,6 +392,7 @@ impl RpcContext {
         Self {
             state: ConnectionState::new(),
             sender: None,
+            login: None,
             lister: Arc::new(ConfiguredLister::new(ArcLister(lister), configs)),
             probe_broker,
             host_files,
@@ -485,6 +495,23 @@ impl RpcContext {
     }
 }
 
+async fn server_proof(
+    ctx: &mut RpcContext,
+    _header: VarHeader,
+    request: probe_rs_rpc::server_proof::ServerProofRequest,
+) -> probe_rs_rpc::server_proof::ServerProofResponse {
+    let login = ctx
+        .login
+        .as_ref()
+        .ok_or_else(|| RpcError::from("This connection has no login"))?;
+    Ok(probe_rs_rpc::server_proof::server_proof(
+        &request.nonce,
+        &login.challenge,
+        login.peer_is_loopback,
+        &login.token,
+    ))
+}
+
 async fn cancel_handler(
     ctx: &mut RpcContext,
     _header: VarHeader,
@@ -581,6 +608,7 @@ postcard_rpc::define_dispatch! {
         | RunTestEndpoint                  | spawn | run_test                   |
         | TestKickoffEndpoint              | async | test_kickoff               |
 
+        | ServerProofEndpoint              | async | server_proof               |
         | CreateTempFileEndpoint           | async | create_temp_file           |
         | TempFileDataEndpoint             | async | append_temp_file           |
 
@@ -676,6 +704,22 @@ impl RpcApp {
         )
     }
 
+    /// Like [`RpcApp::create_server`] for a client that logged in.
+    pub(crate) fn create_server_after_login(
+        depth: usize,
+        probe_access: ProbeAccess,
+        probe_broker: Arc<ProbeBroker>,
+        login: LoginSecrets,
+    ) -> (RpcServer, TxChannel, RxChannel) {
+        Self::create_server_inner(
+            depth,
+            Arc::new(LimitedLister::new(probe_access)),
+            probe_broker,
+            HostFiles::Deny,
+            Some(login),
+        )
+    }
+
     /// Like [`RpcApp::create_server`] but with a custom probe lister. Used by
     /// tests that drive the in-process RPC server with a `FakeProbe`.
     pub fn create_server_with_lister(
@@ -683,6 +727,16 @@ impl RpcApp {
         lister: Arc<dyn ProbeLister + Send + Sync>,
         probe_broker: Arc<ProbeBroker>,
         host_files: HostFiles,
+    ) -> (RpcServer, TxChannel, RxChannel) {
+        Self::create_server_inner(depth, lister, probe_broker, host_files, None)
+    }
+
+    fn create_server_inner(
+        depth: usize,
+        lister: Arc<dyn ProbeLister + Send + Sync>,
+        probe_broker: Arc<ProbeBroker>,
+        host_files: HostFiles,
+        login: Option<LoginSecrets>,
     ) -> (RpcServer, TxChannel, RxChannel) {
         let client_to_server = channel::<Result<Vec<u8>, WireRxErrorKind>>(depth);
         let server_to_client = channel::<Vec<u8>>(depth);
@@ -698,6 +752,7 @@ impl RpcApp {
             spawner,
         );
         let vkk = dispatcher.min_key_len();
+        dispatcher.context.login = login;
         dispatcher
             .context
             .set_sender(PostcardSender::new(server_to_client_tx.clone(), vkk));
