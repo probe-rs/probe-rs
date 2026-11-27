@@ -12,7 +12,7 @@ use gdbstub::target::ext::base::single_register_access::SingleRegisterAccess;
 use gdbstub::target::ext::base::single_register_access::SingleRegisterAccessOps;
 use gdbstub::target::ext::thread_extra_info::ThreadExtraInfoOps;
 use gdbstub::target::{TargetError, TargetResult};
-use probe_rs::RegisterValue;
+use probe_rs::{CoreRegisters, RegisterValue};
 use probe_rs_rpc::core_ops::WireRegisterId;
 use probe_rs_rpc_client::ClientError;
 
@@ -20,7 +20,7 @@ impl MultiThreadBase for RuntimeTarget {
     fn read_registers(&mut self, regs: &mut RuntimeRegisters, tid: Tid) -> TargetResult<(), Self> {
         let core_index = tid.get() - 1;
         let core = self.core(core_index);
-        let registers = self.core_cache(core_index)?.registers;
+        let registers = self.core_registers(core_index)?;
 
         let pc_id = registers
             .pc()
@@ -52,7 +52,7 @@ impl MultiThreadBase for RuntimeTarget {
     fn write_registers(&mut self, regs: &RuntimeRegisters, tid: Tid) -> TargetResult<(), Self> {
         let core_index = tid.get() - 1;
         let core = self.core(core_index);
-        let registers = self.core_cache(core_index)?.registers;
+        let registers = self.core_registers(core_index)?;
 
         let pc_id = registers
             .pc()
@@ -195,11 +195,19 @@ impl SingleRegisterAccess<Tid> for RuntimeTarget {
 }
 
 impl RuntimeTarget {
-    fn core_cache(&self, index: usize) -> Result<&super::CoreCache, TargetError<anyhow::Error>> {
-        self.cores
+    /// Returns a core's register set, fetching its metadata if the core was disabled when the
+    /// stub started.
+    fn core_registers(
+        &mut self,
+        index: usize,
+    ) -> Result<&'static CoreRegisters, TargetError<anyhow::Error>> {
+        let position = self
+            .cores
             .iter()
-            .find(|c| c.index == index)
-            .ok_or_else(|| TargetError::Fatal(anyhow::anyhow!("Unknown core {index}")))
+            .position(|c| c.index == index)
+            .ok_or_else(|| TargetError::Fatal(anyhow::anyhow!("Unknown core {index}")))?;
+        let metadata = self.core_metadata(position).into_target_result()?;
+        Ok(metadata.registers)
     }
 }
 
