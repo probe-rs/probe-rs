@@ -293,6 +293,13 @@ where
             .with_context(|| "Failed to send RTT discovery")?;
         }
         rtt_client.warn_if_control_block_is_missing();
+        if let Some(down_writes) = &self.down_writes
+            && rtt_client.is_attached()
+        {
+            down_writes
+                .stream
+                .set_channels(rtt_client.down_channels().len());
+        }
 
         let mut next_poll = Duration::from_millis(100);
         for channel in 0..rtt_client.up_channels().len() {
