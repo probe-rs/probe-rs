@@ -11,6 +11,7 @@ mod read_flash;
 mod signature;
 
 pub use context::CompareContext;
+pub use signature::compare_with_signatures;
 
 use std::fmt::Debug;
 use std::ops::Range;
