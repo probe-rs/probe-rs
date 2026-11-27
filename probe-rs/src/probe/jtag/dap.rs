@@ -23,9 +23,16 @@ const JTAG_ABORT_IR_VALUE: u32 = 0x8; // A DAP abort, compatible with DPv0
 const JTAG_DEBUG_PORT_IR_VALUE: u32 = 0xA;
 const JTAG_ACCESS_PORT_IR_VALUE: u32 = 0xB;
 
+// SoC-600 JTAG-DPs with an 8-bit IR use 0xFx opcodes.
+fn dap_instruction(opcode: u32, ir_len: usize) -> u32 {
+    if ir_len == 8 { opcode | 0xF0 } else { opcode }
+}
+
 const JTAG_STATUS_WAIT: u32 = 0x1;
-/// OK/FAULT response
+/// OK/FAULT response (ADIv5). On ADIv6 this same value (0x2) means FAULT.
 const JTAG_STATUS_OK: u32 = 0x2;
+/// OK response on ADIv6; faults are caught by the CTRL/STAT sticky-error check.
+const JTAG_STATUS_OK_ADIV6: u32 = 0x4;
 
 // ARM DR accesses are always 35 bits wide
 const JTAG_DR_BIT_LENGTH: u32 = 35;
@@ -35,14 +42,18 @@ const JTAG_DR_BIT_LENGTH: u32 = 35;
 const AP_ACCESS_IDLE_CYCLES: usize = 8;
 
 // Build a JTAG payload
-fn build_jtag_payload_and_address(transfer: &DapTransfer) -> (u64, u32) {
+fn build_jtag_payload_and_address(transfer: &DapTransfer, ir_len: usize) -> (u64, u32) {
     if transfer.is_abort() {
-        (JTAG_ABORT_VALUE, JTAG_ABORT_IR_VALUE)
+        (
+            JTAG_ABORT_VALUE,
+            dap_instruction(JTAG_ABORT_IR_VALUE, ir_len),
+        )
     } else {
         let address = match transfer.address.is_ap() {
             false => JTAG_DEBUG_PORT_IR_VALUE,
             true => JTAG_ACCESS_PORT_IR_VALUE,
         };
+        let address = dap_instruction(address, ir_len);
 
         let port_address = transfer.address.a2_and_3();
         let mut payload = 0u64;
@@ -70,8 +81,8 @@ fn perform_jtag_transfer(
     chain: &mut JtagChain<'_>,
     transfer: &DapTransfer,
 ) -> Result<(u32, TransferStatus), DebugProbeError> {
-    let (payload, address) = build_jtag_payload_and_address(transfer);
     let ir_len = chain.params().irlen;
+    let (payload, address) = build_jtag_payload_and_address(transfer, ir_len);
     let mut batch = JtagBatch::new();
     let ir = BitSequence::from_bytes(&address.to_le_bytes(), ir_len);
     chain.shift_ir(&mut batch, &ir);
@@ -96,7 +107,7 @@ fn perform_jtag_transfer(
 
     let transfer_status = match status {
         s if s == JTAG_STATUS_WAIT => TransferStatus::Failed(DapError::WaitResponse),
-        s if s == JTAG_STATUS_OK => TransferStatus::Ok,
+        s if s == JTAG_STATUS_OK || s == JTAG_STATUS_OK_ADIV6 => TransferStatus::Ok,
         _ => {
             tracing::debug!("Unexpected DAP response: {}", status);
 
@@ -113,23 +124,24 @@ fn perform_jtag_transfers(
     transfers: &mut [DapTransfer],
 ) -> Result<(), DebugProbeError> {
     let mut queue: JtagQueue<DapError> = JtagQueue::new();
+    let ir_len = chain.params().irlen;
 
     let mut results: Vec<_> = transfers
         .iter()
-        .map(|t| queue.schedule(t.jtag_write()))
+        .map(|t| queue.schedule(t.jtag_write(ir_len)))
         .collect();
 
     let last_is_abort = transfers[transfers.len() - 1].is_abort();
     let last_is_rdbuff = transfers[transfers.len() - 1].is_rdbuff();
     if !last_is_abort && !last_is_rdbuff {
         // Need to issue a fake read to get final ack
-        results.push(queue.schedule(DapTransfer::read(RdBuff::ADDRESS).jtag_write()));
+        results.push(queue.schedule(DapTransfer::read(RdBuff::ADDRESS).jtag_write(ir_len)));
     }
 
     if !last_is_abort {
         // Check CTRL/STATUS to make sure OK/FAULT meant OK
-        results.push(queue.schedule(DapTransfer::read(Ctrl::ADDRESS).jtag_write()));
-        results.push(queue.schedule(DapTransfer::read(RdBuff::ADDRESS).jtag_write()));
+        results.push(queue.schedule(DapTransfer::read(Ctrl::ADDRESS).jtag_write(ir_len)));
+        results.push(queue.schedule(DapTransfer::read(RdBuff::ADDRESS).jtag_write(ir_len)));
     }
 
     let mut status_responses = vec![TransferStatus::Pending; results.len()];
@@ -251,14 +263,18 @@ impl DapTransfer {
         }
     }
 
-    fn jtag_write(&self) -> JtagWriteCommand<DapError> {
+    fn jtag_write(&self, ir_len: usize) -> JtagWriteCommand<DapError> {
         let (payload, address) = if self.is_abort() {
-            (JTAG_ABORT_VALUE, JTAG_ABORT_IR_VALUE)
+            (
+                JTAG_ABORT_VALUE,
+                dap_instruction(JTAG_ABORT_IR_VALUE, ir_len),
+            )
         } else {
             let jtag_address = match self.address.is_ap() {
                 false => JTAG_DEBUG_PORT_IR_VALUE,
                 true => JTAG_ACCESS_PORT_IR_VALUE,
             };
+            let jtag_address = dap_instruction(jtag_address, ir_len);
             let port_address = self.address.a2_and_3();
 
             let mut payload = 0u64;
@@ -282,7 +298,7 @@ impl DapTransfer {
             },
             transform: |data, response| {
                 // No responses returned for aborts.
-                if data.address == JTAG_ABORT_IR_VALUE {
+                if data.address & 0xF == JTAG_ABORT_IR_VALUE {
                     return Ok(CommandResult::None);
                 }
 
@@ -294,7 +310,9 @@ impl DapTransfer {
                 let status = (received & 0b111) as u32;
 
                 let error = match status {
-                    s if s == JTAG_STATUS_OK => return Ok(CommandResult::U32(received_value)),
+                    s if s == JTAG_STATUS_OK || s == JTAG_STATUS_OK_ADIV6 => {
+                        return Ok(CommandResult::U32(received_value));
+                    }
                     s if s == JTAG_STATUS_WAIT => DapError::WaitResponse,
                     _ => {
                         tracing::debug!("Unexpected DAP response: {}", status);
