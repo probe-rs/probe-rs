@@ -1,0 +1,73 @@
+name: CH584/CH585 Series
+variants:
+- name: CH584
+  cores:
+  - name: main
+    type: riscv
+    core_access_options: !Riscv
+      hart_id: 0
+  memory_map:
+  - !Nvm
+    name: CodeFlash
+    range:
+      start: 0x0
+      end: 0x70000
+    cores:
+    - main
+  - !Ram
+    name: RAM
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
+  flash_algorithms:
+  - ch5xx-code-flash
+- name: CH585
+  cores:
+  - name: main
+    type: riscv
+    core_access_options: !Riscv
+      hart_id: 0
+  memory_map:
+  - !Nvm
+    name: CodeFlash
+    range:
+      start: 0x0
+      end: 0x70000
+    cores:
+    - main
+  - !Ram
+    name: RAM
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
+  flash_algorithms:
+  - ch5xx-code-flash
+flash_algorithms:
+- name: ch5xx-code-flash
+  description: CH584/CH585 CodeFlash
+  default: true
+  instructions: txUAQAPGFQSTBhAHtwUDAGPLxgCTBgAHYw/WAJMGEAdjHtYAMaiTBhAJYwvWAJMFIAdjFbYAt8UDABmgtwUHADM1tQATRRUAgoC3JQBAAUUjgwWAgoC3JQBAk4VlgIPGtYM39v8PEwcQB3GNNwYDAGNL1wATBwAHY4/mABMHEAdjjeYABaITBxAJY4jmABMGIAdjmcYQN8YDAGN5xRBzcAQwEwZwBZMGgAojjcWCI43VggPG5YMTZgYOI4/FghFGI40FgiOAxQAVRiOABQAjgMUAAQABAH1WI4/F/gOGBQDjTgb+I4AFABVGI4AFACOAxQABAAEAGUYjj8X+A4YFAONOBv4jgAUAFUYjgAUAI4DFAAEAAQATBgACI4/F/g1Gg4YFAOPOBv6TVgUBfRYjj9X+IgV19jcGCACVRgOFBQDjTgX+I4AFACOABQAjgNUAAQABACOP1f4DhQUA404F/gPA5f8DhQUA404F/gPF5f8DhwUA404H/gWJI4AFABnBfRZN/hMGcAWTBoAKI43FgiON1YIDxuWDQYojj8WCI40FgoKANwYHAONrxe4FRYKANyUAQBMFZYCDRbWDEwYQB7cIAwBjS7YAEwYAB2OPxQATBhAHY57FADGoEwYQCWOLxQATBiAHY5XFALfIAwAZoLcIBwCBR8F1Ew5wBYUFkw6ACjOPuAARSJVF/VIZQ71jc3AEMCMNxYMjDdWDA0blgxNmBg4jD8WCIw0FgiMABQEjAAUAIwC1AAEAAQAjD1X+AwYFAONOBv4jAAUAIwAFACMAtQABAAEAIw9l/gMGBQDjTgb+M/Z3ABM2FgCztucBs3/WAGOVDwATBgACGaATBoD9IwAFACMABQAjALUAAQABACMPxf4NRz6GgwYFAOPOBv6TVgYBfRcjD9X+IgZ19zcHCAADBgUA404G/iMABQAjAAUAIwC1AAEAAQAjD7X+AwYFAONOBv4DQOX/AwYFAONOBv4DRuX/gwYFAOPOBv4FiiMABQAZwn0XTf8jDcWDIw3Vg4NG5YPBiiMP1YIjDQWCEepBZmOTDwAFZrKX4+kX7wFFgoAFRYKAhclBESLGNycAQBMHZ4CDRreDEwgQB7cIAwBjTdgAkwcAB2OB9gKTBxAHY5D2AgWggUZlopMHEAlji/YAkwcgB2OV9gC3yAMAGaC3CAcAhUZjcxUZs4eoQGPvtxaz56UAjYtjmgcWc3AEMJMGcAWTB4AKIw3XgiMN94KDRueDk+YGDiMP14KRRiMNB4IjANcAlUYjAAcAIwDXAAEAAQD9ViMP1/6DBgcA484G/oFCIwAHABVDGUiJSNVOIwAHACMAZwABAAEAIw8H/4MGBwDjzgb+IwAHACMABwAjAGcAAQABALODogAjDxf/jUaDBwcA484H/pPXAwH9FiMP9/6iA/X2s4NVQJMGABBj5NMAkwMAEGOFVQSBRzMOVgCzBv4AA882AIPPFgADxCYAg8YGAGIPQgSiD7Pm3wAzZOQBwY4jLdf+kUYDBAcA404E/v0WIwDXAe36kQfj4nf8twcIAIMGBwDjzgb+IwAHACMABwAjAGcAAQABACMPZ/6DBgcA484G/gNA5/+DBgcA484G/gNO5/+DBgcA484G/pN2HgAjAAcAgcb9F8X/MaCekuPmsvCBRhGghUYTBXAFkwWACiMNp4IjDbeCA0Xng0GJIw+ngiMNB4IyREEBNoWCgA==
+  load_address: 0x20000008
+  pc_init: 0x0
+  pc_uninit: 0x4a
+  pc_program_page: 0x32a
+  pc_erase_sector: 0x56
+  pc_erase_all: 0x1b0
+  data_section_offset: 0x508
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x70000
+    page_size: 0x1000
+    erased_byte_value: 0xff
+    program_page_timeout: 500
+    erase_sector_timeout: 1000
+    sectors:
+    - size: 0x1000
+      address: 0x0
+  cores:
+  - main

@@ -344,7 +344,14 @@ impl WchLinkCommand for UnprotectFlash {
 
 #[cfg(test)]
 mod tests {
-    use super::{SetRstPin, WchLinkCommand};
+    use super::{AttachChipResponse, RiscvChip, SetRstPin, WchLinkCommand, WchLinkCommandResponse};
+
+    #[test]
+    fn attach_ch584_ch585() {
+        let response = AttachChipResponse::from_payload(&[0x4b, 0x00, 0x00, 0x00, 0x00]).unwrap();
+        assert_eq!(response.chip_family, RiscvChip::CH585);
+        assert_eq!(response.riscvchip, 0x4b);
+    }
 
     #[test]
     fn set_rst_pin_bytes() {
