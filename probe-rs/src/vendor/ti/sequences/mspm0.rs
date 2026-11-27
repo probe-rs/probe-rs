@@ -374,6 +374,7 @@ impl ArmDebugSequence for MSPM0 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::architecture::arm::dp::{Ctrl, DPIDR, DpRegister, DpRegisterAddress};
 
     /// The values TI's Keil packs and IAR macros write, pinned so a change to the bit definitions
     /// above cannot silently alter what goes on the wire.
@@ -426,6 +427,132 @@ mod tests {
                 debug_sequence.contains("MSPM0"),
                 "{name} resolved to {debug_sequence}, expected the MSPM0 sequence"
             );
+        }
+    }
+
+    /// An MSPM0 whose `DPREC0` sticky bits are set, as after any low-power entry. Its AHB-AP
+    /// answers once `FORCEACTIVE` is set if `ap_returns`. Its core sleeps in `WFI` if `asleep`, and
+    /// its halt requests are lost if `halt_lost`, as a write the next transfer's WAIT catches can
+    /// be while the bus is slow.
+    #[derive(Default)]
+    struct SleepingMspm0 {
+        ap_returns: bool,
+        asleep: bool,
+        halt_lost: bool,
+        dprec0: u32,
+        sprec_writes: Vec<u32>,
+        csw: u32,
+        tar: u32,
+        halted: bool,
+        halts: usize,
+    }
+
+    impl SleepingMspm0 {
+        /// Whether a DRW access reaches DHCSR: TAR points at it and CSW selects word accesses.
+        fn dhcsr_selected(&self) -> bool {
+            u64::from(self.tar) == Dhcsr::get_mmio_address() && self.csw & 0b111 == 0b010
+        }
+    }
+
+    impl DapAccess for SleepingMspm0 {
+        fn read_raw_dp_register(
+            &mut self,
+            _dp: DpAddress,
+            addr: DpRegisterAddress,
+        ) -> Result<u32, ArmError> {
+            // A DPv2 SW-DP that is already powered up.
+            Ok(match addr {
+                DPIDR::ADDRESS => 0x6BA0_2477,
+                Ctrl::ADDRESS => 0xF000_0000,
+                _ => 0,
+            })
+        }
+
+        fn write_raw_dp_register(
+            &mut self,
+            _dp: DpAddress,
+            _addr: DpRegisterAddress,
+            _value: u32,
+        ) -> Result<(), ArmError> {
+            Ok(())
+        }
+
+        fn read_raw_ap_register(
+            &mut self,
+            ap: &FullyQualifiedApAddress,
+            addr: u64,
+        ) -> Result<u32, ArmError> {
+            Ok(match (ap.ap_v1()?, addr) {
+                (4, DPREC0) => self.dprec0,
+                (0, IDR::ADDRESS) if self.ap_returns && self.dprec0 & DPREC0_FORCEACTIVE != 0 => {
+                    0x0477_0031
+                }
+                (0, CSW::ADDRESS) => self.csw,
+                (0, TAR::ADDRESS) => self.tar,
+                // S_HALT is bit 17, S_SLEEP bit 18.
+                (0, DRW::ADDRESS) if self.dhcsr_selected() => {
+                    (u32::from(self.halted) << 17) | (u32::from(self.asleep && !self.halted) << 18)
+                }
+                _ => 0,
+            })
+        }
+
+        fn write_raw_ap_register(
+            &mut self,
+            ap: &FullyQualifiedApAddress,
+            addr: u64,
+            value: u32,
+        ) -> Result<(), ArmError> {
+            match (ap.ap_v1()?, addr) {
+                (4, DPREC0) => self.dprec0 = value,
+                (4, SPREC) => self.sprec_writes.push(value),
+                (0, CSW::ADDRESS) => self.csw = value,
+                (0, TAR::ADDRESS) => self.tar = value,
+                (0, DRW::ADDRESS) if self.dhcsr_selected() && value >> 16 == 0xA05F => {
+                    if !Dhcsr(value).c_halt() {
+                        self.halted = false;
+                    } else if !self.halt_lost {
+                        self.halted = true;
+                        self.halts += 1;
+                    }
+                }
+                _ => {}
+            }
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn sticky_bits_reset_the_part_only_if_it_cannot_be_woken() {
+        // (AHB-AP comes back, core asleep, halt lost) -> (reset, halts that landed)
+        for (ap_returns, asleep, halt_lost, resets, halts) in [
+            (true, true, false, false, 1),
+            (true, true, true, true, 0),
+            (true, false, false, false, 0),
+            (false, true, false, true, 0),
+        ] {
+            let sequence = MSPM0::create("MSPM0L1306".to_string());
+            let mut part = SleepingMspm0 {
+                ap_returns,
+                asleep,
+                halt_lost,
+                dprec0: DPREC0_STICKY,
+                ..SleepingMspm0::default()
+            };
+
+            sequence
+                .debug_port_start(&mut part, DpAddress::Default)
+                .expect("debug_port_start should succeed");
+
+            let case = format!("ap_returns {ap_returns}, asleep {asleep}, halt_lost {halt_lost}");
+            assert_eq!(
+                part.sprec_writes.contains(&SPREC_SYS_RST),
+                resets,
+                "{case}: SPREC writes {:x?}",
+                part.sprec_writes
+            );
+            assert_eq!(part.halts, halts, "{case}: halts that landed");
+            assert!(!part.halted, "{case}: the core was left halted");
         }
     }
 }
