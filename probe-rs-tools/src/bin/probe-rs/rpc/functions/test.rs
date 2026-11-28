@@ -197,8 +197,8 @@ fn run_test_impl(
 // -- test kickoff (DAP REPL `test run`) --------------------------------------
 
 /// Kick off a single embedded-test case from the DAP REPL: run the core until
-/// it halts on the `GetCommandLine` semihosting call, write the test address
-/// as the command line, then resume. The subsequent test run is driven by
+/// it halts on the `GetCommandLine` semihosting call, write the command line
+/// that selects the test, then resume. The subsequent test run is driven by
 /// the DAP poll loop.
 pub async fn test_kickoff(
     ctx: &mut RpcContext,
@@ -220,9 +220,18 @@ pub async fn test_kickoff(
         Err("Could not start test: target did not halt on GetCommandLine")?
     };
 
-    lift(cmd.write_command_line_to_target(&mut core, &format!("run_addr {}", request.address)))?;
+    lift(cmd.write_command_line_to_target(&mut core, &test_command_line(&request.test)))?;
     lift(core.run())?;
     Ok(())
+}
+
+/// The command line that makes embedded-test run `test`. Protocol 1 selects the test by its
+/// address, protocol 0 by its name.
+fn test_command_line(test: &Test) -> String {
+    match test.address {
+        Some(address) => format!("run_addr {address}"),
+        None => format!("run {}", test.name),
+    }
 }
 
 struct ListEventHandler<F: FnMut(SemihostingEvent)> {
@@ -347,11 +356,7 @@ impl<F: FnMut(SemihostingEvent)> RunEventHandler<F> {
 
         match cmd {
             SemihostingCommand::GetCommandLine(request) if !self.cmdline_requested => {
-                let cmdline = if let Some(address) = self.test.address {
-                    format!("run_addr {address}")
-                } else {
-                    format!("run {}", self.test.name)
-                };
+                let cmdline = test_command_line(&self.test);
                 tracing::debug!("target asked for cmdline. send '{cmdline}'");
                 self.cmdline_requested = true;
                 request.write_command_line_to_target(core, &cmdline)?;
@@ -381,5 +386,27 @@ impl<F: FnMut(SemihostingEvent)> RunEventHandler<F> {
                 self.cmdline_requested
             ),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::test_command_line;
+    use probe_rs_rpc::test::{Test, TestOutcome};
+
+    fn test(address: Option<u32>) -> Test {
+        Test {
+            name: "tests::halts".to_string(),
+            expected_outcome: TestOutcome::Pass,
+            ignored: false,
+            timeout: None,
+            address,
+        }
+    }
+
+    #[test]
+    fn protocol_1_tests_are_selected_by_address_and_protocol_0_tests_by_name() {
+        assert_eq!(test_command_line(&test(Some(0x1234))), "run_addr 4660");
+        assert_eq!(test_command_line(&test(None)), "run tests::halts");
     }
 }
