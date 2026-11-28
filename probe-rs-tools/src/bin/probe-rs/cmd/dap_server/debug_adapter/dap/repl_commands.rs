@@ -238,6 +238,10 @@ pub enum EvalResponse {
 
     /// Successful evaluation, the result is a complete evaluation response.
     Body(EvaluateResponseBody),
+
+    /// The reply waits until the core halts, the timeout passes, the next REPL command arrives,
+    /// or the session ends.
+    Wait(Option<Duration>),
 }
 
 pub type EvalResult = Result<EvalResponse, DebuggerError>;
