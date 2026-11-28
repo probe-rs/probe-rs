@@ -12,7 +12,10 @@ use crate::{
     Architecture, CoreInformation, CoreInterface, CoreRegister, CoreStatus, CoreType,
     InstructionSet, MemoryInterface,
     architecture::arm::{
-        ArmError, core::armv8a_debug_regs::*, memory::ArmMemoryInterface,
+        ArmError, DapAccess, FullyQualifiedApAddress,
+        ap::{ApRegister, BD0, BD2, BD3, TAR, TAR2},
+        core::armv8a_debug_regs::*,
+        memory::ArmMemoryInterface,
         sequences::ArmDebugSequence,
     },
     core::{
@@ -27,6 +30,126 @@ use std::{
 };
 
 const OPERATION_TIMEOUT: Duration = Duration::from_millis(250);
+
+/// Access to DBGDTRRX, EDSCR and DBGDTRTX through the banked data registers of the memory AP.
+///
+/// TAR selects the registers once, so each transfer is a single AP access.
+struct BankedAccess<'a> {
+    /// Holding the interface prevents other code from changing TAR.
+    interface: &'a mut dyn DapAccess,
+    ap: FullyQualifiedApAddress,
+}
+
+impl BankedAccess<'_> {
+    const DTRRX: u64 = BD0::ADDRESS;
+    const EDSCR: u64 = BD2::ADDRESS;
+    const DTRTX: u64 = BD3::ADDRESS;
+
+    fn edscr(&mut self) -> Result<Edscr, ArmError> {
+        self.interface
+            .read_raw_ap_register(&self.ap, Self::EDSCR)
+            .map(Edscr)
+    }
+
+    /// Runs `f`. If it fails, memory access mode is left before the error is returned.
+    fn or_leave<R>(
+        &mut self,
+        f: impl FnOnce(&mut Self) -> Result<R, ArmError>,
+    ) -> Result<R, ArmError> {
+        let result = f(self);
+        if result.is_err()
+            && let Ok(mut edscr) = self.edscr()
+        {
+            edscr.set_ma(false);
+            let _ = self
+                .interface
+                .write_raw_ap_register(&self.ap, Self::EDSCR, edscr.into());
+        }
+        result
+    }
+
+    /// Enters memory access mode and performs `transfers` in one batch, then waits for the core
+    /// to complete the last of them.
+    ///
+    /// `values` receives the words read by `transfers`, followed by one more word. Returns
+    /// EDSCR, which still has MA set.
+    fn transfer(
+        &mut self,
+        transfers: impl Iterator<Item = (u64, Option<u32>)>,
+        values: &mut [u32],
+    ) -> Result<Edscr, ArmError> {
+        let mut edscr = self.edscr()?;
+        edscr.set_ma(true);
+
+        let mut accesses = vec![(Self::EDSCR, Some(edscr.into()))];
+        accesses.extend(transfers);
+        accesses.push((Self::EDSCR, None));
+        self.interface
+            .access_raw_ap_registers(&self.ap, &accesses, values)?;
+
+        // The error flags are valid once the last instruction has completed.
+        let mut edscr = Edscr(values[values.len() - 1]);
+        let start = Instant::now();
+        while !edscr.ite() {
+            if start.elapsed() > OPERATION_TIMEOUT {
+                return Err(ArmError::Timeout);
+            }
+            edscr = self.edscr()?;
+        }
+        Ok(edscr)
+    }
+
+    /// Writes `data` to DBGDTRRX one word at a time in memory access mode, and returns EDSCR
+    /// as read after the last word.
+    fn write_in_memory_access_mode(&mut self, data: &[u8]) -> Result<Edscr, ArmError> {
+        self.or_leave(|banked| {
+            let (words, _) = data.as_chunks::<4>();
+            let writes = words
+                .iter()
+                .map(|word| (Self::DTRRX, Some(u32::from_le_bytes(*word))));
+            let mut edscr = banked.transfer(writes, &mut [0])?;
+
+            edscr.set_ma(false);
+            banked
+                .interface
+                .write_raw_ap_register(&banked.ap, Self::EDSCR, edscr.into())?;
+            Ok(edscr)
+        })
+    }
+
+    /// Fills `data` from DBGDTRTX one word at a time in memory access mode, and returns EDSCR
+    /// as read after the last word. DBGDTRTX must hold the address of the first word.
+    fn read_in_memory_access_mode(&mut self, data: &mut [u8]) -> Result<Edscr, ArmError> {
+        self.or_leave(|banked| {
+            let (words, _) = data.as_chunks_mut::<4>();
+            let count = words.len();
+
+            // Each read returns the content of DBGDTRTX and loads the next word, so the first
+            // read returns the address. The last word is read outside memory access mode, where
+            // a read does not load another word.
+            let mut values = vec![0; count + 1];
+            let reads = std::iter::repeat_n((Self::DTRTX, None), count);
+            let mut edscr = banked.transfer(reads, &mut values)?;
+
+            edscr.set_ma(false);
+            let leave = [
+                (Self::EDSCR, Some(edscr.into())),
+                (Self::DTRTX, None),
+                (Self::EDSCR, None),
+            ];
+            let mut tail = [0; 2];
+            banked
+                .interface
+                .access_raw_ap_registers(&banked.ap, &leave, &mut tail)?;
+            values[count] = tail[0];
+
+            for (word, value) in words.iter_mut().zip(&values[1..]) {
+                *word = value.to_le_bytes();
+            }
+            Ok(Edscr(tail[1]))
+        })
+    }
+}
 
 /// Errors for the ARMv8-A state machine
 #[derive(thiserror::Error, Debug)]
@@ -667,23 +790,6 @@ impl<'probe> Armv8a<'probe> {
         result
     }
 
-    /// This function enables EDSCR.MA=1, which allows direct memory access via debug instructions.
-    /// With EDSCR.MA=1, any write to DBGDTRRX / read to DBGDTRTX break the x0,x1 registers
-    fn with_memory_access_mode<F, R>(&mut self, f: F) -> Result<R, Error>
-    where
-        F: FnOnce(&mut Self) -> Result<R, Error>,
-    {
-        // enable memory access(MA) mode
-        self.set_memory_access_mode(true)?;
-
-        let result = f(self);
-
-        // disable memory access(MA) mode
-        self.set_memory_access_mode(false)?;
-
-        result
-    }
-
     fn read_cpu_memory_aarch32_32(&mut self, address: u64) -> Result<u32, Error> {
         let address = valid_32bit_address(address)?;
 
@@ -829,13 +935,19 @@ impl<'probe> Armv8a<'probe> {
         })
     }
 
-    fn set_memory_access_mode(&mut self, enable_ma_mode: bool) -> Result<(), Error> {
-        let address = Edscr::get_mmio_address_from_base(self.base_address)?;
-        let mut edscr: Edscr = Edscr(self.memory.read_word_32(address)?);
-        edscr.set_ma(enable_ma_mode);
-        self.memory.write_word_32(address, edscr.into())?;
+    /// Selects DBGDTRRX, EDSCR and DBGDTRTX with TAR, so that they are accessible through the
+    /// banked data registers.
+    fn banked_access(&mut self) -> Result<BankedAccess<'_>, Error> {
+        let address = Dbgdtrrx::get_mmio_address_from_base(self.base_address)?;
+        let ap = self.memory.fully_qualified_address();
+        let interface = self.memory.get_arm_debug_interface()?;
 
-        Ok(())
+        if address > u64::from(u32::MAX) {
+            interface.write_raw_ap_register(&ap, TAR2::ADDRESS, (address >> 32) as u32)?;
+        }
+        interface.write_raw_ap_register(&ap, TAR::ADDRESS, address as u32)?;
+
+        Ok(BankedAccess { interface, ap })
     }
 
     fn write_cpu_memory_fast(&mut self, address: u64, data: &[u8]) -> Result<(), Error> {
@@ -886,30 +998,19 @@ impl<'probe> Armv8a<'probe> {
         // Load x0/r0 with the address to write to.
         self.set_reg_value(0, address)?;
 
-        self.with_memory_access_mode(|armv8a| {
-            for d in data.chunks(4) {
-                let word = u32::from_le_bytes([d[0], d[1], d[2], d[3]]);
-                // memory write loop
-                // With EDSCR.MA=1, any write to DBGDTRRX turns into:
-                // AArch64:
-                //  "MRS X1,DBGDTRRX_EL0"
-                //  "STR W1,[X0],#4"
-                // AArch32:
-                //  "MRS R1,DBGDTRRXint"
-                //  "STR R1,[R0],#4"
-                let dbgdtr_rx_address = Dbgdtrrx::get_mmio_address_from_base(armv8a.base_address)?;
-                armv8a.memory.write_word_32(dbgdtr_rx_address, word)?;
-            }
-            Ok(())
-        })?;
-
-        self.check_memory_access_error()
+        // With EDSCR.MA=1, any write to DBGDTRRX turns into:
+        // AArch64:
+        //  "MRS X1,DBGDTRRX_EL0"
+        //  "STR W1,[X0],#4"
+        // AArch32:
+        //  "MRS R1,DBGDTRRXint"
+        //  "STR R1,[R0],#4"
+        let edscr = self.banked_access()?.write_in_memory_access_mode(data)?;
+        self.check_memory_access_error(edscr)
     }
 
-    /// Checks EDSCR for an error from a transfer in memory access mode, and clears it.
-    fn check_memory_access_error(&mut self) -> Result<(), Error> {
-        let edscr_address = Edscr::get_mmio_address_from_base(self.base_address)?;
-        let edscr = Edscr(self.memory.read_word_32(edscr_address)?);
+    /// Checks `edscr` for an error from a transfer in memory access mode, and clears it.
+    fn check_memory_access_error(&mut self, edscr: Edscr) -> Result<(), Error> {
         if !edscr.err() {
             return Ok(());
         }
@@ -1046,26 +1147,8 @@ impl<'probe> Armv8a<'probe> {
         .txfull()
         {}
 
-        let dbgdtr_tx_address = Dbgdtrtx::get_mmio_address_from_base(self.base_address)?;
-        let (data, last) = data.split_at_mut(data.len() - std::mem::size_of::<u32>());
-
-        self.with_memory_access_mode(|armv8a| {
-            // discard first 32bit
-            let _ = armv8a.memory.read_word_32(dbgdtr_tx_address)?;
-            for d in data.chunks_mut(4) {
-                // memory read loop
-                let tmp = armv8a.memory.read_word_32(dbgdtr_tx_address)?.to_le_bytes();
-                d.copy_from_slice(&tmp);
-            }
-
-            Ok(())
-        })?;
-
-        // read last 32bit
-        let l = self.memory.read_word_32(dbgdtr_tx_address)?.to_le_bytes();
-        last.copy_from_slice(&l);
-
-        self.check_memory_access_error()
+        let edscr = self.banked_access()?.read_in_memory_access_mode(data)?;
+        self.check_memory_access_error(edscr)
     }
 
     fn set_core_status(&mut self, new_status: CoreStatus) {
@@ -1693,7 +1776,7 @@ mod test {
     use crate::architecture::arm::sequences::DefaultArmSequence;
 
     use super::*;
-    use crate::architecture::arm::core::mock::MockProbe;
+    use crate::architecture::arm::core::mock::{MockProbe, RecordingDap};
 
     const TEST_BASE_ADDRESS: u64 = 0x8000_1000;
     const TEST_CTI_ADDRESS: u64 = 0x8000_2000;
@@ -2920,34 +3003,10 @@ mod test {
         assert_eq!(data, MEMORY_VALUE);
     }
 
-    fn add_memory_access_mode_expectations(probe: &mut MockProbe, enable: bool) {
-        let edscr_address = Edscr::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap();
-        let mut edscr = Edscr(0);
-        edscr.set_ma(!enable);
-        probe.expected_read(edscr_address, edscr.into());
-        edscr.set_ma(enable);
-        probe.expected_write(edscr_address, edscr.into());
-    }
-
-    /// Expects the read of an EDSCR with ERR and `flag` set, and the write that clears them.
-    fn add_memory_access_error_expectations(probe: &mut MockProbe, flag: u32) {
-        const ERR: u32 = 1 << 6;
-        probe.expected_read(
-            Edscr::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap(),
-            ERR | flag,
-        );
-        let mut edrcr = Edrcr(0);
-        edrcr.set_cse(true);
-        probe.expected_write(
-            Edrcr::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap(),
-            edrcr.into(),
-        );
-    }
-
     #[test]
-    fn armv8a_write_32_reports_dtrrx_overrun() {
-        const MEMORY_ADDRESS: u64 = 0x2000_0000;
-        const MEMORY_VALUE: u32 = 0xBA5EBA11;
+    fn armv8a_reports_dcc_overrun_and_underrun() {
+        const ERR: u32 = 1 << 6;
+        const TXU: u32 = 1 << 26;
         const RXO: u32 = 1 << 27;
 
         let mut probe = MockProbe::new(TEST_BASE_ADDRESS);
@@ -2955,18 +3014,12 @@ mod test {
 
         add_status_expectations(&mut probe, true);
 
-        add_read_reg_expectations(&mut probe, 0, 0);
-        add_read_reg_expectations(&mut probe, 1, 0);
-        add_set_r0_expectation(&mut probe, MEMORY_ADDRESS as u32);
-
-        add_memory_access_mode_expectations(&mut probe, true);
-        probe.expected_write(
-            Dbgdtrrx::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap(),
-            MEMORY_VALUE,
-        );
-        add_memory_access_mode_expectations(&mut probe, false);
-
-        add_memory_access_error_expectations(&mut probe, RXO);
+        // Each error is cleared.
+        let mut edrcr = Edrcr(0);
+        edrcr.set_cse(true);
+        let edrcr_address = Edrcr::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap();
+        probe.expected_write(edrcr_address, edrcr.into());
+        probe.expected_write(edrcr_address, edrcr.into());
 
         let mock_mem = Box::new(probe) as _;
 
@@ -2979,62 +3032,105 @@ mod test {
         )
         .unwrap();
 
-        let error = armv8a
-            .write_32(MEMORY_ADDRESS, &[MEMORY_VALUE])
-            .unwrap_err();
         assert!(matches!(
-            error,
-            Error::Arm(ArmError::Armv8a(Armv8aError::DccOverrun))
+            armv8a.check_memory_access_error(Edscr(ERR | RXO)),
+            Err(Error::Arm(ArmError::Armv8a(Armv8aError::DccOverrun)))
+        ));
+        assert!(matches!(
+            armv8a.check_memory_access_error(Edscr(ERR | TXU)),
+            Err(Error::Arm(ArmError::Armv8a(Armv8aError::DccUnderrun)))
         ));
     }
 
+    fn banked(dap: &mut RecordingDap) -> BankedAccess<'_> {
+        BankedAccess {
+            interface: dap,
+            ap: FullyQualifiedApAddress::v1_with_default_dp(1),
+        }
+    }
+
+    /// EDSCR with the last instruction complete: outside memory access mode, and in it.
+    fn idle_and_ma() -> (u32, u32) {
+        let mut idle = Edscr(0);
+        idle.set_ite(true);
+        let mut ma = idle;
+        ma.set_ma(true);
+        (idle.into(), ma.into())
+    }
+
     #[test]
-    fn armv8a_read_32_reports_dtrtx_underrun() {
-        const MEMORY_ADDRESS: u64 = 0x2000_0000;
-        const TXU: u32 = 1 << 26;
+    fn a_memory_access_mode_write_sends_every_word_in_one_batch() {
+        let (idle, ma) = idle_and_ma();
+        // EDSCR before, and after the last word.
+        let mut dap = RecordingDap::new(&[idle, ma]);
 
-        let mut probe = MockProbe::new(TEST_BASE_ADDRESS);
-        let mut state = CortexARState::new();
+        let edscr = banked(&mut dap)
+            .write_in_memory_access_mode(&[1, 0, 0, 0, 2, 0, 0, 0, 3, 0, 0, 0])
+            .unwrap();
 
-        add_64_bit_status_expectations(&mut probe, true);
-
-        add_read_reg_64_expectations(&mut probe, 0, 0);
-        add_read_reg_64_expectations(&mut probe, 1, 0);
-        add_set_x0_expectation(&mut probe, MEMORY_ADDRESS);
-
-        // Copy the address to DBGDTRTX: MSR DBGDTR_EL0, X0
-        let edscr_address = Edscr::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap();
-        let dbgdtrtx_address = Dbgdtrtx::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap();
-        probe.expected_write(
-            Editr::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap(),
-            aarch64::build_msr(2, 3, 0, 4, 0, 0),
+        assert_eq!(u32::from(edscr), idle);
+        assert_eq!(
+            dap.batches,
+            vec![
+                vec![(BD2::ADDRESS, None)],
+                vec![
+                    (BD2::ADDRESS, Some(ma)),
+                    (BD0::ADDRESS, Some(1)),
+                    (BD0::ADDRESS, Some(2)),
+                    (BD0::ADDRESS, Some(3)),
+                    (BD2::ADDRESS, None),
+                ],
+                vec![(BD2::ADDRESS, Some(idle))],
+            ]
         );
-        let mut edscr = Edscr(0);
-        edscr.set_txfull(true);
-        probe.expected_read(edscr_address, edscr.into());
+    }
 
-        add_memory_access_mode_expectations(&mut probe, true);
-        probe.expected_read(dbgdtrtx_address, MEMORY_ADDRESS as u32);
-        add_memory_access_mode_expectations(&mut probe, false);
-        probe.expected_read(dbgdtrtx_address, 0);
+    #[test]
+    fn a_memory_access_mode_read_collects_the_last_word_after_leaving() {
+        let (idle, ma) = idle_and_ma();
+        // EDSCR before; the address, two loaded words and EDSCR in memory access mode; the last
+        // word and EDSCR after leaving.
+        let mut dap = RecordingDap::new(&[idle, 0x2000_0000, 11, 22, ma, 33, idle]);
+        let mut data = [0; 12];
 
-        add_memory_access_error_expectations(&mut probe, TXU);
+        let edscr = banked(&mut dap)
+            .read_in_memory_access_mode(&mut data)
+            .unwrap();
 
-        let mock_mem = Box::new(probe) as _;
+        assert_eq!(data, [11, 0, 0, 0, 22, 0, 0, 0, 33, 0, 0, 0]);
+        assert_eq!(u32::from(edscr), idle);
+        assert_eq!(
+            dap.batches,
+            vec![
+                vec![(BD2::ADDRESS, None)],
+                vec![
+                    (BD2::ADDRESS, Some(ma)),
+                    (BD3::ADDRESS, None),
+                    (BD3::ADDRESS, None),
+                    (BD3::ADDRESS, None),
+                    (BD2::ADDRESS, None),
+                ],
+                vec![
+                    (BD2::ADDRESS, Some(idle)),
+                    (BD3::ADDRESS, None),
+                    (BD2::ADDRESS, None),
+                ],
+            ]
+        );
+    }
 
-        let mut armv8a = Armv8a::new(
-            mock_mem,
-            &mut state,
-            TEST_BASE_ADDRESS,
-            TEST_CTI_ADDRESS,
-            DefaultArmSequence::create(),
-        )
-        .unwrap();
+    #[test]
+    fn a_failed_transfer_leaves_memory_access_mode() {
+        let (idle, ma) = idle_and_ma();
+        // EDSCR before the transfer, and when memory access mode is left.
+        let mut dap = RecordingDap::new(&[idle, ma]);
+        dap.failing_batch = Some(1);
 
-        let error = armv8a.read_32(MEMORY_ADDRESS, &mut [0]).unwrap_err();
-        assert!(matches!(
-            error,
-            Error::Arm(ArmError::Armv8a(Armv8aError::DccUnderrun))
-        ));
+        let error = banked(&mut dap)
+            .write_in_memory_access_mode(&[1, 0, 0, 0])
+            .unwrap_err();
+
+        assert!(matches!(error, ArmError::Probe(_)), "{error:?}");
+        assert_eq!(dap.batches.last(), Some(&vec![(BD2::ADDRESS, Some(idle))]));
     }
 }

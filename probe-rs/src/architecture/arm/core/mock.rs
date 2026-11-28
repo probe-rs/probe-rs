@@ -1,9 +1,13 @@
-//! Mock memory interface for core tests.
+//! Mock memory interface and DAP for core tests.
+
+use std::collections::VecDeque;
 
 use crate::{
     MemoryInterface,
     architecture::arm::{
-        ArmError, FullyQualifiedApAddress, communication_interface::SwdSequence,
+        ArmError, DapAccess, FullyQualifiedApAddress,
+        communication_interface::SwdSequence,
+        dp::{DpAddress, DpRegisterAddress},
         memory::ArmMemoryInterface,
     },
     memory::{Operation, OperationKind},
@@ -263,5 +267,85 @@ impl Drop for MockProbe {
         if !self.expected_ops.is_empty() && !std::thread::panicking() {
             panic!("self.expected_ops is not empty: {:?}", self.expected_ops);
         }
+    }
+}
+
+/// A DAP that records every batch of raw AP accesses and answers reads from a script.
+pub struct RecordingDap {
+    pub batches: Vec<Vec<(u64, Option<u32>)>>,
+    reads: VecDeque<u32>,
+    /// The batch, counted from zero, that fails with a probe error.
+    pub failing_batch: Option<usize>,
+}
+
+impl RecordingDap {
+    /// Creates a DAP that answers reads with `reads`, in order.
+    pub fn new(reads: &[u32]) -> Self {
+        Self {
+            batches: Vec::new(),
+            reads: reads.iter().copied().collect(),
+            failing_batch: None,
+        }
+    }
+}
+
+impl DapAccess for RecordingDap {
+    fn read_raw_dp_register(
+        &mut self,
+        _dp: DpAddress,
+        _address: DpRegisterAddress,
+    ) -> Result<u32, ArmError> {
+        unimplemented!()
+    }
+
+    fn write_raw_dp_register(
+        &mut self,
+        _dp: DpAddress,
+        _address: DpRegisterAddress,
+        _value: u32,
+    ) -> Result<(), ArmError> {
+        unimplemented!()
+    }
+
+    fn read_raw_ap_register(
+        &mut self,
+        ap: &FullyQualifiedApAddress,
+        address: u64,
+    ) -> Result<u32, ArmError> {
+        let mut value = [0];
+        self.access_raw_ap_registers(ap, &[(address, None)], &mut value)?;
+        Ok(value[0])
+    }
+
+    fn write_raw_ap_register(
+        &mut self,
+        ap: &FullyQualifiedApAddress,
+        address: u64,
+        value: u32,
+    ) -> Result<(), ArmError> {
+        self.access_raw_ap_registers(ap, &[(address, Some(value))], &mut [])
+    }
+
+    fn access_raw_ap_registers(
+        &mut self,
+        _ap: &FullyQualifiedApAddress,
+        accesses: &[(u64, Option<u32>)],
+        values: &mut [u32],
+    ) -> Result<(), ArmError> {
+        let index = self.batches.len();
+        self.batches.push(accesses.to_vec());
+        if self.failing_batch == Some(index) {
+            return Err(ArmError::Probe(DebugProbeError::Other(
+                "the probe went away".to_string(),
+            )));
+        }
+        let reads = accesses.iter().filter(|(_, value)| value.is_none()).count();
+        for value in &mut values[..reads] {
+            *value = self
+                .reads
+                .pop_front()
+                .expect("a scripted value for every read");
+        }
+        Ok(())
     }
 }
