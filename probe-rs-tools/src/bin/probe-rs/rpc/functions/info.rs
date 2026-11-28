@@ -60,12 +60,15 @@ pub async fn target_metadata(
     Ok(WireSessionTargetMetadata {
         target_name: target.name.clone(),
         default_format: target.default_format.clone(),
-        cores: session
-            .list_cores()
-            .into_iter()
-            .map(|(index, core_type)| WireSessionCore {
+        // Session core ids are indices into `target.cores`.
+        cores: target
+            .cores
+            .iter()
+            .enumerate()
+            .map(|(index, core)| WireSessionCore {
                 index: index as u32,
-                core_type: to_wire_core_type(core_type),
+                name: core.name.clone(),
+                core_type: to_wire_core_type(core.core_type),
             })
             .collect(),
         memory_map: target

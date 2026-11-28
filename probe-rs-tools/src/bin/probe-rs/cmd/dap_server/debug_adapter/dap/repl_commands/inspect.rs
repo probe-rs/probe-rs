@@ -51,7 +51,7 @@ static EXAMINE: ReplCommand = ReplCommand {
 #[distributed_slice(REPL_COMMANDS)]
 static DUMP: ReplCommand = ReplCommand {
     command: "dump",
-    help_text: "Create a core dump at a target location. Specify memory ranges to dump, or leave blank to dump in-scope memory regions.",
+    help_text: "Create a core dump at a target location. Specify memory ranges to dump, or leave blank to dump all RAM.",
     requires_target_halted: true,
     sub_commands: &[],
     args: &[
@@ -270,55 +270,79 @@ async fn dump_core<'a>(
         .unwrap_or("./coredump"),
     );
 
-    let ranges = if args.is_empty() {
-        // Auto-detect of memory ranges relied on the client-side variable
-        // cache, which the RPC backend doesn't populate (the cache lives
-        // server-side). Fall through to a registers-only dump.
-        Vec::new()
+    let (dump, skipped) = if args.is_empty() {
+        backend
+            .dump_core_default(core_index)
+            .await
+            .map_err(DebuggerError::from)?
     } else {
-        args
-            .chunks(2)
-            .map(|c| {
-                let &[start, size] = c else {
-                    unreachable!("This should never be reached as there cannot be an odd number of arguments. Please report this as a bug.");
-                };
-
-                let start = parse_int::parse::<u64>(start)
-                    .map_err(|e| DebuggerError::UserMessage(e.to_string()))?;
-                let size = parse_int::parse::<u64>(size)
-                    .map_err(|e| DebuggerError::UserMessage(e.to_string()))?;
-
-                Ok::<_, DebuggerError>(start..start + size)
-            })
-            .collect::<Result<Vec<Range<u64>>, _>>()?
+        let ranges = parse_dump_ranges(&args)?;
+        let dump = backend
+            .dump_core(core_index, ranges)
+            .await
+            .map_err(DebuggerError::from)?;
+        (dump, Vec::new())
     };
+
+    dump.store(location)?;
+
+    Ok(EvalResponse::Message(dump_message(
+        &dump.data, &skipped, location,
+    )))
+}
+
+/// Parses `start size` pairs into memory ranges.
+fn parse_dump_ranges(args: &[&str]) -> Result<Vec<Range<u64>>, DebuggerError> {
+    args.chunks(2)
+        .map(|c| {
+            let &[start, size] = c else {
+                unreachable!("This should never be reached as there cannot be an odd number of arguments. Please report this as a bug.");
+            };
+
+            let start = parse_int::parse::<u64>(start)
+                .map_err(|e| DebuggerError::UserMessage(e.to_string()))?;
+            let size = parse_int::parse::<u64>(size)
+                .map_err(|e| DebuggerError::UserMessage(e.to_string()))?;
+
+            Ok::<_, DebuggerError>(start..start + size)
+        })
+        .collect()
+}
+
+/// The `dump` command's reply: the dumped ranges, then each range that was left out.
+fn dump_message(
+    data: &[(Range<u64>, Vec<u8>)],
+    skipped: &[(Range<u64>, String)],
+    location: &Path,
+) -> String {
     let mut range_string = String::new();
-    for memory_range in &ranges {
+    for (memory_range, _) in data {
         if !range_string.is_empty() {
             range_string.push_str(", ");
         }
         #[expect(clippy::unwrap_used, reason = "Writing to a string never fails")]
         write!(&mut range_string, "{memory_range:#X?}").unwrap();
     }
-    range_string = if range_string.is_empty() {
+    range_string = if !range_string.is_empty() {
+        format!("(Includes memory ranges: {range_string})")
+    } else if skipped.is_empty() {
         "(No memory ranges specified)".to_string()
     } else {
-        format!("(Includes memory ranges: {range_string})")
+        "(No memory ranges could be read)".to_string()
     };
-    let dump = backend
-        .dump_core(core_index, ranges)
-        .await
-        .map_err(DebuggerError::from)?;
-    dump.store(location)?;
 
-    Ok(EvalResponse::Message(format!(
-        "Core dump {range_string} successfully stored at {location:?}.",
-    )))
+    let mut message = format!("Core dump {range_string} successfully stored at {location:?}.");
+    for (memory_range, reason) in skipped {
+        #[expect(clippy::unwrap_used, reason = "Writing to a string never fails")]
+        write!(&mut message, "\nLeft out {memory_range:#X?}: {reason}.").unwrap();
+    }
+
+    message
 }
 
 #[cfg(test)]
 mod test {
-    use super::{DEFAULT_TREE_DEPTH, DEFAULT_TREE_WIDTH, parse_print_args};
+    use super::{DEFAULT_TREE_DEPTH, DEFAULT_TREE_WIDTH, dump_message, parse_print_args};
     use crate::cmd::dap_server::DebuggerError;
     use crate::cmd::dap_server::debug_adapter::dap::repl_types::GdbFormat;
     use probe_rs_debug::VariableName;
@@ -361,5 +385,18 @@ mod test {
             panic!("expected an error");
         };
         assert!(matches!(error, DebuggerError::UserMessage(message) if message.contains("/d")));
+    }
+
+    #[test]
+    fn dump_message_lists_ranges_that_were_left_out() {
+        let skipped = vec![(0x6000_0000..0x8000_0000, "larger than 16 MiB".to_string())];
+
+        let message = dump_message(&[], &skipped, std::path::Path::new("core"));
+
+        assert_eq!(
+            message,
+            "Core dump (No memory ranges could be read) successfully stored at \"core\".\n\
+             Left out 0x60000000..0x80000000: larger than 16 MiB."
+        );
     }
 }
