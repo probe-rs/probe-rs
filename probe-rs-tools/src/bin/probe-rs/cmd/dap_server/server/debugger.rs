@@ -164,12 +164,16 @@ impl Debugger {
     ) -> Result<DebugSessionStatus, DebuggerError> {
         self.debug_logger.flush_to_dap(debug_adapter)?;
 
-        if let Some(request) = debug_adapter.listen_for_request()? {
+        let status = if let Some(request) = debug_adapter.listen_for_request()? {
             self.handle_request(session_data, debug_adapter, request)
-                .await
+                .await?
         } else {
-            self.no_request_poll(session_data, debug_adapter).await
-        }
+            self.no_request_poll(session_data, debug_adapter).await?
+        };
+
+        debug_adapter.poll_pending_wait(session_data).await?;
+
+        Ok(status)
     }
 
     /// Handles a request and sends an error response if necessary.
@@ -376,6 +380,8 @@ impl Debugger {
             }
 
             "disconnect" => {
+                debug_adapter
+                    .end_pending_wait("The wait ended, because the debug session ended.")?;
                 debug_adapter
                     .disconnect(session_data, core_index, request)
                     .await?;

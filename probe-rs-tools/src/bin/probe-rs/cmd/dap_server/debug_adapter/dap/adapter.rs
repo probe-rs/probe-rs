@@ -35,7 +35,11 @@ use serde::{Serialize, de::DeserializeOwned};
 use serde_json::Value;
 use typed_path::NativePathBuf;
 
-use std::{fmt::Display, str, time::Duration};
+use std::{
+    fmt::Display,
+    str,
+    time::{Duration, Instant},
+};
 
 /// Progress ID used for progress reporting when the debug adapter protocol is used.
 pub(crate) type ProgressId = i64;
@@ -65,6 +69,20 @@ pub(crate) async fn reapply_breakpoints_after_reset(
         }
     }
     Ok(())
+}
+
+/// The reply to a REPL command, with `result` as its only content.
+fn repl_response_body(result: String) -> EvaluateResponseBody {
+    EvaluateResponseBody {
+        indexed_variables: None,
+        memory_reference: None,
+        named_variables: None,
+        presentation_hint: None,
+        result,
+        type_: None,
+        variables_reference: 0,
+        value_location_reference: None,
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -118,7 +136,18 @@ pub struct DebugAdapter {
     /// Flag to indicate that workarounds for VSCode-specific spec deviations etc. should be
     /// enabled.
     pub(crate) vscode_quirks: bool,
+    /// The `wait` REPL command that has no reply yet.
+    pending_wait: Option<PendingWait>,
     adapter: BoxedAdapter,
+}
+
+/// A `wait` REPL command. Its reply is sent when the core halts, the deadline passes, the next REPL
+/// command arrives or the session ends.
+struct PendingWait {
+    request: Request,
+    core_index: usize,
+    timeout: Option<Duration>,
+    started: Instant,
 }
 
 impl DebugAdapter {
@@ -133,6 +162,7 @@ impl DebugAdapter {
             supports_ansi_styling: false,
             lines_start_at_1: true,
             columns_start_at_1: true,
+            pending_wait: None,
             adapter: Box::new(adapter),
         }
     }
@@ -360,22 +390,24 @@ impl DebugAdapter {
                 self.send_response(request, Ok(Some(response_body)))
             }
             EvaluateDispatch::ReplCommand => {
-                let mut response_body = EvaluateResponseBody {
-                    indexed_variables: None,
-                    memory_reference: None,
-                    named_variables: None,
-                    presentation_hint: None,
-                    result: format!("<invalid expression {:?}>", arguments.expression),
-                    type_: None,
-                    variables_reference: 0,
-                    value_location_reference: None,
-                };
-                match self.handle_repl(session_data, core_index, &arguments).await {
-                    Ok(EvalResponse::Body(body)) => response_body = body,
-                    Ok(EvalResponse::Message(message)) => response_body.result = message,
-                    Err(DebuggerError::UserMessage(message)) => response_body.result = message,
-                    Err(error) => response_body.result = error.to_string(),
-                }
+                self.end_pending_wait("The wait ended, because the next command arrived.")?;
+
+                let response_body =
+                    match self.handle_repl(session_data, core_index, &arguments).await {
+                        Ok(EvalResponse::Body(body)) => body,
+                        Ok(EvalResponse::Message(message)) => repl_response_body(message),
+                        Ok(EvalResponse::Wait(timeout)) => {
+                            self.pending_wait = Some(PendingWait {
+                                request: request.clone(),
+                                core_index,
+                                timeout,
+                                started: Instant::now(),
+                            });
+                            return Ok(());
+                        }
+                        Err(DebuggerError::UserMessage(message)) => repl_response_body(message),
+                        Err(error) => repl_response_body(error.to_string()),
+                    };
                 self.send_response(request, Ok(Some(response_body)))
             }
             EvaluateDispatch::Unsupported => {
@@ -386,6 +418,45 @@ impl DebugAdapter {
                 self.send_response::<EvaluateResponseBody>(request, Err(&error))
             }
         }
+    }
+
+    /// Sends the reply of the pending `wait` command when its core is halted or its timeout has
+    /// passed.
+    pub(crate) async fn poll_pending_wait(&mut self, session_data: &mut SessionData) -> Result<()> {
+        let Some(wait) = &self.pending_wait else {
+            return Ok(());
+        };
+
+        let status = session_data
+            .core_data_opt(wait.core_index)
+            .map_or(CoreStatus::Unknown, |core_data| core_data.last_known_status);
+        let message = if status.is_halted() || status == CoreStatus::LockedUp {
+            let pc = session_data.backend.program_counter(wait.core_index).await;
+            status
+                .short_long_status(&session_data.backend, pc, self.supports_ansi_styling)
+                .await
+                .1
+        } else if let Some(timeout) = wait.timeout
+            && wait.started.elapsed() >= timeout
+        {
+            format!("The core did not halt within {} s.", timeout.as_secs())
+        } else {
+            return Ok(());
+        };
+
+        self.end_pending_wait(&message)
+    }
+
+    /// Sends `message` as the reply of the pending `wait` command, if there is one.
+    pub(crate) fn end_pending_wait(&mut self, message: &str) -> Result<()> {
+        let Some(wait) = self.pending_wait.take() else {
+            return Ok(());
+        };
+
+        self.send_response(
+            &wait.request,
+            Ok(Some(repl_response_body(message.to_string()))),
+        )
     }
 
     async fn handle_repl(
