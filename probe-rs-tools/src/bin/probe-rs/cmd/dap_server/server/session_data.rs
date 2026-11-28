@@ -12,7 +12,10 @@ use crate::cmd::{
             adapter::DebugAdapter,
             core_status::DapStatus,
             dap_types::{ContinuedEventBody, MessageSeverity, Source, StoppedEventBody},
-            repl_commands::{REPL_COMMANDS, embedded_test::EMBEDDED_TEST},
+            repl_commands::{
+                REPL_COMMANDS,
+                embedded_test::{EMBEDDED_TEST, EmbeddedTests},
+            },
         },
     },
     run::EmbeddedTestElfInfo,
@@ -972,16 +975,12 @@ fn build_core_data(
         && let Some(elf_info) = EmbeddedTestElfInfo::from_elf(path_to_elf)?
     {
         tracing::debug!("Embedded Test Metadata: {:?}", elf_info);
-        if elf_info.version != 1 {
-            tracing::info!("Detected unsupported embedded-test version in ELF file.");
-        } else {
-            tracing::info!(
-                "Detected embedded-test in ELF file. Adding `test` command to Debug Console."
-            );
+        tracing::info!(
+            "Detected embedded-test in ELF file. Adding `test` command to Debug Console."
+        );
 
-            repl_commands.push(EMBEDDED_TEST);
-            test_data = Box::new(elf_info);
-        }
+        repl_commands.push(EMBEDDED_TEST);
+        test_data = Box::new(EmbeddedTests::from(elf_info));
     }
 
     Ok(CoreData {

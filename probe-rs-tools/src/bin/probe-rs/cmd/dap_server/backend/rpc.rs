@@ -41,12 +41,14 @@ use probe_rs_rpc::chip::MemoryRegion as WireMemoryRegion;
 use probe_rs_rpc::core_ops::{WireCoreMetadata, WireCoreStatus, WireRegisterId, WireSteppingMode};
 use probe_rs_rpc::disassemble::{WireDisassembledInstruction, WireSource};
 use probe_rs_rpc::flash::{
-    DownloadOptions as WireDownloadOptions, ProgressEvent as WireProgressEvent,
+    BootInfo, DownloadOptions as WireDownloadOptions, ProgressEvent as WireProgressEvent,
 };
 use probe_rs_rpc::info::WireSessionTargetMetadata;
+use probe_rs_rpc::semihosting_options::SemihostingOptions;
 use probe_rs_rpc::stack_trace::{
     RichStackTraces, SourceLocation as WireSourceLocation, WireDebugRegister,
 };
+use probe_rs_rpc::test::Test;
 use probe_rs_rpc_client::{
     ClientError, CoreInterface as RpcCoreClient, ResolvedUpload, RpcClient, SessionInterface,
 };
@@ -302,10 +304,24 @@ impl RpcBackend {
             .map_err(rpc_err)
     }
 
-    pub(crate) async fn kickoff_test(&self, core_index: usize, address: u64) -> Result<(), Error> {
+    pub(crate) async fn kickoff_test(&self, core_index: usize, test: Test) -> Result<(), Error> {
         self.core(core_index)
-            .kickoff_test(address)
+            .kickoff_test(test)
             .await
+            .map_err(rpc_err)
+    }
+
+    /// Resets the target and runs it until an embedded-test binary reports its tests.
+    pub(crate) async fn list_tests(&self) -> Result<Vec<Test>, Error> {
+        self.session_interface()
+            .list_tests(
+                BootInfo::Other,
+                None,
+                SemihostingOptions::default(),
+                async |_| {},
+            )
+            .await
+            .map(|tests| tests.tests)
             .map_err(rpc_err)
     }
 

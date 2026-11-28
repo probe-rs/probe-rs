@@ -1805,14 +1805,14 @@ impl CoreInterface {
     }
 
     /// Kick off a single embedded-test case server-side: run until the
-    /// `GetCommandLine` semihosting call, write `run_addr {address}` as the
-    /// command line, then resume. Used by the DAP REPL `test run` command.
-    pub async fn kickoff_test(&self, address: u64) -> Result<(), ClientError> {
+    /// `GetCommandLine` semihosting call, write the command line that selects
+    /// `test`, then resume. Used by the DAP REPL `test run` command.
+    pub async fn kickoff_test(&self, test: Test) -> Result<(), ClientError> {
         self.client
             .send_resp::<TestKickoffEndpoint, _>(&TestKickoffRequest {
                 sessid: self.sessid,
                 core: self.core,
-                address,
+                test,
             })
             .await
     }

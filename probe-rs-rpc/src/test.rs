@@ -110,7 +110,7 @@ pub type RunTestResponse = RpcResult<TestResult>;
 pub struct TestKickoffRequest {
     pub sessid: Key<Session>,
     pub core: u32,
-    pub address: u64,
+    pub test: Test,
 }
 
 pub type TestKickoffResponse = RpcResult<()>;

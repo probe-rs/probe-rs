@@ -40,6 +40,33 @@ use std::{fmt::Display, str, time::Duration};
 /// Progress ID used for progress reporting when the debug adapter protocol is used.
 pub(crate) type ProgressId = i64;
 
+/// Sets the hardware breakpoints of `core_data` again after a reset, on the architectures where a
+/// reset clears them.
+pub(crate) async fn reapply_breakpoints_after_reset(
+    backend: &mut RpcBackend,
+    core_data: &CoreData,
+) -> Result<()> {
+    let core_index = core_data.core_index;
+    let arch = backend
+        .core_metadata
+        .get(core_index)
+        .map(|m| m.architecture)
+        .ok_or_else(|| probe_rs::Error::Other(format!("No core metadata for core {core_index}")))
+        .map_err(DebuggerError::ProbeRs)?;
+    if [Architecture::Riscv, Architecture::Xtensa].contains(&arch) {
+        let addrs: Vec<u64> = core_data.breakpoints.iter().map(|bp| bp.address).collect();
+        if !addrs.is_empty() {
+            backend
+                .set_hw_breakpoints(core_index, addrs)
+                .await
+                .map_err(|e| {
+                    DebuggerError::Other(anyhow!("Failed to re-apply breakpoints after reset: {e}"))
+                })?;
+        }
+    }
+    Ok(())
+}
+
 #[derive(Debug, PartialEq, Eq)]
 enum EvaluateDispatch {
     Server,
@@ -1771,27 +1798,7 @@ impl DebugAdapter {
             .await
             .map_err(DebuggerError::ProbeRs)?;
 
-        let arch = backend
-            .core_metadata
-            .get(core_index)
-            .map(|m| m.architecture)
-            .ok_or_else(|| {
-                probe_rs::Error::Other(format!("No core metadata for core {core_index}"))
-            })
-            .map_err(DebuggerError::ProbeRs)?;
-        if [Architecture::Riscv, Architecture::Xtensa].contains(&arch) {
-            let addrs: Vec<u64> = core_data.breakpoints.iter().map(|bp| bp.address).collect();
-            if !addrs.is_empty() {
-                backend
-                    .set_hw_breakpoints(core_index, addrs)
-                    .await
-                    .map_err(|e| {
-                        DebuggerError::Other(anyhow!(
-                            "Failed to re-apply breakpoints after reset: {e}"
-                        ))
-                    })?;
-            }
-        }
+        reapply_breakpoints_after_reset(backend, core_data).await?;
 
         core_data.last_known_status = CoreStatus::Unknown;
         self.all_cores_halted = false;
