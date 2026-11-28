@@ -3,7 +3,54 @@ manufacturer:
   id: 0x15
   cc: 0x0
 variants:
-- name: MIMXRT1180
+- name: MIMXRT1180_FlexSPI1
+  cores:
+  - name: cm33
+    type: armv8m
+    core_access_options: !Arm
+      ap: !v1 3
+  memory_map:
+  - !Ram
+    name: ITCM
+    range:
+      start: 0xffc0000
+      end: 0x10000000
+    cores:
+    - cm33
+  - !Ram
+    name: DTCM
+    range:
+      start: 0x20000000
+      end: 0x20040000
+    cores:
+    - cm33
+  - !Ram
+    name: OCRAM1
+    range:
+      # Note: The reference manual's memory map may start this region at
+      # 0x2848_0000, but there is a note outside the table saying that the first
+      # 16k cannot be safely used.
+      start: 0x20484000
+      end: 0x20500000
+    cores:
+    - cm33
+  - !Ram
+    name: OCRAM2
+    range:
+      start: 0x20500000
+      end: 0x20540000
+    cores:
+    - cm33
+  - !Nvm
+    name: FlexSPI1
+    range:
+      start: 0x28000000
+      end: 0x29000000
+    cores:
+    - cm33
+  flash_algorithms:
+  - flexspi1_qspi_cm33
+- name: MIMXRT1180_FlexSPI2
   cores:
   - name: cm33
     type: armv8m
@@ -48,15 +95,7 @@ variants:
       end: 0x20540000
     cores:
     - cm33
-  - !Nvm
-    name: FlexSPI1
-    range:
-      start: 0x28000000
-      end: 0x29000000
-    cores:
-    - cm33
   flash_algorithms:
-  - flexspi1_qspi_cm33
   - flexspi2_qspi_cm33
 flash_algorithms:
 - name: flexspi1_qspi_cm33
