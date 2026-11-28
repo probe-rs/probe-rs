@@ -266,6 +266,11 @@ impl ComponentId {
     pub fn peripheral_id(&self) -> &PeripheralID {
         &self.peripheral_id
     }
+
+    /// Whether the component is a class 0x1 ROM table.
+    pub(crate) fn is_rom_table(&self) -> bool {
+        self.class == RawComponent::RomTable
+    }
 }
 
 /// A reader to extract information from a CoreSight component table.
@@ -379,7 +384,7 @@ impl<'probe: 'memory, 'memory> ComponentInformationReader<'probe, 'memory> {
     /// Reads all component properties from a component info table
     ///
     /// This function does a direct memory access and is meant for internal use only.
-    fn read_all(&mut self) -> Result<ComponentId, RomTableError> {
+    pub(crate) fn read_all(&mut self) -> Result<ComponentId, RomTableError> {
         Ok(ComponentId {
             component_address: self.base_address,
             class: self.component_class()?,
