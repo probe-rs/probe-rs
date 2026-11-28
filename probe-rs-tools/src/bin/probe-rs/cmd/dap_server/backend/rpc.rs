@@ -48,7 +48,7 @@ use probe_rs_rpc::stack_trace::{
     RichStackTraces, SourceLocation as WireSourceLocation, WireDebugRegister,
 };
 use probe_rs_rpc_client::{
-    CoreInterface as RpcCoreClient, ResolvedUpload, RpcClient, SessionInterface,
+    ClientError, CoreInterface as RpcCoreClient, ResolvedUpload, RpcClient, SessionInterface,
 };
 
 /// Convert an [`anyhow::Error`] coming out of the RPC client into the
@@ -542,8 +542,9 @@ impl RpcBackend {
     /// Dumps the registers of `core_index` and the memory ranges of
     /// [`SessionTargetMetadata::default_dump_ranges`].
     ///
-    /// Each range is read on its own. A range that cannot be read, or that is larger than
-    /// [`Self::MAX_DEFAULT_DUMP_RANGE`], is left out of the dump and returned with the reason.
+    /// Each range is read on its own. A range that the target cannot read, or that is larger than
+    /// [`Self::MAX_DEFAULT_DUMP_RANGE`], is left out of the dump and returned with the reason. A
+    /// failed connection to the RPC server or to the probe fails the dump.
     pub(crate) async fn dump_core_default(
         &mut self,
         core_index: usize,
@@ -559,9 +560,15 @@ impl RpcBackend {
                 continue;
             }
 
-            match self.dump_core(core_index, vec![range.clone()]).await {
+            match self.core(core_index).dump_core(vec![range.clone()]).await {
                 Ok(range_dump) => data.extend(range_dump.data),
-                Err(error) => skipped.push((range, error.to_string())),
+                Err(ClientError::Remote(error)) => {
+                    // The server reports a failed memory read and a failed probe the same way.
+                    // A failed probe also fails the status read.
+                    self.status(core_index).await?;
+                    skipped.push((range, error.to_string()));
+                }
+                Err(error) => return Err(rpc_err(error)),
             }
         }
         dump.data = merge_adjacent_ranges(data);
