@@ -42,6 +42,14 @@ pub enum Armv8aError {
     /// Data Abort occurred
     #[error("A data abort occurred")]
     DataAbort,
+
+    /// A word was written to DBGDTRRX before the core had read the previous one
+    #[error("DBGDTRRX overrun: the core did not read a word before the next one was written")]
+    DccOverrun,
+
+    /// DBGDTRTX was read before the core had written the next word
+    #[error("DBGDTRTX underrun: a word was read before the core had written it")]
+    DccUnderrun,
 }
 
 /// When in 32-bit mode the two words have to be placed in swapped
@@ -895,21 +903,31 @@ impl<'probe> Armv8a<'probe> {
             Ok(())
         })?;
 
-        // error check
+        self.check_memory_access_error()
+    }
+
+    /// Checks EDSCR for an error from a transfer in memory access mode, and clears it.
+    fn check_memory_access_error(&mut self) -> Result<(), Error> {
         let edscr_address = Edscr::get_mmio_address_from_base(self.base_address)?;
-        if Edscr(self.memory.read_word_32(edscr_address)?).err() {
-            // under-run or abort
-
-            // clear error flag
-            let edrcr_address = Edrcr::get_mmio_address_from_base(self.base_address)?;
-            let mut edrcr = Edrcr(0);
-            edrcr.set_cse(true);
-            self.memory.write_word_32(edrcr_address, edrcr.into())?;
-
-            return Err(Error::Arm(ArmError::Armv8a(Armv8aError::DataAbort)));
+        let edscr = Edscr(self.memory.read_word_32(edscr_address)?);
+        if !edscr.err() {
+            return Ok(());
         }
 
-        Ok(())
+        // clear error flag
+        let edrcr_address = Edrcr::get_mmio_address_from_base(self.base_address)?;
+        let mut edrcr = Edrcr(0);
+        edrcr.set_cse(true);
+        self.memory.write_word_32(edrcr_address, edrcr.into())?;
+
+        let error = if edscr.rxo() {
+            Armv8aError::DccOverrun
+        } else if edscr.txu() {
+            Armv8aError::DccUnderrun
+        } else {
+            Armv8aError::DataAbort
+        };
+        Err(Error::Arm(ArmError::Armv8a(error)))
     }
 
     /// Splits an access of `len` bytes at `address` into the size of the unaligned prefix and
@@ -1037,20 +1055,7 @@ impl<'probe> Armv8a<'probe> {
         let l = self.memory.read_word_32(dbgdtr_tx_address)?.to_le_bytes();
         last.copy_from_slice(&l);
 
-        // error check
-        let address = Edscr::get_mmio_address_from_base(self.base_address)?;
-        let edscr = Edscr(self.memory.read_word_32(address)?);
-        if edscr.err() {
-            // clear error flag
-            let edrcr_address = Edrcr::get_mmio_address_from_base(self.base_address)?;
-            let mut edrcr = Edrcr(0);
-            edrcr.set_cse(true);
-            self.memory.write_word_32(edrcr_address, edrcr.into())?;
-
-            Err(Error::Arm(ArmError::Armv8a(Armv8aError::DataAbort)))
-        } else {
-            Ok(())
-        }
+        self.check_memory_access_error()
     }
 
     fn set_core_status(&mut self, new_status: CoreStatus) {
@@ -2927,5 +2932,123 @@ mod test {
         let mut data = [0u8; 2];
         armv8a.read_8(MEMORY_ADDRESS, &mut data).unwrap();
         assert_eq!(data, MEMORY_VALUE);
+    }
+
+    fn add_memory_access_mode_expectations(probe: &mut MockProbe, enable: bool) {
+        let edscr_address = Edscr::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap();
+        let mut edscr = Edscr(0);
+        edscr.set_ma(!enable);
+        probe.expected_read(edscr_address, edscr.into());
+        edscr.set_ma(enable);
+        probe.expected_write(edscr_address, edscr.into());
+    }
+
+    /// Expects the read of an EDSCR with ERR and `flag` set, and the write that clears them.
+    fn add_memory_access_error_expectations(probe: &mut MockProbe, flag: u32) {
+        const ERR: u32 = 1 << 6;
+        probe.expected_read(
+            Edscr::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap(),
+            ERR | flag,
+        );
+        let mut edrcr = Edrcr(0);
+        edrcr.set_cse(true);
+        probe.expected_write(
+            Edrcr::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap(),
+            edrcr.into(),
+        );
+    }
+
+    #[test]
+    fn armv8a_write_32_reports_dtrrx_overrun() {
+        const MEMORY_ADDRESS: u64 = 0x2000_0000;
+        const MEMORY_VALUE: u32 = 0xBA5EBA11;
+        const RXO: u32 = 1 << 27;
+
+        let mut probe = MockProbe::new(TEST_BASE_ADDRESS);
+        let mut state = CortexARState::new();
+
+        add_status_expectations(&mut probe, true);
+
+        add_read_reg_expectations(&mut probe, 0, 0);
+        add_read_reg_expectations(&mut probe, 1, 0);
+        add_set_r0_expectation(&mut probe, MEMORY_ADDRESS as u32);
+
+        add_memory_access_mode_expectations(&mut probe, true);
+        probe.expected_write(
+            Dbgdtrrx::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap(),
+            MEMORY_VALUE,
+        );
+        add_memory_access_mode_expectations(&mut probe, false);
+
+        add_memory_access_error_expectations(&mut probe, RXO);
+
+        let mock_mem = Box::new(probe) as _;
+
+        let mut armv8a = Armv8a::new(
+            mock_mem,
+            &mut state,
+            TEST_BASE_ADDRESS,
+            TEST_CTI_ADDRESS,
+            DefaultArmSequence::create(),
+        )
+        .unwrap();
+
+        let error = armv8a
+            .write_32(MEMORY_ADDRESS, &[MEMORY_VALUE])
+            .unwrap_err();
+        assert!(matches!(
+            error,
+            Error::Arm(ArmError::Armv8a(Armv8aError::DccOverrun))
+        ));
+    }
+
+    #[test]
+    fn armv8a_read_32_reports_dtrtx_underrun() {
+        const MEMORY_ADDRESS: u64 = 0x2000_0000;
+        const TXU: u32 = 1 << 26;
+
+        let mut probe = MockProbe::new(TEST_BASE_ADDRESS);
+        let mut state = CortexARState::new();
+
+        add_64_bit_status_expectations(&mut probe, true);
+
+        add_read_reg_64_expectations(&mut probe, 0, 0);
+        add_read_reg_64_expectations(&mut probe, 1, 0);
+        add_set_x0_expectation(&mut probe, MEMORY_ADDRESS);
+
+        // Copy the address to DBGDTRTX: MSR DBGDTR_EL0, X0
+        let edscr_address = Edscr::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap();
+        let dbgdtrtx_address = Dbgdtrtx::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap();
+        probe.expected_write(
+            Editr::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap(),
+            aarch64::build_msr(2, 3, 0, 4, 0, 0),
+        );
+        let mut edscr = Edscr(0);
+        edscr.set_txfull(true);
+        probe.expected_read(edscr_address, edscr.into());
+
+        add_memory_access_mode_expectations(&mut probe, true);
+        probe.expected_read(dbgdtrtx_address, MEMORY_ADDRESS as u32);
+        add_memory_access_mode_expectations(&mut probe, false);
+        probe.expected_read(dbgdtrtx_address, 0);
+
+        add_memory_access_error_expectations(&mut probe, TXU);
+
+        let mock_mem = Box::new(probe) as _;
+
+        let mut armv8a = Armv8a::new(
+            mock_mem,
+            &mut state,
+            TEST_BASE_ADDRESS,
+            TEST_CTI_ADDRESS,
+            DefaultArmSequence::create(),
+        )
+        .unwrap();
+
+        let error = armv8a.read_32(MEMORY_ADDRESS, &mut [0]).unwrap_err();
+        assert!(matches!(
+            error,
+            Error::Arm(ArmError::Armv8a(Armv8aError::DccUnderrun))
+        ));
     }
 }
