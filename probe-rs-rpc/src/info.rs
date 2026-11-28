@@ -28,6 +28,7 @@ pub struct WireSessionTargetMetadata {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Schema)]
 pub struct WireSessionCore {
     pub index: u32,
+    pub name: String,
     pub core_type: WireCoreType,
 }
 
@@ -275,6 +276,7 @@ mod tests {
             default_format: Some("elf".to_string()),
             cores: vec![WireSessionCore {
                 index: 0,
+                name: "main".to_string(),
                 core_type: WireCoreType::Armv7em,
             }],
             memory_map: vec![],

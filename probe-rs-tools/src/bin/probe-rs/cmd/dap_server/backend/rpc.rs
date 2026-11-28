@@ -6,7 +6,7 @@
 //! runtime, so async round trips can be `.await`ed directly — no
 //! `block_on`/`block_in_place` bridge is required.
 
-use std::{collections::HashMap, path::PathBuf, time::Duration};
+use std::{collections::HashMap, ops::Range, path::PathBuf, time::Duration};
 
 use super::{SemihostingHandleResult, SemihostingUiEvent};
 use crate::cmd::dap_server::DebuggerError;
@@ -37,6 +37,7 @@ use probe_rs_rpc::RpcError;
 use probe_rs_rpc::breakpoints::{
     SourceBreakpointLocation, WireSourceLocation as WireBreakpointSourceLocation,
 };
+use probe_rs_rpc::chip::MemoryRegion as WireMemoryRegion;
 use probe_rs_rpc::core_ops::{WireCoreMetadata, WireCoreStatus, WireRegisterId, WireSteppingMode};
 use probe_rs_rpc::disassemble::{WireDisassembledInstruction, WireSource};
 use probe_rs_rpc::flash::{
@@ -104,6 +105,35 @@ pub struct SessionTargetMetadata {
     pub target_name: String,
     pub default_format: Option<String>,
     pub cores: Vec<(usize, CoreType)>,
+    /// The readable RAM regions that each core can access, by core index. Aliases are included.
+    pub ram_regions: HashMap<usize, Vec<Range<u64>>>,
+}
+
+impl SessionTargetMetadata {
+    /// The System Control Space of Cortex-M cores. It holds the fault status registers.
+    const CORTEX_M_SCS: Range<u64> = 0xE000_E000..0xE000_F000;
+
+    /// The memory ranges that a core dump of `core_index` contains when the user gives none: all
+    /// RAM, and the System Control Space on Cortex-M.
+    ///
+    /// Aliased RAM is included once for each alias.
+    pub(crate) fn default_dump_ranges(&self, core_index: usize) -> Vec<Range<u64>> {
+        let mut ranges = self
+            .ram_regions
+            .get(&core_index)
+            .cloned()
+            .unwrap_or_default();
+
+        let is_cortex_m = self
+            .cores
+            .iter()
+            .any(|(index, core_type)| *index == core_index && core_type.is_cortex_m());
+        if is_cortex_m {
+            ranges.push(Self::CORTEX_M_SCS);
+        }
+
+        ranges
+    }
 }
 
 /// A DAP backend that drives a remote target over RPC.
@@ -505,6 +535,40 @@ impl RpcBackend {
         })
     }
 
+    /// The largest range that [`Self::dump_core_default`] reads. Larger RAM regions are usually
+    /// external memory, which takes minutes to read and can exceed the RPC reply limit.
+    const MAX_DEFAULT_DUMP_RANGE: u64 = 16 * 1024 * 1024;
+
+    /// Dumps the registers of `core_index` and the memory ranges of
+    /// [`SessionTargetMetadata::default_dump_ranges`].
+    ///
+    /// Each range is read on its own. A range that cannot be read, or that is larger than
+    /// [`Self::MAX_DEFAULT_DUMP_RANGE`], is left out of the dump and returned with the reason.
+    pub(crate) async fn dump_core_default(
+        &mut self,
+        core_index: usize,
+    ) -> Result<(probe_rs::CoreDump, Vec<(Range<u64>, String)>), Error> {
+        let mut dump = self.dump_core(core_index, Vec::new()).await?;
+
+        let mut data = Vec::new();
+        let mut skipped = Vec::new();
+        for range in self.target_metadata.default_dump_ranges(core_index) {
+            if range.end - range.start > Self::MAX_DEFAULT_DUMP_RANGE {
+                let limit_mib = Self::MAX_DEFAULT_DUMP_RANGE / (1024 * 1024);
+                skipped.push((range, format!("larger than {limit_mib} MiB")));
+                continue;
+            }
+
+            match self.dump_core(core_index, vec![range.clone()]).await {
+                Ok(range_dump) => data.extend(range_dump.data),
+                Err(error) => skipped.push((range, error.to_string())),
+            }
+        }
+        dump.data = merge_adjacent_ranges(data);
+
+        Ok((dump, skipped))
+    }
+
     pub(crate) async fn handle_semihosting(
         &mut self,
         core_index: usize,
@@ -872,6 +936,27 @@ impl RpcBackend {
 
 impl From<WireSessionTargetMetadata> for SessionTargetMetadata {
     fn from(wire: WireSessionTargetMetadata) -> Self {
+        let ram_regions = wire
+            .cores
+            .iter()
+            .map(|core| {
+                let ranges = wire
+                    .memory_map
+                    .iter()
+                    .filter_map(|region| match region {
+                        WireMemoryRegion::Ram(ram)
+                            if ram.access.unwrap_or_default().read
+                                && ram.cores.contains(&core.name) =>
+                        {
+                            Some(ram.range.0..ram.range.1)
+                        }
+                        _ => None,
+                    })
+                    .collect();
+                (core.index as usize, ranges)
+            })
+            .collect();
+
         Self {
             target_name: wire.target_name,
             default_format: wire.default_format,
@@ -880,8 +965,27 @@ impl From<WireSessionTargetMetadata> for SessionTargetMetadata {
                 .into_iter()
                 .map(|core| (core.index as usize, from_wire_core_type(core.core_type)))
                 .collect(),
+            ram_regions,
         }
     }
+}
+
+/// Joins memory chunks that touch, so that a read across a region boundary finds one chunk.
+fn merge_adjacent_ranges(mut data: Vec<(Range<u64>, Vec<u8>)>) -> Vec<(Range<u64>, Vec<u8>)> {
+    data.sort_by_key(|(range, _)| range.start);
+
+    let mut merged: Vec<(Range<u64>, Vec<u8>)> = Vec::with_capacity(data.len());
+    for (range, bytes) in data {
+        match merged.last_mut() {
+            Some((last, last_bytes)) if last.end == range.start => {
+                last.end = range.end;
+                last_bytes.extend(bytes);
+            }
+            _ => merged.push((range, bytes)),
+        }
+    }
+
+    merged
 }
 
 impl From<WireSource> for Source {
@@ -1015,10 +1119,12 @@ mod test {
             cores: vec![
                 WireSessionCore {
                     index: 0,
+                    name: "core0".to_string(),
                     core_type: probe_rs_rpc::core_ops::WireCoreType::Armv7em,
                 },
                 WireSessionCore {
                     index: 1,
+                    name: "core1".to_string(),
                     core_type: probe_rs_rpc::core_ops::WireCoreType::Armv7em,
                 },
             ],
@@ -1031,5 +1137,123 @@ mod test {
         assert_eq!(metadata.cores.len(), 2);
         assert_eq!(metadata.target_name, "stm32f407vgtx");
         assert_eq!(metadata.default_format.as_deref(), Some("elf"));
+    }
+
+    fn wire_metadata(
+        core_type: probe_rs_rpc::core_ops::WireCoreType,
+    ) -> probe_rs_rpc::info::WireSessionTargetMetadata {
+        use probe_rs_rpc::chip::{
+            GenericRegion, MemoryAccess, MemoryRegion as WireMemoryRegion, RamRegion,
+        };
+        use probe_rs_rpc::info::{WireSessionCore, WireSessionTargetMetadata};
+
+        let ram = |start, end, cores: &[&str], access| {
+            WireMemoryRegion::Ram(RamRegion {
+                name: None,
+                range: (start, end),
+                cores: cores.iter().map(|core| core.to_string()).collect(),
+                access,
+            })
+        };
+
+        WireSessionTargetMetadata {
+            target_name: "test".to_string(),
+            default_format: None,
+            cores: vec![
+                WireSessionCore {
+                    index: 0,
+                    name: "app".to_string(),
+                    core_type,
+                },
+                WireSessionCore {
+                    index: 1,
+                    name: "net".to_string(),
+                    core_type,
+                },
+            ],
+            memory_map: vec![
+                ram(0x0080_0000, 0x0082_0000, &["app", "net"], None),
+                WireMemoryRegion::Generic(GenericRegion {
+                    name: None,
+                    range: (0x4000_0000, 0x5000_0000),
+                    cores: vec!["app".to_string()],
+                    access: None,
+                }),
+                ram(0x2000_0000, 0x2002_0000, &["app"], None),
+                ram(0x2100_0000, 0x2101_0000, &["net"], None),
+                ram(
+                    0x3000_0000,
+                    0x3000_1000,
+                    &["app", "net"],
+                    Some(MemoryAccess {
+                        read: false,
+                        ..MemoryAccess::default()
+                    }),
+                ),
+            ],
+            flash_sectors: vec![],
+        }
+    }
+
+    #[test]
+    fn default_dump_ranges_are_the_cores_readable_ram_and_the_cortex_m_scs() {
+        use super::SessionTargetMetadata;
+
+        let metadata = SessionTargetMetadata::from(wire_metadata(
+            probe_rs_rpc::core_ops::WireCoreType::Armv8m,
+        ));
+
+        assert_eq!(
+            metadata.default_dump_ranges(0),
+            vec![
+                0x0080_0000..0x0082_0000,
+                0x2000_0000..0x2002_0000,
+                0xE000_E000..0xE000_F000,
+            ]
+        );
+        assert_eq!(
+            metadata.default_dump_ranges(1),
+            vec![
+                0x0080_0000..0x0082_0000,
+                0x2100_0000..0x2101_0000,
+                0xE000_E000..0xE000_F000,
+            ]
+        );
+    }
+
+    #[test]
+    fn default_dump_ranges_of_a_risc_v_core_have_no_scs() {
+        use super::SessionTargetMetadata;
+
+        let metadata =
+            SessionTargetMetadata::from(wire_metadata(probe_rs_rpc::core_ops::WireCoreType::Riscv));
+
+        assert_eq!(
+            metadata.default_dump_ranges(0),
+            vec![0x0080_0000..0x0082_0000, 0x2000_0000..0x2002_0000]
+        );
+    }
+
+    #[test]
+    fn adjacent_dump_ranges_are_merged() {
+        let data = vec![
+            (0x2003_0000..0x2004_0000, vec![2; 0x1_0000]),
+            (0xE000_E000..0xE000_F000, vec![3; 0x1000]),
+            (0x2000_0000..0x2003_0000, vec![1; 0x3_0000]),
+        ];
+
+        let merged = super::merge_adjacent_ranges(data);
+
+        let ranges = merged
+            .iter()
+            .map(|(range, _)| range.clone())
+            .collect::<Vec<_>>();
+        assert_eq!(
+            ranges,
+            vec![0x2000_0000..0x2004_0000, 0xE000_E000..0xE000_F000]
+        );
+        assert_eq!(merged[0].1[0x2_FFFF], 1);
+        assert_eq!(merged[0].1[0x3_0000], 2);
+        assert_eq!(merged[0].1.len(), 0x4_0000);
     }
 }
