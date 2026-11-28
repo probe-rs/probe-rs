@@ -1939,15 +1939,10 @@ pub(crate) fn check_for_semihosting(
 
 #[cfg(test)]
 mod test {
-    use crate::{
-        architecture::arm::{FullyQualifiedApAddress, sequences::DefaultArmSequence},
-        probe::DebugProbeError,
-    };
+    use crate::architecture::arm::{FullyQualifiedApAddress, sequences::DefaultArmSequence};
 
     use super::*;
-    use crate::architecture::arm::core::mock::MockProbe;
-    use crate::architecture::arm::dp::{DpAddress, DpRegisterAddress};
-    use std::collections::VecDeque;
+    use crate::architecture::arm::core::mock::{MockProbe, RecordingDap};
 
     const TEST_BASE_ADDRESS: u64 = 0x8000_1000;
 
@@ -2140,93 +2135,14 @@ mod test {
         );
     }
 
-    /// A DAP that records every batch of raw AP accesses and answers reads from a script.
-    struct RecordingDap {
-        batches: Vec<Vec<(u64, Option<u32>)>>,
-        reads: VecDeque<u32>,
-        /// The batch, counted from zero, that fails with a probe error.
-        failing_batch: Option<usize>,
-    }
-
-    impl RecordingDap {
-        fn new(reads: &[u32]) -> Self {
-            Self {
-                batches: Vec::new(),
-                reads: reads.iter().copied().collect(),
-                failing_batch: None,
-            }
-        }
-
-        /// The values written to DBGDSCR, in order.
-        fn dscr_writes(&self) -> Vec<Dbgdscr> {
-            self.batches
-                .iter()
-                .flatten()
-                .filter(|(address, _)| *address == BD2::ADDRESS)
-                .filter_map(|(_, value)| value.map(Dbgdscr))
-                .collect()
-        }
-    }
-
-    impl DapAccess for RecordingDap {
-        fn read_raw_dp_register(
-            &mut self,
-            _dp: DpAddress,
-            _address: DpRegisterAddress,
-        ) -> Result<u32, ArmError> {
-            unimplemented!()
-        }
-
-        fn write_raw_dp_register(
-            &mut self,
-            _dp: DpAddress,
-            _address: DpRegisterAddress,
-            _value: u32,
-        ) -> Result<(), ArmError> {
-            unimplemented!()
-        }
-
-        fn read_raw_ap_register(
-            &mut self,
-            ap: &FullyQualifiedApAddress,
-            address: u64,
-        ) -> Result<u32, ArmError> {
-            let mut value = [0];
-            self.access_raw_ap_registers(ap, &[(address, None)], &mut value)?;
-            Ok(value[0])
-        }
-
-        fn write_raw_ap_register(
-            &mut self,
-            ap: &FullyQualifiedApAddress,
-            address: u64,
-            value: u32,
-        ) -> Result<(), ArmError> {
-            self.access_raw_ap_registers(ap, &[(address, Some(value))], &mut [])
-        }
-
-        fn access_raw_ap_registers(
-            &mut self,
-            _ap: &FullyQualifiedApAddress,
-            accesses: &[(u64, Option<u32>)],
-            values: &mut [u32],
-        ) -> Result<(), ArmError> {
-            let index = self.batches.len();
-            self.batches.push(accesses.to_vec());
-            if self.failing_batch == Some(index) {
-                return Err(ArmError::Probe(DebugProbeError::Other(
-                    "the probe went away".to_string(),
-                )));
-            }
-            let reads = accesses.iter().filter(|(_, value)| value.is_none()).count();
-            for value in &mut values[..reads] {
-                *value = self
-                    .reads
-                    .pop_front()
-                    .expect("a scripted value for every read");
-            }
-            Ok(())
-        }
+    /// The values written to DBGDSCR, in order.
+    fn dscr_writes(dap: &RecordingDap) -> Vec<Dbgdscr> {
+        dap.batches
+            .iter()
+            .flatten()
+            .filter(|(address, _)| *address == BD2::ADDRESS)
+            .filter_map(|(_, value)| value.map(Dbgdscr))
+            .collect()
     }
 
     fn banked(dap: &mut RecordingDap) -> BankedAccess<'_> {
@@ -2330,7 +2246,7 @@ mod test {
         assert!(matches!(error, ArmError::Probe(_)), "{error:?}");
         assert_eq!(data, [0; 3]);
         assert_eq!(dap.batches.len(), 5);
-        let left = dap.dscr_writes().last().map(|dscr| dscr.extdccmode());
+        let left = dscr_writes(&dap).last().map(|dscr| dscr.extdccmode());
         assert_eq!(left, Some(0));
     }
 
